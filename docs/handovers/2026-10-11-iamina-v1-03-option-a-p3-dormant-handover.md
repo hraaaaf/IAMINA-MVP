@@ -212,3 +212,28 @@ Après le comparatif de blobs, lecture côte à côte des méthodes :
 **Coordination** : ces PR sont candidates indépendantes, jamais des productions. Prochain lot autonome = branche d'intégration combinée `#939 + #940 + #937` en conservant autorité SSE post-auth, refus AI avant transport, chemins P3 dormants, version PWA distincte et protections LLM de #932 ; **ne pas lancer inutilement une batterie lourde pendant que GitHub est occupé sur #940**. Au point de convergence : CI réellement déclenchée sur HEAD intégré et tests P5-4A upgrade ancien→nouveau, préservation locale, optout multi-plateforme/clinique/ingress. Merge et Vercel nécessitent toujours des autorisations explicites.
 
 **Statut :** `INTEGRATION_DRAFTS_OPEN / CI_PARTIAL / NOT_RELEASE_AUTHORIZED`. Aucune validation clinique, infra log ou migration parc réel revendiquée.
+
+
+## 19. 12 octobre — convergence exécutée : #941 DRAFT sur main, 25 workflows déclenchés
+
+**Goal :** prouver les protections V1-03 sur un seul HEAD après travail parallèle, sans aucune donnée patient réelle, sans merge ni déploiement. **PR d'intégration [#941](https://github.com/hraaaaf/IAMINA-MVP/pull/941)** OPEN/DRAFT, branche `integration/v1-03-sse-optout-pwa-p3-20261012`, base `main@13b7cce12c86daf60119fb703f22e8c6c192cf8d`, HEAD exact **`22ff929624c3860446b58ce6130852594d3060ed`**. Comparaison avec `main` : ahead **159**, behind **0**, **87 fichiers cumulés des PR parentes** ; depuis #939 `bb25925d` : 12 commits, 12 fichiers supplémentaires issus de #937 et #940, et seulement eux.
+
+**Constitution et preuves avant CI :**
+- Base #934/#932 avec refus AI `_localAiDenialCode` **avant Bearer/HTTP**, SSE POST JSON sans santé en URL, résumé/Doctor Brief déterministes sans `get_gateway_llm()` et refus média tiers fail-closed.
+- Correctif #939 : bloc urgent `chat_stream` de #938 **après auth/CSRF**, `compose_emergency_for_patient`, suppression du pré-triage SSE en middleware. Tests synthétiques GET 405, cookie+Bearer/CSRF, POST JSON/urgence/aucun fournisseur, sans PHI de log.
+- Contrat P3 option A de #937 : `diabetes.api.main` ne monte plus les routeurs via registre, manifeste/ready reflètent routes exposées ; tests P3 404/absence OpenAPI/Django resolver/urgence/bootstrap.
+- Contrat d'essai PWA de #940 : version Flutter/SW/bootstrap `0.1.0+2`, version minimum API `0.1.0+1` et latest build 2 ; **pas de forced upgrade** avant inventaire distribué, mais tests version/parité POST/API cache.
+- **11/11 invariants source vérifiés à HEAD `22ff9296`** (les invariants ne sont pas des tests runtime ni une validation clinique). Le code main-based #938 n'a **pas été recopié en entier** dans `ai.py` pour ne pas réintroduire des appels LLM sur données patient.
+
+**Premier contrôle exact-HEAD GitHub #941 : 25 workflows démarrés**, 0 succès global déclaré. Quelques runs critiques :
+- [CI `38251414965`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38251414965) **queued** au premier contrôle (backend SQLite+PostgreSQL/Flutter).
+- [Django migration drift `38251414824`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38251414824) **queued**.
+- [P5-4A PWA update and recovery proof `38251414930`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38251414930) **queued**.
+- [P5-4A PWA offline app-shell proof `38251415007`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38251415007) **queued**.
+- [P5-5 End-to-End Pilot Rehearsal `38251414964`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38251414964) **queued**.
+- [Companion chat E2E `38251414823`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38251414823) **in_progress**.
+Les vingt-cinq runs sont à examiner **une fois après travail documentaire indépendant**, puis toute failure → logs/diagnostic/correctif/recertification sur **nouveau HEAD**. Ne pas confondre les succès isolés #938, #939 (Companion seulement), #940 (FRUG/UI seulement) avec validation #941.
+
+**Gates ouverts même en cas 25/25 vert :** mise à jour effective des PWA anciennes et vrais iOS/Android, inventaire de distribution par build, ingress/CDN/APM/WAF et politique des logs/drains/rétention, clinician OCR HI/LO/401–600, revues privacy/sécurité/clinique, captures UI BEFORE/AFTER mêmes viewports + regard indépendant, et coupure backend/frontend/rollback sans réintroduire GET. Les validations de mise en production restent humaines : approbation de **merge** puis autorisation **Vercel séparée**. Aucun déploiement ni donnée patient manipulée.
+
+**Statut : `INTEGRATED_DRAFT_CI_RUNNING / NOT_MERGED / NOT_DEPLOYED / NOT_RELEASE_AUTHORIZED`.** Prochaine action : analyser les verdicts exacts du run #941 après travail indépendant ; si rouge corriger, si vert préparer revues/compatibilité sans déclarer V1-03 close. P5 historique 6/12=50 %, pas un % V1-03.
