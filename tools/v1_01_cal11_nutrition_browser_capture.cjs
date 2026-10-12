@@ -16,7 +16,7 @@ async function render(browser, lang, width, height) {
   const context = await browser.newContext({
     viewport:{width,height}, deviceScaleFactor:1,
     locale:lang === 'ar' ? 'ar-MA' : lang === 'fr' ? 'fr-FR' : 'en-US',
-    serviceWorkers:'block', colorScheme:'light'
+    serviceWorkers:'allow', colorScheme:'light'
   });
   try {
     const page = await context.newPage();
@@ -54,7 +54,20 @@ async function render(browser, lang, width, height) {
       throw new Error('Missing visible source-backed interval: '+phase+' '+lang+' '+width+'x'+height+
         '; expected='+interval+'; semantics='+evidence.slice(0,1800)+'; errors='+JSON.stringify(errors));
     }
-    if(errors.length) console.warn('NON-FATAL-BROWSER-PAGEERROR: '+JSON.stringify(errors));
+    // Fail closed: any browser pageerror disqualifies this screenshot as a clean proof.
+    // Service Workers are allowed in this isolated context; the original
+    // 'block' mode made the real SW registration.resolve(undefined) and the
+    // custom bootstrap's registration.update() then dereferenced undefined.
+    if (errors.length) throw new Error(
+      'PAGEERROR '+phase+' '+lang+' '+width+'x'+height+': '+JSON.stringify(errors));
+    const swRegistry = await page.evaluate(async () => {
+      if (!('serviceWorker' in navigator)) return {supported:false,count:0};
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      return {supported:true,count:registrations.length};
+    });
+    if (!swRegistry.supported || swRegistry.count < 1) throw new Error(
+      'SW_REGISTRATION_MISSING '+phase+' '+lang+' '+width+'x'+height+
+      ': '+JSON.stringify(swRegistry));
     const filename=phase+'-apple-100g-'+lang+'-'+width+'x'+height+'.png';
     const bytes=await page.screenshot({path:path.join(out,filename),fullPage:false});
     if(bytes.length < 4000 || bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a')
@@ -63,7 +76,7 @@ async function render(browser, lang, width, height) {
       throw new Error('PNG viewport mismatch: '+filename);
     return {phase,lang,width,height,expectedInterval:interval,filename,
       bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),
-      pageErrors:errors};
+      pageErrors:errors, serviceWorkerRegistry:swRegistry};
   } finally {await context.close();}
 }
 (async()=>{
