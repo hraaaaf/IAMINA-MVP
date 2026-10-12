@@ -1,0 +1,55 @@
+name: V1-01 CAL-11 USDA primary-source verification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/v1-01-cal11-usda-primary-provenance.yml"
+      - "backend/scripts/validate_v1_01_cal11_fdc.py"
+      - "frontend/lib/core/data/nutrition_catalog.dart"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cal11-primary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-usda-primary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download immutable USDA Foundation 2026-04-30 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          url="https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-04-30.zip"
+          printf '%s\n' "$url" > proof/source_url.txt
+          curl --fail --location --silent --show-error --max-time 90 \
+            "$url" --output /tmp/USDA_foundation_food_json_2026-04-30.zip
+          test -s /tmp/USDA_foundation_food_json_2026-04-30.zip
+          sha256sum /tmp/USDA_foundation_food_json_2026-04-30.zip > proof/archive_sha256.txt
+          python -m zipfile -t /tmp/USDA_foundation_food_json_2026-04-30.zip
+      - name: Reconcile seven FDC IDs against primary rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python backend/scripts/validate_v1_01_cal11_fdc.py \
+            /tmp/USDA_foundation_food_json_2026-04-30.zip \
+            | tee proof/fdc_reconciliation.json.log
+      - name: Retain redacted public-source evidence only
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cal11-usda-primary-provenance
+          path: proof/
+          if-no-files-found: warn
+          retention-days: 30
