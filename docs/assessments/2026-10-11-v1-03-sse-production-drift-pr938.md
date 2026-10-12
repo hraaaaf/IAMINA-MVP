@@ -139,3 +139,24 @@ Aucune donnée patient ni token réel n'est collecté dans l'instrumentation. Pa
 **Nouveau HEAD #938** : `beeed3ecb60b68a9a30b5a9d46736f9a6f520e4d` (13 fichiers). CI exacte **`38230019452`** et 3 workflows associés déclenchés automatiquement ; au premier contrôle, tous `queued/pending`. **Ne pas les déclarer verts sans preuve**. Aucune modification de production, merge ni Vercel.
 
 **Recommandation sécurité :** conserver cette fixture non falsifiante comme garde : une suite intégration qui remplace l'auth hybride par une session trompeuse peut masquer des régressions d'auth natives et fausser des conclusions CSRF.
+
+## 14. Certification CI technique exacte — 12 octobre 2026 (PR #938)
+
+**Succès du lot de tests, non du déploiement :** PR [#938](https://github.com/hraaaaf/IAMINA-MVP/pull/938) HEAD **`beeed3ecb60b68a9a30b5a9d46736f9a6f520e4d`**, base **`main` `13b7cce12c86daf60119fb703f22e8c6c192cf8d`**, **DRAFT / OPEN / mergeable / non fusionnée**. Diff = 20 commits et **13 fichiers**. Le test fixture `backend/conftest.py` et la matrice native `test_v1_03_cross_route_csrf.py` sont identiques à leurs versions éprouvées sur #932 (SHA blobs vérifiés à la copie).
+
+**Preuves exact-SHA GitHub Actions :**
+- [CI `38230019452`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38230019452) : **SUCCESS, 6/6 jobs**. Backend lint/architecture/anti-bypass/secret/SAST/OpenAPI, Python pytest SQLite, PostgreSQL, frontend `flutter analyze`, `flutter test` et compilation PWA validés.
+- Job backend SQLite `114748111997` : **2 796 passed, 5 skipped, 3 xfailed, 178 subtests passed**, 11 warnings ; résultat SUCCESS.
+- Job backend PostgreSQL `114748112077` : **2 800 passed, 1 skipped, 3 xfailed, 178 subtests passed**, 11 warnings ; résultat SUCCESS.
+- Job frontend `114748112108` : **646 tests passed, 1 skipped** ; `flutter build web --release --no-web-resources-cdn` affiche `Built build/web` ; résultat SUCCESS.
+- [Django migration drift `38230019366`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38230019366) : SUCCESS.
+- [Pilot rehearsal P5-5 `38230019333`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38230019333) : SUCCESS.
+- [Companion E2E screenshots `38230019311`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38230019311) : SUCCESS. **Ce succès d'automatisation n'est pas une comparaison visuelle BEFORE/AFTER revue pixel par pixel**.
+
+**Double revue — portée exacte :**
+1. **Transport & sécurité :** tests et code du candidat prouvent le rejet GET legacy sans redirection ni invocation provider, POST JSON Flutter, session CSRF cookie même header Bearer falsifié, Bearer natif sans cookie, absence de PHI dans le logger de triage modifié, no-store, et compatibilité streaming. La correction de la fixture rétablit la **véritable** auth hybride au lieu du test simulé. Le dernier code source déployé sur Vercel reste antérieur à ce correctif : **la réussite CI n'a pas supprimé le risque présent sur les SHA de production**.
+2. **Clinique / UX / architecture :** l'urgence SSE canonique est testée sur scénarios synthétiques après authentification ; **aucune validation clinique indépendante** ni comparaison visuelle révisée sur vrais appareils. La PR #938 est un hotfix isolé sur `main` : elle **ne met pas en sommeil** les aliases P3 encore montés sur `main`, contrairement à la décision option A sur #937 ; elle n'implémente pas toutes les autres garanties de #932–#937. Ne jamais appeler #938 un candidat de release V1-03 intégrale.
+
+**Gates humains avant toute action irréversible :** (a) inventaire des clients distribués et scénario d'upgrade sans GET/PHI, (b) vérification autorisée de l'ingress, des logs/drains, rétention et suppression éventuelle sans exposer de données patient, (c) revue sécurité/privacy indépendante et clinique/UX, (d) autorisation explicite de **merge**, puis autorisation explicite distincte de **déploiement Vercel**, (e) smoke et surveillance post-déploiement avec données **strictement synthétiques**, (f) déduplication/tests de la pile DRAFT et dormance P3 avant validation globale.
+
+**Statut : `TECHNICAL_CI_GREEN` pour #938 au SHA exact, `NOT_MERGED`, `NOT_DEPLOYED`, `NOT_RELEASE_AUTHORIZED`.** Aucun traitement de patient ou Vercel effectué par ce closeout documentaire.
