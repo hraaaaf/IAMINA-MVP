@@ -21,6 +21,17 @@ def _synthetic_archive(tmp_path, *, modify=None):
                 {
                     "fdcId": fdc_id,
                     "description": f"synthetic {family} test food",
+                    "foodPortions": (
+                        [
+                            {
+                                "measureUnit": {"name": "Banana"},
+                                "modifier": "Peeled",
+                                "gramWeight": rule["peeled_grams"][fdc_id],
+                            }
+                        ]
+                        if family == "banana"
+                        else []
+                    ),
                     "foodNutrients": [
                         {
                             "nutrient": {
@@ -79,15 +90,44 @@ def test_multiple_missing_usda_ids_are_reported_before_numeric_proofs(tmp_path):
         rows[:] = [
             food
             for food in rows
-            if food["fdcId"] not in (1105664, 790991)
+            if food["fdcId"] not in (1750339, 1105314)
         ]
 
     with pytest.raises(ValueError) as caught:
         validate_zip(_synthetic_archive(tmp_path, modify=remove_two_foods))
     assert "missing official Foundation FDC IDs" in str(caught.value)
-    assert "apple: 1105664" in str(caught.value)
-    assert "banana: 790991" in str(caught.value)
+    assert "apple: 1750339" in str(caught.value)
+    assert "banana: 1105314" in str(caught.value)
     assert "no automatic source substitution" in str(caught.value)
+
+
+
+def test_official_peeled_banana_portion_weights_are_checked(tmp_path):
+    result = validate_zip(_synthetic_archive(tmp_path))
+    banana = result["banana"]
+    assert {row["fdcId"]: row["peeled_grams"] for row in banana} == {
+        1105073: 110.0,
+        1105314: 115.0,
+    }
+
+
+@pytest.mark.parametrize("bad_weight", [None, 0, -1, 123.0, float("nan")])
+def test_wrong_peeled_banana_weight_fails_closed(tmp_path, bad_weight):
+    def corrupt_portion(rows):
+        banana = next(row for row in rows if row["fdcId"] == 1105073)
+        banana["foodPortions"][0]["gramWeight"] = bad_weight
+
+    with pytest.raises(ValueError, match="gramWeight"):
+        validate_zip(_synthetic_archive(tmp_path, modify=corrupt_portion))
+
+
+def test_missing_peeled_banana_portion_fails_closed(tmp_path):
+    def remove_portion(rows):
+        banana = next(row for row in rows if row["fdcId"] == 1105073)
+        banana["foodPortions"].clear()
+
+    with pytest.raises(ValueError, match="expected one banana peeled"):
+        validate_zip(_synthetic_archive(tmp_path, modify=remove_portion))
 
 
 @pytest.mark.parametrize(
