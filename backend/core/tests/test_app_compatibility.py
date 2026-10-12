@@ -140,3 +140,23 @@ def test_public_endpoint_maps_invalid_client_metadata_to_422(monkeypatch):
         )
 
     assert exc_info.value.status_code == 422
+
+
+def test_default_window_recognizes_distinct_upgrade_trial_build():
+    """The proposed 0.1.0+2 PWA is not unknown to the paired API policy."""
+    policy = load_compatibility_policy({})
+    assert policy.minimum_version_text == "0.1.0"
+    assert policy.minimum.build == 1
+    assert policy.latest_version_text == "0.1.0"
+    assert policy.latest.build == 2
+
+    latest = evaluate_client_compatibility(
+        client_version="0.1.0", client_build=2, policy=policy
+    )
+    older = evaluate_client_compatibility(
+        client_version="0.1.0", client_build=1, policy=policy
+    )
+    assert latest.status == "current"
+    assert latest.update_required is False
+    assert older.status == "update_available"
+    assert older.update_required is False  # No forced upgrade without inventory.
