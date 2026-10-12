@@ -104,6 +104,24 @@ def validate_zip(path: Path) -> dict[str, list[dict]]:
             if fdc_id in seen:
                 raise ValueError(f"duplicate source FDC ID {fdc_id}")
             seen[fdc_id] = row
+    # Fail closed across the entire catalog, not just the first absent ID:
+    # report every missing official 2026 Foundation record to support a
+    # qualified source-by-source curation decision.
+    missing_by_family = {
+        family: [fdc_id for fdc_id in rule["ids"] if fdc_id not in seen]
+        for family, rule in SEED.items()
+    }
+    if any(missing_by_family.values()):
+        gaps = "; ".join(
+            f"{family}: {', '.join(map(str, missing_ids))}"
+            for family, missing_ids in missing_by_family.items()
+            if missing_ids
+        )
+        raise ValueError(
+            "missing official Foundation FDC IDs (no automatic source "
+            f"substitution): {gaps}"
+        )
+
     output: dict[str, list[dict]] = {}
     for food_name, rule in SEED.items():
         evidence: list[dict] = []
