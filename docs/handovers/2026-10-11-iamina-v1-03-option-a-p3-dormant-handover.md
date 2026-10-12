@@ -154,3 +154,30 @@ Inspection Vercel **en métadonnées seulement**, le 12/10 : dernière productio
 **Next exact autorisé :** préparer matrice d'upgrade ancienne PWA/iOS/Android avec marqueurs synthétiques, vérifier politiques de rétention/ingress via accès autorisé et recenser versions distribuées ; préparer nouveau build/version/SW dans branche d'intégration DRAFT après arbitrage de la fenêtre de compatibilité, pas sur la PR P0 déjà verte. Tests exact-HEAD et double revue à faire. Aucun merge ni Vercel sans autorisation explicite.
 
 Détails complets : `docs/assessments/2026-10-11-v1-03-sse-production-drift-pr938.md` section 15. `TECHNICAL_CI_GREEN` pour #938 inchangé, mais `MIGRATION_NOT_PROVEN / NOT_RELEASE_AUTHORIZED`.
+
+
+## 16. 12 octobre — exécution parallèle bornée des quatre pistes V1-03
+
+**Déclenchement :** l'utilisateur demande explicitement d'avancer **en parallèle** dès que les tâches sont indépendantes. Les audits et preuves peuvent être menés concurremment, sans attendre les autres ; **ne pas** confondre avec des tests réels / travaux de fond asynchrones une fois la session close. Les actions irréversibles et les cinq conflits de fichiers candidats attendent le point de convergence.
+
+### Pistes indépendantes, Goal → succès → preuve
+
+| Piste | Goal | Succès observable | Preuve actuelle / Next exact |
+| --- | --- | --- | --- |
+| **A : compatibilité SSE / versions PWA** | aucun ancien client ne crée de nouvelle URL de santé sans contrôle, migrer au POST | inventaire réel par build/méthode ; nouveau numéro de version + cache schema distincts ; upgrade synthétique depuis ancien SW vérifié et POST sans query | Audit source section 15 : `0.1.0+1` répété dans pubspec/SW/bootstrap, `main.dart.js` cache-first. **PAS de distribution réelle inventoriée** ; préparer tests autonomes PWA sans modifier #938 vert |
+| **B : refus IA par installation** | empêcher AI/voix/image/stream après refus, y compris redémarrage/hors ligne | iOS, Android et PWA réels avec version/build identifié ; refus persistant et appels réseau à zéro, changement de compte et réacceptation contrôlés | #934 tests Dart `consent_local_decline_store_test.dart` utilisent `Mock<FlutterSecureStorage>`; `v1_03_local_decline_network_gate_test.dart` utilise `MockClient` et fausse auth. **Mocks ≠ vrais appareils**. Continuer les tests synthétiques indépendants, puis QA appareils sans patient |
+| **C : OCR glycémie** | aucune valeur ni unité inventée, aucun enregistrement implicite | corpus optique autorisé, preuve d'unité visible, UI confirmation explicite avant écriture, annulation 0 DB, revue clinicien HI/LO et plage 401–600 mg/dL | #932 garde unité et #933 audit : OCR non raccordé aux consommateurs examinés ; **pas de parcours patient ni preuve clinique/optique**. Maintenir désactivé jusqu'au gate |
+| **D : infra/logs/security** | connaître toutes les destinations et règles de collecte avant diffusion | configuration Vercel/CDN/APM/WAF, durée de rétention, tests à marqueur synthétique, approbation responsable privacy | Métadonnées Vercel #15 : review `1e44ba57`, certified `df004bcb`, anciens GET encore dans code source. Appel drains HTTP 404 = **INCONNU**, pas « aucun drain ». Aucune lecture PHI autorisée ; inventaire sans contenu patient |
+
+**Piste E déjà techniquement prouvée, sans dépendance à ces audits :** P3 alias dormant selon décision A, #937 SHA `4d287bb1`, 16/16 workflows historiques verts ; non intégré à #938. Refaire tests P3 sur toute branche d'intégration.
+
+### Frontière d'intégration — preuve GitHub par SHA blob (pas hypothèse)
+
+Comparaison **à trois HEAD exacts** #932 `15cfe25f`, #937 `4d287bb1` et #938 `beeed3ec` sur les **10 chemins en commun entre #932 et #938** :
+- **5 identiques #932 ≡ #937 ≡ #938 par SHA blob** : `backend/amina/middleware/csrf_exempt_api.py`, `backend/amina/vercel_session_auth.py`, `backend/conftest.py`, `backend/core/tests/test_v1_03_cross_route_csrf.py`, `frontend/test/services/v1_03_sse_privacy_contract_test.dart`.
+- **5 différents** : `backend/ai/api/v1/ai.py`, `backend/core/middleware/triage_vital.py`, `backend/core/tests/test_input_safety.py`, `docs/api/openapi.json`, `frontend/lib/services/api_client.dart`. Ces différences nécessitent une **revue fonctionnelle ligne/parcours** sur branche d'intégration, pas un copier-coller par ordre arbitraire. Les trois variantes SSE du router sont `POST` et non `GET`, mais #938 place explicitement l'urgence canonique après auth/CSRF ; #932/#937 n'utilisent pas la même voie. Préserver cette protection dans toute consolidation.
+- Les branches #934/#935 sont descendantes de #932 ; l'intersection de fichiers ne prouve pas l'absence de conflits dans leurs changements de consentement. Faire une comparaison différentielle supplémentaire au besoin.
+
+**Point de convergence (SEULE étape non parallèle)** : aligner branche d'intégration et choix de cutover ; scénario intégré auth/CSRF + SSE/urgence + refus IA + garde OCR + P3 dormant + PWA ; suite exacte GitHub (SQLite, PostgreSQL, Flutter, version SW, CI E2E). Cela **ne remplace pas** les validations indépendantes privacy/clinique ni les autorisations explicites de merge et de déploiement Vercel.
+
+**État : quatre pistes documentées et analyses sources effectuées dans cette session ; aucune preuve externe inventée, aucun appareil réel testé, pas de merge/deploy.** PR #938 conserve son HEAD `beeed3ec`, CI `38230019452` vert ; PR documentaire #933 reçoit cette mise à jour sans certification CI exacte de son nouveau HEAD. **Next exact :** poursuivre indépendamment A (matrice upgrade), B (QA réel), C (avis clinique), D (politiques journaux) puis intégrer seulement avec toutes les pièces requises. `V1-03 NOT_RELEASE_AUTHORIZED`.
