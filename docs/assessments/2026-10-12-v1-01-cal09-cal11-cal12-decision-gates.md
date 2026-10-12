@@ -1,4 +1,7 @@
 # IAMINA V1-01 — Décisions CAL-09/10, CAL-11 et CAL-12
+
+> **ACTUALISATION PRIORITAIRE 2026-10-12 — CAL-11 SOURCE+CI VERTES :** [PR #945](https://github.com/hraaaaf/IAMINA-MVP/pull/945) `34dd3fbfab7c8b125f2097546ce18d1bbc3d5f58`, **18/18 success**, dont [certification USDA primaire `38282204938`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38282204938) `SOURCE_ROWS_MATCH` et [CI `38282205019`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38282205019) 6/6. Le ZIP officiel SHA256 `186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a` confirme **7/7 IDs corrigés** et 110/115 g Banana/Peeled. Les sections antérieures qui disent « primaire indisponible », « run queued » ou « CAL-11 aucune référence certifiée » sont **historiques et supplantées pour #945**. La décision #19 reste ouverte jusqu'à QA numérique BEFORE/AFTER, contrat du jour clinique CAL-09/10, PDF CAL-12 et revues. [Handover V1-01 de reprise](../handovers/2026-10-12-iamina-v1-01-cal-handover.md). Aucun merge, Vercel ni usage patient.
+
 **12 octobre 2026 — dossier de décision, PAS une certification clinique**
 
 ## 1. Source exacte et résultat
