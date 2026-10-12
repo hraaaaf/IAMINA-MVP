@@ -1,0 +1,9 @@
+# V1 #6 — Remove patient-facing tone preference (not clinical safety tone)
+
+**BEFORE** captured and independently inspected in [Chrome onboarding sticky #38320834577](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38320834577), [artifact #11779217453](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38320834577/artifacts/11779217453), 390×844/768×1024/1280×900. All show user prompt "Quel ton préférez-vous ?" and choice Neutre/Chaleureux, progress 6/6; legacy UI also has two tone choices in profile preferences. Goal and target mockup written first in [issue #957](https://github.com/hraaaaf/IAMINA-MVP/issues/957). Mockup: same screens, keep language/country/type/treatment/unit, remove tone step and progress 5/5; profile prefs FR/EN/AR label "Langue et pays", no rearrangement of medical choices.
+
+**Scope:** remove tone chooser from first use and preferences, set deterministic `neutral` for legacy `setExperience` on explicit finish, no storage migration/removal, keep current country-first explicit selection from dependent decision #5. Keep `backend/companion/tone.py` relationship-only model intact; do not reclassify clinical recommendations or alter LLM prompts.
+
+**Dependency:** based on [PR DRAFT #956](https://github.com/hraaaaf/IAMINA-MVP/pull/956) exact HEAD `0b2625a09f8211ab8e6f0a8ed300774de2854756`, which contains #5 language-only persistence fix. This candidate must not be merged ahead of #5. A subsequent PR targeting main will temporarily include #5 commits; reconcile sequentially before any approved merge. Do not interpret CI as clinical signoff.
+
+**Acceptance:** Flutter tests confirm no visible tone prompt, progression 5 steps, saved country remains explicit, profile subtitles FR/EN/AR, sticky CTA 390x844, Chrome visual AFTER same three viewports, no overflow or pageerror. No patient network egress, no Vercel.

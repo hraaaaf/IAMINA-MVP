@@ -43,7 +43,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
   String? _language;
   String? _country;
-  String? _tone;
   String? _diabetesType;
   String? _treatment;
   String _unit = 'mg/dL';
@@ -60,7 +59,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final profile = context.read<PatientProfileData?>();
     _language = localeService.locale.languageCode;
     _country = localeService.country;
-    _tone = localeService.tone;
     _diabetesType = profile?.diabetesType;
     _treatment = profile?.treatment;
     _unit = profile?.unitPreference ?? _unit;
@@ -74,7 +72,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   Future<void> _finish() async {
-    if (_language == null || _country == null || _tone == null) return;
+    if (_language == null || _country == null) return;
     if (!widget.preferencesOnly &&
         (_diabetesType == null || _treatment == null)) {
       return;
@@ -88,7 +86,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .setExperience(
             language: _language!,
             country: _country!,
-            tone: _tone!,
+            tone: 'neutral',
           )
           .timeout(_persistenceTimeout);
 
@@ -185,21 +183,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           ),
         ],
       ),
-      _Question(
-        title: l10n.onboardingChooseTone,
-        children: [
-          _Choice(
-            label: l10n.onboardingToneNeutral,
-            selected: _tone == 'neutral',
-            onTap: () => setState(() => _tone = 'neutral'),
-          ),
-          _Choice(
-            label: l10n.onboardingToneFriendly,
-            selected: _tone == 'friendly',
-            onTap: () => setState(() => _tone = 'friendly'),
-          ),
-        ],
-      ),
+
     ];
 
     final onboardingSteps = <Widget>[
@@ -245,22 +229,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           ],
         ),
       if (_country != null)
-        _Question(
-          title: l10n.onboardingChooseTone,
-          children: [
-            _Choice(
-              label: l10n.onboardingToneNeutral,
-              selected: _tone == 'neutral',
-              onTap: () => setState(() => _tone = 'neutral'),
-            ),
-            _Choice(
-              label: l10n.onboardingToneFriendly,
-              selected: _tone == 'friendly',
-              onTap: () => setState(() => _tone = 'friendly'),
-            ),
-          ],
-        ),
-      if (_tone != null)
         _Question(
           title: l10n.onboardingTypeQuestion,
           children: [
@@ -331,7 +299,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         : _onboardingProgress(
             language: _language,
             country: _country,
-            tone: _tone,
             diabetesType: _diabetesType,
             treatment: _treatment,
           );
@@ -339,7 +306,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final ready =
         _language != null &&
         _country != null &&
-        _tone != null &&
         (widget.preferencesOnly ||
             (_diabetesType != null && _treatment != null));
 
@@ -498,17 +464,15 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 ({int current, int total}) _onboardingProgress({
   required String? language,
   required String? country,
-  required String? tone,
   required String? diabetesType,
   required String? treatment,
 }) {
   var current = 1;
   if (language != null) current = 2;
   if (country != null) current = 3;
-  if (tone != null) current = 4;
-  if (diabetesType != null) current = 5;
-  if (treatment != null) current = 6;
-  return (current: current, total: 6);
+  if (diabetesType != null) current = 4;
+  if (treatment != null) current = 5;
+  return (current: current, total: 5);
 }
 
 class _OnboardingQuestions extends StatelessWidget {

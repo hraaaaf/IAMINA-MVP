@@ -81,7 +81,6 @@ void main() {
 
     await select('Français');
     await select('Maroc');
-    await select('Simple et chaleureux');
     await select('Diabète Type 2');
     await select('Comprimés');
 

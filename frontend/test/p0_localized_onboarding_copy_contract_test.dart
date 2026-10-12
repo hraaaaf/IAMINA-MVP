@@ -8,7 +8,6 @@ void main() {
     const keys = <String>[
       'onboardingChooseLanguage',
       'onboardingChooseCountry',
-      'onboardingChooseTone',
       'onboardingTypeQuestion',
       'onboardingTreatmentQuestion',
       'onboardingUnitQuestion',

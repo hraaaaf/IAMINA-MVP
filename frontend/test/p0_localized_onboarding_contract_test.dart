@@ -3,14 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'onboarding separates language country and tone and never forces French',
+    'onboarding keeps explicit language and country without a tone picker',
     () {
       final source = File(
         'lib/features/auth/onboarding_chat_screen.dart',
       ).readAsStringSync();
       expect(source, contains('onboardingChooseLanguage'));
       expect(source, contains('onboardingChooseCountry'));
-      expect(source, contains('onboardingChooseTone'));
+      expect(source, isNot(contains('onboardingChooseTone')));
       expect(source, contains('preferredLanguage: drift.Value(_language!)'));
       expect(
         source,
