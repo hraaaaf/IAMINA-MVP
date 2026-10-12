@@ -160,6 +160,13 @@ const Map<String, NutritionSourceRef> nutritionSources = {
   ),
 };
 
+/// USDA Foundation 2026-04 source provenance was reconciled against the
+/// official primary JSON archive (sha256
+/// 186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a).
+/// The older FoodData Central IDs were no longer present in that snapshot.
+/// Banana peeled weights 110g/115g come from source foodPortions. Neither
+/// source nutrient averages nor weights prescribe an individual meal or dose.
+///
 /// Morocco-first portion vocabulary. Numeric weights are intentionally absent
 /// until the exact supplementary/source row has been curated and reviewed.
 /// The user can still record the natural portion without IAMINA inventing a
@@ -269,10 +276,10 @@ const List<MealNutritionProfile> mealNutritionProfiles = [
   MealNutritionProfile(
     foodId: 'apple',
     carbohydrate: NutritionReferenceValue(
-      carbsPer100gLow: 14.2,
+      carbsPer100gLow: 14.1,
       carbsPer100gHigh: 15.7,
       sourceId: 'usda_fdc_2026',
-      sourceFoodRef: 'FDC 1105664, 1105547, 1105781, 1105430, 1105897',
+      sourceFoodRef: 'FDC 1750339, 1750340, 1750341, 1750342, 1750343',
       evidenceTier: NutritionEvidenceTier.analytical,
     ),
   ),
@@ -282,7 +289,7 @@ const List<MealNutritionProfile> mealNutritionProfiles = [
       carbsPer100gLow: 20.1,
       carbsPer100gHigh: 23.0,
       sourceId: 'usda_fdc_2026',
-      sourceFoodRef: 'FDC 790774 and 790991',
+      sourceFoodRef: 'FDC 1105073 and 1105314',
       evidenceTier: NutritionEvidenceTier.analytical,
     ),
     portions: [
