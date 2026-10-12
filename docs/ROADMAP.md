@@ -1,5 +1,7 @@
 # IAmina — Canonical Roadmap
 
+> **V1-03 2026-10-12 — RECTIFICATION ZÉRO CLIENT :** le propriétaire confirme **0 client**. La V1 est **local-first**, Vercel/Neon sont des environnements de développement/certification et non le runtime patient. Les anciennes tâches de migration des clients installés sont caduques : priorité aux essais de **première installation vierge** et à la sécurité sur données synthétiques. Les gates relatifs aux premières données patient restent régis par le §9. La PR #941 `d3562e8` a **25/25 CI verts**, est DRAFT, non mergée/non déployée. Voir [handover §23](handovers/2026-10-11-iamina-v1-03-option-a-p3-dormant-handover.md) et [gate pré-lancement](assessments/2026-10-12-v1-03-distribution-privacy-cutover-gates.md). Merge et Vercel demandent des autorisations distinctes. **P5 historique 6/12 = 50 %.**
+
 > **Reprise V1-03 actuelle (2026-10-11) :** [`docs/handovers/2026-10-11-iamina-v1-03-option-a-p3-dormant-handover.md`](handovers/2026-10-11-iamina-v1-03-option-a-p3-dormant-handover.md) — PR #937 option A, code `4d287bb...`, 16/16 CI, DRAFT et base #936, sans merge ni release. Toujours revérifier GitHub HEAD et CI à l'ouverture d'une nouvelle session.
 
 
