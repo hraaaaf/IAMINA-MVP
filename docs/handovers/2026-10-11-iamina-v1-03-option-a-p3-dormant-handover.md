@@ -269,3 +269,10 @@ Les vingt-cinq runs sont à examiner **une fois après travail documentaire ind�
 **Next exact :** regarder la conclusion des deux tentatives de relance **une fois**, après le travail documentaire indépendant. Si nouveau échec CDP/ADB identique, abandonner la répétition et fiabiliser la disponibilité/diagnostic du runner dans un lot harness ciblé ; ne pas désactiver le test ni abaisser le seuil. Si verts, inscrire **25/25 seulement pour le nouveau HEAD exact et la tentative**, sans déduire validation clinique/équipements réels. Les gates clients réellement distribués, ingress/logs/drains/rétention, clinicien OCR et revue indépendante demeurent.
 
 **Statut : `INTEGRATED_CI_CORE_GREEN / RETRY_TWO_HARNESSES / NOT_MERGED / NOT_DEPLOYED / NOT_RELEASE_AUTHORIZED`.** Aucun accès PHI, aucune action Vercel.
+
+
+### 21a. Nouvelle preuve PWA : seconde tentative Chrome VERTE sur le même commit
+
+Après la première tentative P5-4A rouge sur lancement Chrome CDP, GitHub `rerun failed jobs` du [run `38252290695`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38252290695) a produit le job **`114830462759` `completed/success`**, au **même HEAD intégré `d3562e8`**. Étapes `Prove startup-driven failed-update safety and healthy activation in Chrome` et `Upload retained update/recovery proof` réussies. Artefact **`p5-4a-pwa-update-recovery-proof`** ID `11749571584`, SHA-256 archivé `46ec08bf51bc721c8ef7cf00bdc9a804cddbee5e31bd02ca1314b77fcbd9a20e` ; preuve limitée à l'upgrade PWA **synthétique en Chrome CI**, pas un parc PWA réellement diffusé.
+
+**Décompte des workflows #941 après cette tentative : 24/25 prouvés verts**, sous réserve de dernière tentative Android **job `114830488188` `in_progress`** lors du contrôle. Aucun nouveau commit candidat ni déclenchement supplémentaire. Next : lire verdict Android, puis si vert signer le closeout CI technique **25/25**, tout en gardant les gates terrain/privacy/clinique et autorisations de release. Si l'émulateur échoue encore au boot/ADB, changer de stratégie harness sans affaiblir tests.
