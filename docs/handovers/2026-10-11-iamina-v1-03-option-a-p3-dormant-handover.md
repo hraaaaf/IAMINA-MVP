@@ -388,3 +388,14 @@ Le propriétaire demande une exécution **en parallèle** des trois sous-lots no
 **Statuts** : `CAL11_PRIMARY_ROWS_7_OF_7_VERIFIED / PR945_RUNTIME_PATCH_DRAFT / PR945_CI_PENDING / NOT_MERGED / NOT_DEPLOYED`. CAL-09/10 jour/fuseau clinique et CAL-12 PDF typé Unicode/RTL **toujours ouverts**, imposer une validation qualifiée avant changement de ces comportements. P5 historique 6/12=50 % et tracker V1 0/29 complètement livrées restent distincts.
 
 **Next exact :** suivre seulement source runner #38281623476 et CI #38281623510, puis revoir les deltas numériques UI et préparer revue nutritionnelle ; aucune demande de merge/Vercel à ce stade.
+
+
+### 28a. 12 octobre — contournement durable à court terme de l'indisponibilité DNS USDA
+
+**Premier SHA de patch #945 `a061ba0`** : la CI source a échoué **avant exécution du validateur** ([run `38281623476`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38281623476)), `curl: (6) Could not resolve host: fdc.nal.usda.gov`. Ce n'est PAS une contradiction des sept valeurs précédemment vérifiées dans la vraie archive officielle.
+
+**Changement de stratégie après incidents DNS répétés** : [PR #945](https://github.com/hraaaaf/IAMINA-MVP/pull/945) à nouveau HEAD `34dd3fbfab7c8b125f2097546ce18d1bbc3d5f58` ; le workflow `.github/workflows/v1-01-cal11-usda-primary-provenance.yml` exécute `actions/download-artifact@v4` avec `run-id=38273801139` et token GitHub à permission **`actions:read`** pour récupérer la vraie archive USDA retenue [artifact `11758012445`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38273801139/artifacts/11758012445), **impose `sha256sum` du ZIP source `186e988e…f3c09c77a`** puis lance le même script de vérification des sept FDC IDs et poids. La source USDA n'est pas inventée ni remplacée, seulement récupérée depuis son artefact de preuve immuable. **Attention : rétention de l'artefact 30 jours**, imposer un nouvel import primaire autorisé après expiration.
+
+**Runs nouveaux exact-HEAD** [source `38282204938`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38282204938) et [CI `38282205019`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38282205019) déclenchés ; `queued` lors du premier contrôle. Le code d'IAMINA et ses valeurs nutritionnelles ne changent pas par cette révision harness, seulement la méthode d'accès au ZIP. **Ne pas transférer les verts #943 ou anciens SHAs #945.**
+
+**Next exact** : lire la certification USDA 7/7 source `SOURCE_ROWS_MATCH` et backend/frontend sur ce SHA ; si autre échec diagnostiquer spécifiquement, si vert QA affichage pomme 14.1 vs 14.2 et clôture du sous-lot CAL-11 technique ; ensuite revue de portée nutrition qualifiée, CAL-09/10 et CAL-12. PR toujours DRAFT, 0 client, local-first, aucun merge ni Vercel.
