@@ -121,3 +121,12 @@ Au HEAD hotfix `cbddb5621af3e82ac63ca6b98cbaa72ef82fe4eb` la CI `38184949625` a 
 Sur #938 DRAFT, copie byte-identique du fichier de **10 tests** `backend/core/tests/test_v1_03_cross_route_csrf.py` (blob #932 `f8e8e180d5beda31c420f22b3344c8cae803fbaa`), pour vérifier **sur la branche isolée** cookie/CSRF, spoof Bearer, Bearer natif, login public et inventaire des routes unsafe montées. Précédents runs verts P5-5/screenshot/migration mais CI de `e2bbb9a3` annulée par le commit suivant, donc **non certifiée**. Nouvelle tête **`1461e31419920459292d059819ffeced8f6c57fa`**, 12 fichiers, CI GitHub exacte **`38185369954`** en cours et workflows associés en cours au premier contrôle.
 
 Next exact : valider le backend/Flutter sur `1461e314`, corriger tout échec avec log/job exact si nécessaire, puis review complète et gates de migration/logs/clients. Aucun merge/Vercel ; `NOT_DEPLOYED / NOT_RELEASE_AUTHORIZED`.
+
+
+## 13. 12 octobre — CI #938 run 38185369954 et cause native 401
+
+Run exact [`38185369954`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38185369954), HEAD `1461e314` : **échec** des deux jobs backend, mais frontend analyze/tests/PWA, migration Django, P5-5 et screenshots verts. SQLite : **2 796 passed + 4 sous-échecs** ; PostgreSQL : **2 800 passed + 4 sous-échecs**. Les 4 échecs portent exclusivement sur le Bearer natif sans cookie (401 au lieu de 422/404).
+
+**Cause croisée vérifiée :** `main/backend/conftest.py` remplace en autouse `FirebaseAuth.__call__` ; `FirebaseAuth` est l'alias de `HybridBearerAuth` et la fixture rejette le natif sans session. C'est une **simulation de test trompeuse**, pas une panne native live prouvée. La version #932 du même `conftest.py` n'altère plus l'auth. Portage par blobs identiques de cette fixture + rétablissement du test de matrice depuis #932 sur la [PR #938 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/938).
+
+**État technique :** nouvelle HEAD #938 `beeed3ecb60b68a9a30b5a9d46736f9a6f520e4d`, **13 fichiers**, run exact **`38230019452`** queued au premier contrôle. Aucun merge, Vercel, PHI. **Next exact :** vérifier son verdict après travail indépendant ; si échec, analyser le job réel/corriger ; si vert, double review et package de migration clients PWA/backend, sans franchir human gates merge/deploy. Status `NOT_DEPLOYED / NOT_RELEASE_AUTHORIZED`.
