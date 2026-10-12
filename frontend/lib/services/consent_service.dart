@@ -13,14 +13,18 @@ class ConsentService extends ChangeNotifier {
   bool _hasCompletedOnboarding = false;
   StreamSubscription<PatientProfileData?>? _sub;
 
-  ConsentService({bool hasVerifiedEvidence = false})
-    : _hasVerifiedEvidence = hasVerifiedEvidence;
+  ConsentService({
+    bool hasVerifiedEvidence = false,
+    bool initiallyDeclinedLocally = false,
+  }) : _hasVerifiedEvidence = hasVerifiedEvidence,
+       _hasDeclinedLocally = initiallyDeclinedLocally;
 
   /// True once the first profile stream event has been processed or seeded.
   bool get isInitialized => _hasConsent != null;
 
-  /// Safe default is false. Both local timestamp and verified evidence required.
-  bool get hasConsent => _hasConsent ?? false;
+  /// A current local receipt is necessary, but an explicit local decline must
+  /// still suppress UI access. This does NOT revoke prior server consent.
+  bool get hasConsent => (_hasConsent ?? false) && !_hasDeclinedLocally;
 
   /// True only when the minimum patient onboarding fields are persisted.
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
@@ -82,14 +86,16 @@ class ConsentService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Decline (session-only) ────────────────────────────────────────────────
-  bool _hasDeclinedLocally = false;
+  // ── Per-device decline: seeded from encrypted storage on app startup ───────
+  bool _hasDeclinedLocally;
 
   bool get hasDeclinedLocally => _hasDeclinedLocally;
 
-  void declineLocally() {
+  /// During durable persistence, block every local AI client immediately
+  /// without triggering router redirects until the write has succeeded.
+  void declineLocally({bool notify = true}) {
     _hasDeclinedLocally = true;
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   @override

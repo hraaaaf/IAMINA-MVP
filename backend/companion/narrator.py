@@ -53,11 +53,9 @@ def summarize(patient, memory, llm=None, language: str = "fr", days: int = 7) ->
         parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
 
         if parsed.get("doctor_brief"):
-            logger.info(
-                "IAmina doctor_brief for patient=%s: %s",
-                patient.id,
-                parsed["doctor_brief"],
-            )
+            # Never persist free-text clinical content or patient identifiers
+            # through application logs, including for the legacy narrator.
+            logger.info("IAmina doctor_brief generated")
 
         return apply_no_prescription_policy(parsed["narrative"] or _FALLBACK_NARRATIVE, language)
 

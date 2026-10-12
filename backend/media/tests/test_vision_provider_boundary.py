@@ -92,3 +92,47 @@ def test_invalid_backend_payload_fails_closed():
         "confidence": "low",
         "fallback": True,
     }
+
+
+def test_glucometer_unknown_or_invalid_unit_never_produces_measured_value():
+    # Provider may omit units or derive one from a naked number. Missing or
+    # invalid unit must never become a clinically interpretable OCR reading.
+    responses = (
+        '{"value": 120, "confidence": "high"}',
+        '{"value": 6.5, "unit": null, "confidence": "high"}',
+        '{"value": 120, "unit": "unknown", "confidence": "high"}',
+        '{"value": 120, "unit": "", "confidence": "high"}',
+        '{"value": null, "unit": "mg/dL", "confidence": "high"}',
+        '{"value": "nan", "unit": "mg/dL", "confidence": "high"}',
+        '{"value": true, "unit": "mg/dL", "confidence": "high"}',
+        "[]",
+    )
+    backend = FakeVisionBackend(responses)
+    for _ in responses:
+        result = analyze_glucometer_image(_image(), "image/jpeg", backend=backend)
+        assert result["value"] is None
+        assert result["confidence"] == "low"
+        assert result["fallback"] is True
+    assert len(backend.calls) == len(responses)
+
+
+def test_glucometer_explicit_units_keep_value_and_correct_unit():
+    backend = FakeVisionBackend([
+        '{"value": 6.5, "unit": "mmol/L", "confidence": "high"}',
+        '{"value": 120, "unit": "mg/dL", "confidence": "medium"}',
+    ])
+    mmol = analyze_glucometer_image(_image(), "image/jpeg", backend=backend)
+    mgdl = analyze_glucometer_image(_image(), "image/jpeg", backend=backend)
+    assert mmol == {
+        "value": 6.5,
+        "unit": "mmol/L",
+        "confidence": "high",
+        "fallback": False,
+    }
+    assert mgdl == {
+        "value": 120.0,
+        "unit": "mg/dL",
+        "confidence": "medium",
+        "fallback": False,
+    }
+    assert all(call["purpose"] == "glucometer_ocr" for call in backend.calls)

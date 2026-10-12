@@ -34,6 +34,7 @@ from ninja.files import UploadedFile
 from pydantic import BaseModel
 
 from core.ai_egress import AUDIO, TEXT, patient_ai_egress_scope
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from diabetes.config.stt_vocabulary import AR_MA_STT_HINTS
@@ -136,7 +137,7 @@ def voice_chat(
     # ④ STT — Gemini Audio
     try:
         transcript = transcribe(audio_bytes, mime_type, language, language_hints=AR_MA_STT_HINTS)
-    except (TranscriptionError, ValueError) as exc:
+    except (AIProcessorPolicyDenied, TranscriptionError, ValueError) as exc:
         logger.warning("voice_chat: STT failed for user=%s — %s", user.id, exc)
         return _error(user, "transcription_failed")
 
@@ -235,7 +236,7 @@ def transcribe_audio(
 
     try:
         transcript = transcribe(audio_bytes, mime_type, language, language_hints=AR_MA_STT_HINTS)
-    except (TranscriptionError, ValueError):
+    except (AIProcessorPolicyDenied, TranscriptionError, ValueError):
         return {"transcript": "", "confidence": "low"}
 
     confidence = "high" if len(transcript) > 20 else "medium" if transcript else "low"

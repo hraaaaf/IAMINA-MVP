@@ -24,6 +24,12 @@ def _authorize_multimodal(monkeypatch):
         "llm.runtime.authorize_processor_policy",
         lambda provider, purpose, modality: None,
     )
+    # Isolate the circuit-breaker algorithm using synthetic calls only.
+    # The real V1-03 media egress gate remains active in production.
+    monkeypatch.setattr(
+        "llm.runtime.assert_v1_external_media_egress_denied",
+        lambda modality: None,
+    )
 
 
 def test_multimodal_boundary_opens_after_three_retryable_failures():

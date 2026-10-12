@@ -170,8 +170,10 @@ Future<void> main() async {
   final db = AppDatabase.defaults();
   final auth = AuthService();
   final api = ApiClient(authService: auth);
-  final consent = ConsentService()
-    ..seedInitialProfile(null)
+  final consent = ConsentService(
+    initiallyDeclinedLocally:
+        Uri.base.queryParameters['surface'] == 'profile-ai-disabled',
+  )..seedInitialProfile(null)
     ..attachStream(db.watchProfile());
   final modules = ModulesProvider(api);
   final sync = SyncService(db, api);
@@ -250,7 +252,10 @@ class _BrowserAuditApp extends StatelessWidget {
             ),
             GoRoute(
               path: '/profile',
-              builder: (context, state) => const ProfileScreen(),
+              builder: (context, state) => ProfileScreen(
+                accountInitiallyExpanded:
+                    Uri.base.queryParameters['surface'] == 'profile-ai-disabled',
+              ),
             ),
           ],
         ),
@@ -421,6 +426,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'summary' => '/summary',
   'reports-local' => '/reports-local',
   'profile' => '/profile',
+  'profile-ai-disabled' => '/profile',
   'importer' => '/importer',
   'document-import' => '/document-import',
   'add-log' => '/add-log',
