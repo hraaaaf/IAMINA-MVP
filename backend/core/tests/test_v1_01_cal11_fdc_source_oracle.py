@@ -72,6 +72,24 @@ def test_source_oracle_rejects_non_null_malformed_rows(tmp_path):
         )
 
 
+def test_multiple_missing_usda_ids_are_reported_before_numeric_proofs(tmp_path):
+    # Both categories can diverge from the frozen USDA Foundation release.
+    # The audit must report the whole failure surface, never the first only.
+    def remove_two_foods(rows):
+        rows[:] = [
+            food
+            for food in rows
+            if food["fdcId"] not in (1105664, 790991)
+        ]
+
+    with pytest.raises(ValueError) as caught:
+        validate_zip(_synthetic_archive(tmp_path, modify=remove_two_foods))
+    assert "missing official Foundation FDC IDs" in str(caught.value)
+    assert "apple: 1105664" in str(caught.value)
+    assert "banana: 790991" in str(caught.value)
+    assert "no automatic source substitution" in str(caught.value)
+
+
 @pytest.mark.parametrize(
     ("change", "expected"),
     [
