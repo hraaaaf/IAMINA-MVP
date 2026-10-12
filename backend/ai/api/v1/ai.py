@@ -430,13 +430,16 @@ def chat_stream(request, data: ChatRequest):
     )
 
     if decision.action == URGENT:
+        from core.emergency_response import compose_emergency_for_patient
+
+        # Deterministic, canonical urgent guidance only after Ninja auth/CSRF.
+        # The streaming client needs SSE, never a JSON middleware response.
+        emergency = compose_emergency_for_patient(
+            decision, patient=user, language=language, message=message
+        )
 
         def _urgent_event_generator():
-            emergency_msg = (
-                "⚠️ Alerte : Votre glycémie semble être dans une zone critique. "
-                "Veuillez suivre les protocoles d'urgence ou contacter votre médecin."
-            )
-            yield f"data: {json.dumps({'token': emergency_msg})}\n\n"
+            yield f"data: {json.dumps(emergency.as_stream_event(), ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
 
         return StreamingHttpResponse(
