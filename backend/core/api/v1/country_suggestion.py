@@ -4,6 +4,7 @@ Only Vercel-coarse country is used; never medical/legal eligibility.
 """
 import os
 import re
+
 from ninja import Router, Schema
 
 router = Router()

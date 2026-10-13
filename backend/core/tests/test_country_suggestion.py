@@ -1,5 +1,6 @@
 from types import SimpleNamespace
-from core.api.v1.country_suggestion import suggested_country_code, country_suggestion
+
+from core.api.v1.country_suggestion import country_suggestion, suggested_country_code
 
 def test_ip_country_on_vercel_is_only_optional_suggestion(monkeypatch):
     monkeypatch.setenv("VERCEL", "1")
