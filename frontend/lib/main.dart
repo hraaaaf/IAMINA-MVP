@@ -10,19 +10,16 @@ import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
-import 'routes/app_router.dart';
 import 'services/api_client.dart';
 import 'services/app_lock_protected_state_policy.dart';
 import 'services/app_lock_service.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
-import 'services/consent_evidence_store.dart';
-import 'services/consent_service.dart';
 import 'services/firebase_migration_policy.dart';
 import 'services/locale_preference_service.dart';
-import 'services/modules_provider.dart';
-import 'services/offline_demo_audit_seed.dart';
-import 'services/sync_service.dart';
+import 'services/patient_vault_session_controller.dart';
+import 'services/patient_vault_app_host.dart';
+
 
 Future<bool> _hasProtectedLocalState({
   required AppDatabase db,
@@ -68,48 +65,32 @@ Future<void> main() async {
     }
   }
 
-  final db = AppDatabase.defaults();
-  final consentEvidenceStore = ConsentEvidenceStore();
-  var hasVerifiedConsentEvidence = false;
-  try {
-    hasVerifiedConsentEvidence = await consentEvidenceStore.hasCurrentEvidence();
-  } catch (e) {
-    // Fail closed: storage failure must never turn a timestamp into consent.
-    debugPrint('Consent evidence read failed: $e');
-  }
-  final initialProfile =
-      await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
-  final consentService = ConsentService(
-    hasVerifiedEvidence: hasVerifiedConsentEvidence,
-  )
-    ..seedInitialProfile(initialProfile)
-    ..attachStream(db.watchProfile());
-
   final auditAllowed = AuditAccessPolicy.isAllowed(Uri.base);
   final authService = AuthService();
   await authService.initialize();
-  if (auditAllowed) {
-    authService.enterAuditSession();
+  if (auditAllowed) authService.enterAuditSession();
+
+  // The historical mixed-owner DB is inspected solely to keep device-lock
+  // recovery fail-closed. Never pass it to any patient-facing Provider.
+  final legacy = AppDatabase.defaults();
+  bool legacyProtected = true;
+  try {
+    legacyProtected = await _hasProtectedLocalState(
+      db: legacy, authService: authService, auditAllowed: auditAllowed,
+    );
+  } finally {
+    await legacy.close();
   }
 
   final appLockService = AppLockService(
     authService: authService,
-    protectedLocalStateProbe: () => _hasProtectedLocalState(
-      db: db,
-      authService: authService,
-      auditAllowed: auditAllowed,
-    ),
+    protectedLocalStateProbe: () async => legacyProtected,
   );
   await appLockService.initialize();
-
-  await seedOfflineDemoAuditData(
-    db,
-    auditAllowed: auditAllowed,
-    offlineDemo: kOfflineDemo,
-  );
+  // Switching A to B must revoke the previous device unlock immediately.
+  authService.addListener(appLockService.lock);
 
   final apiClient = ApiClient(authService: authService);
-  final syncService = SyncService(db, apiClient)..init();
   final localePreferenceService = LocalePreferenceService(
     apiClient,
     auditLocale: auditAllowed
@@ -117,42 +98,17 @@ Future<void> main() async {
         : null,
   )..refresh();
 
-  final routerHolder = createAppRouterHolder(
-    authService: authService,
-    consentService: consentService,
-    appLockService: appLockService,
-  );
+  final vaultController = PatientVaultSessionController.forAuth(authService);
+  await vaultController.reconcile();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        Provider<AppDatabase>.value(value: db),
-        ChangeNotifierProvider<AuthService>.value(value: authService),
-        ChangeNotifierProvider<AppLockService>.value(value: appLockService),
-        Provider<ApiClient>.value(value: apiClient),
-        Provider<SyncService>.value(value: syncService),
-        Provider<ConsentEvidenceStore>.value(value: consentEvidenceStore),
-        ChangeNotifierProvider<ConsentService>.value(value: consentService),
-        ChangeNotifierProvider<LocalePreferenceService>.value(
-          value: localePreferenceService,
-        ),
-        ChangeNotifierProvider<ModulesProvider>(
-          create: (_) => ModulesProvider(apiClient)..refresh(),
-        ),
-        StreamProvider<PatientProfileData?>(
-          create: (context) => db.watchProfile(),
-          initialData: null,
-        ),
-        ChangeNotifierProvider<TweaksNotifier>(
-          create: (_) => TweaksNotifier(),
-        ),
-      ],
-      child: AminaApp(
-        router: routerHolder.router,
-        appLockService: appLockService,
-      ),
-    ),
-  );
+  runApp(PatientVaultAppHost(
+    auth: authService,
+    api: apiClient,
+    appLock: appLockService,
+    locale: localePreferenceService,
+    controller: vaultController,
+    auditAllowed: auditAllowed,
+  ));
 }
 
 class AminaApp extends StatefulWidget {
