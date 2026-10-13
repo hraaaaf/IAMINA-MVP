@@ -145,6 +145,72 @@ void main() {
     expect(await store.read(), isNull);
   });
 
+  test('D7 local edits stay pending until matching-generation server ack', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final first = (await store.read())!;
+    expect(first.syncStatus, 'pending');
+    expect(first.baseServerUpdatedAtUtc, isNull);
+    expect(first.localGeneration, 1);
+    final serverTime = DateTime.utc(2026, 10, 13, 15);
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    expect(await store.acknowledgeIfUnchanged(
+      expectedGeneration: first.localGeneration,
+      serverUpdatedAtUtc: serverTime,
+    ), isFalse);
+    final second = (await store.read())!;
+    expect(second.syncStatus, 'pending');
+    expect(second.localGeneration, 2);
+    expect(await store.acknowledgeIfUnchanged(
+      expectedGeneration: second.localGeneration,
+      serverUpdatedAtUtc: serverTime,
+    ), isTrue);
+    final confirmed = (await store.read())!;
+    expect(confirmed.syncStatus, 'confirmed');
+    expect(confirmed.baseServerUpdatedAtUtc, serverTime);
+    await store.write(state: 'declared', codes: ['insulin']);
+    final third = (await store.read())!;
+    expect(third.localGeneration, 3);
+    expect(third.syncStatus, 'pending');
+    expect(third.baseServerUpdatedAtUtc, serverTime);
+  });
+
+  test('D7 conflict persists until explicit reconciliation, without data loss', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final first = (await store.read())!;
+    expect(await store.markConflictIfUnchanged(first.localGeneration), isTrue);
+    expect((await store.read())?.syncStatus, 'conflict');
+    expect(await store.acknowledgeIfUnchanged(
+      expectedGeneration: first.localGeneration,
+      serverUpdatedAtUtc: DateTime.utc(2026, 10, 13),
+    ), isFalse);
+    await store.write(state: 'declared', codes: ['lifestyle', 'insulin']);
+    final second = (await store.read())!;
+    expect(second.syncStatus, 'conflict');
+    expect(second.codes, ['lifestyle', 'insulin']);
+    expect(second.localGeneration, first.localGeneration + 1);
+  });
+
+  test('D7 restored native snapshot begins confirmed with server revision', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    final timestamp = DateTime.utc(2026, 10, 13, 14);
+    expect(await store.restoreRemoteIfAbsent(
+      state: 'declared', codes: ['lifestyle'], updatedAtUtc: timestamp,
+    ), isTrue);
+    final restored = (await store.read())!;
+    expect(restored.syncStatus, 'confirmed');
+    expect(restored.localGeneration, 1);
+    expect(restored.baseServerUpdatedAtUtc, timestamp);
+    expect(restored.codes, ['lifestyle']);
+  });
+
   test('D7 storage remains queryable after JSON encoding of treatment codes', () async {
     final db = await vault(734);
     addTearDown(db.close);
@@ -155,6 +221,6 @@ void main() {
     ).getSingle();
     expect(jsonDecode(raw.data['codes_json'] as String), ['lifestyle','oral_meds']);
     expect((await db.customSelect('PRAGMA user_version').getSingle())
-        .data['user_version'], 11);
+        .data['user_version'], 12);
   });
 }

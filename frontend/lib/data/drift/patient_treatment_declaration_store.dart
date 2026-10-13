@@ -19,6 +19,9 @@ final class PatientTreatmentDeclarationRecord {
   final int version;
   final String provenance;
   final DateTime updatedAtUtc;
+  final String syncStatus;
+  final DateTime? baseServerUpdatedAtUtc;
+  final int localGeneration;
 
   PatientTreatmentDeclarationRecord({
     required this.ownerId,
@@ -27,6 +30,9 @@ final class PatientTreatmentDeclarationRecord {
     required this.version,
     required this.provenance,
     required this.updatedAtUtc,
+    required this.syncStatus,
+    required this.baseServerUpdatedAtUtc,
+    required this.localGeneration,
   }) : codes = List.unmodifiable(codes);
 }
 
@@ -63,7 +69,8 @@ final class PatientTreatmentDeclarationStore {
   Future<PatientTreatmentDeclarationRecord?> read() async {
     final rows = await db.customSelect(
       '''SELECT user_id, declaration_state, codes_json,
-         declaration_version, provenance, updated_at_utc
+         declaration_version, provenance, updated_at_utc,
+         sync_status, base_server_updated_at, local_generation
          FROM patient_treatment_declarations_v1 WHERE user_id = ?''',
       variables: [Variable<int>(_ownerId)],
     ).get();
@@ -90,6 +97,11 @@ final class PatientTreatmentDeclarationStore {
       version: 1,
       provenance: data['provenance'] as String,
       updatedAtUtc: DateTime.parse(data['updated_at_utc'] as String).toUtc(),
+      syncStatus: data['sync_status'] as String,
+      baseServerUpdatedAtUtc: (data['base_server_updated_at'] as String?) == null
+          ? null
+          : DateTime.parse(data['base_server_updated_at'] as String).toUtc(),
+      localGeneration: data['local_generation'] as int,
     );
   }
 
@@ -118,14 +130,51 @@ final class PatientTreatmentDeclarationStore {
       await db.customStatement('''
         INSERT INTO patient_treatment_declarations_v1
           (user_id, declaration_state, codes_json, declaration_version,
-           provenance, updated_at_utc)
-        VALUES (?, ?, ?, 1, 'patient_declared', ?)
+           provenance, updated_at_utc, sync_status,
+           base_server_updated_at, local_generation)
+        VALUES (?, ?, ?, 1, 'patient_declared', ?, 'confirmed', ?, 1)
         ON CONFLICT(user_id) DO NOTHING
       ''', [
         owner, state, jsonEncode(codes), updatedAtUtc.toUtc().toIso8601String(),
+        updatedAtUtc.toUtc().toIso8601String(),
       ]);
       return true;
     });
+  }
+
+  /// Acknowledge only the generation sent to the server. A local edit racing
+  /// a response remains pending, never falsely confirmed or overwritten.
+  Future<bool> acknowledgeIfUnchanged({
+    required int expectedGeneration,
+    required DateTime serverUpdatedAtUtc,
+  }) async {
+    final updated = await db.customUpdate('''
+      UPDATE patient_treatment_declarations_v1 SET
+        sync_status = 'confirmed',
+        base_server_updated_at = ?
+      WHERE user_id = ? AND local_generation = ?
+        AND sync_status = 'pending'
+    ''', variables: [
+      Variable<String>(serverUpdatedAtUtc.toUtc().toIso8601String()),
+      Variable<int>(_ownerId),
+      Variable<int>(expectedGeneration),
+    ]);
+    return updated == 1;
+  }
+
+  /// A 409 never discards the patient's local declaration. It stays blocked
+  /// for explicit reconciliation rather than being silently retried.
+  Future<bool> markConflictIfUnchanged(int expectedGeneration) async {
+    final updated = await db.customUpdate('''
+      UPDATE patient_treatment_declarations_v1
+      SET sync_status = 'conflict'
+      WHERE user_id = ? AND local_generation = ?
+        AND sync_status = 'pending'
+    ''', variables: [
+      Variable<int>(_ownerId),
+      Variable<int>(expectedGeneration),
+    ]);
+    return updated == 1;
   }
 
   Future<void> write({
@@ -149,7 +198,12 @@ final class PatientTreatmentDeclarationStore {
           codes_json = excluded.codes_json,
           declaration_version = excluded.declaration_version,
           provenance = excluded.provenance,
-          updated_at_utc = excluded.updated_at_utc
+          updated_at_utc = excluded.updated_at_utc,
+          sync_status = CASE
+            WHEN patient_treatment_declarations_v1.sync_status = 'conflict'
+            THEN 'conflict' ELSE 'pending' END,
+          local_generation =
+            patient_treatment_declarations_v1.local_generation + 1
       ''', [
         owner, state, jsonEncode(codes), DateTime.now().toUtc().toIso8601String(),
       ]);

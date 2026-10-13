@@ -151,7 +151,7 @@ class AppDatabase extends _$AppDatabase {
   int get activeProfileRowId => patientVaultScope?.nativeDjangoUserId ?? 1;
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -201,6 +201,23 @@ class AppDatabase extends _$AppDatabase {
       // no legacy medication inference or cross-account adoption.
       if (from < 11) {
         await _createPatientTreatmentDeclarationTable();
+      } else if (from < 12) {
+        // Existing v11 rows are unacknowledged; never silently promote them
+        // to synced after a schema upgrade.
+        await customStatement("""
+          ALTER TABLE patient_treatment_declarations_v1
+          ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'pending'
+            CHECK (sync_status IN ('pending', 'confirmed', 'conflict'))
+        """);
+        await customStatement("""
+          ALTER TABLE patient_treatment_declarations_v1
+          ADD COLUMN base_server_updated_at TEXT
+        """);
+        await customStatement("""
+          ALTER TABLE patient_treatment_declarations_v1
+          ADD COLUMN local_generation INTEGER NOT NULL DEFAULT 1
+            CHECK (local_generation >= 1)
+        """);
       }
     },
   );
@@ -216,6 +233,11 @@ class AppDatabase extends _$AppDatabase {
         CHECK (declaration_version = 1),
       provenance TEXT NOT NULL CHECK (provenance = 'patient_declared'),
       updated_at_utc TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (sync_status IN ('pending', 'confirmed', 'conflict')),
+      base_server_updated_at TEXT,
+      local_generation INTEGER NOT NULL DEFAULT 1
+        CHECK (local_generation >= 1),
       FOREIGN KEY (user_id) REFERENCES patient_profiles(user_id)
         ON DELETE CASCADE
     )
