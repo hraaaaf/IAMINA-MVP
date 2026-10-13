@@ -161,6 +161,6 @@ void main() {
     expect(saveStart, greaterThan(0));
     expect(clearStart, greaterThan(saveStart));
     final save = code.substring(saveStart, clearStart);
-    expect(RegExp(r'\\.insert\\(').allMatches(save).length, 1);
+    expect('.insert('.allMatches(save).length, 1);
   });
 }
