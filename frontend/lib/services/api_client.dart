@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'auth_epoch.dart';
 import 'auth_service.dart';
 import 'document_ingest_minimizer.dart';
 import 'sync_api_contract.dart';
@@ -73,6 +74,21 @@ class ProviderApiException implements Exception {
       'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
+void requireCurrentAuthEpoch(int originEpoch) {
+  if (AuthEpoch.value != originEpoch) {
+    throw StateError('Authentication changed before patient request egress');
+  }
+}
+
+/// Pin the identity while waiting for an asynchronous credential lookup.
+/// Without this check, A's prepared clinical payload could get B's bearer.
+Future<T> readForStableAuthEpoch<T>(Future<T> Function() read) async {
+  final epoch = AuthEpoch.value;
+  final value = await read();
+  requireCurrentAuthEpoch(epoch);
+  return value;
+}
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
   AuthInterceptor(this.authService);
@@ -81,7 +97,7 @@ class AuthInterceptor implements Interceptor {
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
-    final token = await authService.getIdToken();
+    final token = await readForStableAuthEpoch(authService.getIdToken);
     Request request = chain.request;
     if (token != null && token.isNotEmpty) {
       request = applyHeader(
@@ -118,11 +134,14 @@ class RetryInterceptor implements Interceptor {
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
+    final epoch = AuthEpoch.value;
     Response<BodyType> response = await chain.proceed(chain.request);
+    requireCurrentAuthEpoch(epoch);
 
     // 401 — refresh token and retry once
     if (response.statusCode == 401) {
-      final newToken = await authService.refreshToken();
+      final newToken = await readForStableAuthEpoch(authService.refreshToken);
+      requireCurrentAuthEpoch(epoch);
       if (newToken != null && newToken.isNotEmpty) {
         final retryRequest = applyHeader(
           chain.request,
@@ -131,6 +150,7 @@ class RetryInterceptor implements Interceptor {
           override: true,
         );
         response = await chain.proceed(retryRequest);
+        requireCurrentAuthEpoch(epoch);
       }
       return response;
     }
@@ -139,7 +159,9 @@ class RetryInterceptor implements Interceptor {
     int attempt = 0;
     while (_isServerError(response.statusCode) && attempt < _maxRetries) {
       await Future.delayed(Duration(seconds: 1 << attempt));
+      requireCurrentAuthEpoch(epoch);
       response = await chain.proceed(chain.request);
+      requireCurrentAuthEpoch(epoch);
       attempt++;
     }
 
