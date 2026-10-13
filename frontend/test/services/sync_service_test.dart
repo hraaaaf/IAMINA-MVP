@@ -4,6 +4,10 @@ import 'package:amina/services/sync_service.dart';
 import 'package:amina/services/auth_epoch.dart';
 import 'dart:async';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
+import 'package:amina/data/drift/patient_treatment_declaration_store.dart';
+import 'package:drift/drift.dart' as drift;
+import 'package:drift/native.dart';
 import '../mocks.dart';
 
 void main() {
@@ -200,4 +204,86 @@ void main() {
     );
     expect(syncService.state.value, SyncUiState.upToDate);
   });
+  Future<AppDatabase> nativeVault(int userId) async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(),
+      PatientVaultScope.nativeDjango(userId),
+    );
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: drift.Value(userId),
+        updatedAt: DateTime.utc(2026, 10, 13),
+      ),
+    );
+    return db;
+  }
+
+  test('D7 remote explicit declaration restores into own empty native vault', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': ['insulin', 'oral_meds'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00Z',
+    });
+    await restoration.restorePatientTreatmentDeclaration();
+    final saved = await PatientTreatmentDeclarationStore(db).read();
+    expect(saved?.ownerId, 734);
+    expect(saved?.codes, ['insulin', 'oral_meds']);
+    verify(() => mockApi.getProfile()).called(1);
+  });
+
+  test('D7 server defaults must not invent patient-reported treatment', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': null,
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'not_answered',
+      'treatment_declarations': <String>[],
+      'treatment_declaration_updated_at': null,
+    });
+    await restoration.restorePatientTreatmentDeclaration();
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+  });
+
+  test('D7 a local offline declaration takes precedence over a server GET', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final local = PatientTreatmentDeclarationStore(db);
+    await local.write(state: 'declared', codes: ['lifestyle']);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    await restoration.restorePatientTreatmentDeclaration();
+    verifyNever(() => mockApi.getProfile());
+    expect((await local.read())?.codes, ['lifestyle']);
+  });
+
+  test('D7 auth epoch switch during remote GET prevents stale vault restoration', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final fetching = Completer<Map<String, dynamic>?>();
+    when(() => mockApi.getProfile()).thenAnswer((_) => fetching.future);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    final running = restoration.restorePatientTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    AuthEpoch.advance();
+    fetching.complete({
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': ['insulin'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00Z',
+    });
+    await running;
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+  });
+
 }
