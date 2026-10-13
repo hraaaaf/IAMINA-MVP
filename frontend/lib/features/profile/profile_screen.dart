@@ -14,6 +14,7 @@ import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import 'medical_treatment_selector.dart';
 
 part 'profile_screen_presentation.dart';
 
