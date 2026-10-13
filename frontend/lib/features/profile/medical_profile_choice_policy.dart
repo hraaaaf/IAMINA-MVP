@@ -26,7 +26,7 @@ class TreatmentPresentation {
 /// UI must never infer an insulin prescription, diagnosis or eligibility.
 TreatmentPresentation treatmentPresentation(String? diabetesType) {
   final priority = switch (diabetesType) {
-    'type1' => <String>['insulin', 'lifestyle'],
+    'type1' => <String>['insulin'],
     'type2' => <String>['lifestyle', 'tablets'],
     'gestational' => <String>['lifestyle', 'insulin'],
     'pre' => <String>['lifestyle'],
