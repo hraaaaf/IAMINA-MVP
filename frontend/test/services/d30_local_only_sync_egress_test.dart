@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:chopper/chopper.dart';
@@ -11,6 +13,21 @@ const _syntheticLog = <String, dynamic>{
   'blood_sugar': 120,
   'source': 'manual',
 };
+
+class _PausedTokenAuthService extends AuthService {
+  final Completer<void> tokenCaptured = Completer<void>();
+  final Completer<void> permitTokenReturn = Completer<void>();
+
+  _PausedTokenAuthService({required super.httpClient});
+
+  @override
+  Future<String?> getIdToken() async {
+    final previousToken = await super.getIdToken();
+    if (!tokenCaptured.isCompleted) tokenCaptured.complete();
+    await permitTokenReturn.future;
+    return previousToken;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -83,6 +100,40 @@ void main() {
     expect(await api.syncLogEntry(_syntheticLog), isFalse);
     expect(await api.batchSyncLogs([_syntheticLog]), isEmpty);
     expect(networkCalls, 0);
+    auth.dispose();
+  });
+
+  test('D30 session change during bearer read prevents medical HTTP egress',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
+    });
+    final auth = _PausedTokenAuthService(
+      httpClient: MockClient((request) async => http.Response('', 204)),
+    );
+    await auth.initialize();
+
+    var clinicalRequests = 0;
+    final api = ApiClient(
+      baseUrl: 'https://synthetic.example',
+      authService: auth,
+      httpClient: MockClient((request) async {
+        clinicalRequests++;
+        fail('Epoch changed: clinical HTTP must be suppressed');
+      }),
+    );
+
+    final inFlight = api.client.post<Object, Object>(
+      Uri.parse('/api/v1/logs/batch'),
+      body: [_syntheticLog],
+    );
+    await auth.tokenCaptured.future;
+    await auth.signOut();
+    expect(auth.isAuthenticated, isFalse);
+    auth.permitTokenReturn.complete();
+
+    await expectLater(inFlight, throwsA(isA<StateError>()));
+    expect(clinicalRequests, 0);
     auth.dispose();
   });
 
