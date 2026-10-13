@@ -767,7 +767,7 @@ class _CountrySearchFieldState extends State<_CountrySearchField> {
             ))
         .toList()
       ..sort((a, b) => a.label.compareTo(b.label));
-    final width = (MediaQuery.sizeOf(context).width - 80).clamp(240.0, 520.0);
+    final width = (MediaQuery.sizeOf(context).width - 80).clamp(240.0, 520.0).toDouble();
     return SizedBox(
       width: width,
       child: Column(
