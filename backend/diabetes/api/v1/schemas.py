@@ -51,6 +51,11 @@ def validate_meal_portion_links(
 class PatientProfileSchema(Schema):
     diabetes_type: Optional[str] = None
     treatment_type: Optional[str] = None
+    treatment_declaration_state: str = "not_answered"
+    treatment_declarations: List[str] = Field(default_factory=list)
+    treatment_declaration_version: int = 1
+    treatment_declaration_source: Optional[str] = None
+    treatment_declaration_updated_at: Optional[datetime] = None
     clinical_profile_complete: bool = False
     target_range_low: float
     target_range_high: float
