@@ -92,10 +92,13 @@ class AuthInterceptor implements Interceptor {
         (request.url.path == '/api/v1/logs' ||
             request.url.path == '/api/v1/logs/batch');
     if (isJournalUpload &&
-        (!canSyncClinicalJournal() ||
-            (token == null || token.isEmpty) ||
-            !authService.hasRemoteApiCredential ||
-            authEpochAtStart != AuthService.authEpoch)) {
+        !mayDispatchClinicalJournal(
+          patientBoundSyncApproved: canSyncClinicalJournal(),
+          hasNativeRemoteCredential: authService.hasRemoteApiCredential,
+          bearerToken: token,
+          requestAuthEpoch: authEpochAtStart,
+          currentAuthEpoch: AuthService.authEpoch,
+        )) {
       throw StateError('remote_journal_credential_required');
     }
 
