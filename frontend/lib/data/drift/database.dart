@@ -222,6 +222,30 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  // D7 migration primitive: a *local* ID must be resolved to a verified
+  // account owner before it is passed here. Filtering alone does not provide
+  // authentication or native/Firebase identity binding.
+  Stream<PatientProfileData?> watchProfileForLocalUserId(int userId) {
+    if (userId <= 0) {
+      throw ArgumentError.value(userId, 'userId', 'Invalid local patient ID');
+    }
+    return (select(patientProfiles)
+          ..where((row) => row.userId.equals(userId)))
+        .watchSingleOrNull();
+  }
+
+  Future<PatientProfileData?> getProfileForLocalUserId(int userId) {
+    if (userId <= 0) {
+      throw ArgumentError.value(userId, 'userId', 'Invalid local patient ID');
+    }
+    return (select(patientProfiles)
+          ..where((row) => row.userId.equals(userId)))
+        .getSingleOrNull();
+  }
+
+  // LEGACY UNSCOPED: not safe for multi-account clinical sessions.
+  // Keep until every caller is converted under a verified identity contract;
+  // deleting/replacing without consumer migration could break enrollment.
   Stream<PatientProfileData?> watchProfile() {
     return (select(patientProfiles)..limit(1)).watchSingleOrNull();
   }
