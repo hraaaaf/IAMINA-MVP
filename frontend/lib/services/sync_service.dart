@@ -74,10 +74,7 @@ class SyncService {
 
   void init() {
     if (!_sessionActive) return;
-    unawaited(refreshState());
-    // Only restore a declared profile into an empty native vault. This is
-    // not an upload acknowledgement or conflict-safe bidirectional sync.
-    unawaited(restorePatientTreatmentDeclaration());
+    unawaited(_resumeTreatmentOnAuthenticatedStartup());
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
       results,
     ) {
@@ -87,7 +84,19 @@ class SyncService {
         return;
       }
       unawaited(syncPendingLogs());
+      unawaited(sendPendingTreatmentDeclaration());
     });
+  }
+
+  /// Started only by the unlocked, native-authenticated vault host.
+  /// Restore never overwrites a pending local edit. Then retry any durable
+  /// outbox row and check combined log/treatment status.
+  Future<void> _resumeTreatmentOnAuthenticatedStartup() async {
+    await restorePatientTreatmentDeclaration();
+    if (!_sessionActive) return;
+    await sendPendingTreatmentDeclaration();
+    if (!_sessionActive) return;
+    await refreshState();
   }
 
   bool _isOffline(List<ConnectivityResult> results) {
@@ -165,12 +174,8 @@ class SyncService {
           state.value = SyncUiState.pending;
           return false;
         }
-        final remainingLogs = await _db.getPendingLogs();
-        if (!_sessionActive) return false;
-        state.value = remainingLogs.isEmpty
-            ? SyncUiState.upToDate
-            : SyncUiState.pending;
-        return true;
+        await _refreshLocalSyncState();
+        return _sessionActive;
       }
       if (result.status == TreatmentMirrorStatus.conflict) {
         final marked = await store.markConflictIfUnchanged(
@@ -206,32 +211,41 @@ class SyncService {
       return;
     }
 
-    final pending = await _db.getPendingLogs();
+    await _refreshLocalSyncState();
+  }
+
+  /// Both queues contribute to the patient-facing sync state. In particular,
+  /// a log-only retry must never claim 'up to date' while the treatment outbox
+  /// contains pending or conflicted clinical declarations.
+  Future<void> _refreshLocalSyncState({bool logsFailed = false}) async {
     if (!_sessionActive) return;
-    if (_db.patientVaultScope?.nativeDjangoUserId != null) {
-      try {
-        final local = await PatientTreatmentDeclarationStore(_db).read();
+    try {
+      final pendingLogs = await _db.getPendingLogs();
+      if (!_sessionActive) return;
+      if (_db.patientVaultScope?.nativeDjangoUserId != null) {
+        final declaration = await PatientTreatmentDeclarationStore(_db).read();
         if (!_sessionActive) return;
-        if (local?.syncStatus == 'conflict') {
+        if (declaration?.syncStatus == 'conflict') {
           state.value = SyncUiState.error;
           return;
         }
-        if (local?.syncStatus == 'pending') {
-          state.value = SyncUiState.pending;
+        if (declaration?.syncStatus == 'pending') {
+          state.value = logsFailed ? SyncUiState.error : SyncUiState.pending;
           return;
         }
-      } catch (error, stackTrace) {
-        if (!_sessionActive) return;
-        state.value = SyncUiState.error;
-        _failureLogger(
-          'read_treatment_sync_status',
-          error.runtimeType.toString(),
-          stackTrace,
-        );
-        return;
       }
+      state.value = logsFailed
+          ? SyncUiState.error
+          : pendingLogs.isEmpty ? SyncUiState.upToDate : SyncUiState.pending;
+    } catch (error, stackTrace) {
+      if (!_sessionActive) return;
+      state.value = SyncUiState.error;
+      _failureLogger(
+        'read_combined_sync_status',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
     }
-    state.value = pending.isEmpty ? SyncUiState.upToDate : SyncUiState.pending;
   }
 
   Future<void> syncPendingLogs() async {
@@ -243,7 +257,7 @@ class SyncService {
     final pending = await _db.getPendingLogs();
     if (!_sessionActive) return;
     if (pending.isEmpty) {
-      state.value = SyncUiState.upToDate;
+      await _refreshLocalSyncState();
       return;
     }
 
@@ -295,11 +309,7 @@ class SyncService {
         }
       }
 
-      final stillPending = await _db.getPendingLogs();
-      if (!_sessionActive) return;
-      state.value = hadFailure || stillPending.isNotEmpty
-          ? SyncUiState.error
-          : SyncUiState.upToDate;
+      await _refreshLocalSyncState(logsFailed: hadFailure);
     } catch (error, stackTrace) {
       if (!_sessionActive) return;
       hadFailure = true;
@@ -317,8 +327,9 @@ class SyncService {
         isSyncing.value = false;
         if (!_sessionActive) {
           state.value = SyncUiState.checking;
-        } else if (!hadFailure && state.value == SyncUiState.syncing) {
-          state.value = SyncUiState.upToDate;
+        } else if (state.value == SyncUiState.syncing) {
+          // Unknown outcome is never proof of server acknowledgement.
+          state.value = SyncUiState.error;
         }
       }
     }

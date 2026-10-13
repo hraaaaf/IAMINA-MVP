@@ -245,6 +245,34 @@ void main() {
     }), isNull);
   });
 
+  test('D7 log retry cannot mark pending treatment as up to date', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    await PatientTreatmentDeclarationStore(db).write(
+      state: 'declared', codes: ['lifestyle'],
+    );
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    await sender.syncPendingLogs();
+    expect(sender.state.value, SyncUiState.pending);
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+  });
+
+  test('D7 log retry cannot hide unresolved treatment conflict', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['insulin']);
+    final declaration = (await store.read())!;
+    expect(await store.markConflictIfUnchanged(declaration.localGeneration), isTrue);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    await sender.syncPendingLogs();
+    expect(sender.state.value, SyncUiState.error);
+    expect((await store.read())?.codes, ['insulin']);
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+  });
+
   test('D7 pending treatment requires matching server receipt to be confirmed', () async {
     final db = await nativeVault(734);
     addTearDown(db.close);
