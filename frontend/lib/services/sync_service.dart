@@ -36,13 +36,17 @@ class SyncService {
   final AppDatabase _db;
   final ApiClient _apiClient;
   final SyncFailureLogger _failureLogger;
+  final bool Function()? _canUseNetwork;
   final Connectivity _connectivity = Connectivity();
   // One synchronizer is bound to one auth epoch: a retired session may never
   // upload its pending medical rows under a new patient's bearer.
   final int _ownerAuthEpoch = AuthEpoch.value;
   bool _disposed = false;
   bool _treatmentSyncing = false;
-  bool get _sessionActive => !_disposed && AuthEpoch.value == _ownerAuthEpoch;
+  bool get _sessionActive =>
+      !_disposed &&
+      AuthEpoch.value == _ownerAuthEpoch &&
+      (_canUseNetwork?.call() ?? true);
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   /// Kept for compatibility with existing consumers that only need activity.
@@ -58,7 +62,9 @@ class SyncService {
     this._db,
     this._apiClient, {
     SyncFailureLogger? failureLogger,
-  }) : _failureLogger = failureLogger ?? _defaultFailureLogger;
+    bool Function()? canUseNetwork,
+  }) : _failureLogger = failureLogger ?? _defaultFailureLogger,
+       _canUseNetwork = canUseNetwork;
 
   static void _defaultFailureLogger(
     String operation,
@@ -91,6 +97,15 @@ class SyncService {
   /// Started only by the unlocked, native-authenticated vault host.
   /// Restore never overwrites a pending local edit. Then retry any durable
   /// outbox row and check combined log/treatment status.
+  /// The host calls this when an app-lock is unlocked again. Retired vaults
+  /// and sessions must never resume, even if an old connectivity event fires.
+  Future<void> resumeAfterUnlock() async {
+    if (!_sessionActive) return;
+    await _resumeTreatmentOnAuthenticatedStartup();
+    if (!_sessionActive) return;
+    await syncPendingLogs();
+  }
+
   Future<void> _resumeTreatmentOnAuthenticatedStartup() async {
     await restorePatientTreatmentDeclaration();
     if (!_sessionActive) return;

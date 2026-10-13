@@ -90,11 +90,16 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   void _maybeStartSync() {
     final current = _bindings;
     if (current == null ||
-        current.syncStarted ||
         current.authEpoch != AuthService.authEpoch ||
         !widget.appLock.isUnlocked ||
         !widget.auth.hasRemoteApiCredential ||
         current.scope.nativeDjangoUserId == null) {
+      return;
+    }
+    if (current.syncStarted) {
+      // A lock transition may have interrupted an upload or a GET.
+      // Resume safely on unlock; never reuse the retired account's sync.
+      unawaited(current.sync.resumeAfterUnlock());
       return;
     }
     current.syncStarted = true;
@@ -146,7 +151,16 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       final consent = ConsentService(hasVerifiedEvidence: hasVerifiedEvidence)
         ..seedInitialProfile(profile)
         ..attachStream(db.watchProfileForLocalUserId(db.activeProfileRowId));
-      final sync = SyncService(db, widget.api);
+      final sync = SyncService(
+        db,
+        widget.api,
+        canUseNetwork: () =>
+            mounted &&
+            widget.appLock.isUnlocked &&
+            widget.auth.hasRemoteApiCredential &&
+            widget.controller.activeDatabase == db &&
+            AuthService.authEpoch == epoch,
+      );
       final router = createAppRouterHolder(
         authService: widget.auth,
         consentService: consent,
