@@ -10,8 +10,9 @@ class _SyntheticReply extends CompanionService {
 
   @override
   Future<CompanionChatReply?> sendChatMessage(
-    String message, {int contextDays = 14},
-  ) async => CompanionChatReply(
+    String message, {
+    int contextDays = 14,
+  }) async => CompanionChatReply(
     reply: 'Réponse synthétique — نص عربي',
     conversationId: 'synthetic-copy-selection',
     replyLanguage: 'fr',
