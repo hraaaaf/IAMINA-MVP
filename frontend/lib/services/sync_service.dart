@@ -161,8 +161,16 @@ class SyncService {
           serverUpdatedAtUtc: result.serverUpdatedAtUtc!,
         );
         if (!_sessionActive) return false;
-        state.value = acknowledged ? SyncUiState.upToDate : SyncUiState.pending;
-        return acknowledged;
+        if (!acknowledged) {
+          state.value = SyncUiState.pending;
+          return false;
+        }
+        final remainingLogs = await _db.getPendingLogs();
+        if (!_sessionActive) return false;
+        state.value = remainingLogs.isEmpty
+            ? SyncUiState.upToDate
+            : SyncUiState.pending;
+        return true;
       }
       if (result.status == TreatmentMirrorStatus.conflict) {
         final marked = await store.markConflictIfUnchanged(

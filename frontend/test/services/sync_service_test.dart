@@ -219,6 +219,32 @@ void main() {
     return db;
   }
 
+  test('D7 server receipt must match exact declaration and timezone', () {
+    final expected = <String, dynamic>{
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': <String>['lifestyle', 'oral_meds'],
+      'treatment_declaration_updated_at': '2026-10-13T17:00:00Z',
+    };
+    expect(treatmentMirrorMatches(
+      expected, 'declared', ['lifestyle', 'oral_meds'],
+    ), isTrue);
+    expect(treatmentMirrorMatches(
+      expected, 'declared', ['insulin'],
+    ), isFalse);
+    expect(treatmentMirrorMatches(
+      {...expected, 'treatment_declaration_source': null},
+      'declared', ['lifestyle', 'oral_meds'],
+    ), isFalse);
+    expect(verifiedServerTreatmentRevision(expected),
+      DateTime.utc(2026, 10, 13, 17));
+    expect(verifiedServerTreatmentRevision({
+      ...expected,
+      'treatment_declaration_updated_at': '2026-10-13T17:00:00',
+    }), isNull);
+  });
+
   test('D7 pending treatment requires matching server receipt to be confirmed', () async {
     final db = await nativeVault(734);
     addTearDown(db.close);
