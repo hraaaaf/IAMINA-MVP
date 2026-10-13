@@ -72,7 +72,7 @@ async function sendSyntheticQuestion(page, width, height) {
       for (const [width,height] of viewports) {
         const ctx = await browser.newContext({
           viewport:{width,height},deviceScaleFactor:1,locale:'fr-FR',
-          colorScheme:'light',serviceWorkers:'block',
+          colorScheme:'light',serviceWorkers:'allow', // bootstrap needs real registration.update()
         });
         const page = await ctx.newPage();
         const problems = [];
