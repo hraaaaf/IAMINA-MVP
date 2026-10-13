@@ -81,8 +81,21 @@ class AuthInterceptor implements Interceptor {
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
+    final authEpochAtStart = AuthService.authEpoch;
     final token = await authService.getIdToken();
     Request request = chain.request;
+
+    // A local-only patient must not upload health logs, even if a caller
+    // bypasses ApiClient's journal methods or an async token read races logout.
+    final isJournalUpload = request.method.toUpperCase() == 'POST' &&
+        (request.url.path == '/api/v1/logs' ||
+            request.url.path == '/api/v1/logs/batch');
+    if (isJournalUpload &&
+        ((token == null || token.isEmpty) ||
+            authEpochAtStart != AuthService.authEpoch)) {
+      throw StateError('remote_journal_credential_required');
+    }
+
     if (token != null && token.isNotEmpty) {
       request = applyHeader(
         request,
@@ -162,14 +175,20 @@ bool isDocumentUploadSizeAllowed(int byteLength) =>
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final http.Client? _httpClient;
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({
+    this.baseUrl = kBaseUrl,
+    AuthService? authService,
+    http.Client? httpClient,
+  }) : _authService = authService ?? AuthService(),
+       _httpClient = httpClient;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
+    client: _httpClient,
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
       AuthInterceptor(_authService),
