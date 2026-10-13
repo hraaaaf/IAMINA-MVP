@@ -40,6 +40,27 @@ async function choose(page, label) {
   throw new Error('Cannot select onboarding choice: ' + label);
 }
 
+async function chooseCountry(page) {
+  const probes = [
+    page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
+    page.getByRole('combobox', {name:/Rechercher un pays|Pays/i}),
+    page.getByText('Rechercher un pays', {exact:false}),
+  ];
+  let field = null;
+  for (const probe of probes) {
+    if (await probe.count() && await probe.first().isVisible().catch(()=>false)) {
+      field = probe.first();
+      break;
+    }
+  }
+  if (!field) throw new Error('Country search control unavailable');
+  await field.click({timeout:5000});
+  const active = page.locator('input:focus,textarea:focus,[contenteditable="true"]:focus');
+  if (await active.count()) await active.fill('Maroc');
+  else await page.keyboard.type('Maroc');
+  await choose(page, 'Maroc');
+}
+
 (async () => {
   const browser = await chromium.launch({
     headless: true, args: ['--force-renderer-accessibility'],
@@ -85,9 +106,11 @@ async function choose(page, label) {
             throw new Error('Obsolete tone picker still exposed: ' + legacy);
           }
         }
-        for (const choice of [
-          'Français', 'Maroc', 'Diabète Type 2', 'Comprimés',
-        ]) await choose(page, choice);
+        await choose(page, 'Français');
+        await chooseCountry(page);
+        for (const choice of ['Diabète Type 2', 'Comprimés']) {
+          await choose(page, choice);
+        }
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
         // Both must state exactly five steps after the four required choices.
