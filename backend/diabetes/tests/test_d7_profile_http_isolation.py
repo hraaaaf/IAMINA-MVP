@@ -1,13 +1,16 @@
 """D7 realistic bearer-auth profile API isolation (synthetic identities)."""
 
 import json
+from types import SimpleNamespace
+from unittest.mock import patch as mock_patch
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AnonymousUser, User
 from django.test import Client, TestCase
 
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import DiabetesProfile
+from diabetes.api.v1.security import firebase_auth_backend
 
 
 class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
@@ -27,18 +30,45 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         self.token_b = issue_native_token(self.b)
         self.assertEqual(verify_native_token(self.token_a).pk, self.a.pk)
         self.assertEqual(verify_native_token(self.token_b).pk, self.b.pk)
+        # Distinguish token issuance from the downstream HTTP auth adapter.
+        direct = firebase_auth_backend.authenticate(
+            SimpleNamespace(user=AnonymousUser()), self.token_a
+        )
+        self.assertIsNotNone(direct, "The native bearer adapter rejected a valid token")
+        self.assertEqual(direct.pk, self.a.pk)
+
 
     def _get(self, token=None):
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         return self.client.get("/api/v1/profile", headers=headers)
 
     def _patch(self, token, payload):
-        return self.client.patch(
-            "/api/v1/profile",
-            data=json.dumps(payload),
-            content_type="application/json",
-            headers={"Authorization": f"Bearer {token}"},
-        )
+        # Track the *real HTTP request* and the mounted Ninja auth callback.
+        # Log neither token bytes nor patient data on assertion failure.
+        with mock_patch.object(
+            firebase_auth_backend,
+            "authenticate",
+            wraps=firebase_auth_backend.authenticate,
+        ) as native_bearer:
+            response = self.client.patch(
+                "/api/v1/profile",
+                data=json.dumps(payload),
+                content_type="application/json",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            request_header = response.wsgi_request.META.get(
+                "HTTP_AUTHORIZATION", ""
+            )
+            self.assertTrue(
+                request_header.startswith("Bearer iamina."),
+                "The Django client did not deliver an IAMINA bearer header",
+            )
+            self.assertGreater(
+                native_bearer.call_count,
+                0,
+                "The mounted Django-Ninja profile route did not invoke HybridBearerAuth",
+            )
+            return response
 
     def test_a_and_b_roundtrip_only_their_own_declarations(self):
         patch_a = self._patch(
