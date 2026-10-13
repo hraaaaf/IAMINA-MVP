@@ -1,0 +1,81 @@
+name: V1-01 CAL-11 apple true Chrome BEFORE AFTER
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/v1_01_cal11_nutrition_browser_main.dart'
+      - 'tools/v1_01_cal11_nutrition_browser_capture.cjs'
+      - '.github/workflows/v1-01-cal11-apple-browser-proof.yml'
+      - 'frontend/lib/core/data/nutrition_catalog.dart'
+      - 'frontend/lib/features/journal/widgets/nutrition_portion_editor.dart'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apple-100g-before-after:
+    name: Apple 100g FR EN AR / 390 768 1280 / Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Lock exact PR HEAD and shared widget renderer
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          git cat-file -e f7ebe654cd69a03acf6a3694ff0633e8a5b5042e^{commit}
+          git merge-base --is-ancestor f7ebe654cd69a03acf6a3694ff0633e8a5b5042e HEAD
+          cmp <(git show f7ebe654cd69a03acf6a3694ff0633e8a5b5042e:frontend/lib/features/journal/widgets/nutrition_portion_editor.dart) frontend/lib/features/journal/widgets/nutrition_portion_editor.dart
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare audited widget tests and Playwright
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter test --no-pub test/l10n/nutrition_bidi_contract_test.dart test/core/data/nutrition_catalog_test.dart
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: BEFORE — original CAL-11 data with identical widget and 100g fixture
+        run: |
+          set -euo pipefail
+          git show f7ebe654cd69a03acf6a3694ff0633e8a5b5042e:frontend/lib/core/data/nutrition_catalog.dart > frontend/lib/core/data/nutrition_catalog.dart
+          grep -q 'carbsPer100gLow: 14.2' frontend/lib/core/data/nutrition_catalog.dart
+          cd frontend
+          flutter build web --release -t lib/v1_01_cal11_nutrition_browser_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/cal11-before.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi; sleep 1; done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=before AUDIT_OUT="$GITHUB_WORKSPACE/cal11-chrome-proof" node ../tools/v1_01_cal11_nutrition_browser_capture.cjs
+      - name: AFTER — exact PR source and identical 100g fixture
+        run: |
+          set -euo pipefail
+          git restore --source=HEAD -- frontend/lib/core/data/nutrition_catalog.dart
+          grep -q 'carbsPer100gLow: 14.1' frontend/lib/core/data/nutrition_catalog.dart
+          cd frontend
+          flutter build web --release -t lib/v1_01_cal11_nutrition_browser_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/cal11-after.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi; sleep 1; done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=after AUDIT_OUT="$GITHUB_WORKSPACE/cal11-chrome-proof" node ../tools/v1_01_cal11_nutrition_browser_capture.cjs
+      - name: Archive PNGs and observed numerical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cal11-apple-100g-before-after-18-png
+          path: cal11-chrome-proof/*
+          retention-days: 21
+          if-no-files-found: warn

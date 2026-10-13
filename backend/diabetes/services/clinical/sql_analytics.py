@@ -40,8 +40,8 @@ class AnalyticalKPIs:
     # ATTD/Battelino 5-zone breakdown (clinician-facing doctor_brief PDF)
     # Sum invariants: tbr_level2 + tbr_level1 ≈ tbr_pct ; tar_level1 + tar_level2 ≈ tar_pct
     tbr_level2_pct: Optional[float] = None  # < 54 mg/dL
-    tbr_level1_pct: Optional[float] = None  # 54–69 mg/dL
-    tar_level1_pct: Optional[float] = None  # 181–250 mg/dL
+    tbr_level1_pct: Optional[float] = None  # 54–<70 mg/dL
+    tar_level1_pct: Optional[float] = None  # >180–250 mg/dL
     tar_level2_pct: Optional[float] = None  # > 250 mg/dL
     cgm_active_pct: Optional[float] = None  # % readings with source='cgm'
 
@@ -137,12 +137,12 @@ SELECT
         1
     )                                                                                   AS vhigh_pct,
     ROUND(
-        100.0 * SUM(CASE WHEN blood_sugar BETWEEN 54 AND 69 THEN 1 ELSE 0 END)
+        100.0 * SUM(CASE WHEN blood_sugar >= 54 AND blood_sugar < 70 THEN 1 ELSE 0 END)
         / NULLIF(COUNT(*), 0),
         1
     )                                                                                   AS tbr_level1_pct,
     ROUND(
-        100.0 * SUM(CASE WHEN blood_sugar BETWEEN 181 AND 250 THEN 1 ELSE 0 END)
+        100.0 * SUM(CASE WHEN blood_sugar > 180 AND blood_sugar <= 250 THEN 1 ELSE 0 END)
         / NULLIF(COUNT(*), 0),
         1
     )                                                                                   AS tar_level1_pct,
@@ -199,12 +199,12 @@ SELECT
         1
     )                                                          AS vhigh_pct,
     ROUND(
-        100.0 * SUM(CASE WHEN blood_sugar BETWEEN 54 AND 69 THEN 1 ELSE 0 END)
+        100.0 * SUM(CASE WHEN blood_sugar >= 54 AND blood_sugar < 70 THEN 1 ELSE 0 END)
         / NULLIF(COUNT(*), 0),
         1
     )                                                          AS tbr_level1_pct,
     ROUND(
-        100.0 * SUM(CASE WHEN blood_sugar BETWEEN 181 AND 250 THEN 1 ELSE 0 END)
+        100.0 * SUM(CASE WHEN blood_sugar > 180 AND blood_sugar <= 250 THEN 1 ELSE 0 END)
         / NULLIF(COUNT(*), 0),
         1
     )                                                          AS tar_level1_pct,
@@ -281,7 +281,7 @@ def compute_kpis(
             )
 
         # GRI is intentionally not published yet. The validated GRI is a CGM
-        # tracing metric built from four DISJOINT zones (<54, 54-69, 181-250,
+        # tracing metric built from four DISJOINT zones (<54, 54–<70, >180–250,
         # >250 mg/dL). LogEntry currently stores provenance but not the device
         # sampling cadence / expected reading count needed to prove valid CGM
         # wear-time coverage. Publishing a score from sparse or mixed SMBG/CGM

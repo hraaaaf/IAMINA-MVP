@@ -160,6 +160,13 @@ const Map<String, NutritionSourceRef> nutritionSources = {
   ),
 };
 
+/// USDA Foundation 2026-04 source provenance was reconciled against the
+/// official primary JSON archive (sha256
+/// 186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a).
+/// The older FoodData Central IDs were no longer present in that snapshot.
+/// Banana peeled weights 110g/115g come from source foodPortions. Neither
+/// source nutrient averages nor weights prescribe an individual meal or dose.
+///
 /// Morocco-first portion vocabulary. Numeric weights are intentionally absent
 /// until the exact supplementary/source row has been curated and reviewed.
 /// The user can still record the natural portion without IAMINA inventing a
@@ -269,10 +276,10 @@ const List<MealNutritionProfile> mealNutritionProfiles = [
   MealNutritionProfile(
     foodId: 'apple',
     carbohydrate: NutritionReferenceValue(
-      carbsPer100gLow: 14.2,
+      carbsPer100gLow: 14.1,
       carbsPer100gHigh: 15.7,
       sourceId: 'usda_fdc_2026',
-      sourceFoodRef: 'FDC 1105664, 1105547, 1105781, 1105430, 1105897',
+      sourceFoodRef: 'FDC 1750339, 1750340, 1750341, 1750342, 1750343',
       evidenceTier: NutritionEvidenceTier.analytical,
     ),
   ),
@@ -282,7 +289,7 @@ const List<MealNutritionProfile> mealNutritionProfiles = [
       carbsPer100gLow: 20.1,
       carbsPer100gHigh: 23.0,
       sourceId: 'usda_fdc_2026',
-      sourceFoodRef: 'FDC 790774 and 790991',
+      sourceFoodRef: 'FDC 1105073 and 1105314',
       evidenceTier: NutritionEvidenceTier.analytical,
     ),
     portions: [
@@ -313,6 +320,9 @@ NutritionSourceRef? nutritionSourceFor(String sourceId) =>
 String encodeMealPortionSelections(Iterable<MealPortionSelection> selections) =>
     jsonEncode(selections.map((selection) => selection.toJson()).toList());
 
+bool _isSupportedMealGrams(double grams) =>
+    grams.isFinite && grams > 0 && grams <= 3000;
+
 List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
   if (raw == null || raw.trim().isEmpty) return const <MealPortionSelection>[];
   try {
@@ -330,7 +340,7 @@ List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
           (portionId != null && portionId.trim().isEmpty)) {
         continue;
       }
-      if (grams != null && (!grams.isFinite || grams <= 0 || grams > 3000)) {
+      if (grams != null && !_isSupportedMealGrams(grams)) {
         continue;
       }
       if (portionId == null && grams == null) continue;
@@ -349,7 +359,7 @@ List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
 }
 
 CarbEstimate? estimateCarbsForGrams(String foodId, double grams) {
-  if (!grams.isFinite || grams <= 0) return null;
+  if (!_isSupportedMealGrams(grams)) return null;
   final profile = nutritionProfileFor(foodId);
   final ref = profile?.carbohydrate;
   if (ref == null) return null;
@@ -368,10 +378,18 @@ CarbEstimate? estimateCarbsForPortion(String foodId, NutritionPortion portion) {
   if (portion.grams != null) {
     return estimateCarbsForGrams(foodId, portion.grams!);
   }
-  if (portion.gramsLow == null || portion.gramsHigh == null) return null;
+  final gramsLow = portion.gramsLow;
+  final gramsHigh = portion.gramsHigh;
+  if (gramsLow == null ||
+      gramsHigh == null ||
+      !_isSupportedMealGrams(gramsLow) ||
+      !_isSupportedMealGrams(gramsHigh) ||
+      gramsLow > gramsHigh) {
+    return null;
+  }
   return CarbEstimate(
-    low: ref.carbsPer100gLow * portion.gramsLow! / 100,
-    high: ref.carbsPer100gHigh * portion.gramsHigh! / 100,
+    low: ref.carbsPer100gLow * gramsLow / 100,
+    high: ref.carbsPer100gHigh * gramsHigh / 100,
     sourceId: ref.sourceId,
     sourceFoodRef: ref.sourceFoodRef,
   );

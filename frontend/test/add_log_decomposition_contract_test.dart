@@ -14,7 +14,8 @@ void main() {
     expect(sheet, contains('classifyGlucoseEntrySafety'));
     expect(sheet, contains('if (mgdl < 54)'));
     expect(sheet, contains('if (mgdl < 70)'));
-    expect(sheet, contains('value * 18.0'));
+    expect(sheet, contains('GlucoseFormatter.toMgDl(value, unit)'));
+    expect(sheet, isNot(contains('value * 18.0')));
     expect(sheet, contains('mealTypesForProfileDate'));
     expect(sheet, contains('isRamadanProfileDate'));
     expect(sheet, contains('LogEntriesCompanion.insert'));

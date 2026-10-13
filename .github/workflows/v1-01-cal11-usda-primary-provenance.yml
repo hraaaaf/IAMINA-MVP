@@ -1,0 +1,64 @@
+name: V1-01 CAL-11 USDA primary-source verification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/v1-01-cal11-usda-primary-provenance.yml"
+      - "backend/scripts/validate_v1_01_cal11_fdc.py"
+      - "frontend/lib/core/data/nutrition_catalog.dart"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cal11-primary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-usda-primary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve retained official USDA ZIP from verified GitHub run
+        uses: actions/download-artifact@v4
+        with:
+          name: cal11-usda-primary-provenance
+          run-id: 38273801139
+          github-token: ${{ github.token }}
+          path: /tmp/cal11-official-proof
+      - name: Verify pinned official source snapshot and ZIP integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          archive="/tmp/cal11-official-proof/USDA_foundation_food_json_2026-04-30.zip"
+          test -s "$archive"
+          echo "186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a  $archive" | sha256sum --check --status
+          python -m zipfile -t "$archive"
+          cp "$archive" /tmp/USDA_foundation_food_json_2026-04-30.zip
+          sha256sum "$archive" > proof/archive_sha256.txt
+          echo "USDA official 2026-04-30 snapshot, pinned SHA256, GitHub run 38273801139 artifact 11758012445" > proof/source_url.txt
+          cp "$archive" proof/
+      - name: Reconcile seven FDC IDs against primary rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python backend/scripts/validate_v1_01_cal11_fdc.py \
+            /tmp/USDA_foundation_food_json_2026-04-30.zip \
+            | tee proof/fdc_reconciliation.json.log
+      - name: Retain public USDA primary-source snapshot and reconciliation
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cal11-usda-primary-provenance
+          path: proof/
+          if-no-files-found: warn
+          retention-days: 30
