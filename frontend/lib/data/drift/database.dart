@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'patient_vault_scope.dart';
+
 part 'database.g.dart';
 
 // ============================================================================
@@ -106,10 +108,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   // Default constructor using drift_flutter's recommended setup
+  // LEGACY vault for existing pre-D7 data. Never interpret this historical
+  // unscoped storage as belonging to the next authenticated account.
   AppDatabase.defaults()
     : super(
         driftDatabase(
           name: 'amina',
+          web: DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          ),
+        ),
+      );
+
+  // Isolated physical SQLite/IndexedDB vault for a verified principal.
+  // This constructor intentionally does NOT migrate or read the legacy DB.
+  // Integrating the runtime vault switch requires an independent full-flow
+  // A→logout→B certification before any real patient use.
+  AppDatabase.forPatientVault(PatientVaultScope scope)
+    : super(
+        driftDatabase(
+          name: scope.databaseName,
           web: DriftWebOptions(
             sqlite3Wasm: Uri.parse('sqlite3.wasm'),
             driftWorker: Uri.parse('drift_worker.js'),
