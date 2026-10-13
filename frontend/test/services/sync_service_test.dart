@@ -386,6 +386,37 @@ void main() {
     expect((await store.read())?.syncStatus, 'pending');
   });
 
+  test('D7 new native device restores after real first-use profile, not before', () async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(),
+      PatientVaultScope.nativeDjango(734),
+    );
+    addTearDown(db.close);
+    final sync = SyncService(db, mockApi);
+    addTearDown(sync.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': <String>['oral_meds'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00Z',
+    });
+    await sync.restorePatientTreatmentDeclaration();
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+    expect(await db.getProfileForLocalUserId(734), isNull);
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(734),
+        updatedAt: DateTime.utc(2026, 10, 13),
+      ),
+    );
+    await sync.restorePatientTreatmentDeclaration();
+    final recovered = await PatientTreatmentDeclarationStore(db).read();
+    expect(recovered?.codes, ['oral_meds']);
+    expect(recovered?.syncStatus, 'confirmed');
+    verify(() => mockApi.getProfile()).called(2);
+  });
+
   test('D7 remote explicit declaration restores into own empty native vault', () async {
     final db = await nativeVault(734);
     addTearDown(db.close);

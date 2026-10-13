@@ -21,6 +21,17 @@ void main() {
         lessThan(onboarding.indexOf('sendPendingTreatmentDeclaration()')));
   });
 
+  test('D7 onboarding never fabricates profile to bypass first-use restoration', () {
+    final onboarding = _source('lib/features/auth/onboarding_chat_screen.dart');
+    expect(onboarding, contains('insertOnConflictUpdate(profile)'));
+    expect(onboarding, contains('restorePatientTreatmentDeclaration()'));
+    expect(onboarding, contains('!_treatmentTouched'));
+    expect(
+      onboarding.indexOf('insertOnConflictUpdate(profile)'),
+      lessThan(onboarding.indexOf('restorePatientTreatmentDeclaration()')),
+    );
+  });
+
   test('D7 offline profile save cannot present a remote-success receipt', () {
     final profile = _source('lib/features/profile/profile_screen.dart');
     expect(profile, contains('remoteMirrorConfirmed = false;'));

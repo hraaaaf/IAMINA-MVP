@@ -159,6 +159,19 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .into(db.patientProfiles)
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
+
+      // A fresh authenticated device starts without a local profile. Never
+      // fabricate one just to restore clinical declarations: first-use remains
+      // explicit. Once the patient has saved this real profile, recover only
+      // a server-explicit declaration and only if the patient made no new
+      // treatment choice on this device.
+      if (!_treatmentTouched && mounted &&
+          db.patientVaultScope?.nativeDjangoUserId != null &&
+          context.read<AuthService>().hasRemoteApiCredential) {
+        await context.read<SyncService>()
+            .restorePatientTreatmentDeclaration()
+            .timeout(_persistenceTimeout);
+      }
       if (_treatmentTouched && db.patientVaultScope != null) {
         await PatientTreatmentDeclarationStore(db).write(
           state: d7StateCode(_declaredTreatments.state),
