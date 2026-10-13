@@ -1,15 +1,35 @@
-# REPRISE PRIORITAIRE — D7 — 13/10/2026, handover actualisé
+# REPRISE PRIORITAIRE — IAMINA D7 — 13/10/2026, contrôle CI et sûreté
 
-**D7 NON TERMINÉE. Ceci prime sur toutes les anciennes mentions de CI verte plus bas.**
+**D7 TOUJOURS OUVERTE — STOP MERGE / STOP DEPLOY. Cette section fait foi sur l'archive historique ci-dessous.**
 
-- **Repo** : `hraaaaf/IAMINA-MVP`, **PR #986 DRAFT NON MERGED**, branche `feat/v1-d7-medical-profile-relevance-20261013`. Main `a6284c4ca1aa0177efb6c1330099a8ac7a95b1fb`. HEAD de code vérifié AVANT cette mise à jour documentaire : `f0673d104afcddf97ddddde868dee1bff0ee8027`.
-- **CI** : 15/16 workflows SUCCESS. CI principale [#38442272977](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38442272977) FAILURE. Flutter analyze/tests/build, iOS/mobile, migrations, Chrome CTA, app-lock TD014, PWA et captures UI : SUCCESS. SQLite 2798 passed / 2 failed ; PostgreSQL 2802 passed / 2 failed.
-- **Échec exact** : `backend/diabetes/tests/test_d7_profile_http_isolation.py` : `test_a_and_b_roundtrip_only_their_own_declarations` et `test_invalid_declaration_rejected_without_any_data_change`. `PATCH /api/v1/profile` renvoie 401. Instrumentation au commit `f0673d1` : Ninja voit les callbacks HybridBearerAuth + SessionAuth et la présence d'Authorization, mais aucun appel observé à `HybridBearerAuth.authenticate`. Les tokens sont vérifiés directement. **Cause racine inconnue**. Next immédiat : diagnostiquer `HttpBearer.__call__` et le schéma d'en-tête effectivement reçu, sans exposer les jetons ; réparer le vrai comportement ou le harness, ne jamais bypass l'auth.
-- **Fonctionnel** : base patient physiquement cloisonnée par coffre et epoch, consentement par coffre, ancien `amina` laissé en quarantaine sans attribution automatique ; profil médical facultatif, choix multi-traitements déclaratifs et contextualisation prédiabète/type 1 ; Drift v11 + PATCH Django versionnés. Tests unitaires A→B→A disque et contrats Flutter verts, **mais pas certification navigateur multi-compte**.
-- **Deuxième vrai manque** : `PatientTreatmentDeclarationStore` persiste la déclaration multi-traitement dans le coffre local ; `SyncService` synchronise les logs, pas cette déclaration. **Restauration sur nouvel appareil et aller-retour Django NON PROUVÉS**. Vérifier en plus l'UUID device-local au logout, la récupération legacy, l'app-lock et consentements au switch.
-- **Goal de succès** : aucune perte/fuite A→logout→B→A ; déclaration multi-traitement roundtrip sous son propre ID local ET backend ; onboarding facultatif ; FR/AR ; aucune personnalisation clinique via D7 sans moteur audité D19.
-- **Séquence restante** : (1) vérifier HEAD/CI du commit courant ; (2) corriger 401 avec tests réels A/B/invalid/unauthorized SQLite + PostgreSQL ; (3) implémenter/tester sync profil déclaratif mobile↔backend et nouveau device ; (4) tester A→B→A complet + offline/legacy/consentement ; (5) comparer BEFORE → mockup → AFTER aux mêmes 390×844, 768×1024, 1280×900 ; (6) revue indépendante sécurité/privacy/clinique + **validation UI explicite** ; (7) **seulement alors** merge, contrôles postmerge, closeout Notion/issue et enchaînement D9.
-- **Interdits** : STOP MERGE #986/#963 sans gates, aucun Vercel sans autorisation explicite. **P5 50% historique (6/12)** inchangé. Effort suivant **élevé**, auth et données médicales. Aucun nouveau score visuel final prouvé.
+## Goal / succès / preuve
+
+- **Goal** : profil médical facultatif, déclaration de plusieurs traitements en termes purement descriptifs, par patient, avec stockage local/Django et restauration réellement isolée entre appareils. Aucune personnalisation clinique sans D19 audité.
+- **Succès exigé** : A→logout→B→A sans fuite/perte ; offline/online avec reprise, accusé de réception et détection de conflit, nouveau device, app-lock/epoch, consentement, FR/AR, revues indépendantes et captures BEFORE/AFTER aux mêmes 390×844 / 768×1024 / 1280×900.
+- **Preuve partielle** : backend bearer + frontend sur HEAD `e065aff1e06858e5a8850c2bc2b2f10bc6e9888f`, **16/16 workflows SUCCESS** dont CI [#38471129419](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38471129419), jobs SQLite/PostgreSQL/Flutter PASS. La cause du 401 précédent était **un patch pytest autouse** dans `backend/conftest.py` (`conftest._session_aware_call`) qui rejetait le bearer de test avant `authenticate`. Fix ciblé dans `backend/diabetes/tests/test_d7_profile_http_isolation.py` sans modifier l'auth de production, et test bearer falsifié. La CI verte est vérifiée, ne pas la réattribuer au commit suivant.
+
+## Repo / branche / CI actuelle
+
+- **Repo :** `hraaaaf/IAMINA-MVP` ; PR [#986](https://github.com/hraaaaf/IAMINA-MVP/pull/986), `feat/v1-d7-medical-profile-relevance-20261013`, **DRAFT / non fusionnée**. Base main précédemment vérifiée : `a6284c4ca1aa0177efb6c1330099a8ac7a95b1fb`.
+- **HEAD fonctionnel nouvellement commité :** [`be8d42188ab9918a8a21387fcf4688fa44ebc38a`](https://github.com/hraaaaf/IAMINA-MVP/commit/be8d42188ab9918a8a21387fcf4688fa44ebc38a) : traitement de conflit CAS **optionnel** par header `X-Iamina-Treatment-Expected-Updated-At` sur le PATCH protégé. `none` si le serveur n'a pas de déclaration ; timestamp ISO8601 TZ si snapshot existant ; sous transaction et verrou patient `select_for_update`, incohérence → 409 ; révision invalide → 422. Aucun jeton ou identité patient exposés, aucun changement d'OpenAPI (header non typé).
+- **CI nouvelle du HEAD fonctionnel :** [#38473751701](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38473751701) **QUEUED au premier contrôle**, donc pas encore verte. Deux tests HTTP ajoutés : refus des mises à jour obsolètes et invalidité de la révision, avec isolation B. Vérifier à nouveau une fois les runs exécutés.
+- **Autres fonctionnalités D7 non closes** : [`6b01b875`](https://github.com/hraaaaf/IAMINA-MVP/commit/6b01b8754cf1fa7ca92af9b5f3dba47b90b84b3e) GET Django sous auth epoch, restauration uniquement si le coffre **contient déjà** une ligne de profil et n'a pas de déclaration ; [`bef860df`](https://github.com/hraaaaf/IAMINA-MVP/commit/bef860df948284d08d1cc6ffd5566bd6c2095643) tests Flutter supplémentaires. Le service de sync ne transporte toujours pas la déclaration en bidirectionnel.
+
+## Blocages et interdits (actifs)
+
+1. **Outbox/ack/dirty et CAS côté Flutter non implémentés** ; le header est seulement un contrat serveur opt-in et les anciens PATCH restent compatibles **mais sans précondition**. Ne PAS prétendre conflit totalement résolu.
+2. **Nouveau terminal vierge non démontré** : la restauration du snapshot explicitement déclaré exige actuellement la ligne `patient_profiles` locale préalable. Aucun backfill automatique du profil clinique/legacy ni adoption de la base `amina` autorisé.
+3. **État synchronisé trompeur** : `SyncService.state.upToDate` prend en compte les logs, pas les déclarations.
+4. **Gates humains et preuves** : A/B complet, batterie d'échecs/offline, app-lock et consentement, captures BEFORE→cible→AFTER, revue indépendante privacy/sécurité/clinique et validation UI explicite manquent. **PR #986 et #963 : STOP MERGE** ; aucun Vercel sans consentement explicite.
+5. **P5 avancement global** : **50 % historique (6/12)** inchangé tant que la roadmap canonique n'établit pas une mise à jour prouvée.
+
+## Next exact et séquence restante
+
+1. Vérifier CI du dernier HEAD de la branche (le commit documentaire postérieur peut superséder `be8d421`) ; sur échec, diagnostiquer/adapter code et relancer avec tests SQLite/PostgreSQL/Flutter sans réduire les protections.
+2. Concevoir et implémenter outbox/dirty/ack versionnés sur coffre Drift (migration additive), client CAS avec gestion sûre des conflits (aucun écrasement silencieux), restauration d'un nouvel appareil sans fausse inférence clinique.
+3. Tester A→logout→B→A, aller/retour backend, nouvelle installation, offline/retry, auth epoch au milieu de l'attente, refus invalides et accès sans jeton ; reconcilier `SyncUiState` avec le statut de la déclaration.
+4. BEFORE → Goal visuel → mockup → AFTER aux 3 viewports, tests et score visuel. Revue indépendante privacy/sécurité/médical ; validation UI explicite utilisateur ; **alors seulement** examen de fusion/closeout/postmerge, puis lot D9.
+
 
 ---
 
