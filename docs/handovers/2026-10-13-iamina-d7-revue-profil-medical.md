@@ -1,0 +1,55 @@
+# IAMINA — Handover D7, revue du profil médical — 13 octobre 2026
+
+> **READ FIRST pour reprise**. État figé après vérification directe des PR/HEAD/CI GitHub au 13/10/2026. Ce document décrit l'état prouvé, pas une autorisation de merger. Ne jamais réécrire les décisions produit sans l'accord de l'utilisateur.
+
+## Goal D7 (décision originale du 08/10, option A)
+
+[Registre Notion des 29 décisions — D7](https://app.notion.com/p/3f377c663362812dbe78cead75e71922) : **profil médical progressif, modifiable et non bloquant**. Types : type 1, type 2, diabète gestationnel, prédiabète, autre et inconnu/préfère ne pas répondre. **Plusieurs traitements simultanés** (insuline, autres médicaments, hygiène de vie, autre/inconnu), possibilité de compléter plus tard, sans forcer la répétition du parcours (#9) ou inventer un fait clinique. Personnalisation pédagogique explicable et facultative seulement ; toute personnalisation *clinique* (cibles, alertes, conseils, triage) nécessite le moteur déterministe audité **D19**, applicabilité prouvée et validation médicale. Seuils de sécurité indépendants du style IAmina, gestion grossesse, mineurs, profil inconnu en fail-closed, confidentialité D24, cohérence FR/AR.
+
+**Affinage utilisateur le 13/10 :** « je ne vois pas pourquoi proposer un traitement d'insuline pour un prédiabétique ! .. je veux que ce soit fait intelligemment ! ».
+Interprétation produit : **ne jamais présenter l'insuline comme option usuelle recommandée au prédiabète** ; présenter en priorité les déclarations pertinentes (habitudes de vie), tout en préservant la possibilité de **signaler un traitement réellement suivi**, même inhabituel. Ne pas confondre une liste de saisie avec une prescription. Type 1 : ne jamais suggérer que l'hygiène de vie remplace l'insuline. Aucune modification de dose, de diagnostic ou de cible.
+
+## GitHub — état EXACT vérifié
+
+| Chantier | PR / branche / commit | État et preuve |
+|---|---|---|
+| D7 UX contextualisée | [PR #986 — Profil médical : traitements présentés selon le type déclaré](https://github.com/hraaaaf/IAMINA-MVP/pull/986), `feat/v1-d7-medical-profile-relevance-20261013`, **HEAD `5b05041fa9fca8164b0f79f1d3aab34e69194197`** | **DRAFT / NOT MERGED ; 9/9 workflows exact HEAD SUCCESS**, [CI #38403241359](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38403241359), [Chrome onboarding #38403241348](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38403241348). Dernier commit a corrigé test hérité de D6 ; l'ancien HEAD `67ca4004` avait une CI rouge, NE PAS confondre. |
+| D7 propriétaire local | [PR #963 — preserve patient profile owner on edits](https://github.com/hraaaaf/IAMINA-MVP/pull/963), `e22f70f50fde2978f08479b6a14f8fa945bf59d8` | **DRAFT, NON MERGED**. Le guard basé sur UID Firebase ne certifie pas le cas comptes natifs A→B ni le stockage multi-comptes. [Issue D7 #962](https://github.com/hraaaaf/IAMINA-MVP/issues/962) OPEN. |
+| D9 comptes existants | [PR #985 — Ne pas relancer l'onboarding pour les comptes existants (tests)](https://github.com/hraaaaf/IAMINA-MVP/pull/985), `9e8ba9e8007a4a1437ae9c09911f2c72526835ff` | **DRAFT, NON MERGED**. CI frontend test-only [#38395671766](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38395671766) SUCCESS. Ne prouve ni persistance backend, ni reprise après changement d'appareil ni migration des comptes incomplets. [Issue #966](https://github.com/hraaaaf/IAMINA-MVP/issues/966) OPEN. |
+| Main | `a6284c4ca1aa0177efb6c1330099a8ac7a95b1fb` | D5 UI pays via IP/recherche [PR #984](https://github.com/hraaaaf/IAMINA-MVP/pull/984) MERGED, 8/8 prémerge + 4/4 postmerge verts ; D6 suppression du ton [PR #960](https://github.com/hraaaaf/IAMINA-MVP/pull/960) MERGED, 9/9 prémerge + 5/5 postmerge. D5 live Vercel géolocalisation non certifiée. |
+
+**D7 exact-HEAD PR #986 : 9/9 SUCCESS** — UI browser screenshot 38403241277 ; P5-5 E2E pilot 38403241308 ; UI geometry 38403241347 ; first-use mobile visual 38403241315 ; auth local-first visual 38403241395 ; onboarding sticky CTA Chrome 38403241348 ; app-lock TD-014 38403241269 ; CI 38403241359 ; routes globales 38403241219. Ces preuves concernent le *sous-lot de présentation*, pas la totalité de D7.
+
+## Avant / objectif / après / captures
+
+**BEFORE `main`** : les deux écrans affichaient la même liste « Insuline / Comprimés / Hygiène seule » pour tous les diagnostics, sélection unique. Capture navigateur du parcours type 2 : [artifact BEFORE #11810642871](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38393570489/artifacts/11810642871). ATTENTION : BEFORE = type 2 avec ancienne liste générique, pas une capture du prédiabète lui-même ; la même liste est prouvée par le code commun.
+
+**Cible / AFTER prototype** : si « prédiabète », montrer « Habitudes de vie », le lien « Je suis un autre traitement / Je préfère répondre plus tard », **ne pas montrer Insuline d'emblée**. Après clic volontaire, rendre visibles les autres déclarations dont insuline. Type 1 : insuline en première liste ; type 2 : habitudes de vie + médicaments déclarés ; gestationnel : présentation contextualisée ; autre/inconnu : pas de suggestion automatique. Libellés FR/EN/AR, aucune action clinique. Le même widget `MedicalTreatmentSelector` est utilisé dans le Profil et l'onboarding.
+
+**Preuves AFTER** : [artifact Chrome exact HEAD #11817025825](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38403241348/artifacts/11817025825), captures initiales/étendues à **390×844, 768×1024, 1280×900**, parcours jusqu'au CTA. Comparaison mobile 3 colonnes présentée en conversation : `/mnt/data/IAMINA_D7_mobile_comparaison_390x844.png` (fichier sandbox de la session d'origine, ne pas supposer réutilisable dans une nouvelle session). Les deux AFTER sont issus de vrais Chromium.
+
+**Gate visuel non levé** : l'utilisateur a vu la comparaison mobile mais n'a PAS encore explicitement validé la nouvelle UI D7. Il a seulement autorisé le **travail** (« vas y le D7 ! go ! »). Pour toute autre modification visuelle : BEFORE → Goal écrit → mockup → implémentation → AFTER mêmes viewports → comparaison/tests → score → **approbation UI avant merge**.
+
+## Écarts structurels confirmés — D7 INCOMPLÈTE
+
+1. **Traitements multiples** : le widget introduit ne sélectionne actuellement **qu'un seul `ChoiceChip`**, `PatientProfiles.treatment` dans Drift = **un seul String** ; backend Django `DiabetesProfile.treatment_type` = un seul CharField. D7 demande combinaisons, inconnus et déclarations réellement conservées. Aucun schéma multi ni migration/compatibilité certifié.
+2. **Codes incompatibles** : frontend `pre` vs backend `prediabetes`. Frontend `tablets`/ `lifestyle`/ `insulin` vs backend `oral_meds`/`diet_exercise`/`insulin_pump`/`insulin_injections`/`insulin`. ATTENTION : une étiquette de UI « Médicaments déclarés » enregistrant `tablets` peut être trop large et créer une mauvaise sémantique. Exiger un **vocabulaire canonique versionné** et une migration sûre sans interpréter un traitement.
+3. **Parcours non bloquant** : `OnboardingChatScreen._finish` exige diabetesType et treatment ; `ConsentService._profileCompletesOnboarding` exige également type+traitement non vides. Une valeur « unknown » peut faussement paraître profil médical complet. D7 demande pouvoir compléter plus tard, et D9 requiert une complétion ciblée pour compte existant, sans forcer tout l'onboarding. Consentement indépendant.
+4. **Confidentialité / propriétaire** : `ProfileScreen._saveProfile` peut écrire `userId=1` ; onboarding utilise `firebaseUser?.uid.hashCode.abs() ?? 1` ; pour compte natif, `firebaseUser` est null tandis que `AuthService` peut détenir un token natif. `watchProfile()..limit(1)` n'est pas filtré par compte. **Risque déduit du code, pas preuve de fuite réelle.** Exiger scénario A→logout→B avec base Drift conservée, aucune lecture/écriture profil A sous B, refuser ambiguïtés, remédiation non destructive.
+5. **Validation et risques cliniques** : pas de changement de cibles, doses, unités ou alertes sans audit D19, règles déterministes et revue clinique. Attention particulière type 1, gestationnel, enfants, traitements mixtes, inconnus. Backend cible conserve provenance et applicabilité distinctes ; toute mise à jour de diagnostic peut invalider une autorité clinique confirmée, ne pas supprimer cette barrière.
+6. **UX Profil + localisation** : contrôles médicalement déclaratifs doivent préserver historique et résumé lisible, accessibilité tactile/clavier, RTL/arabe, états vides, persistance sur réouverture ; **aucune certification multi-device** à ce stade.
+
+## Next exact et séquence restante
+
+1. **Ne pas merger #986 ni #963.** Reprendre depuis ce fichier ; vérifier `main`, PR #986 HEAD, 9/9 workflows et artefacts avant de toucher au code. Demander l'approbation visuelle utilisateur uniquement quand l'AFTER final complet est conforme.
+2. Concevoir/implémenter contrat clinique *déclaratif* canonique multi-traitements (compatibilité backend/Drift, statuts `not_answered` vs `unknown`, migrations non destructives, conservation du patient owner, pas de recommandation). **Goal observable** : insuline non suggérée dans premier écran prédiabète ; combinaisons enregistrées et relues exactement ; profil partiel autorisé sans perte de données.
+3. Certifier l'identité native/Firebase (A→B et multi-profil dans même DB), traitement des duplications sans suppression implicite. **Gate sécurité/privacy** et, si nécessaire, revue médicale pour évolution du modèle.
+4. Implémenter et tester état de complétion ciblée D7/D9 : ne pas redémarrer tout l'onboarding, compte partiel, compte complet, migration backend et nouvel appareil ; consentement jamais inféré.
+5. Refaire tests backend PostgreSQL + Flutter analyze/tests/build + Chrome réel 390/768/1280 AFTER, screenshot BEFORE/AFTER même état de l'application, accessibilité et FR/AR. Corriger tous rouges ; tester adaptation clinique inchangée.
+6. Présenter dossier visuel et sécurité à l'utilisateur pour validation. Après gates réels et verts : merge, readback `main`, 4+/4 postmerge pertinents, closeout issue/PR, Notion, fichier canonique ; passer à D9 revue fonctionnelle. **Ne jamais déployer Vercel sans autorisation explicite.**
+
+## Ordre des 29 décisions et avancement
+
+Ordre de dépendance décidé : **5 → 6 → 7 → 9 → 10 → 11 → 18 → 19 → 21 → 22 → 8 → 12 → 13 → 23 → 24 → 26 → 4 → 14 → 15 → 17 → 28 → 2 → 3 → 16 → 20 → 27 → 29 → 1 → 25**. Les décisions originales **D1/D25 CGM en dernier**. D5/D6 code livrés ; D5 métier reste avec issue #983 pour comptes existants et test IP hébergé ; D7 et D9 **non clôturées**. P5 roadmap historique **50% (6/12)**, ne pas inventer progression nouvelle ou score visuel final.
+
+**Fichier canonique plus large** : `docs/handovers/2026-10-12-iamina-v1-29-sequential-cgm-last.md` sur branche `parallel/v1-03-ocr-ui-provenance-20261011`. L'original source de vérité pour décisions produit reste le registre Notion du 8 octobre. Si divergence document/CI, **GitHub live et les tests observés priment**. Ne pas confondre un prototype UI approuvé et un traitement médical validé.
