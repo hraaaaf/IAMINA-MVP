@@ -26,7 +26,7 @@ async function sendSyntheticQuestion(page, width, height) {
   // Select the visible, synthetic quick-question in the *actual Flutter UI*.
   // The shortcut pre-fills the real composer and focuses it, avoiding
   // ungrounded screen coordinates that can silently click the wrong surface.
-  const button = page.getByRole('button', {name: /Que peux-tu faire\\s*\\?/i});
+  const button = page.getByRole('button', {name: /Que peux-tu faire/i});
   const semantics = page.locator('flt-semantics[aria-label*="Que peux-tu faire ?"]');
   const suggestion = await button.count() ? button.first() : semantics.first();
   await suggestion.waitFor({state:'visible', timeout:15000});
