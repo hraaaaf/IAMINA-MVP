@@ -689,9 +689,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Langue, pays et ton. Vos réglages médicaux restent dans le profil.',
-                      en: 'Language, country and tone. Medical settings stay in your profile.',
-                      ar: 'اللغة والبلد والنبرة. تبقى الإعدادات الطبية في ملفك الشخصي.',
+                      fr: 'Langue et pays. Vos réglages médicaux restent dans le profil.',
+                      en: 'Language and country. Medical settings stay in your profile.',
+                      ar: 'اللغة والبلد. تبقى الإعدادات الطبية في ملفك الشخصي.',
                     ),
                     style: TextStyle(
                       color: AminaVisualLanguage.secondary(context),
