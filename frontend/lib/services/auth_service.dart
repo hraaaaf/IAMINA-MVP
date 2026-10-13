@@ -268,9 +268,11 @@ class AuthService extends ChangeNotifier {
       _nativeToken = null;
       _nativeAccountId = null;
       _remoteCredentialVerified = false;
+      // Retire the session before a storage/plugin await can resume its
+      // pending clinical synchronizer under an unbound credential.
+      _notifyAuthChanged();
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _nativeIdentityKey);
-      _notifyAuthChanged();
       return null;
     }
     return _firebaseAuth?.currentUser?.getIdToken(true);
@@ -331,15 +333,14 @@ class AuthService extends ChangeNotifier {
     _nativeAccountId = null;
     _localSessionEnrolled = false;
     _remoteCredentialVerified = false;
-    try {
-      await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _nativeIdentityKey);
-      await _storage.delete(key: _localSessionKey);
-      await _storage.delete(key: _localDeviceIdKey);
-      await _firebaseAuth?.signOut();
-    } finally {
-      _notifyAuthChanged();
-    }
+    // Cancel stale session egress SYNCHRONOUSLY. Awaiting secure storage first
+    // left an A→logout window where old SyncService still had A's epoch.
+    _notifyAuthChanged();
+    await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _nativeIdentityKey);
+    await _storage.delete(key: _localSessionKey);
+    await _storage.delete(key: _localDeviceIdKey);
+    await _firebaseAuth?.signOut();
 
     if (token != null) {
       try {
@@ -424,6 +425,14 @@ class AuthService extends ChangeNotifier {
     if (id is! int || id <= 0) {
       throw StateError('Missing authenticated IAMINA user ID');
     }
+    // A completed native response retires any previous local/remote account
+    // before the first persistence await. Failures leave no old patient open.
+    _nativeToken = null;
+    _nativeAccountId = null;
+    _remoteCredentialVerified = false;
+    _localSessionEnrolled = false;
+    _auditSession = false;
+    _notifyAuthChanged();
     // Write binding first. Interrupted writes cannot pair a new token
     // with a previous account's cached patient ID.
     await _storage.write(

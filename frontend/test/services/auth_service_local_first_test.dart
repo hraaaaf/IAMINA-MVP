@@ -224,6 +224,19 @@ void main() {
     service.dispose();
   });
 
+  test('D7 sign-out invalidates the epoch before any storage await', () async {
+    seedStorage({_tokenKey: _token, _localSessionKey: _localSessionValue});
+    final service = AuthService(httpClient: MockClient((request) async =>
+        http.Response('', 204)));
+    await service.initialize();
+    final before = AuthService.authEpoch;
+    final loggingOut = service.signOut();
+    expect(AuthService.authEpoch, greaterThan(before));
+    expect(service.isAuthenticated, isFalse);
+    await loggingOut;
+    service.dispose();
+  });
+
   test('explicit sign-out clears local enrollment and device id even if remote logout fails', () async {
     seedStorage({
       _tokenKey: _token,
