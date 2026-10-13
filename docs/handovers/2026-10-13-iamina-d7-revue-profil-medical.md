@@ -1,3 +1,20 @@
+# REPRISE PRIORITAIRE — D7 — 13/10/2026, handover actualisé
+
+**D7 NON TERMINÉE. Ceci prime sur toutes les anciennes mentions de CI verte plus bas.**
+
+- **Repo** : `hraaaaf/IAMINA-MVP`, **PR #986 DRAFT NON MERGED**, branche `feat/v1-d7-medical-profile-relevance-20261013`. Main `a6284c4ca1aa0177efb6c1330099a8ac7a95b1fb`. HEAD de code vérifié AVANT cette mise à jour documentaire : `f0673d104afcddf97ddddde868dee1bff0ee8027`.
+- **CI** : 15/16 workflows SUCCESS. CI principale [#38442272977](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38442272977) FAILURE. Flutter analyze/tests/build, iOS/mobile, migrations, Chrome CTA, app-lock TD014, PWA et captures UI : SUCCESS. SQLite 2798 passed / 2 failed ; PostgreSQL 2802 passed / 2 failed.
+- **Échec exact** : `backend/diabetes/tests/test_d7_profile_http_isolation.py` : `test_a_and_b_roundtrip_only_their_own_declarations` et `test_invalid_declaration_rejected_without_any_data_change`. `PATCH /api/v1/profile` renvoie 401. Instrumentation au commit `f0673d1` : Ninja voit les callbacks HybridBearerAuth + SessionAuth et la présence d'Authorization, mais aucun appel observé à `HybridBearerAuth.authenticate`. Les tokens sont vérifiés directement. **Cause racine inconnue**. Next immédiat : diagnostiquer `HttpBearer.__call__` et le schéma d'en-tête effectivement reçu, sans exposer les jetons ; réparer le vrai comportement ou le harness, ne jamais bypass l'auth.
+- **Fonctionnel** : base patient physiquement cloisonnée par coffre et epoch, consentement par coffre, ancien `amina` laissé en quarantaine sans attribution automatique ; profil médical facultatif, choix multi-traitements déclaratifs et contextualisation prédiabète/type 1 ; Drift v11 + PATCH Django versionnés. Tests unitaires A→B→A disque et contrats Flutter verts, **mais pas certification navigateur multi-compte**.
+- **Deuxième vrai manque** : `PatientTreatmentDeclarationStore` persiste la déclaration multi-traitement dans le coffre local ; `SyncService` synchronise les logs, pas cette déclaration. **Restauration sur nouvel appareil et aller-retour Django NON PROUVÉS**. Vérifier en plus l'UUID device-local au logout, la récupération legacy, l'app-lock et consentements au switch.
+- **Goal de succès** : aucune perte/fuite A→logout→B→A ; déclaration multi-traitement roundtrip sous son propre ID local ET backend ; onboarding facultatif ; FR/AR ; aucune personnalisation clinique via D7 sans moteur audité D19.
+- **Séquence restante** : (1) vérifier HEAD/CI du commit courant ; (2) corriger 401 avec tests réels A/B/invalid/unauthorized SQLite + PostgreSQL ; (3) implémenter/tester sync profil déclaratif mobile↔backend et nouveau device ; (4) tester A→B→A complet + offline/legacy/consentement ; (5) comparer BEFORE → mockup → AFTER aux mêmes 390×844, 768×1024, 1280×900 ; (6) revue indépendante sécurité/privacy/clinique + **validation UI explicite** ; (7) **seulement alors** merge, contrôles postmerge, closeout Notion/issue et enchaînement D9.
+- **Interdits** : STOP MERGE #986/#963 sans gates, aucun Vercel sans autorisation explicite. **P5 50% historique (6/12)** inchangé. Effort suivant **élevé**, auth et données médicales. Aucun nouveau score visuel final prouvé.
+
+---
+
+## ARCHIVE HISTORIQUE — états antérieurs conservés ; ne pas reprendre leurs HEAD/CI comme actuels
+
 # IAMINA — Handover D7, revue du profil médical — 13 octobre 2026
 
 > **READ FIRST pour reprise**. État figé après vérification directe des PR/HEAD/CI GitHub au 13/10/2026. Ce document décrit l'état prouvé, pas une autorisation de merger. Ne jamais réécrire les décisions produit sans l'accord de l'utilisateur.
