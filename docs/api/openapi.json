@@ -3278,6 +3278,46 @@
             ],
             "title": "Treatment Type"
           },
+          "treatment_declaration_state": {
+            "default": "not_answered",
+            "title": "Treatment Declaration State",
+            "type": "string"
+          },
+          "treatment_declarations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Treatment Declarations",
+            "type": "array"
+          },
+          "treatment_declaration_version": {
+            "default": 1,
+            "title": "Treatment Declaration Version",
+            "type": "integer"
+          },
+          "treatment_declaration_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Declaration Source"
+          },
+          "treatment_declaration_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Declaration Updated At"
+          },
           "clinical_profile_complete": {
             "default": false,
             "title": "Clinical Profile Complete",
@@ -3378,6 +3418,47 @@
         "title": "PatientProfileSchema",
         "type": "object"
       },
+      "PatientTreatmentDeclarationPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "not_answered",
+              "unsure",
+              "declared",
+              "none_declared"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "codes": {
+            "items": {
+              "enum": [
+                "insulin",
+                "oral_meds",
+                "lifestyle",
+                "other"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "state",
+          "codes"
+        ],
+        "title": "PatientTreatmentDeclarationPatch",
+        "type": "object"
+      },
       "ProfilePatchSchema": {
         "description": "All fields optional; supplied values are treated as patient declarations.",
         "properties": {
@@ -3413,6 +3494,17 @@
               }
             ],
             "title": "Treatment Type"
+          },
+          "treatment_declaration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PatientTreatmentDeclarationPatch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Declaration"
           },
           "unit_preference": {
             "anyOf": [
