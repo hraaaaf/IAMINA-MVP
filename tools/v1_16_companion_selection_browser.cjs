@@ -23,43 +23,45 @@ async function getSemanticNames(page) {
 }
 
 async function sendSyntheticQuestion(page, width, height) {
-  const field = page.getByRole('textbox');
-  let sentFromSemantics = false;
-  if (await field.count()) {
-    const el = field.first();
-    if (await el.isVisible().catch(() => false)) {
-      await el.fill('Une question simple').catch(async () => {
-        await el.click(); await page.keyboard.insertText('Une question simple');
-      });
-      sentFromSemantics = true;
+  // Select the visible, synthetic quick-question in the *actual Flutter UI*.
+  // The shortcut pre-fills the real composer and focuses it, avoiding
+  // ungrounded screen coordinates that can silently click the wrong surface.
+  const button = page.getByRole('button', {name: /Que peux-tu faire\\s*\\?/i});
+  const semantics = page.locator('flt-semantics[aria-label*="Que peux-tu faire ?"]');
+  const suggestion = await button.count() ? button.first() : semantics.first();
+  await suggestion.waitFor({state:'visible', timeout:15000});
+  await suggestion.click({timeout:5000});
+  await page.waitForTimeout(350);
+
+  // Send via the real accessible CTA, or via the focused TextField's native
+  // Enter action. Never guess where the button might be on a viewport.
+  const submit = page.getByRole('button', {name:/Envoyer le message|Send message/i});
+  let delivery = 'accessible-send-button';
+  if (await submit.count() && await submit.first().isVisible()) {
+    await submit.first().click({timeout:5000});
+  } else {
+    const focused = await page.evaluate(() => {
+      const active = document.activeElement;
+      return Boolean(active && (active.matches('input,textarea,[contenteditable="true"]') ||
+        active.closest('flt-text-editing-host')));
+    });
+    if (!focused) {
+      throw new Error('Composer input not focused and accessible send button absent');
     }
+    delivery = 'focused-native-send-action';
+    await page.keyboard.press('Enter');
   }
-  if (!sentFromSemantics) {
-    await page.mouse.click(width < 900 ? width/2 : width/2, height - 54);
-    await page.keyboard.insertText('Une question simple');
-  }
-  await page.waitForTimeout(250);
-  const button = page.getByRole('button', {name: /Envoyer|Send message/i});
-  let submitted = false;
-  if (await button.count()) {
-    const el = button.first();
-    if (await el.isVisible().catch(() => false) && await el.isEnabled().catch(() => false)) {
-      await el.click();
-      submitted = true;
-    }
-  }
-  if (!submitted) {
-    await page.mouse.click(width < 900 ? width - 31 : width/2 + 320, height - 54);
-  }
-  for (let attempt=0;attempt<30;attempt++) {
+
+  for (let attempt=0; attempt<40; attempt++) {
     const names = await getSemanticNames(page);
     const body = await page.locator('body').innerText().catch(()=>'');
     if (names.some(n=>n.includes('Réponse locale limitée')) ||
-        body.includes('Réponse locale limitée')) return;
+        body.includes('Réponse locale limitée')) return delivery;
     await page.waitForTimeout(400);
   }
   const names = await getSemanticNames(page);
-  throw new Error('Synthetic reply not observed after send: '+JSON.stringify({width,height,names:names.slice(-20)}));
+  throw new Error('Synthetic reply not observed after real UI submission: '+
+    JSON.stringify({width,height,delivery,names:names.slice(-30)}));
 }
 
 (async () => {
@@ -80,7 +82,22 @@ async function sendSyntheticQuestion(page, width, height) {
           {waitUntil:'domcontentloaded',timeout:30000});
         await page.waitForTimeout(4500);
         await activateSemantics(page);
-        await sendSyntheticQuestion(page,width,height);
+        try {
+          await sendSyntheticQuestion(page,width,height);
+        } catch (error) {
+          const diagnostic = path.join(root,'debug-'+phase+'-'+width+'x'+height);
+          await page.screenshot({path:diagnostic+'.png',fullPage:false}).catch(()=>{});
+          fs.writeFileSync(diagnostic+'.json',JSON.stringify({
+            phase,width,height,error:String(error),
+            labels:(await getSemanticNames(page)).slice(-100),
+            text:(await page.locator('body').innerText().catch(()=>'' )).slice(-2000),
+            focus:await page.evaluate(() => ({
+              tag:document.activeElement?.tagName,
+              value:document.activeElement?.value || null,
+            })).catch(()=>null),
+          },null,2));
+          throw error;
+        }
         const base=path.join(root,phase+'-'+width+'x'+height);
         await page.screenshot({path:base+'.png',fullPage:false});
         const labels=await getSemanticNames(page);
