@@ -16,6 +16,7 @@ import 'services/app_lock_service.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_migration_policy.dart';
+import 'services/medical_vault_protected_state.dart';
 import 'services/locale_preference_service.dart';
 import 'services/patient_vault_session_controller.dart';
 import 'services/patient_vault_app_host.dart';
@@ -34,22 +35,7 @@ Future<bool> _hasProtectedLocalState({
     return true;
   }
 
-  if (await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull() != null) {
-    return true;
-  }
-  if (await (db.select(db.logEntries)..limit(1)).getSingleOrNull() != null) {
-    return true;
-  }
-  if (await (db.select(db.chatMessages)..limit(1)).getSingleOrNull() != null) {
-    return true;
-  }
-  if (await (db.select(db.medicationEvents)..limit(1)).getSingleOrNull() != null) {
-    return true;
-  }
-  if (await (db.select(db.reminders)..limit(1)).getSingleOrNull() != null) {
-    return true;
-  }
-  return false;
+  return hasProtectedMedicalVaultRows(db);
 }
 
 Future<void> main() async {
@@ -82,9 +68,30 @@ Future<void> main() async {
     await legacy.close();
   }
 
+  // A missing app-lock credential must not be treated as a fresh install
+  // merely because the quarantined pre-D7 database is empty. Inspect ONLY
+  // the currently resolved patient vault; never transfer or expose its rows.
+  var currentVaultProtected = false;
+  if (!auditAllowed && !legacyProtected) {
+    AppDatabase? protectedStateProbe;
+    try {
+      final scope = await authService.resolvePatientVaultScope();
+      if (scope != null) {
+        protectedStateProbe = AppDatabase.forPatientVault(scope);
+        currentVaultProtected = await hasProtectedMedicalVaultRows(protectedStateProbe);
+      }
+    } catch (_) {
+      // An inaccessible vault is not proof of a clean fresh installation.
+      currentVaultProtected = true;
+    } finally {
+      await protectedStateProbe?.close();
+    }
+  }
+
   final appLockService = AppLockService(
     authService: authService,
-    protectedLocalStateProbe: () async => legacyProtected,
+    protectedLocalStateProbe: () async =>
+        legacyProtected || currentVaultProtected,
   );
   await appLockService.initialize();
   // Switching A to B must revoke the previous device unlock immediately.
