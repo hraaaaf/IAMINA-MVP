@@ -54,20 +54,60 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         original_http_bearer_call = HttpBearer.__call__
 
         def trace_auth_chain(operation, request):
-            # Diagnostic only: callback classes and header presence, no PHI
-            # or bearer bytes in logs/assertions.
-            auth_chains.append({
-                "callbacks": [
-                    type(callback).__module__ + "." + type(callback).__name__
-                    for callback in operation.auth_callbacks
-                ],
-                "has_authorization_header": bool(
-                    request.headers.get("Authorization")
-                ),
-                "method": request.method,
-                "path": request.path,
-            })
-            return original_run_authentication(operation, request)
+            # This observes the actual mounted callback classes, even if an
+            # import reload left the test module with a different class object.
+            # No token, response body, or patient information is retained.
+            from contextlib import ExitStack
+
+            callback_details = []
+            callback_executions = []
+            with ExitStack() as stack:
+                for callback in operation.auth_callbacks:
+                    cls = type(callback)
+                    implementation = cls.__call__
+                    callback_details.append({
+                        "class": cls.__module__ + "." + cls.__name__,
+                        "same_hybrid_class": cls is HybridBearerAuth,
+                        "inherits_imported_http_bearer": issubclass(cls, HttpBearer),
+                        "call_implementation": (
+                            implementation.__module__
+                            + "." + implementation.__qualname__
+                        ),
+                        "call_is_patched_base": implementation is HttpBearer.__call__,
+                        "configured_scheme": getattr(callback, "openapi_scheme", None),
+                        "configured_header": getattr(callback, "header", None),
+                    })
+
+                    def trace_mounted_call(instance, req, _original=implementation):
+                        try:
+                            result = _original(instance, req)
+                        except Exception as exc:
+                            callback_executions.append({
+                                "class": type(instance).__name__,
+                                "raised": type(exc).__name__,
+                            })
+                            raise
+                        callback_executions.append({
+                            "class": type(instance).__name__,
+                            "returned_identity": bool(result),
+                            "return_type": type(result).__name__,
+                        })
+                        return result
+
+                    stack.enter_context(
+                        mock_patch.object(cls, "__call__", trace_mounted_call)
+                    )
+
+                auth_chains.append({
+                    "callbacks": callback_details,
+                    "executions": callback_executions,
+                    "has_authorization_header": bool(
+                        request.headers.get("Authorization")
+                    ),
+                    "method": request.method,
+                    "path": request.path,
+                })
+                return original_run_authentication(operation, request)
 
         def trace_http_bearer(authenticator, request):
             # Observe parsing and class identity without retaining token bytes.
