@@ -61,14 +61,15 @@ void main() {
       expect(svc.hasCompletedOnboarding, isFalse);
     });
 
-    test('partial profile is not completed', () async {
+    test('D7 persisted profile with unknown medical facts completes first-use', () async {
       final db = _openDb();
       addTearDown(db.close);
       await _insertProfile(db);
       final profile = await db.select(db.patientProfiles).getSingle();
       final svc = ConsentService();
       svc.seedInitialProfile(profile);
-      expect(svc.hasCompletedOnboarding, isFalse);
+      expect(svc.hasCompletedOnboarding, isTrue);
+      expect(svc.hasConsent, isFalse);
     });
 
     test('diabetes type and treatment complete onboarding', () async {

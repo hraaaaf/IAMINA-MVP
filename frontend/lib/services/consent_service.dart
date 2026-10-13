@@ -22,16 +22,13 @@ class ConsentService extends ChangeNotifier {
   /// Safe default is false. Both local timestamp and verified evidence required.
   bool get hasConsent => _hasConsent ?? false;
 
-  /// True only when the minimum patient onboarding fields are persisted.
+  /// First-use preferences are persisted, not a claim of medical completeness.
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
 
   bool _profileCompletesOnboarding(PatientProfileData? profile) {
-    final diabetesType = profile?.diabetesType?.trim();
-    final treatment = profile?.treatment?.trim();
-    return diabetesType != null &&
-        diabetesType.isNotEmpty &&
-        treatment != null &&
-        treatment.isNotEmpty;
+    // D7: diagnosis and treatment are optional patient declarations. The
+    // clinical engine must independently fail closed when they are missing.
+    return profile != null;
   }
 
   void _applyProfile(PatientProfileData? profile) {

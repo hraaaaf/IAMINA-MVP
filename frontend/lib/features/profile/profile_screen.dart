@@ -34,12 +34,12 @@ String _profileUiText(
 String _profileValidationMessage(BuildContext context) {
   final code = Localizations.localeOf(context).languageCode;
   if (code == 'ar') {
-    return 'اختر نوع السكري والعلاج وأدخل نطاق غلوكوز صالحًا قبل الحفظ.';
+    return 'أدخل نطاق غلوكوز صالحًا. يمكنك إضافة نوع السكري والعلاج لاحقًا.';
   }
   if (code == 'en') {
-    return 'Select diabetes type and treatment, and enter a valid glucose range before saving.';
+    return 'Enter a valid glucose range. Diagnosis and treatment can be added later.';
   }
-  return 'Sélectionnez le type de diabète et le traitement, puis saisissez une plage glycémique valide avant d’enregistrer.';
+  return 'Saisissez une plage glycémique valide. Le diagnostic et le traitement peuvent être ajoutés plus tard.';
 }
 
 class ProfileScreen extends StatefulWidget {
@@ -419,7 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         high > 0 &&
         low < high;
 
-    if (diabetesType == null || treatment == null || !validRange) {
+    if (!validRange) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_profileValidationMessage(context))),
       );

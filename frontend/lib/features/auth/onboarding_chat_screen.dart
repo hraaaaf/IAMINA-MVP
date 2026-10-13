@@ -111,11 +111,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
   Future<void> _finish() async {
     if (_language == null || _country == null) return;
-    if (!widget.preferencesOnly &&
-        (_diabetesType == null || _treatment == null)) {
-      return;
-    }
-
     setState(() => _saving = true);
 
     try {
@@ -147,8 +142,8 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         userId: drift.Value(userId),
         preferredLanguage: drift.Value(_language!),
         updatedAt: DateTime.now(),
-        diabetesType: drift.Value(_diabetesType!),
-        treatment: drift.Value(_treatment!),
+        diabetesType: drift.Value(_diabetesType),
+        treatment: drift.Value(_treatment),
         unitPreference: drift.Value(_unit),
         targetRangeLow: const drift.Value(70),
         targetRangeHigh: const drift.Value(180),
@@ -335,11 +330,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             treatment: _treatment,
           );
 
-    final ready =
-        _language != null &&
-        _country != null &&
-        (widget.preferencesOnly ||
-            (_diabetesType != null && _treatment != null));
+    // Language and country are the only first-use prerequisites.
+    // The five-step medical questionnaire stays available, never mandatory.
+    final ready = _language != null && _country != null;
 
     final assistantLabel = widget.preferencesOnly
         ? _preferencesCopy(
