@@ -365,4 +365,37 @@ void main() {
     service.dispose();
   });
 
+  test('D7 vault resolution only accepts typed bound principals', () async {
+    seedStorage({_tokenKey: _token});
+    final old = AuthService(httpClient: noBootNetworkClient());
+    await old.initialize();
+    expect(await old.resolvePatientVaultScope(), isNull);
+    old.dispose();
+
+    seedStorage({_localSessionKey: _localSessionValue});
+    final legacy = AuthService(httpClient: noBootNetworkClient());
+    await legacy.initialize();
+    expect(await legacy.resolvePatientVaultScope(), isNull);
+    await legacy.enrollLocalDevice();
+    expect(
+      (await legacy.resolvePatientVaultScope())?.databaseName,
+      startsWith('amina_vault_v1_device_'),
+    );
+    legacy.dispose();
+
+    seedStorage({});
+    final remote = AuthService(httpClient: MockClient((request) async =>
+        http.Response('{"access_token":"' + _freshToken +
+            '","user":{"id":734}}', 200)));
+    await remote.initialize();
+    await remote.signInWithEmail('a@example.com', 'secret');
+    expect(
+      (await remote.resolvePatientVaultScope())?.databaseName,
+      'amina_vault_v1_native_734',
+    );
+    await remote.signOut();
+    expect(await remote.resolvePatientVaultScope(), isNull);
+    remote.dispose();
+  });
+
 }

@@ -26,6 +26,7 @@ final class LocalBackup {
     if (scope == null) {
       throw StateError('Cannot claim legacy mixed data as a patient vault.');
     }
+    await _assertExportOwnerScope(db);
     final envelope = _asMap(jsonDecode(await _exportRows(db)), 'backup');
     envelope['formatVersion'] = scopedFormatVersion;
     envelope['vaultName'] = scope.databaseName;
@@ -80,6 +81,15 @@ final class LocalBackup {
     }
     // Check owner before touching even a single destination row. Restoring
     // old unscoped backup requires an explicit, separate recovery flow.
+    final expectedNativeId = scope.nativeDjangoUserId;
+    if (expectedNativeId != null) {
+      final profiles = _rows(root, 'patientProfiles');
+      if (profiles.length > 1 ||
+          profiles.any((row) => row['userId'] != expectedNativeId) ||
+          (profiles.isEmpty && _hasUnownedClinicalRows(root))) {
+        throw FormatException('Backup does not match its native patient owner');
+      }
+    }
     root['formatVersion'] = formatVersion;
     return _restoreRows(db, root);
   }
@@ -180,6 +190,31 @@ final class LocalBackup {
         db.reminders.count().getSingle(),
       );
     });
+  }
+
+  static bool _hasUnownedClinicalRows(Map<String, dynamic> root) =>
+      ['logEntries', 'chatMessages', 'medicationEvents', 'reminders']
+          .any((table) => _rows(root, table).isNotEmpty);
+
+  static Future<void> _assertExportOwnerScope(AppDatabase db) async {
+    final expected = db.patientVaultScope?.nativeDjangoUserId;
+    if (expected == null) return;
+    final profiles = await db.select(db.patientProfiles).get();
+    if (profiles.length > 1 ||
+        profiles.any((p) => p.userId != expected)) {
+      throw StateError('Native vault contains a foreign patient profile');
+    }
+    if (profiles.isEmpty) {
+      final counts = await Future.wait([
+        db.select(db.logEntries).get(),
+        db.select(db.chatMessages).get(),
+        db.select(db.medicationEvents).get(),
+        db.select(db.reminders).get(),
+      ]);
+      if (counts.any((rows) => rows.isNotEmpty)) {
+        throw StateError('Unattributed clinical rows cannot be exported');
+      }
+    }
   }
 
   static Map<String, dynamic> _asMap(dynamic value, String label) {

@@ -28,6 +28,8 @@ class DiabetesProfile(models.Model):
         ('type2', 'Type 2'),
         ('gestational', 'Gestationnel'),
         ('prediabetes', 'Prediabete'),
+        ('other', 'Another patient-declared diagnosis'),
+        ('unknown', 'Patient unsure or answering later'),
     ]
 
     TREATMENT_TYPE_CHOICES = [
@@ -222,7 +224,12 @@ class DiabetesProfile(models.Model):
     @property
     def clinical_profile_complete(self) -> bool:
         """True only when core diabetes identity fields were actually provided."""
-        return bool(self.diabetes_type and self.treatment_type)
+        # "unknown" and "other" cannot authorize diabetes-specific clinical
+        # interpretation even when the patient reports a legacy treatment.
+        return bool(
+            self.diabetes_type in {'type1', 'type2', 'gestational', 'prediabetes'}
+            and self.treatment_type
+        )
 
     # ── Convenience accessors for backward-compat code paths ─────────────────
     # These proxy to base_profile so callers that do profile.preferred_language

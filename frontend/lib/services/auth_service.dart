@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
+import '../data/drift/patient_vault_scope.dart';
+
 import 'auth_epoch.dart';
 import 'firebase_migration_policy.dart';
 
@@ -156,6 +158,31 @@ class AuthService extends ChangeNotifier {
           (_firebaseAuth?.currentUser?.isAnonymous ?? false));
   bool get isAuditSession => _auditSession;
   User? get firebaseUser => _firebaseAuth?.currentUser;
+
+  /// Offline, fail-closed lookup: never invent a remote identity from a local
+  /// marker, Firebase hash, old bearer, or previous owner's SQLite profile.
+  /// Selecting a vault is not proof of an active server login/app-lock unlock.
+  Future<PatientVaultScope?> resolvePatientVaultScope() async {
+    if (!_initialized) {
+      throw StateError('Authentication must be initialized');
+    }
+    if (_auditSession) return PatientVaultScope.auditOnly();
+    if (_nativeToken != null) {
+      final accountId = _nativeAccountId;
+      return accountId == null
+          ? null
+          : PatientVaultScope.nativeDjango(accountId);
+    }
+    if (_firebaseAuth?.currentUser != null) return null;
+    if (!_localSessionEnrolled) return null;
+    final deviceId = await _storage.read(key: _localDeviceIdKey);
+    if (deviceId == null) return null;
+    try {
+      return PatientVaultScope.deviceLocal(deviceId);
+    } on ArgumentError {
+      return null;
+    }
+  }
 
   Future<void> initialize() async {
     try {

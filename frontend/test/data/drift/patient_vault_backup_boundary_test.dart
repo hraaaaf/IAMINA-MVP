@@ -85,6 +85,36 @@ void main() {
     expect((await other.select(other.patientProfiles).getSingle()).userId, 812);
   });
 
+
+  test('D7 spoofed vault name cannot relabel A profile as B', () async {
+    final a = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    final emptyB = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(812),
+    );
+    addTearDown(a.close);
+    addTearDown(emptyB.close);
+    await seed(a, 734);
+    final original = jsonDecode(await LocalBackup.exportVaultJson(a))
+        as Map<String, dynamic>;
+    original['vaultName'] = PatientVaultScope.nativeDjango(812).databaseName;
+    await expectLater(
+      LocalBackup.restoreVaultJson(emptyB, jsonEncode(original)),
+      throwsFormatException,
+    );
+    expect(await emptyB.select(emptyB.patientProfiles).get(), isEmpty);
+  });
+
+  test('D7 native vault refuses a foreign profile at export', () async {
+    final wrong = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(812),
+    );
+    addTearDown(wrong.close);
+    await seed(wrong, 734);
+    await expectLater(LocalBackup.exportVaultJson(wrong), throwsStateError);
+  });
+
   test('D7 ambiguous legacy export refuses multiple owners', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);

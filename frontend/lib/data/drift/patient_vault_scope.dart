@@ -8,13 +8,18 @@
 /// diagnosis, IP, or the old local fallback userId=1.
 final class PatientVaultScope {
   final String databaseName;
-  const PatientVaultScope._(this.databaseName);
+  final int? nativeDjangoUserId;
+
+  const PatientVaultScope._(this.databaseName, {this.nativeDjangoUserId});
 
   factory PatientVaultScope.nativeDjango(int userId) {
     if (userId <= 0) {
       throw ArgumentError.value(userId, 'userId', 'Invalid Django patient ID');
     }
-    return PatientVaultScope._('amina_vault_v1_native_$userId');
+    return PatientVaultScope._(
+      'amina_vault_v1_native_$userId',
+      nativeDjangoUserId: userId,
+    );
   }
 
   factory PatientVaultScope.deviceLocal(String deviceId) {
