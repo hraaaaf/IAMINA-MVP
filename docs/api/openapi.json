@@ -3309,7 +3309,6 @@
           "treatment_declaration_updated_at": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
