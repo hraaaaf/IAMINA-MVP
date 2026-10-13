@@ -180,6 +180,40 @@ void main() {
     auth.dispose();
   });
 
+  test('D30 journal upload is never auto-retried after server failure',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
+    });
+    final auth = AuthService(
+      httpClient: MockClient((request) async {
+        fail('Unexpected auth HTTP');
+      }),
+    );
+    await auth.initialize();
+
+    for (final status in [401, 503]) {
+      var outboundPosts = 0;
+      final api = ApiClient(
+        baseUrl: 'https://synthetic.example',
+        authService: auth,
+        httpClient: MockClient((request) async {
+          outboundPosts++;
+          expect(request.url.path, '/api/v1/logs/batch');
+          return http.Response(
+            '{"error":"synthetic"}',
+            status,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      expect(await api.batchSyncLogs([_syntheticLog]), isEmpty);
+      expect(outboundPosts, 1);
+    }
+    auth.dispose();
+  });
+
   test('D30 valid remote bearer preserves existing authenticated log sync', () async {
     FlutterSecureStorage.setMockInitialValues({
       'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
