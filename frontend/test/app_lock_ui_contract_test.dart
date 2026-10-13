@@ -52,6 +52,14 @@ void main() {
 
     expect(mainSource, contains('protectedLocalStateProbe:'));
     expect(mainSource, contains('authService.isAuthenticated'));
+    // D7 extraction: the presence check now lives in a separate security
+    // helper; inspecting only main.dart would miss the real protection.
+    final vaultProbe = File(
+      'lib/services/medical_vault_protected_state.dart',
+    ).readAsStringSync();
+    expect(mainSource, contains('hasProtectedMedicalVaultRows('));
+    expect(mainSource, contains('AppDatabase.forPatientVault(scope)'));
+    expect(mainSource, contains('legacyProtected || currentVaultProtected'));
     for (final table in <String>[
       'patientProfiles',
       'logEntries',
@@ -59,8 +67,9 @@ void main() {
       'medicationEvents',
       'reminders',
     ]) {
-      expect(mainSource, contains('db.$table'));
+      expect(vaultProbe, contains('db.$table'));
     }
+    expect(vaultProbe, contains('patient_treatment_declarations_v1'));
     expect(serviceSource, contains('await _hasProtectedLocalState()'));
     expect(serviceSource, contains('_recoveryRequired = true;'));
     expect(serviceSource, contains('return true;'));

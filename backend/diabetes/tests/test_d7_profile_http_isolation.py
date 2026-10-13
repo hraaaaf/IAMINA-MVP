@@ -29,15 +29,15 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         self.assertEqual(verify_native_token(self.token_b).pk, self.b.pk)
 
     def _get(self, token=None):
-        kwargs = {"HTTP_AUTHORIZATION": f"Bearer {token}"} if token else {}
-        return self.client.get("/api/v1/profile", **kwargs)
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        return self.client.get("/api/v1/profile", headers=headers)
 
     def _patch(self, token, payload):
         return self.client.patch(
             "/api/v1/profile",
             data=json.dumps(payload),
             content_type="application/json",
-            HTTP_AUTHORIZATION=f"Bearer {token}",
+            headers={"Authorization": f"Bearer {token}"},
         )
 
     def test_a_and_b_roundtrip_only_their_own_declarations(self):
