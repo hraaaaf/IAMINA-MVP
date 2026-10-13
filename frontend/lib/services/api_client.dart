@@ -293,8 +293,8 @@ class ApiClient {
       } else {
         return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
       }
-      if (confirmed == null ||
-          !treatmentMirrorMatches(confirmed, state, codes)) {
+      // Both accepted branches guarantee a non-null server snapshot.
+      if (!treatmentMirrorMatches(confirmed, state, codes)) {
         return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
       }
       final serverAt = verifiedServerTreatmentRevision(confirmed);
