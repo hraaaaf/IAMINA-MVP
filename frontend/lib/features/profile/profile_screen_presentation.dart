@@ -120,10 +120,13 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.science_outlined, l10n.treatment),
         const SizedBox(height: 12),
-        MedicalTreatmentSelector(
+        MedicalTreatmentMultiSelector(
           diabetesType: _diabetesType,
-          selectedTreatment: _treatment,
-          onSelected: (val) => _setPresentationState(() => _treatment = val),
+          value: _declaredTreatments,
+          onChanged: (value) => _setPresentationState(() {
+            _declaredTreatments = value;
+            _treatmentTouched = true;
+          }),
         ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
@@ -665,9 +668,20 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       ),
       _ => null,
     };
+    final reported = _declaredTreatments.state == D7TreatmentStatus.declared
+        ? _declaredTreatments.codes.join(' + ')
+        : switch (_declaredTreatments.state) {
+            D7TreatmentStatus.unsure => _profileUiText(context,
+                fr: 'Traitements inconnus', en: 'Treatments unknown',
+                ar: 'العلاجات غير معروفة'),
+            D7TreatmentStatus.noneDeclared => _profileUiText(context,
+                fr: 'Aucun traitement déclaré', en: 'No treatment reported',
+                ar: 'لا يوجد علاج مصرّح به'),
+            _ => treatment,
+          };
     final parts = <String>[
       if (diabetes != null) diabetes,
-      if (treatment != null) treatment,
+      if (reported != null) reported,
       _unit,
     ];
     return parts.join(' · ');

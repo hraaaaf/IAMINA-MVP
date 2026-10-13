@@ -9,11 +9,14 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_client.dart';
 import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
-import '../profile/medical_treatment_selector.dart';
+import '../profile/medical_treatment_declaration_v1.dart';
+import '../profile/medical_treatment_multi_selector.dart';
 
 String _preferencesCopy(
   BuildContext context, {
@@ -46,7 +49,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   String? _language;
   String? _country;
   String? _diabetesType;
-  String? _treatment;
+  String? _treatment; // existing optional legacy scalar; never inferred
+  D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
+  bool _treatmentTouched = false;
   String _unit = 'mg/dL';
   bool _saving = false;
   bool _preferencesInitialized = false;
@@ -153,6 +158,19 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .into(db.patientProfiles)
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
+      if (_treatmentTouched && db.patientVaultScope != null) {
+        await PatientTreatmentDeclarationStore(db).write(
+          state: d7StateCode(_declaredTreatments.state),
+          codes: _declaredTreatments.codes,
+        ).timeout(_persistenceTimeout);
+        // UI reports what the patient follows; a failed optional remote
+        // mirror must never roll back a valid local declaration.
+        if (context.mounted && context.read<AuthService>().hasRemoteApiCredential) {
+          await context.read<ApiClient>().patchProfile(
+            _declaredTreatments.toApiPatch(),
+          );
+        }
+      }
 
       if (mounted) context.go('/dashboard');
     } on TimeoutException catch (error, stackTrace) {
@@ -287,22 +305,25 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             ),
           ],
         ),
-      if (_diabetesType != null)
+      if (_country != null)
         _Question(
           title: _preferencesCopy(context,
-            fr: 'Quel traitement suivez-vous actuellement ?',
-            en: 'What treatment do you currently follow?',
-            ar: 'ما العلاج الذي تتبعه حاليًا؟',
+            fr: 'Quels traitements suivez-vous actuellement ? (facultatif)',
+            en: 'Which treatments do you currently follow? (optional)',
+            ar: 'ما العلاجات التي تتبعها حاليًا؟ (اختياري)',
           ),
           children: [
-            MedicalTreatmentSelector(
+            MedicalTreatmentMultiSelector(
               diabetesType: _diabetesType,
-              selectedTreatment: _treatment,
-              onSelected: (value) => setState(() => _treatment = value),
+              value: _declaredTreatments,
+              onChanged: (value) => setState(() {
+                _declaredTreatments = value;
+                _treatmentTouched = true;
+              }),
             ),
           ],
         ),
-      if (_treatment != null)
+      if (_country != null)
         _Question(
           title: l10n.onboardingUnitQuestion,
           children: [
@@ -327,7 +348,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             language: _language,
             country: _country,
             diabetesType: _diabetesType,
-            treatment: _treatment,
+            treatment: _treatmentTouched ? d7StateCode(_declaredTreatments.state) : null,
           );
 
     // Language and country are the only first-use prerequisites.

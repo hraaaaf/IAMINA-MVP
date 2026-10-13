@@ -11,10 +11,12 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
-import 'medical_treatment_selector.dart';
+import 'medical_treatment_declaration_v1.dart';
+import 'medical_treatment_multi_selector.dart';
 
 part 'profile_screen_presentation.dart';
 
@@ -53,7 +55,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _targetLowController = TextEditingController();
   final _targetHighController = TextEditingController();
   String? _diabetesType;
-  String? _treatment;
+  String? _treatment; // legacy clinical scalar stays unchanged
+  D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
+  bool _treatmentTouched = false;
   String _unit = 'mg/dL';
   bool _hasPersistedProfile = false;
   DateTime? _ramadanStartDate;
@@ -72,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final db = context.read<AppDatabase>();
     final profile = await db.getProfileForLocalUserId(db.activeProfileRowId);
     if (profile != null) {
+      if (!mounted) return;
       setState(() {
         _hasPersistedProfile = true;
         _diabetesType = profile.diabetesType;
@@ -82,6 +87,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ramadanStartDate = profile.ramadanStartDate;
         _ramadanEndDate = profile.ramadanEndDate;
       });
+    }
+    if (db.patientVaultScope != null) {
+      final record = await PatientTreatmentDeclarationStore(db).read();
+      if (!mounted || record == null) return;
+      final status = D7TreatmentStatus.values.firstWhere(
+        (value) => d7StateCode(value) == record.state,
+      );
+      setState(() => _declaredTreatments =
+          D7TreatmentDeclaration(status, record.codes));
     }
   }
 
@@ -444,11 +458,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
 
+    bool remoteMirrorConfirmed = true;
+    if (_treatmentTouched && db.patientVaultScope != null) {
+      await PatientTreatmentDeclarationStore(db).write(
+        state: d7StateCode(_declaredTreatments.state),
+        codes: _declaredTreatments.codes,
+      );
+      final auth = context.read<AuthService>();
+      remoteMirrorConfirmed = !auth.hasRemoteApiCredential ||
+          await context.read<ApiClient>().patchProfile(
+            _declaredTreatments.toApiPatch(),
+          );
+    }
+
     if (mounted) {
-      setState(() => _hasPersistedProfile = true);
+      setState(() {
+        _hasPersistedProfile = true;
+        _treatmentTouched = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.profileUpdated),
+          content: Text(remoteMirrorConfirmed
+              ? AppLocalizations.of(context)!.profileUpdated
+              : _profileUiText(context,
+                  fr: 'Enregistré localement. Synchronisation non confirmée.',
+                  en: 'Saved locally. Remote sync not confirmed.',
+                  ar: 'تم الحفظ محليًا. لم يتم تأكيد المزامنة.',
+                )),
           backgroundColor: AminaTheme.successEmerald,
           behavior: SnackBarBehavior.floating,
         ),
