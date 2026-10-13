@@ -75,7 +75,8 @@ class ProviderApiException implements Exception {
 
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
-  AuthInterceptor(this.authService);
+  final bool Function() canSyncClinicalJournal;
+  AuthInterceptor(this.authService, {required this.canSyncClinicalJournal});
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
@@ -91,7 +92,8 @@ class AuthInterceptor implements Interceptor {
         (request.url.path == '/api/v1/logs' ||
             request.url.path == '/api/v1/logs/batch');
     if (isJournalUpload &&
-        ((token == null || token.isEmpty) ||
+        (!canSyncClinicalJournal() ||
+            (token == null || token.isEmpty) ||
             !authService.hasRemoteApiCredential ||
             authEpochAtStart != AuthService.authEpoch)) {
       throw StateError('remote_journal_credential_required');
@@ -186,6 +188,12 @@ class ApiClient {
   final String baseUrl;
   final AuthService _authService;
   final http.Client? _httpClient;
+
+  /// D30 safety hold: Drift journal rows lack a verified remote patient owner
+  /// and IAMINA has no independent, versioned journal-sync opt-in yet.
+  /// A bearer (including a valid Django bearer) is not sufficient authority.
+  /// No production path may upload journal entries until both gates exist.
+  bool get canSyncClinicalJournal => false;
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
@@ -201,7 +209,10 @@ class ApiClient {
     client: _httpClient,
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
-      AuthInterceptor(_authService),
+      AuthInterceptor(
+        _authService,
+        canSyncClinicalJournal: () => canSyncClinicalJournal,
+      ),
       RetryInterceptor(_authService),
     ],
     converter: const JsonConverter(),
@@ -243,7 +254,10 @@ class ApiClient {
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
     return guardSyncApiCall<bool>('sync_log_entry', () async {
       final token = await _authService.getIdToken();
-      if (token == null || token.isEmpty || !_authService.hasRemoteApiCredential) {
+      if (!canSyncClinicalJournal ||
+          token == null ||
+          token.isEmpty ||
+          !_authService.hasRemoteApiCredential) {
         return false;
       }
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
@@ -258,7 +272,10 @@ class ApiClient {
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
       final token = await _authService.getIdToken();
-      if (token == null || token.isEmpty || !_authService.hasRemoteApiCredential) {
+      if (!canSyncClinicalJournal ||
+          token == null ||
+          token.isEmpty ||
+          !_authService.hasRemoteApiCredential) {
         return const <String>[];
       }
       final response = await _client.post(
