@@ -69,11 +69,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
   Future<void> _selectLanguage(String value) async {
     _language = value;
-    await context.read<LocalePreferenceService>().setExperience(
-      language: value,
-      country: _country ?? 'MA',
-      tone: _tone ?? 'neutral',
-    );
+    await context.read<LocalePreferenceService>().setLanguageOnly(value);
     if (mounted) setState(() {});
   }
 

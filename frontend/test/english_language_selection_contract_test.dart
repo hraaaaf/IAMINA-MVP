@@ -17,7 +17,16 @@ void main() {
     expect(onboarding, contains("label: 'English'"));
     expect(onboarding, contains("selected: _language == 'en'"));
     expect(onboarding, contains("onTap: () => _selectLanguage('en')"));
-    expect(onboarding, contains('LocalePreferenceService>().setExperience('));
+    // Immediate language selection is deliberately independent of country:
+    // complete setExperience is reserved for _finish after explicit selection.
+    final selectionStart = onboarding.indexOf('Future<void> _selectLanguage(');
+    final finishStart = onboarding.indexOf('Future<void> _finish(');
+    expect(selectionStart, greaterThanOrEqualTo(0));
+    expect(finishStart, greaterThan(selectionStart));
+    final selectionOnly = onboarding.substring(selectionStart, finishStart);
+    expect(selectionOnly, contains('setLanguageOnly(value)'));
+    expect(selectionOnly, isNot(contains('setExperience(')));
+    expect(selectionOnly, isNot(contains("country: _country ?? 'MA'")));
   });
 
   test('explicit English selection is persisted and restored deterministically', () {

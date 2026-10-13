@@ -14,6 +14,12 @@ import 'package:provider/provider.dart';
 class _LocalPreferences extends LocalePreferenceService {
   _LocalPreferences() : super(ApiClient(baseUrl: 'http://localhost:8000'));
 
+  // This viewport test isolates layout/navigation from secure-storage I/O.
+  // The real setLanguageOnly country-write behavior is covered separately by
+  // onboarding_explicit_country_boundary_test.dart with mocked storage.
+  @override
+  Future<void> setLanguageOnly(String language) async {}
+
   @override
   Future<void> setExperience({
     required String language,
