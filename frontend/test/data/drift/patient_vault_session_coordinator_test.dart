@@ -9,11 +9,15 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _AuthSignal extends ChangeNotifier {
+  void changeOwner() => notifyListeners();
+}
+
 void main() {
   test('D7 separate on-disk vaults survive A -> B -> A without exposure', () async {
     final dir = await Directory.systemTemp.createTemp('iamina-d7-vault-');
     addTearDown(() => dir.delete(recursive: true));
-    final changes = ChangeNotifier();
+    final changes = _AuthSignal();
     addTearDown(changes.dispose);
     var activeId = 734;
     final controller = PatientVaultSessionCoordinator(
@@ -36,7 +40,7 @@ void main() {
       ),
     );
     activeId = 812;
-    changes.notifyListeners();
+    changes.changeOwner();
     expect(controller.activeDatabase, isNull); // immediate redaction
     await pumpEventQueue();
     final b = controller.activeDatabase!;
@@ -50,7 +54,7 @@ void main() {
       ),
     );
     activeId = 734;
-    changes.notifyListeners();
+    changes.changeOwner();
     expect(controller.activeDatabase, isNull);
     await pumpEventQueue();
     final aAgain = controller.activeDatabase!;
@@ -60,7 +64,7 @@ void main() {
   });
 
   test('D7 unresolved owner has no access and never falls back to legacy', () async {
-    final changes = ChangeNotifier();
+    final changes = _AuthSignal();
     addTearDown(changes.dispose);
     final controller = PatientVaultSessionCoordinator(
       authChanges: changes,
@@ -75,7 +79,7 @@ void main() {
   });
 
   test('D7 stale async identity resolution cannot expose the prior owner', () async {
-    final changes = ChangeNotifier();
+    final changes = _AuthSignal();
     addTearDown(changes.dispose);
     final first = Completer<PatientVaultScope?>();
     var count = 0;
@@ -92,7 +96,7 @@ void main() {
     );
     addTearDown(controller.dispose);
     final pending = controller.initialize();
-    changes.notifyListeners();
+    changes.changeOwner();
     expect(controller.activeDatabase, isNull);
     first.complete(PatientVaultScope.nativeDjango(734));
     await pending;
