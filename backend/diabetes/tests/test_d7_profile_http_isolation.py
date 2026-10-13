@@ -9,8 +9,8 @@ from django.test import Client, TestCase
 
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
+from diabetes.api.v1.security import HybridBearerAuth, firebase_auth_backend
 from diabetes.models import DiabetesProfile
-from diabetes.api.v1.security import firebase_auth_backend
 
 
 class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
@@ -37,19 +37,24 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         self.assertIsNotNone(direct, "The native bearer adapter rejected a valid token")
         self.assertEqual(direct.pk, self.a.pk)
 
-
     def _get(self, token=None):
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         return self.client.get("/api/v1/profile", headers=headers)
 
     def _patch(self, token, payload):
-        # Track the *real HTTP request* and the mounted Ninja auth callback.
-        # Log neither token bytes nor patient data on assertion failure.
+        # Observe the authenticator CLASS rather than the declaration-time
+        # singleton: Ninja can bind a different instance on router mounting.
+        # Preserve original authentication; record no token/patient payload.
+        native_bearer_calls = []
+        original_authenticate = HybridBearerAuth.authenticate
+
+        def trace_native_bearer(authenticator, request, token):
+            native_bearer_calls.append(True)
+            return original_authenticate(authenticator, request, token)
+
         with mock_patch.object(
-            firebase_auth_backend,
-            "authenticate",
-            wraps=firebase_auth_backend.authenticate,
-        ) as native_bearer:
+            HybridBearerAuth, "authenticate", trace_native_bearer
+        ):
             response = self.client.patch(
                 "/api/v1/profile",
                 data=json.dumps(payload),
@@ -64,9 +69,10 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
                 "The Django client did not deliver an IAMINA bearer header",
             )
             self.assertGreater(
-                native_bearer.call_count,
+                len(native_bearer_calls),
                 0,
-                "The mounted Django-Ninja profile route did not invoke HybridBearerAuth",
+                "Mounted Django-Ninja profile route never invoked the "
+                "HybridBearerAuth.authenticate implementation",
             )
             return response
 
