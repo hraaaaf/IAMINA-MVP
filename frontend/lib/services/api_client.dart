@@ -89,15 +89,40 @@ Future<T> readForStableAuthEpoch<T>(Future<T> Function() read) async {
   return value;
 }
 
+/// Patient-owned sync must not leave the device after the app-lock closes,
+/// including while a bearer or retry timer is resolving asynchronously.
+/// Public login/enrollment endpoints are deliberately excluded.
+void requireUnlockedPatientSyncTransport(
+  Uri url,
+  bool Function()? canUsePatientSyncTransport,
+) {
+  const patientSyncPaths = <String>{
+    '/api/v1/profile',
+    '/api/v1/logs',
+    '/api/v1/logs/batch',
+  };
+  if (patientSyncPaths.contains(url.path) &&
+      canUsePatientSyncTransport != null &&
+      !canUsePatientSyncTransport()) {
+    throw StateError('Patient sync blocked while device is locked');
+  }
+}
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
-  AuthInterceptor(this.authService);
+  final bool Function()? canUsePatientSyncTransport;
+  AuthInterceptor(this.authService, {this.canUsePatientSyncTransport});
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
     final token = await readForStableAuthEpoch(authService.getIdToken);
+    // This executes AFTER any async credential lookup and immediately before
+    // the Chopper chain is allowed to dispatch the medical request.
+    requireUnlockedPatientSyncTransport(
+      chain.request.url, canUsePatientSyncTransport,
+    );
     Request request = chain.request;
     if (token != null && token.isNotEmpty) {
       request = applyHeader(
@@ -126,15 +151,19 @@ class TimeoutInterceptor implements Interceptor {
 
 class RetryInterceptor implements Interceptor {
   final AuthService authService;
+  final bool Function()? canUsePatientSyncTransport;
   static const int _maxRetries = 3;
 
-  RetryInterceptor(this.authService);
+  RetryInterceptor(this.authService, {this.canUsePatientSyncTransport});
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
     final epoch = AuthEpoch.value;
+    requireUnlockedPatientSyncTransport(
+      chain.request.url, canUsePatientSyncTransport,
+    );
     Response<BodyType> response = await chain.proceed(chain.request);
     requireCurrentAuthEpoch(epoch);
 
@@ -149,6 +178,9 @@ class RetryInterceptor implements Interceptor {
           'Bearer $newToken',
           override: true,
         );
+        requireUnlockedPatientSyncTransport(
+          retryRequest.url, canUsePatientSyncTransport,
+        );
         response = await chain.proceed(retryRequest);
         requireCurrentAuthEpoch(epoch);
       }
@@ -160,6 +192,9 @@ class RetryInterceptor implements Interceptor {
     while (_isServerError(response.statusCode) && attempt < _maxRetries) {
       await Future.delayed(Duration(seconds: 1 << attempt));
       requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(
+        chain.request.url, canUsePatientSyncTransport,
+      );
       response = await chain.proceed(chain.request);
       requireCurrentAuthEpoch(epoch);
       attempt++;
@@ -217,18 +252,27 @@ DateTime? verifiedServerTreatmentRevision(Map<String, dynamic> profile) {
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final bool Function()? _canUsePatientSyncTransport;
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({
+    this.baseUrl = kBaseUrl,
+    AuthService? authService,
+    bool Function()? canUsePatientSyncTransport,
+  }) : _authService = authService ?? AuthService(),
+       _canUsePatientSyncTransport = canUsePatientSyncTransport;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
-      AuthInterceptor(_authService),
-      RetryInterceptor(_authService),
+      AuthInterceptor(
+        _authService, canUsePatientSyncTransport: _canUsePatientSyncTransport,
+      ),
+      RetryInterceptor(
+        _authService, canUsePatientSyncTransport: _canUsePatientSyncTransport,
+      ),
       CurlInterceptor(),
     ],
     converter: const JsonConverter(),

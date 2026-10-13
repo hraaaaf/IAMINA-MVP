@@ -1,3 +1,17 @@
+# REPRISE PRIORITAIRE — D7 — 13 octobre 2026, après CI SQLite/Postgres/Flutter verte
+
+**D7 OUVERTE — PR #986 DRAFT NON FUSIONNÉE — aucun Vercel. Ce bloc est plus récent que les statuts archivés ci-dessous.**
+
+- **Goal** : déclaration des traitements strictement facultative, patient-owned, versionnée, sans suggestion médicale implicite ; sync CAS/ACK, coffre local isolé, restauration sur autre appareil, offline, app-lock et consentement ; garde D19 pour toute individualisation clinique.
+- **Dernier HEAD dont la CI principale est prouvée verte** : `f03c1f7933d5d45f47fdd52bec42d1e6d89564ab`, [run #38485886873](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38485886873) **6/6 jobs SUCCESS** : SQLite, PostgreSQL, Flutter analyze/tests/build et 3 contrôles ; P5-5, migrations et PWA également verts. Plusieurs workflows visuels/iOS encore IN_PROGRESS au contrôle, ne pas extrapoler 16/16.
+- **Correctif f03 livré/testé** : six tests migration Drift v12 + test refus sauvegarde v10 obsolètes corrigés ; `LocalBackup` exporte/restaure état `pending/confirmed/conflict`, génération et révision CAS et valide les métadonnées avant toute transaction destructive ; 2 nouveaux tests. **CI principale SUCCESS.** La certification D7 globale reste ouverte.
+- **Présent lot de sécurité (INCLUS dans le commit qui modifie ce document, PAS ENCORE TESTÉ CI)** : `ApiClient` transmet désormais une garde `canUsePatientSyncTransport` depuis `main.dart`, basée sur `appLockService.isUnlocked`. `AuthInterceptor` revérifie APRÈS `await getIdToken` et avant `chain.proceed`; `RetryInterceptor` vérifie AVANT premier egress et chaque retry 401/5xx après token/délai. Cela ne couvre que `/api/v1/profile`, `/api/v1/logs`, `/api/v1/logs/batch`; auth login/enrollment reste utilisable. Tests ajoutés : garde chemins et statut, lock pendant await bearer, retry après relock. **Pas de preuve de sûreté réseau globale ou de dispositif réel tant que CI/test de bout en bout non prouvés.**
+- **Gates actifs** : CI du présent commit, multi-compte A→logout→B→A sur dispositif et nouveau device, offline/réessais/conflits, coffre device-only/legacy/consentement, captures BEFORE→cible→AFTER mêmes 390×844 / 768×1024 / 1280×900 + analyse visuelle, revue indépendante sécurité et clinique, validation UI explicite. Ne pas merger #986/#963 ni déployer Vercel.
+- **Next exact** : constater CI du HEAD associé à ce présent commit ; corriger tous échecs prouvés ; certifier vraie sync multi-appareils, offline, egress app-lock et consentements, UI et avis médicaux ; seulement ensuite gate humain, merge et postmerge/closeout, puis D9.
+- **Avancement global P5 : 50 % historique (6/12), inchangé.**
+
+---
+
 # REPRISE PRIORITAIRE — IAMINA D7 — 13/10/2026, contrôle CI et sûreté
 
 **D7 TOUJOURS OUVERTE — STOP MERGE / STOP DEPLOY. Cette section fait foi sur l'archive historique ci-dessous.**

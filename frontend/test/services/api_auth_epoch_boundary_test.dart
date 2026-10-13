@@ -14,6 +14,61 @@ void main() {
     await expectLater(result, throwsStateError);
   });
 
+  test('D7 patient endpoints fail closed when app-lock closes', () {
+    const blocked = [
+      '/api/v1/profile',
+      '/api/v1/logs',
+      '/api/v1/logs/batch',
+    ];
+    for (final path in blocked) {
+      expect(
+        () => requireUnlockedPatientSyncTransport(
+          Uri.parse(path), () => false,
+        ),
+        throwsStateError,
+      );
+      expect(
+        () => requireUnlockedPatientSyncTransport(
+          Uri.parse(path), () => true,
+        ),
+        returnsNormally,
+      );
+    }
+    // Authentication and enrollment must work before a device is unlocked.
+    expect(() => requireUnlockedPatientSyncTransport(
+      Uri.parse('/api/v1/auth/login'), () => false,
+    ), returnsNormally);
+  });
+
+  test('D7 locking during async token lookup blocks profile egress', () async {
+    final token = Completer<String?>();
+    var unlocked = true;
+    var dispatched = false;
+    Future<void> issueProfileRequest() async {
+      await readForStableAuthEpoch(() => token.future);
+      requireUnlockedPatientSyncTransport(
+        Uri.parse('/api/v1/profile'), () => unlocked,
+      );
+      dispatched = true;
+    }
+    final inFlight = issueProfileRequest();
+    unlocked = false;
+    token.complete('synthetic-a-token');
+    await expectLater(inFlight, throwsStateError);
+    expect(dispatched, isFalse);
+  });
+
+  test('D7 retry after app-lock closes cannot dispatch medical request', () {
+    var unlocked = true;
+    requireUnlockedPatientSyncTransport(
+      Uri.parse('/api/v1/logs/batch'), () => unlocked,
+    );
+    unlocked = false;
+    expect(() => requireUnlockedPatientSyncTransport(
+      Uri.parse('/api/v1/logs/batch'), () => unlocked,
+    ), throwsStateError);
+  });
+
   test('D7 unchanged epoch preserves normal authenticated token lookup', () async {
     final result = await readForStableAuthEpoch(
       () async => 'synthetic-a-token',

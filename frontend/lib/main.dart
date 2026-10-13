@@ -97,7 +97,12 @@ Future<void> main() async {
   // Switching A to B must revoke the previous device unlock immediately.
   authService.addListener(appLockService.lock);
 
-  final apiClient = ApiClient(authService: authService);
+  final apiClient = ApiClient(
+    authService: authService,
+    // Login/enrollment remain available while locked. Only patient-owned
+    // profile/log sync is stopped at the final transport boundary.
+    canUsePatientSyncTransport: () => appLockService.isUnlocked,
+  );
   final localePreferenceService = LocalePreferenceService(
     apiClient,
     auditLocale: auditAllowed
