@@ -134,6 +134,15 @@ class RetryInterceptor implements Interceptor {
   ) async {
     Response<BodyType> response = await chain.proceed(chain.request);
 
+    // Journal uploads can contain patient health data. A delayed HTTP retry
+    // could replay it after account switch/logout or without explicit consent.
+    // Leave the local outbox pending until a newly authorized sync attempt.
+    final request = chain.request;
+    final isClinicalJournalPost = request.method.toUpperCase() == 'POST' &&
+        (request.url.path == '/api/v1/logs' ||
+            request.url.path == '/api/v1/logs/batch');
+    if (isClinicalJournalPost) return response;
+
     // 401 — refresh token and retry once
     if (response.statusCode == 401) {
       final newToken = await authService.refreshToken();
