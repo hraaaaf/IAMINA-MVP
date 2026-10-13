@@ -206,7 +206,11 @@ class AppDatabase extends _$AppDatabase {
     if (start != null && end != null && start.isAfter(end)) {
       throw ArgumentError('Ramadan period start must not be after end');
     }
-    final existing = await getProfileForLocalUserId(activeProfileRowId);
+    // Pre-D7 legacy fixtures retain their historical behavior. Patient vaults
+    // never select or mutate an arbitrary first profile.
+    final existing = patientVaultScope == null
+        ? await (select(patientProfiles)..limit(1)).getSingleOrNull()
+        : await getProfileForLocalUserId(activeProfileRowId);
     if (existing == null) return false;
 
     final updated =
@@ -330,7 +334,11 @@ class AppDatabase extends _$AppDatabase {
   /// [granted] true = consent given, false = consent withdrawn.
   Future<void> setAiConsent({required bool granted}) async {
     final ts = granted ? DateTime.now() : null;
-    final existing = await getProfileForLocalUserId(activeProfileRowId);
+    // Pre-D7 legacy fixtures retain their historical behavior. Patient vaults
+    // never select or mutate an arbitrary first profile.
+    final existing = patientVaultScope == null
+        ? await (select(patientProfiles)..limit(1)).getSingleOrNull()
+        : await getProfileForLocalUserId(activeProfileRowId);
     if (existing != null) {
       await (update(patientProfiles)
             ..where((t) => t.userId.equals(existing.userId)))
