@@ -168,9 +168,12 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       if (!_treatmentTouched && mounted &&
           db.patientVaultScope?.nativeDjangoUserId != null &&
           context.read<AuthService>().hasRemoteApiCredential) {
-        await context.read<SyncService>()
-            .restorePatientTreatmentDeclaration()
-            .timeout(_persistenceTimeout);
+        // Remote restoration is best-effort and must not hold the patient
+        // inside first-use if the network is down. The vault-bound sync
+        // service verifies the auth epoch before accepting the response.
+        unawaited(
+          context.read<SyncService>().restorePatientTreatmentDeclaration(),
+        );
       }
       if (_treatmentTouched && db.patientVaultScope != null) {
         await PatientTreatmentDeclarationStore(db).write(
