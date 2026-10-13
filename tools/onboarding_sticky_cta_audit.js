@@ -117,9 +117,27 @@ async function chooseCountry(page, width, height) {
         }
         await choose(page, 'Français');
         await chooseCountry(page, width, height);
-        for (const choice of ['Diabète Type 2', 'Comprimés']) {
-          await choose(page, choice);
+        await choose(page, 'Pré-diabète');
+        // D7: the FIRST view must not present insulin as a routine prediabetes
+        // choice; the user may still explicitly report a treatment they take.
+        const insulin = page.getByText('Insuline', {exact:true});
+        if (await insulin.first().isVisible().catch(() => false)) {
+          throw new Error('D7: prediabetes first view foregrounds insulin');
         }
+        await page.getByText('Habitudes de vie', {exact:true}).last()
+          .scrollIntoViewIfNeeded().catch(()=>{});
+        await page.screenshot({
+          path: out + '/d7-prediabetes-first-view-' + width + 'x' + height + '.png',
+          fullPage: false,
+        });
+        await choose(page,
+          'Je suis un autre traitement / Je préfère répondre plus tard');
+        await page.screenshot({
+          path: out + '/d7-prediabetes-expanded-' + width + 'x' + height + '.png',
+          fullPage: false,
+        });
+        await choose(page, 'Diabète Type 2');
+        await choose(page, 'Médicaments déclarés');
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
         // Both must state exactly five steps after the four required choices.
