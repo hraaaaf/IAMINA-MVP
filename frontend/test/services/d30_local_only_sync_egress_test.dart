@@ -14,6 +14,18 @@ const _syntheticLog = <String, dynamic>{
   'source': 'manual',
 };
 
+class _CountingTokenAuthService extends AuthService {
+  int tokenReadCount = 0;
+
+  _CountingTokenAuthService({required super.httpClient});
+
+  @override
+  Future<String?> getIdToken() async {
+    tokenReadCount++;
+    return super.getIdToken();
+  }
+}
+
 // Simulates a legacy/third-party token. It must not authorize IAMINA uploads.
 class _NonNativeTokenAuthService extends AuthService {
   _NonNativeTokenAuthService({required super.httpClient});
@@ -48,7 +60,7 @@ void main() {
   test('D30 local-only session cannot upload health payload by any journal path',
       () async {
     FlutterSecureStorage.setMockInitialValues({});
-    final auth = AuthService(
+    final auth = _CountingTokenAuthService(
       httpClient: MockClient((request) async {
         fail('Unexpected authentication network request');
       }),
@@ -57,6 +69,7 @@ void main() {
     await auth.enrollLocalDevice();
     expect(auth.isAuthenticated, isTrue);
     expect(await auth.getIdToken(), isNull);
+    final tokenReadsBeforeBlockedSync = auth.tokenReadCount;
 
     var outgoingJournalRequests = 0;
     final api = ApiClient(
@@ -81,6 +94,7 @@ void main() {
       throwsA(isA<StateError>()),
     );
     expect(outgoingJournalRequests, 0);
+    expect(auth.tokenReadCount, tokenReadsBeforeBlockedSync);
     expect(auth.hasRemoteApiCredential, isFalse);
     auth.dispose();
   });
