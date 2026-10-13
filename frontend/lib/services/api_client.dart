@@ -181,6 +181,39 @@ const int kMaxDocumentUploadBytes = 15 * 1024 * 1024;
 bool isDocumentUploadSizeAllowed(int byteLength) =>
     byteLength > 0 && byteLength <= kMaxDocumentUploadBytes;
 
+enum TreatmentMirrorStatus { confirmed, conflict, unavailable }
+
+final class TreatmentMirrorResult {
+  final TreatmentMirrorStatus status;
+  final DateTime? serverUpdatedAtUtc;
+  const TreatmentMirrorResult(this.status, {this.serverUpdatedAtUtc});
+}
+
+/// The backend must acknowledge exactly the declared state and codes.
+bool treatmentMirrorMatches(
+  Map<String, dynamic> profile,
+  String state,
+  List<String> codes,
+) {
+  final remoteCodes = profile['treatment_declarations'];
+  if (profile['treatment_declaration_source'] != 'patient_declared' ||
+      profile['treatment_declaration_version'] != 1 ||
+      profile['treatment_declaration_state'] != state ||
+      remoteCodes is! List ||
+      remoteCodes.length != codes.length) return false;
+  for (var i = 0; i < codes.length; i++) {
+    if (remoteCodes[i] != codes[i]) return false;
+  }
+  return true;
+}
+
+DateTime? verifiedServerTreatmentRevision(Map<String, dynamic> profile) {
+  final raw = profile['treatment_declaration_updated_at'];
+  if (raw is! String ||
+      !RegExp(r'(Z|[+-][0-9]{2}:[0-9]{2})$').hasMatch(raw)) return null;
+  return DateTime.tryParse(raw)?.toUtc();
+}
+
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
@@ -217,6 +250,64 @@ class ApiClient {
       rethrow;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Strict opt-in CAS mirror. An HTTP 200 without matching server evidence
+  /// is NOT acknowledgement. 409 never overwrites a competing declaration.
+  Future<TreatmentMirrorResult> mirrorTreatmentDeclaration({
+    required String state,
+    required List<String> codes,
+    required DateTime? expectedUpdatedAtUtc,
+  }) async {
+    final epoch = AuthEpoch.value;
+    final payload = <String, dynamic>{
+      'treatment_declaration': {
+        'version': 1,
+        'state': state,
+        'codes': codes,
+      },
+    };
+    try {
+      final response = await _client.patch(
+        Uri.parse('/api/v1/profile'),
+        body: payload,
+        headers: {
+          'X-Iamina-Treatment-Expected-Updated-At':
+              expectedUpdatedAtUtc?.toUtc().toIso8601String() ?? 'none',
+        },
+      );
+      requireCurrentAuthEpoch(epoch);
+      Map<String, dynamic>? confirmed;
+      if (response.statusCode == 409) {
+        // A lost 200 followed by a retry can legitimately hit 409.
+        // Read back owner-scoped server state before calling it a conflict.
+        confirmed = await getProfile();
+        requireCurrentAuthEpoch(epoch);
+        if (confirmed == null ||
+            !treatmentMirrorMatches(confirmed, state, codes)) {
+          return const TreatmentMirrorResult(TreatmentMirrorStatus.conflict);
+        }
+      } else if (response.isSuccessful && response.body is Map) {
+        confirmed = Map<String, dynamic>.from(response.body as Map);
+      } else {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      if (!treatmentMirrorMatches(confirmed, state, codes)) {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      final serverAt = verifiedServerTreatmentRevision(confirmed);
+      if (serverAt == null) {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      return TreatmentMirrorResult(
+        TreatmentMirrorStatus.confirmed,
+        serverUpdatedAtUtc: serverAt,
+      );
+    } on StateError {
+      rethrow;
+    } catch (_) {
+      return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
     }
   }
 

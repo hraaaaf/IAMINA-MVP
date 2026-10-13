@@ -41,6 +41,7 @@ class SyncService {
   // upload its pending medical rows under a new patient's bearer.
   final int _ownerAuthEpoch = AuthEpoch.value;
   bool _disposed = false;
+  bool _treatmentSyncing = false;
   bool get _sessionActive => !_disposed && AuthEpoch.value == _ownerAuthEpoch;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
@@ -131,6 +132,63 @@ class SyncService {
     }
   }
 
+  /// Attempt one optimistic upload, preserving local data until a matching
+  /// server receipt is observed. Call only while the native vault is unlocked.
+  Future<bool> sendPendingTreatmentDeclaration() async {
+    if (!_sessionActive || _treatmentSyncing ||
+        _db.patientVaultScope?.nativeDjangoUserId == null) return false;
+    _treatmentSyncing = true;
+    try {
+      final store = PatientTreatmentDeclarationStore(_db);
+      final local = await store.read();
+      if (!_sessionActive) return false;
+      if (local == null || local.syncStatus == 'confirmed') return true;
+      if (local.syncStatus == 'conflict') {
+        state.value = SyncUiState.error;
+        return false;
+      }
+      state.value = SyncUiState.syncing;
+      final result = await _apiClient.mirrorTreatmentDeclaration(
+        state: local.state,
+        codes: local.codes,
+        expectedUpdatedAtUtc: local.baseServerUpdatedAtUtc,
+      );
+      if (!_sessionActive) return false;
+      if (result.status == TreatmentMirrorStatus.confirmed &&
+          result.serverUpdatedAtUtc != null) {
+        final acknowledged = await store.acknowledgeIfUnchanged(
+          expectedGeneration: local.localGeneration,
+          serverUpdatedAtUtc: result.serverUpdatedAtUtc!,
+        );
+        if (!_sessionActive) return false;
+        state.value = acknowledged ? SyncUiState.upToDate : SyncUiState.pending;
+        return acknowledged;
+      }
+      if (result.status == TreatmentMirrorStatus.conflict) {
+        final marked = await store.markConflictIfUnchanged(
+          local.localGeneration,
+        );
+        if (!_sessionActive) return false;
+        state.value = marked ? SyncUiState.error : SyncUiState.pending;
+        return false;
+      }
+      state.value = SyncUiState.pending;
+      return false;
+    } catch (error, stackTrace) {
+      if (_sessionActive) {
+        state.value = SyncUiState.error;
+        _failureLogger(
+          'sync_treatment_declaration',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
+      return false;
+    } finally {
+      _treatmentSyncing = false;
+    }
+  }
+
   Future<void> refreshState() async {
     if (!_sessionActive) return;
     final connectivity = await _connectivity.checkConnectivity();
@@ -142,6 +200,29 @@ class SyncService {
 
     final pending = await _db.getPendingLogs();
     if (!_sessionActive) return;
+    if (_db.patientVaultScope?.nativeDjangoUserId != null) {
+      try {
+        final local = await PatientTreatmentDeclarationStore(_db).read();
+        if (!_sessionActive) return;
+        if (local?.syncStatus == 'conflict') {
+          state.value = SyncUiState.error;
+          return;
+        }
+        if (local?.syncStatus == 'pending') {
+          state.value = SyncUiState.pending;
+          return;
+        }
+      } catch (error, stackTrace) {
+        if (!_sessionActive) return;
+        state.value = SyncUiState.error;
+        _failureLogger(
+          'read_treatment_sync_status',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+        return;
+      }
+    }
     state.value = pending.isEmpty ? SyncUiState.upToDate : SyncUiState.pending;
   }
 

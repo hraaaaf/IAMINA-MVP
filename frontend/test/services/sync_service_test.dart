@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:amina/services/sync_service.dart';
+import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_epoch.dart';
 import 'dart:async';
 import 'package:amina/data/drift/database.dart';
@@ -217,6 +218,75 @@ void main() {
     );
     return db;
   }
+
+  test('D7 pending treatment requires matching server receipt to be confirmed', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final serverTime = DateTime.utc(2026, 10, 13, 17);
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) async => TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: serverTime,
+    ));
+    expect(await sender.sendPendingTreatmentDeclaration(), isTrue);
+    expect((await store.read())?.syncStatus, 'confirmed');
+    expect((await store.read())?.baseServerUpdatedAtUtc, serverTime);
+    verify(() => mockApi.mirrorTreatmentDeclaration(
+      state: 'declared',
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: null,
+    )).called(1);
+  });
+
+  test('D7 409 conflict never overwrites local treatment choices', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) async =>
+        const TreatmentMirrorResult(TreatmentMirrorStatus.conflict));
+    expect(await sender.sendPendingTreatmentDeclaration(), isFalse);
+    expect((await store.read())?.syncStatus, 'conflict');
+    expect((await store.read())?.codes, ['lifestyle']);
+    expect(sender.state.value, SyncUiState.error);
+  });
+
+  test('D7 epoch change before acknowledgement leaves local pending', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['oral_meds']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final confirmation = Completer<TreatmentMirrorResult>();
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) => confirmation.future);
+    final running = sender.sendPendingTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    AuthEpoch.advance();
+    confirmation.complete(TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: DateTime.utc(2026, 10, 13),
+    ));
+    expect(await running, isFalse);
+    expect((await store.read())?.syncStatus, 'pending');
+  });
 
   test('D7 remote explicit declaration restores into own empty native vault', () async {
     final db = await nativeVault(734);
