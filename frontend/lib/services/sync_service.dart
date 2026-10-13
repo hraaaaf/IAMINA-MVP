@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/drift/database.dart';
+import 'auth_epoch.dart';
 import 'api_client.dart';
 import 'sync_api_contract.dart';
 
@@ -35,6 +36,11 @@ class SyncService {
   final ApiClient _apiClient;
   final SyncFailureLogger _failureLogger;
   final Connectivity _connectivity = Connectivity();
+  // One synchronizer is bound to one auth epoch: a retired session may never
+  // upload its pending medical rows under a new patient's bearer.
+  final int _ownerAuthEpoch = AuthEpoch.value;
+  bool _disposed = false;
+  bool get _sessionActive => !_disposed && AuthEpoch.value == _ownerAuthEpoch;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   /// Kept for compatibility with existing consumers that only need activity.
@@ -65,10 +71,12 @@ class SyncService {
   }
 
   void init() {
+    if (!_sessionActive) return;
     unawaited(refreshState());
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
       results,
     ) {
+      if (!_sessionActive) return;
       if (_isOffline(results)) {
         state.value = SyncUiState.offline;
         return;
@@ -83,23 +91,27 @@ class SyncService {
   }
 
   Future<void> refreshState() async {
+    if (!_sessionActive) return;
     final connectivity = await _connectivity.checkConnectivity();
+    if (!_sessionActive) return;
     if (_isOffline(connectivity)) {
       state.value = SyncUiState.offline;
       return;
     }
 
     final pending = await _db.getPendingLogs();
+    if (!_sessionActive) return;
     state.value = pending.isEmpty ? SyncUiState.upToDate : SyncUiState.pending;
   }
 
   Future<void> syncPendingLogs() async {
-    if (isSyncing.value) return;
+    if (!_sessionActive || isSyncing.value) return;
 
     // An explicit retry must remain usable and testable without consulting a
     // platform channel first. Connectivity events set the offline state; the
     // network request itself is the source of truth for reachability.
     final pending = await _db.getPendingLogs();
+    if (!_sessionActive) return;
     if (pending.isEmpty) {
       state.value = SyncUiState.upToDate;
       return;
@@ -138,9 +150,13 @@ class SyncService {
         };
       }).toList();
 
+      // Recheck immediately before network egress, after every async read.
+      if (!_sessionActive) return;
       final syncedUuids = await _apiClient.batchSyncLogs(batch);
+      if (!_sessionActive) return;
 
       for (final log in pending) {
+        if (!_sessionActive) return;
         if (syncedUuids.contains(log.clientUuid)) {
           await _db.markLogAsSynced(log.id);
         } else {
@@ -150,10 +166,12 @@ class SyncService {
       }
 
       final stillPending = await _db.getPendingLogs();
+      if (!_sessionActive) return;
       state.value = hadFailure || stillPending.isNotEmpty
           ? SyncUiState.error
           : SyncUiState.upToDate;
     } catch (error, stackTrace) {
+      if (!_sessionActive) return;
       hadFailure = true;
       state.value = SyncUiState.error;
       final errorType = error is SyncApiException
@@ -161,11 +179,15 @@ class SyncService {
           : error.runtimeType.toString();
       _failureLogger('sync_pending_logs', errorType, stackTrace);
       for (final log in pending) {
+        if (!_sessionActive) return;
         await _db.reportSyncFailure(log.id, log.syncAttempts);
       }
     } finally {
+      if (_disposed) return;
       isSyncing.value = false;
-      if (!hadFailure && state.value == SyncUiState.syncing) {
+      if (!_sessionActive) {
+        state.value = SyncUiState.checking;
+      } else if (!hadFailure && state.value == SyncUiState.syncing) {
         state.value = SyncUiState.upToDate;
       }
     }
@@ -228,6 +250,7 @@ class SyncService {
   }
 
   void dispose() {
+    _disposed = true;
     _connectivitySubscription?.cancel();
     isSyncing.dispose();
     state.dispose();

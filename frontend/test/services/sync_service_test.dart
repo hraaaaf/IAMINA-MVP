@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:amina/services/sync_service.dart';
+import 'package:amina/services/auth_epoch.dart';
+import 'dart:async';
 import 'package:amina/data/drift/database.dart';
 import '../mocks.dart';
 
@@ -107,6 +109,43 @@ void main() {
     expect(syncService.isSyncing.value, isFalse);
     expect(failureEvents, ['sync_pending_logs:StateError']);
     verify(() => mockDb.reportSyncFailure(testLog.id, testLog.syncAttempts)).called(1);
+  });
+
+
+  test('D7 account switch while pending-read awaits blocks cross-owner egress', () async {
+    final pending = Completer<List<LogEntryData>>();
+    when(() => mockDb.getPendingLogs()).thenAnswer((_) => pending.future);
+
+    final running = syncService.syncPendingLogs();
+    AuthEpoch.advance(); // synthetic A -> B before the Drift read resolves
+    pending.complete([testLog]);
+    await running;
+
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+    verifyNever(() => mockDb.markLogAsSynced(any()));
+    verifyNever(() => mockDb.reportSyncFailure(any(), any()));
+  });
+
+  test('D7 account switch during network await blocks stale local writes', () async {
+    final confirmation = Completer<List<String>>();
+    when(() => mockDb.getPendingLogs()).thenAnswer((_) async => [testLog]);
+    when(() => mockApi.batchSyncLogs(any())).thenAnswer((_) => confirmation.future);
+    final running = syncService.syncPendingLogs();
+    // Let the initial Drift pending read complete and batch dispatch begin.
+    await Future<void>.delayed(Duration.zero);
+    AuthEpoch.advance(); // synthetic A -> B before server response
+    confirmation.complete(['test-uuid-1']);
+    await running;
+
+    verifyNever(() => mockDb.markLogAsSynced(any()));
+    verifyNever(() => mockDb.reportSyncFailure(any(), any()));
+  });
+
+  test('D7 stale synchronizer cannot upload after owner switch', () async {
+    AuthEpoch.advance();
+    await syncService.syncPendingLogs();
+    verifyNever(() => mockDb.getPendingLogs());
+    verifyNever(() => mockApi.batchSyncLogs(any()));
   });
 
   test('malformed meal JSON uses typed fallback and remains syncable', () async {
