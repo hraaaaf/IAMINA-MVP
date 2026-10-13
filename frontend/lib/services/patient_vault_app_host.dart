@@ -181,8 +181,29 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     super.dispose();
   }
 
+  Widget _buildAuditLockPreview() => MultiProvider(
+    providers: [
+      Provider<AppDatabase>.value(value: _guestDatabase),
+      ChangeNotifierProvider<AuthService>.value(value: widget.auth),
+      ChangeNotifierProvider<AppLockService>.value(value: widget.appLock),
+      Provider<ApiClient>.value(value: widget.api),
+      ChangeNotifierProvider<LocalePreferenceService>.value(value: widget.locale),
+      ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
+    ],
+    child: AminaApp(router: _guestRouter.router, appLockService: widget.appLock),
+  );
+
   @override
   Widget build(BuildContext context) {
+    // Only loopback+compile-time audit visual previews may render an app-lock
+    // route before resolving a patient vault. No clinical vault or consent
+    // provider is ever exposed in this synthetic preview.
+    final auditLockVisual = widget.auditAllowed &&
+        widget.auth.isAuditSession &&
+        Uri.base.queryParameters['audit'] == 'visual-cert' &&
+        Uri.base.fragment.startsWith('/app-lock/');
+    if (auditLockVisual) return _buildAuditLockPreview();
+
     final bundle = _bindings;
     if (bundle != null &&
         widget.controller.activeDatabase == bundle.db &&

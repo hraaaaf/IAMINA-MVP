@@ -23,7 +23,7 @@ void main() {
     expect(source, isNot(contains('?? 180.0')));
   });
 
-  test('profile save requires explicit medical selections and a valid range', () {
+  test('D7 profile save accepts undeclared clinical facts but requires a valid range', () {
     final source = _read('lib/features/profile/profile_screen.dart');
 
     expect(source, contains('final diabetesType = _diabetesType;'));
@@ -36,7 +36,7 @@ void main() {
     expect(source, contains('low < high'));
     expect(
       source,
-      contains('if (diabetesType == null || treatment == null || !validRange)'),
+      contains('if (!validRange)'),
     );
     expect(source, contains('drift.Value(diabetesType)'));
     expect(source, contains('drift.Value(treatment)'));

@@ -35,8 +35,8 @@ void main() {
     final alice = (await db.getProfileForLocalUserId(734))!;
     final bob = (await db.getProfileForLocalUserId(812))!;
     expect(alice.aiConsentGivenAt, isNotNull);
-    expect(alice.ramadanStartDate, DateTime.utc(2026, 2, 18));
-    expect(alice.ramadanEndDate, DateTime.utc(2026, 3, 20));
+    expect(alice.ramadanStartDate?.toUtc(), DateTime.utc(2026, 2, 18));
+    expect(alice.ramadanEndDate?.toUtc(), DateTime.utc(2026, 3, 20));
     expect(bob.aiConsentGivenAt, isNull);
     expect(bob.ramadanStartDate, isNull);
     expect(bob.ramadanEndDate, isNull);

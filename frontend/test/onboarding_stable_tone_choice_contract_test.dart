@@ -10,7 +10,7 @@ void main() {
     expect(onboarding, contains('onboardingChooseCountry'));
     expect(onboarding, contains('onboardingTypeQuestion'));
     // D7 has replaced the old treatment question with declared-treatment copy.
-    expect(onboarding, contains('MedicalTreatmentSelector('));
+    expect(onboarding, contains('MedicalTreatmentMultiSelector('));
     expect(onboarding, contains('onboardingUnitQuestion'));
     expect(onboarding, isNot(contains('onboardingChooseTone')));
     expect(onboarding, isNot(contains('onboardingToneNeutral')));

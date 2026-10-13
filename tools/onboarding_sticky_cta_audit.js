@@ -130,14 +130,13 @@ async function chooseCountry(page, width, height) {
           path: out + '/d7-prediabetes-first-view-' + width + 'x' + height + '.png',
           fullPage: false,
         });
-        await choose(page,
-          'Je suis un autre traitement / Je préfère répondre plus tard');
+        await choose(page, 'Déclarer un autre traitement');
         await page.screenshot({
           path: out + '/d7-prediabetes-expanded-' + width + 'x' + height + '.png',
           fullPage: false,
         });
         await choose(page, 'Diabète Type 2');
-        await choose(page, 'Médicaments déclarés');
+        await choose(page, 'Médicaments oraux pris');
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
         // Both must state exactly five steps after the four required choices.

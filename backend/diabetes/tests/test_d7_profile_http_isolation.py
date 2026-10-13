@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token
+from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import DiabetesProfile
 
 
@@ -25,6 +25,8 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         self.client = Client()
         self.token_a = issue_native_token(self.a)
         self.token_b = issue_native_token(self.b)
+        self.assertEqual(verify_native_token(self.token_a).pk, self.a.pk)
+        self.assertEqual(verify_native_token(self.token_b).pk, self.b.pk)
 
     def _get(self, token=None):
         kwargs = {"HTTP_AUTHORIZATION": f"Bearer {token}"} if token else {}
