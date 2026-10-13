@@ -186,6 +186,15 @@ class SyncService {
         );
         if (!_sessionActive) return false;
         if (!acknowledged) {
+          // This reply may be for an older generation. Preserve the newer
+          // patient edit and only advance its CAS baseline when unchanged
+          // since this request began; otherwise keep a real conflict intact.
+          await store.rebasePendingAfterStaleAck(
+            acknowledgedGeneration: local.localGeneration,
+            sentBaseUpdatedAtUtc: local.baseServerUpdatedAtUtc,
+            serverUpdatedAtUtc: result.serverUpdatedAtUtc!,
+          );
+          if (!_sessionActive) return false;
           state.value = SyncUiState.pending;
           return false;
         }

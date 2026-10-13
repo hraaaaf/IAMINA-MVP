@@ -177,6 +177,55 @@ void main() {
     expect(third.baseServerUpdatedAtUtc, serverTime);
   });
 
+  test('D7 older ACK rebases a newer edit without confirming or altering it', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final first = (await store.read())!;
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    final serverAt = DateTime.utc(2026, 10, 13, 17);
+    expect(await store.acknowledgeIfUnchanged(
+      expectedGeneration: first.localGeneration,
+      serverUpdatedAtUtc: serverAt,
+    ), isFalse);
+    expect(await store.rebasePendingAfterStaleAck(
+      acknowledgedGeneration: first.localGeneration,
+      sentBaseUpdatedAtUtc: first.baseServerUpdatedAtUtc,
+      serverUpdatedAtUtc: serverAt,
+    ), isTrue);
+    final after = (await store.read())!;
+    expect(after.codes, ['lifestyle', 'oral_meds']);
+    expect(after.syncStatus, 'pending');
+    expect(after.localGeneration, 2);
+    expect(after.baseServerUpdatedAtUtc, serverAt);
+    expect(await store.rebasePendingAfterStaleAck(
+      acknowledgedGeneration: first.localGeneration,
+      sentBaseUpdatedAtUtc: null,
+      serverUpdatedAtUtc: DateTime.utc(2026, 10, 13, 18),
+    ), isFalse);
+    expect((await store.read())?.baseServerUpdatedAtUtc, serverAt);
+  });
+
+  test('D7 conflict is never silently rebased by an older ACK', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final first = (await store.read())!;
+    await store.write(state: 'declared', codes: ['oral_meds']);
+    final second = (await store.read())!;
+    expect(await store.markConflictIfUnchanged(second.localGeneration), isTrue);
+    expect(await store.rebasePendingAfterStaleAck(
+      acknowledgedGeneration: first.localGeneration,
+      sentBaseUpdatedAtUtc: null,
+      serverUpdatedAtUtc: DateTime.utc(2026, 10, 13, 18),
+    ), isFalse);
+    expect((await store.read())?.codes, ['oral_meds']);
+    expect((await store.read())?.syncStatus, 'conflict');
+    expect((await store.read())?.baseServerUpdatedAtUtc, isNull);
+  });
+
   test('D7 conflict persists until explicit reconciliation, without data loss', () async {
     final db = await vault(734);
     addTearDown(db.close);

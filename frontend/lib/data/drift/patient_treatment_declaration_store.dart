@@ -162,6 +162,31 @@ final class PatientTreatmentDeclarationStore {
     return updated == 1;
   }
 
+  /// The server accepted an earlier local generation while a new patient
+  /// edit was made in flight. Advance only its CAS baseline: the new choice
+  /// stays pending, untouched, and can be retried against the fresh revision.
+  /// A different baseline or an existing conflict must never be rebased.
+  Future<bool> rebasePendingAfterStaleAck({
+    required int acknowledgedGeneration,
+    required DateTime? sentBaseUpdatedAtUtc,
+    required DateTime serverUpdatedAtUtc,
+  }) async {
+    final changed = await db.customUpdate('''
+      UPDATE patient_treatment_declarations_v1
+      SET base_server_updated_at = ?
+      WHERE user_id = ?
+        AND local_generation > ?
+        AND sync_status = 'pending'
+        AND base_server_updated_at IS ?
+    ''', variables: [
+      Variable<String>(serverUpdatedAtUtc.toUtc().toIso8601String()),
+      Variable<int>(_ownerId),
+      Variable<int>(acknowledgedGeneration),
+      Variable<String>(sentBaseUpdatedAtUtc?.toUtc().toIso8601String()),
+    ]);
+    return changed == 1;
+  }
+
   /// A 409 never discards the patient's local declaration. It stays blocked
   /// for explicit reconciliation rather than being silently retried.
   Future<bool> markConflictIfUnchanged(int expectedGeneration) async {

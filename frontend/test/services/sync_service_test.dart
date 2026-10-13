@@ -343,6 +343,51 @@ void main() {
     )).called(1);
   });
 
+  test('D7 edit during upload preserves pending and rebases next CAS', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final firstResponse = Completer<TreatmentMirrorResult>();
+    final serverAt = DateTime.utc(2026, 10, 13, 17);
+    final newerAt = DateTime.utc(2026, 10, 13, 18);
+    var requests = 0;
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) {
+      requests += 1;
+      return requests == 1
+          ? firstResponse.future
+          : Future.value(TreatmentMirrorResult(
+              TreatmentMirrorStatus.confirmed,
+              serverUpdatedAtUtc: newerAt,
+            ));
+    });
+    final firstUpload = sender.sendPendingTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    firstResponse.complete(TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: serverAt,
+    ));
+    expect(await firstUpload, isFalse);
+    final pending = (await store.read())!;
+    expect(pending.codes, ['lifestyle', 'oral_meds']);
+    expect(pending.syncStatus, 'pending');
+    expect(pending.baseServerUpdatedAtUtc, serverAt);
+    expect(await sender.sendPendingTreatmentDeclaration(), isTrue);
+    expect((await store.read())?.syncStatus, 'confirmed');
+    verify(() => mockApi.mirrorTreatmentDeclaration(
+      state: 'declared',
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: serverAt,
+    )).called(1);
+  });
+
   test('D7 409 conflict never overwrites local treatment choices', () async {
     final db = await nativeVault(734);
     addTearDown(db.close);
