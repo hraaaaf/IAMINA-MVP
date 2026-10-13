@@ -8,9 +8,13 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _AuthTestNotifier extends ChangeNotifier {
+  void changed() => notifyListeners();
+}
+
 void main() {
   test('D7 local runtime cannot publish any database without a scope', () async {
-    final auth = ChangeNotifier();
+    final auth = _AuthTestNotifier();
     final controller = PatientVaultSessionController(
       authChanges: auth,
       resolveScope: () async => null,
@@ -26,7 +30,7 @@ void main() {
 
   test('D7 delayed account A resolution cannot expose A after switch to B',
       () async {
-    final auth = ChangeNotifier();
+    final auth = _AuthTestNotifier();
     final first = Completer<PatientVaultScope?>();
     PatientVaultScope? active = PatientVaultScope.nativeDjango(812);
     var calls = 0;
@@ -45,7 +49,7 @@ void main() {
     addTearDown(auth.dispose);
     expect(controller.activeDatabase, isNull);
     AuthEpoch.advance();
-    auth.notifyListeners();
+    auth.changed();
     await controller.reconcile();
     first.complete(PatientVaultScope.nativeDjango(734));
     await Future<void>.delayed(Duration.zero);
@@ -54,7 +58,7 @@ void main() {
   });
 
   test('D7 changing epoch retires already visible patient vault', () async {
-    final auth = ChangeNotifier();
+    final auth = _AuthTestNotifier();
     final waitB = Completer<PatientVaultScope?>();
     var useB = false;
     final controller = PatientVaultSessionController(
@@ -72,7 +76,7 @@ void main() {
     expect(controller.activeScope?.nativeDjangoUserId, 734);
     useB = true;
     AuthEpoch.advance();
-    auth.notifyListeners();
+    auth.changed();
     expect(controller.activeDatabase, isNull);
     waitB.complete(PatientVaultScope.nativeDjango(812));
     await controller.reconcile();
