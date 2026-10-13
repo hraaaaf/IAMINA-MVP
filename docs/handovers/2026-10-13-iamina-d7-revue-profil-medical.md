@@ -1,3 +1,19 @@
+# D7 — ÉTAT DE REPRISE AU 13/10/2026 23h+ UTC — PR #986 DRAFT
+
+**D7 OUVERTE : NE PAS MERGER, NE PAS DÉPLOYER VERCEL.** Lire cette section avant les historiques ci-dessous.
+
+**Goal** : profil médical facultatif et traitements multiples purement déclaratifs, sous coffre physique isolé par patient, avec reprise offline, serveur Django CAS, consentement, app-lock et aucune inférence clinique non validée D19. **Preuve de succès exigée** : CI du HEAD exact, A→logout→B→A, deux appareils, 409 + reprise réseau, données restaurées sans erreurs de propriété/ACK, protection app-lock par vrai interceptor, revue clinique/privacy et BEFORE→mockup→AFTER UI aux viewports 390×844, 768×1024, 1280×900.
+
+**Dernier HEAD vérifié avant commit documentaire :** `bb43cbd16d47305726aef6ffd86e92f924fa13d3` ; CI principale [#38486422869](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38486422869) **6/6 jobs SUCCESS** (backend SQLite/Postgres, Flutter analyse/tests/build, secret/scope/size). 15/16 workflows SUCCESS, seul **Pilot iOS packaging IN_PROGRESS** au dernier contrôle ; ne pas annoncer 16/16. PR [#986](https://github.com/hraaaaf/IAMINA-MVP/pull/986) reste brouillon, base main `a6284c4c`. **Ce vert ne couvre pas les modifications supplémentaires décrites ci-dessous.**
+
+**Nouveau lot préparé pour commit après CI verte** : `frontend/lib/data/drift/local_backup.dart` tolère dorénavant les exports **scopés D7 v11 vers destination v12**, mais restaure leurs déclarations comme **pending**, baseline serveur null, génération locale 1, sans inventer de réception réseau ; refuse de restaurer une ancienne sauvegarde si une déclaration existe déjà dans le coffre de destination ; n'élargit pas les règles de provenance/patient. Tests ajoutés : v11 → v12 conservant choix, rejet d'une deuxième tentative, refus du v11 tronqué. `frontend/test/services/d7_app_lock_chopper_boundary_test.dart` (nouveau) exerce les vrais `AuthInterceptor` et `RetryInterceptor` via fausse chaîne Chopper sans réseau : verrouillage pendant attente bearer bloque tout dispatch ; auth/login reste accessible ; verrouillage pendant rafraîchissement 401 et après 503 empêche la seconde requête. **Ces nouveaux tests nécessitent CI ; ne pas déclarer réussite sans preuves.**
+
+**Risque encore ouvert** : autres API médicales non toutes couvertes par garde app-lock transport D7 ; tests sur appareil/versions OS absents ; politique de signout du coffre device-only à auditer ; conflit multi-device persistant sans UI de réconciliation explicite ; traitement de données cliniques et consentement à revoir ; nouvelles preuves visuelles comparatives aux trois viewports et gate humain non acquises.
+
+**Next exact** : relever le HEAD de la PR et le CI associés au nouveau lot ; si rouge, lire l'erreur job et corriger ; si vert, compléter preuves de sécurité réseau étendues, A/B sur deux appareils et offline ; BEFORE/AFTER, revue indépendante clinique/privacy, validation humaine puis seulement merge/post-merge sous conditions. P5 **50 % historique**, inchangé.
+
+---
+
 # REPRISE PRIORITAIRE — D7 — 13 octobre 2026, après CI SQLite/Postgres/Flutter verte
 
 **D7 OUVERTE — PR #986 DRAFT NON FUSIONNÉE — aucun Vercel. Ce bloc est plus récent que les statuts archivés ci-dessous.**

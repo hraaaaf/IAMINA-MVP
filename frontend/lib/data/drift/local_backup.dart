@@ -106,11 +106,15 @@ final class LocalBackup {
     }
     final legacyV10 = root['schemaVersion'] == 10 &&
         db.schemaVersion == 11 && root['treatmentDeclarations'] == null;
+    // V11 scoped exports contain the patient's statements but no CAS receipt.
+    // Import them into v12 as PENDING: never invent server confirmation.
+    final olderV11 = root['schemaVersion'] == 11 &&
+        db.schemaVersion == 12;
     if (!legacyV10 && root['schemaVersion'] == 11 &&
         root['treatmentDeclarations'] == null) {
       throw FormatException('D7 declarations missing from patient backup');
     }
-    if (legacyV10) {
+    if (legacyV10 || olderV11) {
       final existingDeclarations = await db.customSelect(
         'SELECT user_id FROM patient_treatment_declarations_v1 LIMIT 1',
       ).get();
@@ -120,7 +124,18 @@ final class LocalBackup {
     }
     final declarations = legacyV10
         ? <Map<String, dynamic>>[]
-        : _rows(root, 'treatmentDeclarations');
+        : [
+            for (final row in _rows(root, 'treatmentDeclarations'))
+              if (olderV11)
+                {
+                  ...row,
+                  'sync_status': 'pending',
+                  'base_server_updated_at': null,
+                  'local_generation': 1,
+                }
+              else
+                row,
+          ];
     for (final row in declarations) {
       if (row['user_id'] != owner || profiles.isEmpty) {
         throw FormatException('Foreign patient treatment declaration');
@@ -147,8 +162,10 @@ final class LocalBackup {
     final scopedV10 = db.patientVaultScope != null &&
         root['schemaVersion'] == 10 && db.schemaVersion == 11 &&
         declarations.isEmpty;
+    final scopedV11 = db.patientVaultScope != null &&
+        root['schemaVersion'] == 11 && db.schemaVersion == 12;
     if (root['schemaVersion'] != db.schemaVersion &&
-        !legacyV10 && !scopedV10) {
+        !legacyV10 && !scopedV10 && !scopedV11) {
       throw FormatException(
         'Backup schemaVersion ${root['schemaVersion']} does not match '
         'database schemaVersion ${db.schemaVersion}',

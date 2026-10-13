@@ -43,6 +43,54 @@ void main() {
     expect((await db.select(db.patientProfiles).getSingle()).treatment, 'tablets');
   });
 
+  test('D7 v11 scoped backup safely restores only as pending', () async {
+    final source = await openVault(734);
+    final target = await openVault(734);
+    addTearDown(source.close);
+    addTearDown(target.close);
+    await PatientTreatmentDeclarationStore(source).write(
+      state: 'declared', codes: ['oral_meds', 'insulin'],
+    );
+    final legacy = jsonDecode(await LocalBackup.exportVaultJson(source))
+        as Map<String, dynamic>;
+    legacy['schemaVersion'] = 11;
+    final declaration = (legacy['treatmentDeclarations'] as List).single as Map;
+    declaration.remove('sync_status');
+    declaration.remove('base_server_updated_at');
+    declaration.remove('local_generation');
+    await LocalBackup.restoreVaultJson(target, jsonEncode(legacy));
+    final store = PatientTreatmentDeclarationStore(target);
+    final restored = (await store.read())!;
+    expect(restored.codes, ['oral_meds', 'insulin']);
+    expect(restored.syncStatus, 'pending');
+    expect(restored.baseServerUpdatedAtUtc, isNull);
+    expect(restored.localGeneration, 1);
+
+    // A second import of old evidence must not overwrite today's row.
+    await expectLater(
+      LocalBackup.restoreVaultJson(target, jsonEncode(legacy)),
+      throwsStateError,
+    );
+    expect((await store.read())?.codes, ['oral_meds', 'insulin']);
+  });
+
+  test('D7 v11 export lacking treatment declarations fails without mutation',
+      () async {
+    final db = await openVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final legacy = jsonDecode(await LocalBackup.exportVaultJson(db))
+        as Map<String, dynamic>;
+    legacy['schemaVersion'] = 11;
+    legacy.remove('treatmentDeclarations');
+    await expectLater(
+      LocalBackup.restoreVaultJson(db, jsonEncode(legacy)),
+      throwsFormatException,
+    );
+    expect((await store.read())?.codes, ['lifestyle']);
+  });
+
   test('D7 v12 backup restores pending revision and exact generation', () async {
     final db = await openVault(734);
     addTearDown(db.close);
