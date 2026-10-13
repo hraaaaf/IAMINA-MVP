@@ -708,6 +708,7 @@ class _CountrySearchField extends StatefulWidget {
 class _CountrySearchFieldState extends State<_CountrySearchField> {
   final TextEditingController _controller = TextEditingController();
   bool _updating = false;
+  String? _displayedLanguage;
 
   String get _lang => Localizations.localeOf(context).languageCode;
 
@@ -728,10 +729,13 @@ class _CountrySearchFieldState extends State<_CountrySearchField> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_controller.text.isEmpty && widget.code != null) {
+    final language = _lang;
+    if (widget.code != null &&
+        (_controller.text.isEmpty || _displayedLanguage != language)) {
       final choice = countryByCode(widget.code);
-      if (choice != null) _setText(choice.label(_lang));
+      if (choice != null) _setText(choice.label(language));
     }
+    _displayedLanguage = language;
   }
 
   @override
@@ -744,7 +748,13 @@ class _CountrySearchFieldState extends State<_CountrySearchField> {
   }
 
   void _onTextChanged() {
-    if (_updating || widget.code == null) return;
+    if (_updating) return;
+    // A person typing in an empty field overrides a pending network estimate.
+    // Otherwise the late IP response could replace an in-progress manual entry.
+    if (widget.code == null) {
+      if (_controller.text.trim().isNotEmpty) widget.onCleared();
+      return;
+    }
     final selected = countryByCode(widget.code);
     if (selected != null && _controller.text != selected.label(_lang)) {
       widget.onCleared(); // Unsuggested typing cannot silently keep old choice.
