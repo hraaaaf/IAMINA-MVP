@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/services/auth_epoch.dart';
 import 'package:amina/services/patient_vault_session_controller.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -82,4 +84,57 @@ void main() {
     await controller.reconcile();
     expect(controller.activeScope?.nativeDjangoUserId, 812);
   });
+
+  test('D7 on-disk A B A vaults preserve only the matching owner records', () async {
+    final folder = await Directory.systemTemp.createTemp('iamina-d7-ab-a-');
+    addTearDown(() => folder.delete(recursive: true));
+    final auth = _AuthTestNotifier();
+    addTearDown(auth.dispose);
+    var selected = 734;
+    final controller = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: () async => PatientVaultScope.nativeDjango(selected),
+      openDatabase: (scope) => AppDatabase.testPatientVault(
+        NativeDatabase(File('${folder.path}/${scope.databaseName}.sqlite')),
+        scope,
+      ),
+    );
+    addTearDown(controller.dispose);
+    await controller.reconcile();
+    final dbA = controller.activeDatabase!;
+    await dbA.into(dbA.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(734),
+        updatedAt: DateTime.utc(2026, 10, 13),
+        diabetesType: const drift.Value('type1'),
+      ),
+    );
+
+    selected = 812;
+    AuthEpoch.advance();
+    auth.changed();
+    expect(controller.activeDatabase, isNull);
+    await controller.reconcile();
+    final dbB = controller.activeDatabase!;
+    expect(await dbB.select(dbB.patientProfiles).get(), isEmpty);
+    await dbB.into(dbB.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(812),
+        updatedAt: DateTime.utc(2026, 10, 13),
+        diabetesType: const drift.Value('type2'),
+      ),
+    );
+
+    selected = 734;
+    AuthEpoch.advance();
+    auth.changed();
+    expect(controller.activeDatabase, isNull);
+    await controller.reconcile();
+    final again = controller.activeDatabase!;
+    final rows = await again.select(again.patientProfiles).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.userId, 734);
+    expect(rows.single.diabetesType, 'type1');
+  });
+
 }
