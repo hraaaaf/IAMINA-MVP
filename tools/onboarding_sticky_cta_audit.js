@@ -40,7 +40,7 @@ async function choose(page, label) {
   throw new Error('Cannot select onboarding choice: ' + label);
 }
 
-async function chooseCountry(page) {
+async function chooseCountry(page, width, height) {
   const probes = [
     page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
     page.getByRole('combobox', {name:/Rechercher un pays|Pays/i}),
@@ -56,8 +56,17 @@ async function chooseCountry(page) {
   if (!field) throw new Error('Country search control unavailable');
   await field.click({timeout:5000});
   const active = page.locator('input:focus,textarea:focus,[contenteditable="true"]:focus');
-  if (await active.count()) await active.fill('Maroc');
-  else await page.keyboard.type('Maroc');
+  if (await active.count()) await active.fill('Mar');
+  else await page.keyboard.type('Mar');
+  await page.waitForTimeout(250);
+  // The open search suggestions must be visible at the same three viewport
+  // sizes; capture *before* selecting, so the user can validate UX.
+  const proposed = page.getByText('Maroc', {exact:true});
+  await proposed.last().waitFor({state:'visible',timeout:8000});
+  await page.screenshot({
+    path: out + '/onboarding-country-suggestions-' + width + 'x' + height + '.png',
+    fullPage:false,
+  });
   await choose(page, 'Maroc');
 }
 
@@ -107,7 +116,7 @@ async function chooseCountry(page) {
           }
         }
         await choose(page, 'Français');
-        await chooseCountry(page);
+        await chooseCountry(page, width, height);
         for (const choice of ['Diabète Type 2', 'Comprimés']) {
           await choose(page, choice);
         }
