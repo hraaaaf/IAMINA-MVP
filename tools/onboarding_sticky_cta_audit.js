@@ -55,9 +55,9 @@ async function chooseCountry(page, width, height) {
   }
   if (!field) throw new Error('Country search control unavailable');
   await field.click({timeout:5000});
-  const active = page.locator('input:focus,textarea:focus,[contenteditable="true"]:focus');
-  if (await active.count()) await active.fill('Mar');
-  else await page.keyboard.type('Mar');
+  // Flutter's text-editing host can detach between count() and fill().
+  // Use the focused keyboard path; assert that the suggestion is rendered.
+  await page.keyboard.type('Mar');
   await page.waitForTimeout(250);
   // The open search suggestions must be visible at the same three viewport
   // sizes; capture *before* selecting, so the user can validate UX.

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from core.api.v1.country_suggestion import country_suggestion, suggested_country_code
 
+
 def test_ip_country_on_vercel_is_only_optional_suggestion(monkeypatch):
     monkeypatch.setenv("VERCEL", "1")
     result = country_suggestion(SimpleNamespace(headers={"x-vercel-ip-country": "MA"}))
