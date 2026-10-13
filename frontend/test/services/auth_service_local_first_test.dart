@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 const _tokenKey = 'iamina_native_access_token';
+const _identityKey = 'iamina_native_account_binding_v1';
 const _localSessionKey = 'iamina_local_session_v1';
 const _localSessionValue = 'enrolled';
 const _localDeviceIdKey = 'iamina_local_device_id_v1';
@@ -146,6 +147,7 @@ void main() {
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isFalse);
     expect(service.hasRemoteApiCredential, isTrue);
+    expect(service.boundNativeAccountId, isNull); // No legacy identity binding.
     expect(await service.getIdToken(), _token);
     expect(await const FlutterSecureStorage().read(key: _tokenKey), _token);
     expect(
@@ -194,6 +196,7 @@ void main() {
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isTrue);
     expect(service.hasRemoteApiCredential, isTrue);
+    expect(service.boundNativeAccountId, 1);
     expect(await service.getIdToken(), _freshToken);
     expect(
       await const FlutterSecureStorage().read(key: _localSessionKey),
@@ -290,4 +293,76 @@ void main() {
     expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
     service.dispose();
   });
+  test('D7 native binding persists offline only with the exact bearer', () async {
+    seedStorage({});
+    final service = AuthService(httpClient: MockClient((request) async =>
+        http.Response('{"access_token":"' + _freshToken + '","user":{"id":734}}', 200)));
+    await service.initialize();
+    await service.signInWithEmail('a@example.com', 'secret');
+    expect(service.boundNativeAccountId, 734);
+    expect(await const FlutterSecureStorage().read(key: _identityKey),
+        contains('"user_id":734'));
+    service.dispose();
+    final reopened = AuthService(httpClient: noBootNetworkClient());
+    await reopened.initialize();
+    expect(reopened.boundNativeAccountId, 734);
+    expect(reopened.isRemoteCredentialVerified, isFalse);
+    reopened.dispose();
+  });
+
+  test('D7 mismatched or invalid cached binding fails closed', () async {
+    seedStorage({
+      _tokenKey: _token,
+      _identityKey: '{"token":"' + _freshToken + '","user_id":734}',
+    });
+    final mismatch = AuthService(httpClient: noBootNetworkClient());
+    await mismatch.initialize();
+    expect(mismatch.boundNativeAccountId, isNull);
+    mismatch.dispose();
+    seedStorage({
+      _tokenKey: _token,
+      _identityKey: '{"token":"' + _token + '","user_id":-1}',
+    });
+    final invalid = AuthService(httpClient: noBootNetworkClient());
+    await invalid.initialize();
+    expect(invalid.boundNativeAccountId, isNull);
+    invalid.dispose();
+  });
+
+  test('D7 A logout B native binding switches without stale patient ID', () async {
+    seedStorage({});
+    final service = AuthService(httpClient: MockClient((request) async {
+      if (request.url.path == '/api/v1/auth/logout') {
+        return http.Response('', 204);
+      }
+      final b = request.body.contains('b@example.com');
+      return http.Response(
+          '{"access_token":"' + (b ? _freshToken : _token) +
+          '","user":{"id":' + (b ? '812' : '734') + '}}', 200);
+    }));
+    await service.initialize();
+    await service.signInWithEmail('a@example.com', 'secret');
+    expect(service.boundNativeAccountId, 734);
+    await service.signOut();
+    expect(service.boundNativeAccountId, isNull);
+    expect(await const FlutterSecureStorage().read(key: _identityKey), isNull);
+    await service.signInWithEmail('b@example.com', 'secret');
+    expect(service.boundNativeAccountId, 812);
+    service.dispose();
+  });
+
+  test('D7 malformed native user ID never persists an account binding', () async {
+    seedStorage({});
+    final service = AuthService(httpClient: MockClient((request) async =>
+        http.Response('{"access_token":"' + _freshToken +
+            '","user":{"id":"812"}}', 200)));
+    await service.initialize();
+    await expectLater(
+        service.signInWithEmail('b@example.com', 'secret'), throwsStateError);
+    expect(service.boundNativeAccountId, isNull);
+    expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _identityKey), isNull);
+    service.dispose();
+  });
+
 }

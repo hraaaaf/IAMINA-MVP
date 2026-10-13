@@ -70,6 +70,8 @@ RegistrationFailure registrationFailureForStatus(int statusCode) {
 
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
+  // Authenticated native ID and exact bearer must match. Legacy bearer: unknown ID.
+  static const _nativeIdentityKey = 'iamina_native_account_binding_v1';
   static const _localSessionKey = 'iamina_local_session_v1';
   static const _localSessionValue = 'enrolled';
   static const _localDeviceIdKey = 'iamina_local_device_id_v1';
@@ -82,6 +84,7 @@ class AuthService extends ChangeNotifier {
   final http.Client _httpClient;
   final AuthFailureLogger _failureLogger;
   String? _nativeToken;
+  int? _nativeAccountId;
   bool _localSessionEnrolled = false;
   bool _initialized = false;
   bool _auditSession = false;
@@ -140,6 +143,10 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
+  /// Previously authenticated Django ID bound to this exact bearer.
+  /// Offline restoration does not verify that the bearer is still active.
+  int? get boundNativeAccountId =>
+      _auditSession || _nativeToken == null ? null : _nativeAccountId;
   bool get hasRemoteApiCredential =>
       _nativeToken != null && _nativeToken!.isNotEmpty;
   bool get isAnonymous =>
@@ -157,11 +164,29 @@ class AuthService extends ChangeNotifier {
       final storedToken = await _storage.read(key: _tokenKey);
       if (_isExpectedNativeBearerShape(storedToken)) {
         _nativeToken = storedToken;
+        _nativeAccountId = null;
+        // Local-first startup: no network required to validate a cached binding.
+        final binding = await _storage.read(key: _nativeIdentityKey);
+        if (binding != null) {
+          try {
+            final parsed = jsonDecode(binding);
+            if (parsed is Map<String, dynamic> &&
+                parsed['token'] == storedToken &&
+                parsed['user_id'] is int &&
+                (parsed['user_id'] as int) > 0) {
+              _nativeAccountId = parsed['user_id'] as int;
+            }
+          } on FormatException {
+            // Invalid cached binding must never become a patient ID.
+          }
+        }
         _remoteCredentialVerified = false;
         await _ensureLocalEnrollment();
       } else if (storedToken != null) {
         await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
         _nativeToken = null;
+        _nativeAccountId = null;
         _remoteCredentialVerified = false;
       }
     } catch (error, stackTrace) {
@@ -171,6 +196,7 @@ class AuthService extends ChangeNotifier {
         stackTrace,
       );
       _nativeToken = null;
+      _nativeAccountId = null;
       _localSessionEnrolled = false;
       _remoteCredentialVerified = false;
     } finally {
@@ -213,8 +239,10 @@ class AuthService extends ChangeNotifier {
     if (_auditSession) return null;
     if (_nativeToken != null) {
       _nativeToken = null;
+      _nativeAccountId = null;
       _remoteCredentialVerified = false;
       await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeIdentityKey);
       _notifyAuthChanged();
       return null;
     }
@@ -273,10 +301,12 @@ class AuthService extends ChangeNotifier {
     // Local sign-out is authoritative. Never let optional remote revocation keep
     // an enrolled device authenticated while the network is slow or unavailable.
     _nativeToken = null;
+    _nativeAccountId = null;
     _localSessionEnrolled = false;
     _remoteCredentialVerified = false;
     try {
       await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeIdentityKey);
       await _storage.delete(key: _localSessionKey);
       await _storage.delete(key: _localDeviceIdKey);
       await _firebaseAuth?.signOut();
@@ -359,12 +389,24 @@ class AuthService extends ChangeNotifier {
       throw StateError('Malformed authentication response');
     }
     final token = payload['access_token'];
+    final user = payload['user'];
+    final id = user is Map<String, dynamic> ? user['id'] : null;
     if (token is! String || !_isExpectedNativeBearerShape(token)) {
       throw StateError('Missing IAMINA access token');
     }
+    if (id is! int || id <= 0) {
+      throw StateError('Missing authenticated IAMINA user ID');
+    }
+    // Write binding first. Interrupted writes cannot pair a new token
+    // with a previous account's cached patient ID.
+    await _storage.write(
+      key: _nativeIdentityKey,
+      value: jsonEncode({'token': token, 'user_id': id}),
+    );
     await _storage.write(key: _tokenKey, value: token);
     await _storage.write(key: _localSessionKey, value: _localSessionValue);
     _nativeToken = token;
+    _nativeAccountId = id;
     _localSessionEnrolled = true;
     _remoteCredentialVerified = true;
     _notifyAuthChanged();
