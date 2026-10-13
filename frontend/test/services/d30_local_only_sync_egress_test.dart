@@ -186,41 +186,8 @@ void main() {
     auth.dispose();
   });
 
-  test('D30 journal upload is never auto-retried after server failure',
+  test('D30 native bearer does not authorize uploads without patient binding',
       () async {
-    FlutterSecureStorage.setMockInitialValues({
-      'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
-    });
-    final auth = AuthService(
-      httpClient: MockClient((request) async {
-        fail('Unexpected auth HTTP');
-      }),
-    );
-    await auth.initialize();
-
-    for (final status in [401, 503]) {
-      var outboundPosts = 0;
-      final api = ApiClient(
-        baseUrl: 'https://synthetic.example',
-        authService: auth,
-        httpClient: MockClient((request) async {
-          outboundPosts++;
-          expect(request.url.path, '/api/v1/logs/batch');
-          return http.Response(
-            '{"error":"synthetic"}',
-            status,
-            headers: {'content-type': 'application/json'},
-          );
-        }),
-      );
-
-      expect(await api.batchSyncLogs([_syntheticLog]), isEmpty);
-      expect(outboundPosts, 1);
-    }
-    auth.dispose();
-  });
-
-  test('D30 valid remote bearer preserves existing authenticated log sync', () async {
     FlutterSecureStorage.setMockInitialValues({
       'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
     });
@@ -232,28 +199,54 @@ void main() {
     await auth.initialize();
     expect(auth.hasRemoteApiCredential, isTrue);
 
-    var journalPosts = 0;
+    var postCount = 0;
     final api = ApiClient(
       baseUrl: 'https://synthetic.example',
       authService: auth,
       httpClient: MockClient((request) async {
-        journalPosts++;
-        expect(request.method, 'POST');
-        expect(request.url.path, '/api/v1/logs/batch');
-        expect(
-          request.headers['authorization'],
-          'Bearer iamina.e30:1abcde:signature_123',
-        );
-        return http.Response(
-          '{"synced_ids":["synthetic-d30"]}',
-          200,
-          headers: {'content-type': 'application/json'},
-        );
+        postCount++;
+        fail('Native bearer alone must not authorize clinical journal HTTP');
       }),
     );
 
-    expect(await api.batchSyncLogs([_syntheticLog]), ['synthetic-d30']);
-    expect(journalPosts, 1);
+    expect(api.canSyncClinicalJournal, isFalse);
+    expect(await api.syncLogEntry(_syntheticLog), isFalse);
+    expect(await api.batchSyncLogs([_syntheticLog]), isEmpty);
+    expect(postCount, 0);
+    auth.dispose();
+  });
+
+  test('D30 direct Chopper POST also fails despite valid native bearer',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
+    });
+    final auth = AuthService(
+      httpClient: MockClient((request) async {
+        fail('Unexpected auth HTTP');
+      }),
+    );
+    await auth.initialize();
+    expect(auth.hasRemoteApiCredential, isTrue);
+
+    var postCount = 0;
+    final api = ApiClient(
+      baseUrl: 'https://synthetic.example',
+      authService: auth,
+      httpClient: MockClient((request) async {
+        postCount++;
+        fail('Direct API path bypassed journal policy');
+      }),
+    );
+
+    await expectLater(
+      api.client.post<Object, Object>(
+        Uri.parse('/api/v1/logs/batch'),
+        body: [_syntheticLog],
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(postCount, 0);
     auth.dispose();
   });
 }
