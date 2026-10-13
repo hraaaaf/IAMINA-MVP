@@ -241,10 +241,15 @@ class SyncService {
   /// Both queues contribute to the patient-facing sync state. In particular,
   /// a log-only retry must never claim 'up to date' while the treatment outbox
   /// contains pending or conflicted clinical declarations.
-  Future<void> _refreshLocalSyncState({bool logsFailed = false}) async {
+  Future<void> _refreshLocalSyncState({
+    bool logsFailed = false,
+    List<LogEntryData>? knownPendingLogs,
+  }) async {
     if (!_sessionActive) return;
     try {
-      final pendingLogs = await _db.getPendingLogs();
+      // Reuse an already verified snapshot for a no-op log synchronization.
+      // The treatment outbox still gets checked independently.
+      final pendingLogs = knownPendingLogs ?? await _db.getPendingLogs();
       if (!_sessionActive) return;
       if (_db.patientVaultScope?.nativeDjangoUserId != null) {
         final declaration = await PatientTreatmentDeclarationStore(_db).read();
@@ -281,7 +286,7 @@ class SyncService {
     final pending = await _db.getPendingLogs();
     if (!_sessionActive) return;
     if (pending.isEmpty) {
-      await _refreshLocalSyncState();
+      await _refreshLocalSyncState(knownPendingLogs: pending);
       return;
     }
 
