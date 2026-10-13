@@ -161,6 +161,9 @@ void main() {
     expect(saveStart, greaterThan(0));
     expect(clearStart, greaterThan(saveStart));
     final save = code.substring(saveStart, clearStart);
-    expect('.insert('.allMatches(save).length, 1);
+    // One Drift write and one companion constructor are both spelled insert.
+    // Count them independently instead of double-counting the same write.
+    expect('.into(db.logEntries)'.allMatches(save).length, 1);
+    expect('LogEntriesCompanion.insert('.allMatches(save).length, 1);
   });
 }
