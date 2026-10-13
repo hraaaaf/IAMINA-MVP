@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
 import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
+import '../profile/medical_treatment_selector.dart';
 
 String _preferencesCopy(
   BuildContext context, {
@@ -270,26 +271,38 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               selected: _diabetesType == 'pre',
               onTap: () => setState(() => _diabetesType = 'pre'),
             ),
+            _Choice(
+              label: _preferencesCopy(context,
+                fr: 'Autre diagnostic déclaré',
+                en: 'Another declared condition',
+                ar: 'تشخيص آخر مصرّح به',
+              ),
+              selected: _diabetesType == 'other',
+              onTap: () => setState(() => _diabetesType = 'other'),
+            ),
+            _Choice(
+              label: _preferencesCopy(context,
+                fr: 'Je ne sais pas / plus tard',
+                en: 'Not sure / later',
+                ar: 'لا أعرف / لاحقًا',
+              ),
+              selected: _diabetesType == 'unknown',
+              onTap: () => setState(() => _diabetesType = 'unknown'),
+            ),
           ],
         ),
       if (_diabetesType != null)
         _Question(
-          title: l10n.onboardingTreatmentQuestion,
+          title: _preferencesCopy(context,
+            fr: 'Quel traitement suivez-vous actuellement ?',
+            en: 'What treatment do you currently follow?',
+            ar: 'ما العلاج الذي تتبعه حاليًا؟',
+          ),
           children: [
-            _Choice(
-              label: l10n.onboardingTreatmentInsulin,
-              selected: _treatment == 'insulin',
-              onTap: () => setState(() => _treatment = 'insulin'),
-            ),
-            _Choice(
-              label: l10n.treatmentTablets,
-              selected: _treatment == 'tablets',
-              onTap: () => setState(() => _treatment = 'tablets'),
-            ),
-            _Choice(
-              label: l10n.onboardingTreatmentLifestyle,
-              selected: _treatment == 'lifestyle',
-              onTap: () => setState(() => _treatment = 'lifestyle'),
+            MedicalTreatmentSelector(
+              diabetesType: _diabetesType,
+              selectedTreatment: _treatment,
+              onSelected: (value) => setState(() => _treatment = value),
             ),
           ],
         ),
