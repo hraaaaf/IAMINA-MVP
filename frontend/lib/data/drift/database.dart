@@ -151,12 +151,13 @@ class AppDatabase extends _$AppDatabase {
   int get activeProfileRowId => patientVaultScope?.nativeDjangoUserId ?? 1;
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
+      await _createPatientTreatmentDeclarationTable();
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
@@ -196,8 +197,29 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(medicationEvents);
         await m.createTable(reminders);
       }
+      // D7 additive data only. Retain PatientProfiles.treatment verbatim;
+      // no legacy medication inference or cross-account adoption.
+      if (from < 11) {
+        await _createPatientTreatmentDeclarationTable();
+      }
     },
   );
+
+  Future<void> _createPatientTreatmentDeclarationTable() => customStatement('''
+    CREATE TABLE IF NOT EXISTS patient_treatment_declarations_v1 (
+      user_id INTEGER NOT NULL PRIMARY KEY,
+      declaration_state TEXT NOT NULL
+        CHECK (declaration_state IN
+          ('not_answered', 'unsure', 'declared', 'none_declared')),
+      codes_json TEXT NOT NULL,
+      declaration_version INTEGER NOT NULL DEFAULT 1
+        CHECK (declaration_version = 1),
+      provenance TEXT NOT NULL CHECK (provenance = 'patient_declared'),
+      updated_at_utc TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES patient_profiles(user_id)
+        ON DELETE CASCADE
+    )
+  ''');
 
   Future<bool> setRamadanPeriod({DateTime? start, DateTime? end}) async {
     if ((start == null) != (end == null)) {
