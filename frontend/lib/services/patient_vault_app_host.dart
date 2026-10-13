@@ -29,10 +29,11 @@ class _VaultBindings {
   final ConsentService consent;
   final SyncService sync;
   final AppRouterHolder router;
+  final int authEpoch;
   bool syncStarted = false;
 
   _VaultBindings(this.db, this.scope, this.evidence, this.consent,
-      this.sync, this.router);
+      this.sync, this.router, this.authEpoch);
 
   void dispose() {
     router.dispose();
@@ -90,6 +91,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     final current = _bindings;
     if (current == null ||
         current.syncStarted ||
+        current.authEpoch != AuthService.authEpoch ||
         !widget.appLock.isUnlocked ||
         !widget.auth.hasRemoteApiCredential ||
         current.scope.nativeDjangoUserId == null) {
@@ -150,7 +152,9 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         consentService: consent,
         appLockService: widget.appLock,
       );
-      final bundle = _VaultBindings(db, scope, evidence, consent, sync, router);
+      final bundle = _VaultBindings(
+        db, scope, evidence, consent, sync, router, epoch,
+      );
       if (!mounted || generation != _generation ||
           widget.controller.activeDatabase != db ||
           epoch != AuthService.authEpoch) {
@@ -182,7 +186,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     final bundle = _bindings;
     if (bundle != null &&
         widget.controller.activeDatabase == bundle.db &&
-        AuthService.authEpoch >= 0) {
+        bundle.authEpoch == AuthService.authEpoch) {
       return MultiProvider(
         key: ValueKey('d7-patient-vault-${bundle.scope.databaseName}'),
         providers: [
@@ -243,10 +247,18 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
                   children: [
                     const Icon(Icons.lock_outline, size: 40),
                     const SizedBox(height: 12),
-                    const Text('Session patient indisponible. Reconnexion requise.'),
+                    Text(switch (widget.locale.locale.languageCode) {
+                      'fr' => 'Session patient indisponible. Reconnexion requise.',
+                      'ar' => 'جلسة المريض غير متاحة. يجب تسجيل الدخول مجددًا.',
+                      _ => 'Patient session unavailable. Please sign in again.',
+                    }),
                     TextButton(
                       onPressed: () => unawaited(widget.auth.signOut()),
-                      child: const Text('Se déconnecter'),
+                      child: Text(switch (widget.locale.locale.languageCode) {
+                        'fr' => 'Se déconnecter',
+                        'ar' => 'تسجيل الخروج',
+                        _ => 'Sign out',
+                      }),
                     ),
                   ],
                 ),

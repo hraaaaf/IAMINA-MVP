@@ -669,7 +669,16 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       _ => null,
     };
     final reported = _declaredTreatments.state == D7TreatmentStatus.declared
-        ? _declaredTreatments.codes.join(' + ')
+        ? _declaredTreatments.codes.map((code) => switch (code) {
+            'insulin' => l10n.treatmentInsulin,
+            'oral_meds' => _profileUiText(context, fr: 'Médicaments oraux',
+                en: 'Oral medicines', ar: 'أدوية فموية'),
+            'lifestyle' => _profileUiText(context, fr: 'Habitudes de vie',
+                en: 'Lifestyle measures', ar: 'نمط الحياة'),
+            'other' => _profileUiText(context, fr: 'Autre traitement déclaré',
+                en: 'Other reported treatment', ar: 'علاج آخر مصرّح به'),
+            _ => code,
+          }).join(' + ')
         : switch (_declaredTreatments.state) {
             D7TreatmentStatus.unsure => _profileUiText(context,
                 fr: 'Traitements inconnus', en: 'Treatments unknown',

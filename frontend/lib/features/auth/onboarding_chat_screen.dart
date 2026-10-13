@@ -165,10 +165,19 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ).timeout(_persistenceTimeout);
         // UI reports what the patient follows; a failed optional remote
         // mirror must never roll back a valid local declaration.
-        if (context.mounted && context.read<AuthService>().hasRemoteApiCredential) {
-          await context.read<ApiClient>().patchProfile(
+        if (mounted && context.read<AuthService>().hasRemoteApiCredential) {
+          final mirrored = await context.read<ApiClient>().patchProfile(
             _declaredTreatments.toApiPatch(),
-          );
+          ).timeout(_persistenceTimeout, onTimeout: () => false);
+          if (!mirrored && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(_preferencesCopy(context,
+                fr: 'Traitements enregistrés localement. Synchronisation non confirmée.',
+                en: 'Treatments saved locally. Remote sync not confirmed.',
+                ar: 'تم حفظ العلاجات محليًا. لم يتم تأكيد المزامنة.',
+              )),
+            ));
+          }
         }
       }
 
