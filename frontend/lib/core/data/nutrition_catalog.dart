@@ -313,6 +313,9 @@ NutritionSourceRef? nutritionSourceFor(String sourceId) =>
 String encodeMealPortionSelections(Iterable<MealPortionSelection> selections) =>
     jsonEncode(selections.map((selection) => selection.toJson()).toList());
 
+bool _isSupportedMealGrams(double grams) =>
+    grams.isFinite && grams > 0 && grams <= 3000;
+
 List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
   if (raw == null || raw.trim().isEmpty) return const <MealPortionSelection>[];
   try {
@@ -330,7 +333,7 @@ List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
           (portionId != null && portionId.trim().isEmpty)) {
         continue;
       }
-      if (grams != null && (!grams.isFinite || grams <= 0 || grams > 3000)) {
+      if (grams != null && !_isSupportedMealGrams(grams)) {
         continue;
       }
       if (portionId == null && grams == null) continue;
@@ -349,7 +352,7 @@ List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
 }
 
 CarbEstimate? estimateCarbsForGrams(String foodId, double grams) {
-  if (!grams.isFinite || grams <= 0) return null;
+  if (!_isSupportedMealGrams(grams)) return null;
   final profile = nutritionProfileFor(foodId);
   final ref = profile?.carbohydrate;
   if (ref == null) return null;
@@ -368,10 +371,18 @@ CarbEstimate? estimateCarbsForPortion(String foodId, NutritionPortion portion) {
   if (portion.grams != null) {
     return estimateCarbsForGrams(foodId, portion.grams!);
   }
-  if (portion.gramsLow == null || portion.gramsHigh == null) return null;
+  final gramsLow = portion.gramsLow;
+  final gramsHigh = portion.gramsHigh;
+  if (gramsLow == null ||
+      gramsHigh == null ||
+      !_isSupportedMealGrams(gramsLow) ||
+      !_isSupportedMealGrams(gramsHigh) ||
+      gramsLow > gramsHigh) {
+    return null;
+  }
   return CarbEstimate(
-    low: ref.carbsPer100gLow * portion.gramsLow! / 100,
-    high: ref.carbsPer100gHigh * portion.gramsHigh! / 100,
+    low: ref.carbsPer100gLow * gramsLow / 100,
+    high: ref.carbsPer100gHigh * gramsHigh / 100,
     sourceId: ref.sourceId,
     sourceFoodRef: ref.sourceFoodRef,
   );

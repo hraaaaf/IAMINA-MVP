@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/amina_visual_language.dart';
+import '../../core/utils/glucose_formatter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 

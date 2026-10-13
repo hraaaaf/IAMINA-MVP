@@ -109,18 +109,33 @@ jobs:
               'mobile': mobile,
           })
           call('Page.reload', {'ignoreCache': True})
+          # A fixed startup delay sometimes captures an all-white Flutter
+          # frame. Retry readiness without treating a blank image as evidence.
           time.sleep(10)
-          shot = call('Page.captureScreenshot', {
-              'format': 'png',
-              'captureBeyondViewport': False,
-              'fromSurface': True,
-          })
-          data = shot.get('result', {}).get('data')
-          if not data:
-              raise RuntimeError(f'No screenshot payload: {shot}')
+          screenshot = b''
+          for attempt in range(6):
+              shot = call('Page.captureScreenshot', {
+                  'format': 'png',
+                  'captureBeyondViewport': False,
+                  'fromSurface': True,
+              })
+              payload = shot.get('result', {}).get('data')
+              screenshot = base64.b64decode(payload) if payload else b''
+              if len(screenshot) >= 10000:
+                  break
+              if attempt == 2:
+                  call('Page.reload', {'ignoreCache': True})
+              if attempt < 5:
+                  time.sleep(5)
+          # Persist even failed evidence so the uploaded artifact is diagnosable.
           with open(target, 'wb') as fh:
-              fh.write(base64.b64decode(data))
+              fh.write(screenshot)
           ws.close()
+          if len(screenshot) < 10000:
+              raise RuntimeError(
+                  f'Flutter surface did not render after retries: '
+                  f'{target} ({len(screenshot)} bytes)'
+              )
           PY
 
           cleanup_chrome() {
