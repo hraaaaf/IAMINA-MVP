@@ -82,15 +82,20 @@ class AuthInterceptor implements Interceptor {
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
-    final authEpochAtStart = AuthService.authEpoch;
-    final token = await authService.getIdToken();
     Request request = chain.request;
 
-    // A local-only patient must not upload health logs, even if a caller
-    // bypasses ApiClient's journal methods or an async token read races logout.
+    // Deny journal HTTP before even consulting remote/Firebase credentials.
+    // Local-only use must never need the remote authentication provider.
     final isJournalUpload = request.method.toUpperCase() == 'POST' &&
         (request.url.path == '/api/v1/logs' ||
             request.url.path == '/api/v1/logs/batch');
+    if (isJournalUpload && !canSyncClinicalJournal()) {
+      throw StateError('remote_journal_credential_required');
+    }
+
+    final authEpochAtStart = AuthService.authEpoch;
+    final token = await authService.getIdToken();
+
     if (isJournalUpload &&
         !mayDispatchClinicalJournal(
           patientBoundSyncApproved: canSyncClinicalJournal(),
@@ -256,9 +261,9 @@ class ApiClient {
   /// Never put a local-only patient's clinical payload on the wire to get a 401.
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
     return guardSyncApiCall<bool>('sync_log_entry', () async {
+      if (!canSyncClinicalJournal) return false;
       final token = await _authService.getIdToken();
-      if (!canSyncClinicalJournal ||
-          token == null ||
+      if (token == null ||
           token.isEmpty ||
           !_authService.hasRemoteApiCredential) {
         return false;
@@ -274,9 +279,9 @@ class ApiClient {
   /// Optional-sync consent, epoch races and full recovery remain D30 gates.
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
+      if (!canSyncClinicalJournal) return const <String>[];
       final token = await _authService.getIdToken();
-      if (!canSyncClinicalJournal ||
-          token == null ||
+      if (token == null ||
           token.isEmpty ||
           !_authService.hasRemoteApiCredential) {
         return const <String>[];
