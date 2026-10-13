@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
@@ -38,6 +39,11 @@ class _PausedTokenAuthService extends AuthService {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('D30 API client never registers raw curl HTTP logging', () {
+    final source = File('lib/services/api_client.dart').readAsStringSync();
+    expect(source, isNot(contains('CurlInterceptor()')));
+  });
 
   test('D30 local-only session cannot upload health payload by any journal path',
       () async {
