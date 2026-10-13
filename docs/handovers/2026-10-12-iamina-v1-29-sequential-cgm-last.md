@@ -1,5 +1,13 @@
 # IAMINA V1 — Exécution séquentielle des 29 décisions, CGM en dernier
 
+## Décision #15 — tests synthétiques certifiés (13 octobre 2026) ; #16 en audit
+
+**[#15 issue #977](https://github.com/hraaaaf/IAMINA-MVP/issues/977), [PR #978 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/978)** : HEAD exact `a649be32fdb3c5987eff289ab6ca7645e69780a5`, **2/2 workflows SUCCESS**, [CI #38366954253](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38366954253) Flutter analyse + PWA + **648 tests passés/1 skipped**, 4/4 nouveaux tests repas multimodal synthétique explicitement réussis, [P5-5 #38366954260](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38366954260) SUCCESS ; jobs backend skipped par scope. Tests réels Flutter+Drift mémoire : œuf manuel conservé, pain complet proposé photo **pas adopté sans confirmation humaine**, 75 g saisis et note FR/AR sauvegardés dans **une seule ligne Drift synthétique**, fallback incertain ne mute pas, ID inconnu exclu, contrat un seul insert. Le premier SHA `adb0c4e...` échouait uniquement car une assertion de test comptait deux fois une seule écriture (`.insert` Drift et `LogEntriesCompanion.insert`) ; assertion corrigée test-only sur nouveau HEAD, aucun runtime patient modifié. **#15 OPEN** : ce n'est ni l'end-to-end du bouton Sauvegarder, ni photo/voix réelles/consentement courant/portions cliniquement prouvées. PR DRAFT/non fusionnée, aucun Vercel.
+
+**#16 [issue #979](https://github.com/hraaaaf/IAMINA-MVP/issues/979)** : audit code main de `_MessageBubble` : le texte conversation IAmina utilise `Text(message.text)` non sélectionnable, avec sémantique d'alerte urgente et rôles distincts. Les captures Chrome UI existantes [#11779667087](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38322527667/artifacts/11779667087) montrent seulement écran **vide**, pas de bulle peuplée. Avant un changement SelectableText/copier : créer une vraie capture BEFORE synthétique avec message visible aux mêmes 390/768/1280, référence écrite → patch → AFTER comparé et tests accessibilité FR/AR ; revue confidentialité car presse-papiers OS. **Aucune modification UI #16 à cette étape** ; #16 OPEN. Priorité next : préparer fixture visuelle déterministe et audit #17, conserver gates réels #8/#10/#14 et #1/#25 CGM en dernier.
+
+**Bilan :** les sous-lots #2–#15 prouvés sur périmètres cités ne constituent pas livraison des décisions ; dernier registre 0/29 totalement livrées, aucune fusion/deployment autorisée ; P5 historique 6/12=50 %, distinct de V1.
+
 ## IAMINA V1 — vérification du 13 octobre 2026 : CI #6 à #14 complètes, #15 engagé
 
 **Bilan contrôlé GitHub sur chaque HEAD précis, toutes PR DRAFT / NON FUSIONNÉES :**
