@@ -70,7 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _loadProfile() async {
     final db = context.read<AppDatabase>();
-    final profile = await db.select(db.patientProfiles).getSingleOrNull();
+    final profile = await db.getProfileForLocalUserId(db.activeProfileRowId);
     if (profile != null) {
       setState(() {
         _hasPersistedProfile = true;
@@ -431,7 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .into(db.patientProfiles)
         .insertOnConflictUpdate(
           PatientProfilesCompanion.insert(
-            userId: const drift.Value(1),
+            userId: drift.Value(db.activeProfileRowId),
             preferredLanguage: drift.Value(
               Localizations.localeOf(context).languageCode,
             ),

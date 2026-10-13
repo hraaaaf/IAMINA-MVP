@@ -140,8 +140,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       }
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = context.read<AuthService>().firebaseUser;
-      final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
+      // Scoped physical vault selects the owner; Firebase hashCode is neither
+      // stable nor an authenticated patient identifier.
+      final userId = db.activeProfileRowId;
       final profile = PatientProfilesCompanion.insert(
         userId: drift.Value(userId),
         preferredLanguage: drift.Value(_language!),
