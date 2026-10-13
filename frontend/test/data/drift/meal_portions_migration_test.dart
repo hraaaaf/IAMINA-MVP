@@ -88,7 +88,7 @@ void main() {
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.data['user_version'], 11);
+        expect(version.data['user_version'], 12);
         final v10Tables = await db
             .customSelect(
               "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('medication_events', 'reminders')",

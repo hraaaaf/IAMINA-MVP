@@ -32,7 +32,7 @@ void main() {
     await store.write(state: 'declared', codes: ['insulin', 'oral_meds']);
     final backup = await LocalBackup.exportVaultJson(db);
     final decoded = jsonDecode(backup) as Map<String, dynamic>;
-    expect(decoded['schemaVersion'], 11);
+    expect(decoded['schemaVersion'], 12);
     expect(decoded['treatmentDeclarations'], hasLength(1));
 
     await store.write(state: 'unsure', codes: []);
@@ -41,6 +41,45 @@ void main() {
     expect(restored?.codes, ['insulin', 'oral_meds']);
     expect(restored?.state, 'declared');
     expect((await db.select(db.patientProfiles).getSingle()).treatment, 'tablets');
+  });
+
+  test('D7 v12 backup restores pending revision and exact generation', () async {
+    final db = await openVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final serverAt = DateTime.utc(2026, 10, 13, 17, 42, 30, 123, 456);
+    final first = (await store.read())!;
+    expect(await store.acknowledgeIfUnchanged(
+      expectedGeneration: first.localGeneration,
+      serverUpdatedAtUtc: serverAt,
+    ), isTrue);
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    final expected = (await store.read())!;
+    final backup = await LocalBackup.exportVaultJson(db);
+    await store.write(state: 'none_declared', codes: []);
+    await LocalBackup.restoreVaultJson(db, backup);
+    final restored = (await store.read())!;
+    expect(restored.codes, expected.codes);
+    expect(restored.syncStatus, 'pending');
+    expect(restored.localGeneration, expected.localGeneration);
+    expect(restored.baseServerUpdatedAtUtc, serverAt);
+  });
+
+  test('D7 v12 backup rejects invalid generation without erasing owner', () async {
+    final db = await openVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final backup = jsonDecode(await LocalBackup.exportVaultJson(db))
+        as Map<String, dynamic>;
+    final row = (backup['treatmentDeclarations'] as List).single as Map;
+    row['local_generation'] = 0;
+    await expectLater(
+      LocalBackup.restoreVaultJson(db, jsonEncode(backup)), throwsFormatException,
+    );
+    expect((await store.read())?.codes, ['lifestyle']);
+    expect((await store.read())?.localGeneration, 1);
   });
 
   test('D7 foreign or malformed backup declarations fail without overwrite',
@@ -82,7 +121,7 @@ void main() {
     backup.remove('treatmentDeclarations');
     backup['schemaVersion'] = 10;
     await expectLater(
-      LocalBackup.restoreVaultJson(db, jsonEncode(backup)), throwsStateError,
+      LocalBackup.restoreVaultJson(db, jsonEncode(backup)), throwsFormatException,
     );
     expect((await store.read())?.codes, ['insulin']);
   });

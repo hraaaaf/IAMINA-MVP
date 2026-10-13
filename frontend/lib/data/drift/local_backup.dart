@@ -33,7 +33,9 @@ final class LocalBackup {
     envelope['vaultName'] = scope.databaseName;
     final declaredRows = await db.customSelect(
       '''SELECT user_id, declaration_state, codes_json, declaration_version,
-         provenance, updated_at_utc FROM patient_treatment_declarations_v1''',
+         provenance, updated_at_utc, sync_status,
+         base_server_updated_at, local_generation
+         FROM patient_treatment_declarations_v1''',
     ).get();
     envelope['treatmentDeclarations'] = [
       for (final row in declaredRows) Map<String, dynamic>.from(row.data),
@@ -210,11 +212,14 @@ final class LocalBackup {
         await db.customStatement('''
           INSERT INTO patient_treatment_declarations_v1
             (user_id, declaration_state, codes_json,
-             declaration_version, provenance, updated_at_utc)
-          VALUES (?, ?, ?, ?, ?, ?)
+             declaration_version, provenance, updated_at_utc,
+             sync_status, base_server_updated_at, local_generation)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
           row['user_id'], row['declaration_state'], row['codes_json'],
           row['declaration_version'], row['provenance'], row['updated_at_utc'],
+          row['sync_status'], row['base_server_updated_at'],
+          row['local_generation'],
         ]);
       }
       final newDeclarations = await db.customSelect(
@@ -257,10 +262,26 @@ final class LocalBackup {
       if (row['user_id'] is! int || (row['user_id'] as int) <= 0 ||
           row['declaration_version'] != 1 ||
           row['provenance'] != 'patient_declared' ||
-          row['updated_at_utc'] is! String) {
+          row['updated_at_utc'] is! String ||
+          !const {'pending', 'confirmed', 'conflict'}
+              .contains(row['sync_status']) ||
+          row['local_generation'] is! int ||
+          (row['local_generation'] as int) < 1) {
         throw const FormatException('Invalid D7 declaration metadata');
       }
       DateTime.parse(row['updated_at_utc'] as String);
+      final serverRevision = row['base_server_updated_at'];
+      if (serverRevision != null) {
+        if (serverRevision is! String ||
+            !RegExp(r'(Z|[+-][0-9]{2}:[0-9]{2})$')
+                .hasMatch(serverRevision)) {
+          throw const FormatException('Invalid D7 CAS revision');
+        }
+        DateTime.parse(serverRevision);
+      }
+      if (row['sync_status'] == 'confirmed' && serverRevision == null) {
+        throw const FormatException('Confirmed D7 declaration lacks receipt');
+      }
       final codes = jsonDecode(row['codes_json'] as String);
       if (codes is! List || codes.any((code) => code is! String)) {
         throw const FormatException('Invalid D7 codes array');
