@@ -1,5 +1,18 @@
 # IAMINA V1 — Exécution séquentielle des 29 décisions, CGM en dernier
 
+## 13 octobre 2026 — ordre de dépendances adopté (même roadmap, mêmes identifiants)
+
+**Consigne de séquencement** : 29 décisions historiques inchangées ; leurs numéros GitHub/Notion restent permanents. Seul le rang d'exécution change dans la roadmap existante. Une dépendance stricte prime ; à égalité, tri croissant par ID originel. #1 CGM Hub puis #25 Données et appareils restent derniers. Le gate humain d'un lot ne bloque pas les branches indépendantes.
+
+**Séquence canonique (29 uniques) :** #5 → #6 → #7 → #9 → #10 → #11 → #18 → #19 → #21 → #22 → #8 → #12 → #13 → #23 → #24 → #26 → #4 → #14 → #15 → #17 → #28 → #2 → #3 → #16 → #20 → #27 → #29 → #1 → #25.
+
+**Correspondance rang=ID originel :** 1=5, 2=6, 3=7, 4=9, 5=10, 6=11, 7=18, 8=19, 9=21, 10=22, 11=8, 12=12, 13=13, 14=23, 15=24, 16=26, 17=4, 18=14, 19=15, 20=17, 21=28, 22=2, 23=3, 24=16, 25=20, 26=27, 27=29, 28=1, 29=25.
+
+**Chaînes structurantes :** #5 → #6/#8/#9 ; #7 → #9/#18/#22 ; #19 → #22/#12/#4/#20/#28 ; #22 → #8/#12/#4 ; #12 → #13/#17 ; #13/#14 → #15 → #17 ; #23 → #24/#26 ; #24/#26 → #14/#28 ; #11/#21 → #28 → #2/#16/#27 ; #2 → #3/#20 ; #18 → #20 ; #26/#27 → #29 ; #1 → #25. Certaines arêtes modélisent un ordre de certification/intégration et non une impossibilité technique : #12/#13 partagent notamment une surface de saisie. Reconfirmer leurs interactions sur HEAD au moment de chaque merge autorisé.
+
+**Contrôle :** séquence contrôlée comme tri topologique sur 29 éléments distincts ; 0 violation des dépendances retenues. Pas de code clinique modifié, de merge ni de déploiement. Gates #8 (unités pays), #10 (app-lock), #19 (calculs) inchangés. #16 PR #980 à 4733bfead3b4df55bf8d45b315d8b50916945010 : 7/8 workflows verts, banc Chromium [#38368794695](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38368794695) en échec sur réponse synthétique non observée ; non certifié. 0/29 décisions livrées selon le dernier tracker. P5 historique 6/12 (50 %) distinct.
+
+
 ## Décisions #16–18 — sélection native en CI, prudence médicale — 13 octobre 2026
 
 **#16 [issue #979](https://github.com/hraaaaf/IAMINA-MVP/issues/979), [PR DRAFT #980](https://github.com/hraaaaf/IAMINA-MVP/pull/980)** HEAD exact **`4733bfead3b4df55bf8d45b315d8b50916945010`**. Modification canonique `_MessageBubble` : `Text(message.text)` → `SelectableText(message.text)`, **aucune copie automatique**, styles/role/alerte liveRegion inchangés. Nouveau test FR/EN/AR × 390/768/1280, message patient + réponse synthétique et cas urgence ; deux outils QA : script Playwright et workflow GitHub construisant AVANT depuis `origin/main` puis APRÈS depuis HEAD exact, même `p1-proof=1` et captures synthétiques aux trois tailles. Le premier SHA `f2b4e608...` avait seulement une **erreur de syntaxe dans le faux service Dart**, signalée par l'analyseur (ni preuve de défaut UI, ni preuve de réussite), corrigée test-only en `4733bfe...`. [CI #38368794356](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38368794356), [Chromium BEFORE/AFTER #38368794695](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38368794695), [Companion réel E2E #38368794575](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38368794575) et autres **8 workflows en cours au dernier relevé**. **Pas de score UI ni statut certifié**, aucune fusion. Revue confidentialité presse-papiers OS + accessibilité et couverture chat alternatif encore nécessaires.
