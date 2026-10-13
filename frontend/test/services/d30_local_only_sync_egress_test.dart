@@ -13,6 +13,14 @@ const _syntheticLog = <String, dynamic>{
   'source': 'manual',
 };
 
+// Simulates a legacy/third-party token. It must not authorize IAMINA uploads.
+class _NonNativeTokenAuthService extends AuthService {
+  _NonNativeTokenAuthService({required super.httpClient});
+
+  @override
+  Future<String?> getIdToken() async => 'legacy-auth-token';
+}
+
 class _PausedTokenAuthService extends AuthService {
   final Completer<void> tokenCaptured = Completer<void>();
   final Completer<void> permitTokenReturn = Completer<void>();
@@ -133,6 +141,42 @@ void main() {
 
     await expectLater(inFlight, throwsA(isA<StateError>()));
     expect(clinicalRequests, 0);
+    auth.dispose();
+  });
+
+  test('D30 non-native identity token cannot authorize clinical uploads',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final auth = _NonNativeTokenAuthService(
+      httpClient: MockClient((request) async {
+        fail('Unexpected auth HTTP');
+      }),
+    );
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    expect(auth.hasRemoteApiCredential, isFalse);
+    expect(await auth.getIdToken(), 'legacy-auth-token');
+
+    var medicalRequests = 0;
+    final api = ApiClient(
+      baseUrl: 'https://synthetic.example',
+      authService: auth,
+      httpClient: MockClient((request) async {
+        medicalRequests++;
+        fail('Non-native token must not authorize patient upload');
+      }),
+    );
+
+    expect(await api.syncLogEntry(_syntheticLog), isFalse);
+    expect(await api.batchSyncLogs([_syntheticLog]), isEmpty);
+    await expectLater(
+      api.client.post<Object, Object>(
+        Uri.parse('/api/v1/logs/batch'),
+        body: [_syntheticLog],
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(medicalRequests, 0);
     auth.dispose();
   });
 
