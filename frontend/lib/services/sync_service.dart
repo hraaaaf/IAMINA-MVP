@@ -183,12 +183,13 @@ class SyncService {
         await _db.reportSyncFailure(log.id, log.syncAttempts);
       }
     } finally {
-      if (_disposed) return;
-      isSyncing.value = false;
-      if (!_sessionActive) {
-        state.value = SyncUiState.checking;
-      } else if (!hadFailure && state.value == SyncUiState.syncing) {
-        state.value = SyncUiState.upToDate;
+      if (!_disposed) {
+        isSyncing.value = false;
+        if (!_sessionActive) {
+          state.value = SyncUiState.checking;
+        } else if (!hadFailure && state.value == SyncUiState.syncing) {
+          state.value = SyncUiState.upToDate;
+        }
       }
     }
   }
