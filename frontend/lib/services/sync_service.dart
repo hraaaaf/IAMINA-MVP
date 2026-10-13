@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/drift/database.dart';
+import '../data/drift/patient_treatment_declaration_store.dart';
 import 'auth_epoch.dart';
 import 'api_client.dart';
 import 'sync_api_contract.dart';
@@ -73,6 +74,9 @@ class SyncService {
   void init() {
     if (!_sessionActive) return;
     unawaited(refreshState());
+    // Only restore a declared profile into an empty native vault. This is
+    // not an upload acknowledgement or conflict-safe bidirectional sync.
+    unawaited(restorePatientTreatmentDeclaration());
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
       results,
     ) {
@@ -88,6 +92,43 @@ class SyncService {
   bool _isOffline(List<ConnectivityResult> results) {
     return results.isEmpty ||
         results.every((result) => result == ConnectivityResult.none);
+  }
+
+  /// Recover an explicit patient declaration on a newly authenticated device.
+  /// Never treat an empty server default as a patient-reported answer.
+  Future<void> restorePatientTreatmentDeclaration() async {
+    if (!_sessionActive || _db.patientVaultScope?.nativeDjangoUserId == null) {
+      return;
+    }
+    try {
+      final store = PatientTreatmentDeclarationStore(_db);
+      if (await store.read() != null || !_sessionActive) return;
+      final profile = await _apiClient.getProfile();
+      if (!_sessionActive || profile == null) return;
+      if (profile['treatment_declaration_source'] != 'patient_declared' ||
+          profile['treatment_declaration_version'] != 1) return;
+      final status = profile['treatment_declaration_state'];
+      final codes = profile['treatment_declarations'];
+      final timestamp = profile['treatment_declaration_updated_at'];
+      if (status is! String || codes is! List ||
+          codes.any((item) => item is! String) ||
+          timestamp is! String) return;
+      final updatedAt = DateTime.tryParse(timestamp);
+      if (updatedAt == null || !_sessionActive) return;
+      await store.restoreRemoteIfAbsent(
+        state: status,
+        codes: codes.cast<String>(),
+        updatedAtUtc: updatedAt,
+      );
+    } catch (error, stackTrace) {
+      if (_sessionActive) {
+        _failureLogger(
+          'restore_treatment_declaration',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
+    }
   }
 
   Future<void> refreshState() async {

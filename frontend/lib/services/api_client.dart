@@ -203,6 +203,23 @@ class ApiClient {
 
   ChopperClient get client => _client;
 
+  /// A response from the previous auth epoch is never exposed to its caller.
+  Future<Map<String, dynamic>?> getProfile() async {
+    final epoch = AuthEpoch.value;
+    try {
+      final response = await _client.get(Uri.parse('/api/v1/profile'));
+      requireCurrentAuthEpoch(epoch);
+      final body = response.body;
+      return response.isSuccessful && body is Map<String, dynamic>
+          ? body
+          : null;
+    } on StateError {
+      rethrow;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> patchProfile(Map<String, dynamic> patch) async {
     try {
       final response = await _client.patch(

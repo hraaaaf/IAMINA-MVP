@@ -105,6 +105,46 @@ void main() {
     expect(rows, isEmpty);
   });
 
+  test('D7 new native device restores only its own declared treatments', () async {
+    final a = await vault(734);
+    final b = await vault(812);
+    addTearDown(a.close);
+    addTearDown(b.close);
+    final aStore = PatientTreatmentDeclarationStore(a);
+    final bStore = PatientTreatmentDeclarationStore(b);
+    final recorded = DateTime.utc(2026, 10, 13, 14);
+    expect(await aStore.restoreRemoteIfAbsent(
+      state: 'declared', codes: ['insulin', 'lifestyle'],
+      updatedAtUtc: recorded,
+    ), isTrue);
+    expect((await aStore.read())?.codes, ['insulin', 'lifestyle']);
+    expect((await aStore.read())?.updatedAtUtc, recorded);
+    expect(await bStore.read(), isNull);
+  });
+
+  test('D7 late server snapshot cannot overwrite local offline edit', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['oral_meds']);
+    expect(await store.restoreRemoteIfAbsent(
+      state: 'declared', codes: ['insulin'],
+      updatedAtUtc: DateTime.utc(2026, 10, 13),
+    ), isFalse);
+    expect((await store.read())?.codes, ['oral_meds']);
+  });
+
+  test('D7 invalid server snapshot rejected without mutation', () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await expectLater(store.restoreRemoteIfAbsent(
+      state: 'declared', codes: ['insulin', 'insulin'],
+      updatedAtUtc: DateTime.utc(2026, 10, 13),
+    ), throwsArgumentError);
+    expect(await store.read(), isNull);
+  });
+
   test('D7 storage remains queryable after JSON encoding of treatment codes', () async {
     final db = await vault(734);
     addTearDown(db.close);

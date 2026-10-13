@@ -93,6 +93,41 @@ final class PatientTreatmentDeclarationStore {
     );
   }
 
+  /// Restore an explicit server declaration only if the patient's isolated
+  /// native Django vault has no declaration. A late GET never overwrites
+  /// a local offline edit, and no legacy scalar is inferred.
+  Future<bool> restoreRemoteIfAbsent({
+    required String state,
+    required List<String> codes,
+    required DateTime updatedAtUtc,
+  }) async {
+    if (db.patientVaultScope?.nativeDjangoUserId == null) {
+      throw StateError('Remote declaration requires native Django vault');
+    }
+    validatePatientTreatmentDeclarationV1(state: state, codes: codes);
+    final owner = _ownerId;
+    return db.transaction(() async {
+      if (await db.getProfileForLocalUserId(owner) == null) {
+        throw StateError('No patient-owned profile for remote declaration');
+      }
+      final existing = await db.customSelect(
+        'SELECT 1 FROM patient_treatment_declarations_v1 WHERE user_id = ?',
+        variables: [Variable<int>(owner)],
+      ).get();
+      if (existing.isNotEmpty) return false;
+      await db.customStatement('''
+        INSERT INTO patient_treatment_declarations_v1
+          (user_id, declaration_state, codes_json, declaration_version,
+           provenance, updated_at_utc)
+        VALUES (?, ?, ?, 1, 'patient_declared', ?)
+        ON CONFLICT(user_id) DO NOTHING
+      ''', [
+        owner, state, jsonEncode(codes), updatedAtUtc.toUtc().toIso8601String(),
+      ]);
+      return true;
+    });
+  }
+
   Future<void> write({
     required String state,
     required List<String> codes,
