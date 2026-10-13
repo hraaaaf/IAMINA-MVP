@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import 'database.dart';
+import 'patient_treatment_declaration_store.dart';
 
 /// Versioned local-first backup/restore for IAMINA's Drift-owned pilot data.
 ///
@@ -30,6 +31,13 @@ final class LocalBackup {
     final envelope = _asMap(jsonDecode(await _exportRows(db)), 'backup');
     envelope['formatVersion'] = scopedFormatVersion;
     envelope['vaultName'] = scope.databaseName;
+    final declaredRows = await db.customSelect(
+      '''SELECT user_id, declaration_state, codes_json, declaration_version,
+         provenance, updated_at_utc FROM patient_treatment_declarations_v1''',
+    ).get();
+    envelope['treatmentDeclarations'] = [
+      for (final row in declaredRows) Map<String, dynamic>.from(row.data),
+    ];
     return jsonEncode(envelope);
   }
 
@@ -63,6 +71,12 @@ final class LocalBackup {
     if (root['vaultName'] != null) {
       throw FormatException('Scoped data cannot be imported as legacy data');
     }
+    final existingDeclarations = await db.customSelect(
+      'SELECT user_id FROM patient_treatment_declarations_v1 LIMIT 1',
+    ).get();
+    if (existingDeclarations.isNotEmpty) {
+      throw StateError('Legacy format cannot overwrite D7 declarations.');
+    }
     return _restoreRows(db, root);
   }
 
@@ -81,30 +95,58 @@ final class LocalBackup {
     }
     // Check owner before touching even a single destination row. Restoring
     // old unscoped backup requires an explicit, separate recovery flow.
-    final expectedNativeId = scope.nativeDjangoUserId;
-    if (expectedNativeId != null) {
-      final profiles = _rows(root, 'patientProfiles');
-      if (profiles.length > 1 ||
-          profiles.any((row) => row['userId'] != expectedNativeId) ||
-          (profiles.isEmpty && _hasUnownedClinicalRows(root))) {
-        throw FormatException('Backup does not match its native patient owner');
+    final owner = db.activeProfileRowId;
+    final profiles = _rows(root, 'patientProfiles');
+    if (profiles.length > 1 ||
+        profiles.any((row) => row['userId'] != owner) ||
+        (profiles.isEmpty && _hasUnownedClinicalRows(root))) {
+      throw FormatException('Backup does not match its patient vault owner');
+    }
+    final legacyV10 = root['schemaVersion'] == 10 &&
+        db.schemaVersion == 11 && root['treatmentDeclarations'] == null;
+    if (!legacyV10 && root['schemaVersion'] == 11 &&
+        root['treatmentDeclarations'] == null) {
+      throw FormatException('D7 declarations missing from patient backup');
+    }
+    if (legacyV10) {
+      final existingDeclarations = await db.customSelect(
+        'SELECT user_id FROM patient_treatment_declarations_v1 LIMIT 1',
+      ).get();
+      if (existingDeclarations.isNotEmpty) {
+        throw StateError('Old backup cannot overwrite newer D7 declarations.');
       }
     }
+    final declarations = legacyV10
+        ? <Map<String, dynamic>>[]
+        : _rows(root, 'treatmentDeclarations');
+    for (final row in declarations) {
+      if (row['user_id'] != owner || profiles.isEmpty) {
+        throw FormatException('Foreign patient treatment declaration');
+      }
+      _validatedTreatmentDeclarationRow(row);
+    }
     root['formatVersion'] = formatVersion;
-    return _restoreRows(db, root);
+    return _restoreRows(db, root, declarations: declarations);
   }
 
   static Future<void> _restoreRows(
     AppDatabase db,
-    Map<String, dynamic> root,
-  ) async {
+    Map<String, dynamic> root, {
+    List<Map<String, dynamic>> declarations = const [],
+  }) async {
 
     if (root['formatVersion'] != formatVersion) {
       throw FormatException(
         'Unsupported backup formatVersion: ${root['formatVersion']}',
       );
     }
-    if (root['schemaVersion'] != db.schemaVersion) {
+    final legacyV10 = db.patientVaultScope == null &&
+        root['schemaVersion'] == 10 && db.schemaVersion == 11;
+    final scopedV10 = db.patientVaultScope != null &&
+        root['schemaVersion'] == 10 && db.schemaVersion == 11 &&
+        declarations.isEmpty;
+    if (root['schemaVersion'] != db.schemaVersion &&
+        !legacyV10 && !scopedV10) {
       throw FormatException(
         'Backup schemaVersion ${root['schemaVersion']} does not match '
         'database schemaVersion ${db.schemaVersion}',
@@ -142,6 +184,7 @@ final class LocalBackup {
     }
 
     await db.transaction(() async {
+      await db.customStatement('DELETE FROM patient_treatment_declarations_v1');
       await db.delete(db.logEntries).go();
       await db.delete(db.patientProfiles).go();
       await db.delete(db.chatMessages).go();
@@ -162,6 +205,23 @@ final class LocalBackup {
       }
       for (final row in reminders) {
         await db.into(db.reminders).insert(row);
+      }
+      for (final row in declarations) {
+        await db.customStatement('''
+          INSERT INTO patient_treatment_declarations_v1
+            (user_id, declaration_state, codes_json,
+             declaration_version, provenance, updated_at_utc)
+          VALUES (?, ?, ?, ?, ?, ?)
+        ''', [
+          row['user_id'], row['declaration_state'], row['codes_json'],
+          row['declaration_version'], row['provenance'], row['updated_at_utc'],
+        ]);
+      }
+      final newDeclarations = await db.customSelect(
+        'SELECT user_id FROM patient_treatment_declarations_v1',
+      ).get();
+      if (newDeclarations.length != declarations.length) {
+        throw StateError('D7 backup declaration row count mismatch');
       }
 
       await _requireCount(
@@ -192,13 +252,35 @@ final class LocalBackup {
     });
   }
 
+  static void _validatedTreatmentDeclarationRow(Map<String, dynamic> row) {
+    try {
+      if (row['user_id'] is! int || (row['user_id'] as int) <= 0 ||
+          row['declaration_version'] != 1 ||
+          row['provenance'] != 'patient_declared' ||
+          row['updated_at_utc'] is! String) {
+        throw const FormatException('Invalid D7 declaration metadata');
+      }
+      DateTime.parse(row['updated_at_utc'] as String);
+      final codes = jsonDecode(row['codes_json'] as String);
+      if (codes is! List || codes.any((code) => code is! String)) {
+        throw const FormatException('Invalid D7 codes array');
+      }
+      validatePatientTreatmentDeclarationV1(
+        state: row['declaration_state'] as String,
+        codes: codes.cast<String>().toList(growable: false),
+      );
+    } catch (_) {
+      throw const FormatException('Invalid D7 declaration record');
+    }
+  }
+
   static bool _hasUnownedClinicalRows(Map<String, dynamic> root) =>
       ['logEntries', 'chatMessages', 'medicationEvents', 'reminders']
           .any((table) => _rows(root, table).isNotEmpty);
 
   static Future<void> _assertExportOwnerScope(AppDatabase db) async {
-    final expected = db.patientVaultScope?.nativeDjangoUserId;
-    if (expected == null) return;
+    if (db.patientVaultScope == null) return;
+    final expected = db.activeProfileRowId;
     final profiles = await db.select(db.patientProfiles).get();
     if (profiles.length > 1 ||
         profiles.any((p) => p.userId != expected)) {
