@@ -208,17 +208,27 @@ class ApiClient {
     }
   }
 
-  /// Envoie un log unique au backend.
+  /// Send one clinical log only when a remote credential exists.
+  ///
+  /// A device-local IAMINA enrollment is not remote consent or authentication.
+  /// Never put a local-only patient's clinical payload on the wire to get a 401.
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
     return guardSyncApiCall<bool>('sync_log_entry', () async {
+      final token = await _authService.getIdToken();
+      if (token == null || token.isEmpty) return false;
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
     });
   }
 
-  /// Envoie une liste de logs en une seule requête (Batch).
+  /// Sync clinical logs only for a remotely authenticated session.
+  ///
+  /// A null bearer must stop egress BEFORE the HTTP body is constructed/sent.
+  /// Optional-sync consent, epoch races and full recovery remain D30 gates.
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
+      final token = await _authService.getIdToken();
+      if (token == null || token.isEmpty) return const <String>[];
       final response = await _client.post(
         Uri.parse('/api/v1/logs/batch'),
         body: logs,
