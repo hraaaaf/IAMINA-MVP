@@ -15,6 +15,7 @@ import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
@@ -460,15 +461,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     bool remoteMirrorConfirmed = true;
     if (_treatmentTouched && db.patientVaultScope != null) {
+      // Durable local-first write. Do not use legacy unconditioned PATCH:
+      // only the vault-bound synchronizer may upload and ACK this generation.
       await PatientTreatmentDeclarationStore(db).write(
         state: d7StateCode(_declaredTreatments.state),
         codes: _declaredTreatments.codes,
       );
       final auth = context.read<AuthService>();
-      remoteMirrorConfirmed = !auth.hasRemoteApiCredential ||
-          await context.read<ApiClient>().patchProfile(
-            _declaredTreatments.toApiPatch(),
-          );
+      remoteMirrorConfirmed = false;
+      if (mounted && auth.hasRemoteApiCredential &&
+          db.patientVaultScope?.nativeDjangoUserId != null) {
+        remoteMirrorConfirmed =
+            await context.read<SyncService>().sendPendingTreatmentDeclaration();
+      }
     }
 
     if (mounted) {
@@ -485,7 +490,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   en: 'Saved locally. Remote sync not confirmed.',
                   ar: 'تم الحفظ محليًا. لم يتم تأكيد المزامنة.',
                 )),
-          backgroundColor: AminaTheme.successEmerald,
+          backgroundColor: remoteMirrorConfirmed
+              ? AminaTheme.successEmerald : AminaTheme.warningOrange,
           behavior: SnackBarBehavior.floating,
         ),
       );

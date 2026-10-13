@@ -15,6 +15,7 @@ import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
+import '../../services/sync_service.dart';
 import '../profile/medical_treatment_declaration_v1.dart';
 import '../profile/medical_treatment_multi_selector.dart';
 
@@ -163,12 +164,13 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           state: d7StateCode(_declaredTreatments.state),
           codes: _declaredTreatments.codes,
         ).timeout(_persistenceTimeout);
-        // UI reports what the patient follows; a failed optional remote
-        // mirror must never roll back a valid local declaration.
-        if (mounted && context.read<AuthService>().hasRemoteApiCredential) {
-          final mirrored = await context.read<ApiClient>().patchProfile(
-            _declaredTreatments.toApiPatch(),
-          ).timeout(_persistenceTimeout, onTimeout: () => false);
+        // Keep any offline choice in the patient vault. The native upload
+        // uses conditional CAS and generation-scoped ACK, never legacy PATCH.
+        if (mounted && db.patientVaultScope?.nativeDjangoUserId != null &&
+            context.read<AuthService>().hasRemoteApiCredential) {
+          final mirrored = await context.read<SyncService>()
+              .sendPendingTreatmentDeclaration()
+              .timeout(_persistenceTimeout, onTimeout: () => false);
           if (!mirrored && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(_preferencesCopy(context,
