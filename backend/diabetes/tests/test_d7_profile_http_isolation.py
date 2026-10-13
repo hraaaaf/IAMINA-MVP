@@ -46,7 +46,7 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
             return self.client.get("/api/v1/profile", headers=headers)
 
-    def _patch(self, token, payload):
+    def _patch(self, token, payload, expected_updated_at=None):
         # Restore the real, fail-closed HTTP bearer path for this request only.
         # Never bypass token verification or weaken the production handler.
         with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
@@ -54,7 +54,13 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
                 "/api/v1/profile",
                 data=json.dumps(payload),
                 content_type="application/json",
-                headers={"Authorization": f"Bearer {token}"},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    **(
+                        {"X-Iamina-Treatment-Expected-Updated-At": expected_updated_at}
+                        if expected_updated_at is not None else {}
+                    ),
+                },
             )
 
     def test_a_and_b_roundtrip_only_their_own_declarations(self):
@@ -100,6 +106,85 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
             self._get(self.token_a).json()["treatment_declarations"],
             ["insulin", "oral_meds", "lifestyle"],
         )
+
+    def test_compare_and_swap_prevents_stale_cross_device_declaration(self):
+        first = self._patch(
+            self.token_a,
+            {"treatment_declaration": {
+                "version": 1,
+                "state": "declared",
+                "codes": ["lifestyle"],
+            }},
+            expected_updated_at="none",
+        )
+        self.assertEqual(first.status_code, 200, first.content)
+        original = first.json()["treatment_declaration_updated_at"]
+        self.assertIsNotNone(original)
+        self.assertEqual(self._get(self.token_b).json()["treatment_declarations"], [])
+
+        stale = self._patch(
+            self.token_a,
+            {"treatment_declaration": {
+                "version": 1,
+                "state": "declared",
+                "codes": ["insulin"],
+            }},
+            expected_updated_at="none",
+        )
+        self.assertEqual(stale.status_code, 409, stale.content)
+        self.assertEqual(self._get(self.token_a).json()["treatment_declarations"], [
+            "lifestyle"
+        ])
+
+        second = self._patch(
+            self.token_a,
+            {"treatment_declaration": {
+                "version": 1,
+                "state": "declared",
+                "codes": ["lifestyle", "oral_meds"],
+            }},
+            expected_updated_at=original,
+        )
+        self.assertEqual(second.status_code, 200, second.content)
+        current = second.json()["treatment_declaration_updated_at"]
+        self.assertNotEqual(original, current)
+
+        replay = self._patch(
+            self.token_a,
+            {"treatment_declaration": {
+                "version": 1,
+                "state": "none_declared",
+                "codes": [],
+            }},
+            expected_updated_at=original,
+        )
+        self.assertEqual(replay.status_code, 409, replay.content)
+        self.assertEqual(self._get(self.token_a).json()["treatment_declarations"], [
+            "lifestyle", "oral_meds"
+        ])
+        self.assertEqual(self._get(self.token_b).json()["treatment_declarations"], [])
+
+    def test_malformed_treatment_revision_is_rejected_without_mutation(self):
+        for revision in ("invalid-time", "2026-10-13T21:00:00", "0"):
+            bad = self._patch(
+                self.token_a,
+                {"treatment_declaration": {
+                    "version": 1,
+                    "state": "declared",
+                    "codes": ["insulin"],
+                }},
+                expected_updated_at=revision,
+            )
+            self.assertEqual(bad.status_code, 422, bad.content)
+        unrelated = self._patch(
+            self.token_a,
+            {"preferred_language": "fr"},
+            expected_updated_at="none",
+        )
+        self.assertEqual(unrelated.status_code, 422, unrelated.content)
+        saved = DiabetesProfile.objects.get(base_profile__patient=self.a)
+        self.assertIsNone(saved.treatment_declaration_updated_at)
+        self.assertEqual(saved.treatment_declarations, [])
 
     def test_invalid_declaration_rejected_without_any_data_change(self):
         bad = self._patch(

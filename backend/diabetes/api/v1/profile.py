@@ -12,6 +12,7 @@ from typing import Literal, Optional
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -207,6 +208,16 @@ def _get_diabetes_profile(user) -> DiabetesProfile:
         raise HttpError(404, "Diabetes profile not found") from exc
 
 
+def _get_diabetes_profile_for_update(user) -> DiabetesProfile:
+    """Lock this patient's row before any treatment write or CAS comparison."""
+    try:
+        return DiabetesProfile.objects.select_for_update().get(
+            base_profile__patient=user
+        )
+    except DiabetesProfile.DoesNotExist as exc:
+        raise HttpError(404, "Diabetes profile not found") from exc
+
+
 def _validate_media_consent_option(purpose: str, modality: str) -> None:
     if (purpose, modality) not in _MEDIA_CONSENT_OPTION_SET:
         raise HttpError(422, "Unsupported media consent purpose/modality pair")
@@ -235,10 +246,31 @@ def get_profile(request):
 @transaction.atomic
 def patch_profile(request, data: ProfilePatchSchema):
     """Persist only explicitly supplied patient-declared profile fields."""
-    profile = _get_diabetes_profile(request.user)
+    profile = _get_diabetes_profile_for_update(request.user)
     base = profile.base_profile
     payload = data.model_dump(exclude_unset=True)
     declaration = payload.pop("treatment_declaration", None)
+
+    # Opt-in compare-and-swap for a client that already read the server.
+    # Legacy PATCH clients remain compatible until D7 outbox migration.
+    # "none" means no declaration has yet been persisted for this patient.
+    expected_text = getattr(request, "headers", {}).get(
+        "X-Iamina-Treatment-Expected-Updated-At"
+    )
+    if expected_text is not None:
+        if declaration is None:
+            raise HttpError(422, "Treatment revision without a declaration")
+        if expected_text == "none":
+            expected_at = None
+        else:
+            try:
+                expected_at = parse_datetime(expected_text)
+            except ValueError as exc:
+                raise HttpError(422, "Invalid treatment revision") from exc
+            if expected_at is None or timezone.is_naive(expected_at):
+                raise HttpError(422, "Invalid treatment revision")
+        if expected_at != profile.treatment_declaration_updated_at:
+            raise HttpError(409, "Treatment declaration was changed on another device")
 
     proposed_low = payload.get("target_range_low", profile.target_range_low)
     proposed_high = payload.get("target_range_high", profile.target_range_high)
