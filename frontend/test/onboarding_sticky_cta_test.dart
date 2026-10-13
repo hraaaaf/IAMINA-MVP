@@ -99,7 +99,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Quel ton préférez-vous ?'), findsNothing);
     await select('Diabète Type 2');
-    await select('Comprimés');
+    await select('Médicaments déclarés');
 
     final start = find.byKey(const Key('onboarding-sticky-start'));
     expect(start, findsOneWidget);
