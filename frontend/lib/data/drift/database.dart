@@ -104,14 +104,22 @@ class ChatMessages extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  // Constructor for custom openers (useful for tests)
-  AppDatabase(super.e);
+  // Every table in a vault lives in one isolated physical SQLite/IndexedDB
+  // database. A legacy database cannot claim this identity post-hoc.
+  final PatientVaultScope? patientVaultScope;
+
+  // Legacy/testing path: never considered to be patient-isolated.
+  AppDatabase(super.e) : patientVaultScope = null;
+
+  // Synthetic tests can verify the vault boundaries without writing to disk.
+  AppDatabase.testPatientVault(super.e, this.patientVaultScope);
 
   // Default constructor using drift_flutter's recommended setup
   // LEGACY vault for existing pre-D7 data. Never interpret this historical
   // unscoped storage as belonging to the next authenticated account.
   AppDatabase.defaults()
-    : super(
+    : patientVaultScope = null,
+      super(
         driftDatabase(
           name: 'amina',
           web: DriftWebOptions(
@@ -126,7 +134,8 @@ class AppDatabase extends _$AppDatabase {
   // Integrating the runtime vault switch requires an independent full-flow
   // A→logout→B certification before any real patient use.
   AppDatabase.forPatientVault(PatientVaultScope scope)
-    : super(
+    : patientVaultScope = scope,
+      super(
         driftDatabase(
           name: scope.databaseName,
           web: DriftWebOptions(

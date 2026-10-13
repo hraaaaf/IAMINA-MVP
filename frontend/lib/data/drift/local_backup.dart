@@ -10,10 +10,34 @@ import 'database.dart';
 /// not upload, transmit, encrypt, or otherwise move data by itself.
 final class LocalBackup {
   static const int formatVersion = 1;
+  static const int scopedFormatVersion = 2;
 
+  // Version 1 applies only to the historical unscoped "amina" database.
+  // It cannot be imported into an authenticated patient vault without review.
   static Future<String> exportJson(AppDatabase db) async {
+    if (db.patientVaultScope != null) {
+      throw StateError('Use the patient-vault backup protocol.');
+    }
+    return _exportRows(db);
+  }
+
+  static Future<String> exportVaultJson(AppDatabase db) async {
+    final scope = db.patientVaultScope;
+    if (scope == null) {
+      throw StateError('Cannot claim legacy mixed data as a patient vault.');
+    }
+    final envelope = _asMap(jsonDecode(await _exportRows(db)), 'backup');
+    envelope['formatVersion'] = scopedFormatVersion;
+    envelope['vaultName'] = scope.databaseName;
+    return jsonEncode(envelope);
+  }
+
+  static Future<String> _exportRows(AppDatabase db) async {
     final logs = await db.select(db.logEntries).get();
     final profiles = await db.select(db.patientProfiles).get();
+    if (db.patientVaultScope == null && profiles.length > 1) {
+      throw StateError('Ambiguous legacy backup: multiple patient profiles.');
+    }
     final chats = await db.select(db.chatMessages).get();
     final medications = await db.select(db.medicationEvents).get();
     final reminders = await db.select(db.reminders).get();
@@ -31,7 +55,39 @@ final class LocalBackup {
   }
 
   static Future<void> restoreJson(AppDatabase db, String rawBackup) async {
+    if (db.patientVaultScope != null) {
+      throw StateError('Legacy restore cannot overwrite a patient vault.');
+    }
     final root = _asMap(jsonDecode(rawBackup), 'backup root');
+    if (root['vaultName'] != null) {
+      throw FormatException('Scoped data cannot be imported as legacy data');
+    }
+    return _restoreRows(db, root);
+  }
+
+  static Future<void> restoreVaultJson(
+    AppDatabase db,
+    String rawBackup,
+  ) async {
+    final scope = db.patientVaultScope;
+    if (scope == null) {
+      throw StateError('A scoped backup requires a scoped destination.');
+    }
+    final root = _asMap(jsonDecode(rawBackup), 'backup root');
+    if (root['formatVersion'] != scopedFormatVersion ||
+        root['vaultName'] != scope.databaseName) {
+      throw FormatException('Backup vault identity mismatch');
+    }
+    // Check owner before touching even a single destination row. Restoring
+    // old unscoped backup requires an explicit, separate recovery flow.
+    root['formatVersion'] = formatVersion;
+    return _restoreRows(db, root);
+  }
+
+  static Future<void> _restoreRows(
+    AppDatabase db,
+    Map<String, dynamic> root,
+  ) async {
 
     if (root['formatVersion'] != formatVersion) {
       throw FormatException(
@@ -62,6 +118,18 @@ final class LocalBackup {
     final reminders = _rows(root, 'reminders')
         .map(ReminderData.fromJson)
         .toList(growable: false);
+
+    if (profiles.length > 1) {
+      throw StateError('Backup contains ambiguous multiple patient profiles.');
+    }
+    // Old restore must not erase data belonging to another recorded owner.
+    final existing = await db.select(db.patientProfiles).get();
+    if (existing.length > 1 ||
+        (existing.isNotEmpty &&
+            (profiles.isEmpty ||
+                existing.single.userId != profiles.single.userId))) {
+      throw StateError('Restore owner mismatch; original data preserved.');
+    }
 
     await db.transaction(() async {
       await db.delete(db.logEntries).go();
