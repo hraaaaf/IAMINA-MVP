@@ -76,7 +76,7 @@ async function sendSyntheticQuestion(page, width, height) {
         });
         const page = await ctx.newPage();
         const problems = [];
-        page.on('pageerror',e=>problems.push('pageerror:'+String(e.message)));
+        page.on('pageerror',e=>problems.push('pageerror:'+String(e.stack || e.message)));
         page.on('console',m=>{if(m.type()==='error')problems.push('console:'+m.text())});
         await page.goto('http://127.0.0.1:'+port+'/?p1-proof=1',
           {waitUntil:'domcontentloaded',timeout:30000});
@@ -106,15 +106,20 @@ async function sendSyntheticQuestion(page, width, height) {
           semanticLabels:labels.slice(0,120),errors:problems,url:page.url()
         },null,2));
         observations.push({phase,width,height,errorCount:problems.length});
-        if(problems.length)throw new Error('Browser errors: '+JSON.stringify(problems));
+        // Do not stop at the first error: preserve all six BEFORE/AFTER frames
+        // and JS stacks for diagnosis, but keep the final gate fail-closed.
         await ctx.close();
       }
     }
+    const hasErrors = observations.some(o => o.errorCount > 0);
     fs.writeFileSync(path.join(root,'result.json'),JSON.stringify({
       source:'synthetic_companion_governance_fallback',patientData:false,
-      viewports:observations,success:true,
+      viewports:observations,success:!hasErrors,
     },null,2));
     console.log(JSON.stringify(observations));
+    if (hasErrors) {
+      throw new Error('Browser JS errors detected; inspect all six PNG/JSON artifacts');
+    }
   } finally {
     await browser.close();
   }
