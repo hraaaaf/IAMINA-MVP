@@ -120,6 +120,14 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         self.assertEqual(first.status_code, 200, first.content)
         original = first.json()["treatment_declaration_updated_at"]
         self.assertIsNotNone(original)
+        persisted = DiabetesProfile.objects.get(
+            base_profile__patient=self.a
+        ).treatment_declaration_updated_at
+        self.assertEqual(original, persisted.isoformat(timespec="microseconds"))
+        self.assertEqual(
+            self._get(self.token_a).json()["treatment_declaration_updated_at"],
+            original,
+        )
         self.assertEqual(self._get(self.token_b).json()["treatment_declarations"], [])
 
         stale = self._patch(

@@ -12,7 +12,6 @@ import '../../data/drift/database.dart';
 import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
-import '../../services/api_client.dart';
 import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
 import '../../services/sync_service.dart';
