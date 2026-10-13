@@ -11,6 +11,7 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
+import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
 
 String _preferencesCopy(
@@ -48,21 +49,57 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   String _unit = 'mg/dL';
   bool _saving = false;
   bool _preferencesInitialized = false;
+  bool _countrySuggestionRequested = false;
+  bool _countryTouched = false;
+  bool _countrySuggestedByIp = false;
 
   AppLocalizations get l10n => AppLocalizations.of(context)!;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!widget.preferencesOnly || _preferencesInitialized) return;
-    final localeService = context.read<LocalePreferenceService>();
-    final profile = context.read<PatientProfileData?>();
-    _language = localeService.locale.languageCode;
-    _country = localeService.country;
-    _diabetesType = profile?.diabetesType;
-    _treatment = profile?.treatment;
-    _unit = profile?.unitPreference ?? _unit;
-    _preferencesInitialized = true;
+    if (widget.preferencesOnly && !_preferencesInitialized) {
+      final localeService = context.read<LocalePreferenceService>();
+      final profile = context.read<PatientProfileData?>();
+      _language = localeService.locale.languageCode;
+      _country = countryByCode(localeService.country)?.code;
+      _diabetesType = profile?.diabetesType;
+      _treatment = profile?.treatment;
+      _unit = profile?.unitPreference ?? _unit;
+      _preferencesInitialized = true;
+    }
+    if (!_countrySuggestionRequested) {
+      _countrySuggestionRequested = true;
+      if (_country == null) unawaited(_suggestCountryFromIp());
+    }
+  }
+
+  Future<void> _suggestCountryFromIp() async {
+    final code = await context.read<LocalePreferenceService>().suggestCountryFromIp();
+    if (!mounted || _countryTouched || _country != null) return;
+    final choice = countryByCode(code);
+    if (choice == null) return;
+    setState(() {
+      _country = choice.code;
+      _countrySuggestedByIp = true;
+    });
+  }
+
+  void _selectCountry(String country) {
+    setState(() {
+      _country = country;
+      _countryTouched = true;
+      _countrySuggestedByIp = false;
+    });
+  }
+
+  void _clearCountry() {
+    if (_country == null && _countryTouched) return;
+    setState(() {
+      _country = null;
+      _countryTouched = true;
+      _countrySuggestedByIp = false;
+    });
   }
 
   Future<void> _selectLanguage(String value) async {
@@ -166,20 +203,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       _Question(
         title: l10n.onboardingChooseCountry,
         children: [
-          _Choice(
-            label: l10n.onboardingCountryMorocco,
-            selected: _country == 'MA',
-            onTap: () => setState(() => _country = 'MA'),
-          ),
-          _Choice(
-            label: l10n.onboardingCountryFrance,
-            selected: _country == 'FR',
-            onTap: () => setState(() => _country = 'FR'),
-          ),
-          _Choice(
-            label: l10n.onboardingCountryOther,
-            selected: _country == 'OTHER',
-            onTap: () => setState(() => _country = 'OTHER'),
+          _CountrySearchField(
+            code: _country,
+            proposedFromIp: _countrySuggestedByIp,
+            onSelected: _selectCountry,
+            onCleared: _clearCountry,
           ),
         ],
       ),
@@ -210,20 +238,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         _Question(
           title: l10n.onboardingChooseCountry,
           children: [
-            _Choice(
-              label: l10n.onboardingCountryMorocco,
-              selected: _country == 'MA',
-              onTap: () => setState(() => _country = 'MA'),
-            ),
-            _Choice(
-              label: l10n.onboardingCountryFrance,
-              selected: _country == 'FR',
-              onTap: () => setState(() => _country = 'FR'),
-            ),
-            _Choice(
-              label: l10n.onboardingCountryOther,
-              selected: _country == 'OTHER',
-              onTap: () => setState(() => _country = 'OTHER'),
+            _CountrySearchField(
+              code: _country,
+              proposedFromIp: _countrySuggestedByIp,
+              onSelected: _selectCountry,
+              onCleared: _clearCountry,
             ),
           ],
         ),
@@ -667,6 +686,146 @@ class _Question extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Editable, offline country suggestions. Free text alone is never saved.
+class _CountrySearchField extends StatefulWidget {
+  final String? code;
+  final bool proposedFromIp;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onCleared;
+  const _CountrySearchField({
+    required this.code,
+    required this.proposedFromIp,
+    required this.onSelected,
+    required this.onCleared,
+  });
+
+  @override
+  State<_CountrySearchField> createState() => _CountrySearchFieldState();
+}
+
+class _CountrySearchFieldState extends State<_CountrySearchField> {
+  final TextEditingController _controller = TextEditingController();
+  bool _updating = false;
+  String? _displayedLanguage;
+
+  String get _lang => Localizations.localeOf(context).languageCode;
+
+  void _setText(String text) {
+    _updating = true;
+    _controller.value = TextEditingValue(
+      text: text, selection: TextSelection.collapsed(offset: text.length),
+    );
+    _updating = false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final language = _lang;
+    if (widget.code != null &&
+        (_controller.text.isEmpty || _displayedLanguage != language)) {
+      final choice = countryByCode(widget.code);
+      if (choice != null) _setText(choice.label(language));
+    }
+    _displayedLanguage = language;
+  }
+
+  @override
+  void didUpdateWidget(covariant _CountrySearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.code != null && widget.code != oldWidget.code) {
+      final choice = countryByCode(widget.code);
+      if (choice != null) _setText(choice.label(_lang));
+    }
+  }
+
+  void _onTextChanged() {
+    if (_updating) return;
+    // A person typing in an empty field overrides a pending network estimate.
+    // Otherwise the late IP response could replace an in-progress manual entry.
+    if (widget.code == null) {
+      if (_controller.text.trim().isNotEmpty) widget.onCleared();
+      return;
+    }
+    final selected = countryByCode(widget.code);
+    if (selected != null && _controller.text != selected.label(_lang)) {
+      widget.onCleared(); // Unsuggested typing cannot silently keep old choice.
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = _lang;
+    final entries = countryChoices
+        .map((option) => DropdownMenuEntry<CountryChoice>(
+              value: option,
+              label: option.label(lang),
+            ))
+        .toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    final width = (MediaQuery.sizeOf(context).width - 80).clamp(240.0, 520.0).toDouble();
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownMenu<CountryChoice>(
+            key: const Key('onboarding-country-search'),
+            controller: _controller,
+            enableFilter: true,
+            enableSearch: true,
+            menuHeight: 260,
+            requestFocusOnTap: true,
+            expandedInsets: EdgeInsets.zero,
+            leadingIcon: const Icon(Icons.search),
+            label: Text(_preferencesCopy(context,
+              fr: 'Rechercher un pays',
+              en: 'Search for a country',
+              ar: 'ابحث عن بلد',
+            )),
+            hintText: _preferencesCopy(context,
+              fr: 'Saisissez le nom du pays',
+              en: 'Type a country name',
+              ar: 'اكتب اسم البلد',
+            ),
+            dropdownMenuEntries: entries,
+            onSelected: (value) {
+              if (value != null) widget.onSelected(value.code);
+            },
+          ),
+          const SizedBox(height: 6),
+          Text(
+            widget.proposedFromIp
+                ? _preferencesCopy(context,
+                    fr: 'Proposé selon votre connexion Internet. Vérifiez ou modifiez le pays.',
+                    en: 'Suggested from your Internet connection. Check or change the country.',
+                    ar: 'مقترح حسب اتصال الإنترنت. تحقق من البلد أو غيّره.',
+                  )
+                : _preferencesCopy(context,
+                    fr: 'Choisissez votre pays d’utilisation. La localisation IP est indicative.',
+                    en: 'Choose your country of use. IP location is only an estimate.',
+                    ar: 'اختر بلد الاستخدام. تحديد البلد حسب IP تقريبي فقط.',
+                  ),
+            style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Choice extends StatelessWidget {

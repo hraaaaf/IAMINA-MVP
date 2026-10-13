@@ -21,6 +21,9 @@ class _LocalPreferences extends LocalePreferenceService {
   Future<void> setLanguageOnly(String language) async {}
 
   @override
+  Future<String?> suggestCountryFromIp() async => null;
+
+  @override
   Future<void> setExperience({
     required String language,
     required String country,
@@ -80,7 +83,20 @@ void main() {
     }
 
     await select('Français');
-    await select('Maroc');
+    final search = find.byKey(const Key('onboarding-country-search'));
+    expect(search, findsOneWidget);
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+    // Validate real Flutter autocomplete filtering, not merely that a
+    // country can be selected from an unfiltered alphabetical list.
+    expect(find.text('Afghanistan'), findsWidgets);
+    await tester.enterText(find.byType(TextField).last, 'Maroc');
+    await tester.pumpAndSettle();
+    expect(find.text('Maroc'), findsWidgets);
+    expect(find.text('Afghanistan'), findsNothing);
+    expect(find.text('France'), findsNothing);
+    await tester.tap(find.text('Maroc').last);
+    await tester.pumpAndSettle();
     expect(find.text('Quel ton préférez-vous ?'), findsNothing);
     await select('Diabète Type 2');
     await select('Comprimés');

@@ -436,6 +436,29 @@
         ]
       }
     },
+    "/api/v1/country/suggestion": {
+      "get": {
+        "operationId": "core_api_v1_country_suggestion_country_suggestion",
+        "summary": "Country Suggestion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountrySuggestion"
+                }
+              }
+            }
+          }
+        },
+        "description": "Network-level IP is automatically visible to own API; no third party.",
+        "tags": [
+          "preferences"
+        ]
+      }
+    },
     "/api/v1/logs": {
       "get": {
         "operationId": "diabetes_api_v1_logs_list_logs",
@@ -2659,6 +2682,31 @@
           "update_available"
         ],
         "title": "AppCompatibilitySchema",
+        "type": "object"
+      },
+      "CountrySuggestion": {
+        "properties": {
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "country_code",
+          "source"
+        ],
+        "title": "CountrySuggestion",
         "type": "object"
       },
       "LogEntrySchema": {

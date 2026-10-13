@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
 import 'auth_service.dart';
+import 'country_choices.dart';
 
 class LocalExperiencePreference {
   final String language;
@@ -47,7 +48,7 @@ class LocalePreferenceService extends ChangeNotifier {
 
   Locale _locale = const Locale('fr');
   LocaleResolutionSource _resolutionSource = LocaleResolutionSource.baseline;
-  String _country = 'MA';
+  String? _country;
   String _tone = 'neutral';
   bool _loaded = false;
 
@@ -63,7 +64,7 @@ class LocalePreferenceService extends ChangeNotifier {
 
   Locale get locale => _locale;
   LocaleResolutionSource get resolutionSource => _resolutionSource;
-  String get country => _country;
+  String? get country => _country;
   String get tone => _tone;
   bool get loaded => _loaded;
   bool get isAuditLocale => _auditLocale != null;
@@ -116,9 +117,8 @@ class LocalePreferenceService extends ChangeNotifier {
     final localTone = await _storage.read(key: _toneKey);
     final isExplicit = await _storage.read(key: _explicitKey) == 'true';
 
-    if (localCountry != null && localCountry.trim().isNotEmpty) {
-      _country = localCountry.trim().toUpperCase();
-    }
+    // An unset country remains unknown, never silently Morocco.
+    _country = countryByCode(localCountry)?.code;
     if (localTone != null && _supportedTones.contains(localTone)) {
       _tone = localTone;
     }
@@ -174,6 +174,20 @@ class LocalePreferenceService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Optional, fallible country-by-IP estimate from IAMINA's existing API.
+  /// This never persists or changes the user's chosen country.
+  Future<String?> suggestCountryFromIp() async {
+    try {
+      final response = await _apiClient.client
+          .get(Uri.parse('/api/v1/country/suggestion'))
+          .timeout(const Duration(seconds: 4));
+      if (!response.isSuccessful || response.body is! Map) return null;
+      return countryByCode((response.body as Map)['country_code'])?.code;
+    } catch (_) {
+      return null; // Offline / unknown geo: explicit manual choice.
+    }
+  }
+
   Future<void> setExperience({
     required String language,
     required String country,
@@ -186,9 +200,9 @@ class LocalePreferenceService extends ChangeNotifier {
     if (!_supportedTones.contains(tone)) {
       throw ArgumentError.value(tone, 'tone', 'Unsupported tone');
     }
-    final normalizedCountry = country.trim().toUpperCase();
-    if (normalizedCountry.isEmpty) {
-      throw ArgumentError.value(country, 'country', 'Country is required');
+    final normalizedCountry = countryByCode(country)?.code;
+    if (normalizedCountry == null) {
+      throw ArgumentError.value(country, 'country', 'Unsupported country');
     }
 
     _locale = locale;

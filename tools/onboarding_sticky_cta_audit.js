@@ -40,6 +40,36 @@ async function choose(page, label) {
   throw new Error('Cannot select onboarding choice: ' + label);
 }
 
+async function chooseCountry(page, width, height) {
+  const probes = [
+    page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
+    page.getByRole('combobox', {name:/Rechercher un pays|Pays/i}),
+    page.getByText('Rechercher un pays', {exact:false}),
+  ];
+  let field = null;
+  for (const probe of probes) {
+    if (await probe.count() && await probe.first().isVisible().catch(()=>false)) {
+      field = probe.first();
+      break;
+    }
+  }
+  if (!field) throw new Error('Country search control unavailable');
+  await field.click({timeout:5000});
+  // Flutter's text-editing host can detach between count() and fill().
+  // Use the focused keyboard path; assert that the suggestion is rendered.
+  await page.keyboard.type('Mar');
+  await page.waitForTimeout(250);
+  // The open search suggestions must be visible at the same three viewport
+  // sizes; capture *before* selecting, so the user can validate UX.
+  const proposed = page.getByText('Maroc', {exact:true});
+  await proposed.last().waitFor({state:'visible',timeout:8000});
+  await page.screenshot({
+    path: out + '/onboarding-country-suggestions-' + width + 'x' + height + '.png',
+    fullPage:false,
+  });
+  await choose(page, 'Maroc');
+}
+
 (async () => {
   const browser = await chromium.launch({
     headless: true, args: ['--force-renderer-accessibility'],
@@ -85,9 +115,11 @@ async function choose(page, label) {
             throw new Error('Obsolete tone picker still exposed: ' + legacy);
           }
         }
-        for (const choice of [
-          'Français', 'Maroc', 'Diabète Type 2', 'Comprimés',
-        ]) await choose(page, choice);
+        await choose(page, 'Français');
+        await chooseCountry(page, width, height);
+        for (const choice of ['Diabète Type 2', 'Comprimés']) {
+          await choose(page, choice);
+        }
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
         // Both must state exactly five steps after the four required choices.
