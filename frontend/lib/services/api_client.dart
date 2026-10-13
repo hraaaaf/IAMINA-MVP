@@ -92,6 +92,7 @@ class AuthInterceptor implements Interceptor {
             request.url.path == '/api/v1/logs/batch');
     if (isJournalUpload &&
         ((token == null || token.isEmpty) ||
+            !authService.hasRemoteApiCredential ||
             authEpochAtStart != AuthService.authEpoch)) {
       throw StateError('remote_journal_credential_required');
     }
@@ -234,7 +235,9 @@ class ApiClient {
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
     return guardSyncApiCall<bool>('sync_log_entry', () async {
       final token = await _authService.getIdToken();
-      if (token == null || token.isEmpty) return false;
+      if (token == null || token.isEmpty || !_authService.hasRemoteApiCredential) {
+        return false;
+      }
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
     });
@@ -247,7 +250,9 @@ class ApiClient {
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
       final token = await _authService.getIdToken();
-      if (token == null || token.isEmpty) return const <String>[];
+      if (token == null || token.isEmpty || !_authService.hasRemoteApiCredential) {
+        return const <String>[];
+      }
       final response = await _client.post(
         Uri.parse('/api/v1/logs/batch'),
         body: logs,
