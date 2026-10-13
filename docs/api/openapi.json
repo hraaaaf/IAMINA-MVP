@@ -3503,8 +3503,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Treatment Declaration"
+            ]
           },
           "unit_preference": {
             "anyOf": [
