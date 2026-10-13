@@ -6,7 +6,6 @@ from unittest.mock import patch as mock_patch
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.test import Client, TestCase
-from ninja.operation import Operation
 from ninja.security import HttpBearer
 
 from core.models import BasePatientProfile
@@ -41,123 +40,22 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
 
     def _get(self, token=None):
         headers = {"Authorization": f"Bearer {token}"} if token else {}
-        return self.client.get("/api/v1/profile", headers=headers)
+        # backend/conftest.py patches HybridBearerAuth.__call__ globally to
+        # accept force_login session tests and otherwise return None. These
+        # native bearer E2E cases MUST exercise Django-Ninja's real parsing.
+        with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
+            return self.client.get("/api/v1/profile", headers=headers)
 
     def _patch(self, token, payload):
-        # Observe the authenticator CLASS rather than the declaration-time
-        # singleton: Ninja can bind a different instance on router mounting.
-        # Preserve original authentication; record no token/patient payload.
-        native_bearer_calls = []
-        bearer_calls = []
-        auth_chains = []
-        original_run_authentication = Operation._run_authentication
-        original_http_bearer_call = HttpBearer.__call__
-
-        def trace_auth_chain(operation, request):
-            # This observes the actual mounted callback classes, even if an
-            # import reload left the test module with a different class object.
-            # No token, response body, or patient information is retained.
-            from contextlib import ExitStack
-
-            callback_details = []
-            callback_executions = []
-            with ExitStack() as stack:
-                for callback in operation.auth_callbacks:
-                    cls = type(callback)
-                    implementation = cls.__call__
-                    callback_details.append({
-                        "class": cls.__module__ + "." + cls.__name__,
-                        "same_hybrid_class": cls is HybridBearerAuth,
-                        "inherits_imported_http_bearer": issubclass(cls, HttpBearer),
-                        "call_implementation": (
-                            implementation.__module__
-                            + "." + implementation.__qualname__
-                        ),
-                        "call_is_patched_base": implementation is HttpBearer.__call__,
-                        "configured_scheme": getattr(callback, "openapi_scheme", None),
-                        "configured_header": getattr(callback, "header", None),
-                    })
-
-                    def trace_mounted_call(instance, req, _original=implementation):
-                        try:
-                            result = _original(instance, req)
-                        except Exception as exc:
-                            callback_executions.append({
-                                "class": type(instance).__name__,
-                                "raised": type(exc).__name__,
-                            })
-                            raise
-                        callback_executions.append({
-                            "class": type(instance).__name__,
-                            "returned_identity": bool(result),
-                            "return_type": type(result).__name__,
-                        })
-                        return result
-
-                    stack.enter_context(
-                        mock_patch.object(cls, "__call__", trace_mounted_call)
-                    )
-
-                auth_chains.append({
-                    "callbacks": callback_details,
-                    "executions": callback_executions,
-                    "has_authorization_header": bool(
-                        request.headers.get("Authorization")
-                    ),
-                    "method": request.method,
-                    "path": request.path,
-                })
-                return original_run_authentication(operation, request)
-
-        def trace_http_bearer(authenticator, request):
-            # Observe parsing and class identity without retaining token bytes.
-            header = request.headers.get(authenticator.header, "")
-            bearer_calls.append({
-                "hybrid_class_matches": type(authenticator) is HybridBearerAuth,
-                "header_name": authenticator.header,
-                "scheme_name": authenticator.openapi_scheme,
-                "header_present": bool(header),
-                "scheme_matches": bool(header) and
-                header.split(" ", 1)[0].lower() == authenticator.openapi_scheme,
-            })
-            return original_http_bearer_call(authenticator, request)
-
-        original_authenticate = HybridBearerAuth.authenticate
-
-        def trace_native_bearer(authenticator, request, token):
-            native_bearer_calls.append(True)
-            return original_authenticate(authenticator, request, token)
-
-        with (
-            mock_patch.object(HybridBearerAuth, "authenticate", trace_native_bearer),
-            mock_patch.object(HttpBearer, "__call__", trace_http_bearer),
-            mock_patch.object(Operation, "_run_authentication", trace_auth_chain),
-        ):
-            response = self.client.patch(
+        # Restore the real, fail-closed HTTP bearer path for this request only.
+        # Never bypass token verification or weaken the production handler.
+        with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
+            return self.client.patch(
                 "/api/v1/profile",
                 data=json.dumps(payload),
                 content_type="application/json",
                 headers={"Authorization": f"Bearer {token}"},
             )
-            request_header = response.wsgi_request.META.get(
-                "HTTP_AUTHORIZATION", ""
-            )
-            self.assertTrue(
-                request_header.startswith("Bearer iamina."),
-                "The Django client did not deliver an IAMINA bearer header",
-            )
-            self.assertGreater(
-                len(native_bearer_calls),
-                0,
-                "Mounted Django-Ninja profile route never invoked "
-                "HybridBearerAuth.authenticate; callback metadata="
-                + repr(auth_chains)
-                + "; bearer parsing="
-                + repr(bearer_calls)
-                + "; status="
-                + str(response.status_code),
-            )
-            return response
 
     def test_a_and_b_roundtrip_only_their_own_declarations(self):
         patch_a = self._patch(
@@ -218,6 +116,23 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         profile = DiabetesProfile.objects.get(base_profile__patient=self.a)
         self.assertEqual(profile.treatment_declarations, [])
         self.assertIsNone(profile.treatment_declaration_source)
+
+    def test_forged_native_bearer_is_denied_before_patient_lookup(self):
+        forged = self.token_a + "-tampered"
+        self.assertIn(self._get(forged).status_code, (401, 403))
+        rejected = self._patch(
+            forged,
+            {"treatment_declaration": {
+                "version": 1,
+                "state": "declared",
+                "codes": ["insulin"],
+            }},
+        )
+        self.assertIn(rejected.status_code, (401, 403))
+        for user in (self.a, self.b):
+            profile = DiabetesProfile.objects.get(base_profile__patient=user)
+            self.assertEqual(profile.treatment_declarations, [])
+            self.assertIsNone(profile.treatment_declaration_source)
 
     def test_missing_auth_does_not_expose_either_profile(self):
         response = self._get()
