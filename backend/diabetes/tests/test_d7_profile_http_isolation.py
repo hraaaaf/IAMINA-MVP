@@ -6,6 +6,7 @@ from unittest.mock import patch as mock_patch
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.test import Client, TestCase
+from ninja.operation import Operation
 
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
@@ -46,14 +47,34 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
         # singleton: Ninja can bind a different instance on router mounting.
         # Preserve original authentication; record no token/patient payload.
         native_bearer_calls = []
+        auth_chains = []
+        original_run_authentication = Operation._run_authentication
+
+        def trace_auth_chain(operation, request):
+            # Diagnostic only: callback classes and header presence, no PHI
+            # or bearer bytes in logs/assertions.
+            auth_chains.append({
+                "callbacks": [
+                    type(callback).__module__ + "." + type(callback).__name__
+                    for callback in operation.auth_callbacks
+                ],
+                "has_authorization_header": bool(
+                    request.headers.get("Authorization")
+                ),
+                "method": request.method,
+                "path": request.path,
+            })
+            return original_run_authentication(operation, request)
+
         original_authenticate = HybridBearerAuth.authenticate
 
         def trace_native_bearer(authenticator, request, token):
             native_bearer_calls.append(True)
             return original_authenticate(authenticator, request, token)
 
-        with mock_patch.object(
-            HybridBearerAuth, "authenticate", trace_native_bearer
+        with (
+            mock_patch.object(HybridBearerAuth, "authenticate", trace_native_bearer),
+            mock_patch.object(Operation, "_run_authentication", trace_auth_chain),
         ):
             response = self.client.patch(
                 "/api/v1/profile",
@@ -71,8 +92,11 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
             self.assertGreater(
                 len(native_bearer_calls),
                 0,
-                "Mounted Django-Ninja profile route never invoked the "
-                "HybridBearerAuth.authenticate implementation",
+                "Mounted Django-Ninja profile route never invoked "
+                "HybridBearerAuth.authenticate; callback metadata="
+                + repr(auth_chains)
+                + "; status="
+                + str(response.status_code),
             )
             return response
 
