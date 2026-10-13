@@ -113,4 +113,74 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Dashboard'), findsOneWidget);
   });
+
+  testWidgets('D7 patient can skip both medical choices at 390x844',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    final prefs = _LocalPreferences();
+    final auth = AuthService();
+    addTearDown(db.close);
+    addTearDown(prefs.dispose);
+    addTearDown(auth.dispose);
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(path: '/onboarding',
+            builder: (_, __) => const OnboardingChatScreen()),
+        GoRoute(path: '/dashboard',
+            builder: (_, __) => const Scaffold(body: Text('Dashboard'))),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        Provider<AppDatabase>.value(value: db),
+        ChangeNotifierProvider<AuthService>.value(value: auth),
+        ChangeNotifierProvider<LocalePreferenceService>.value(value: prefs),
+      ],
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('fr'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Français'));
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const Key('onboarding-country-search'));
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Maroc');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Maroc').last);
+    await tester.pumpAndSettle();
+
+    // Medical options are still visible, not answered or coerced to a default.
+    expect(find.text('Diabète Type 2'), findsOneWidget);
+    final start = find.byKey(const Key('onboarding-sticky-start'));
+    expect(start, findsOneWidget);
+    await tester.tap(start);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    final profile = await db.getProfileForLocalUserId(1);
+    expect(profile, isNotNull);
+    expect(profile!.diabetesType, isNull);
+    expect(profile.treatment, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
 }

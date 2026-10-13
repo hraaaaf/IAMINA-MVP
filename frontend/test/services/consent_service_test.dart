@@ -125,21 +125,17 @@ void main() {
     test(
       'onboarding completion notifies listeners when consent stays false',
       () async {
-        await _insertProfile(db);
         final svc = ConsentService();
         var notifications = 0;
         svc.addListener(() => notifications++);
         svc.attachStream(db.watchProfile());
         await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(svc.hasCompletedOnboarding, isFalse);
 
         notifications = 0;
-        await (db.update(db.patientProfiles)..where((tbl) => tbl.userId.equals(1)))
-            .write(
-          const PatientProfilesCompanion(
-            diabetesType: drift.Value('type2'),
-            treatment: drift.Value('tablets'),
-          ),
-        );
+        // D7: persisting a profile with no declared clinical facts is enough
+        // to finish first use. This does not grant medical or AI consent.
+        await _insertProfile(db);
         await Future<void>.delayed(const Duration(milliseconds: 100));
 
         expect(svc.hasCompletedOnboarding, isTrue);
