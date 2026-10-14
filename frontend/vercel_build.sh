@@ -12,6 +12,24 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --enable-web
 flutter pub get
 
+# D7_D9_ISOLATED_PREVIEW: synthetic browser-only audit on the exact D7 candidate.
+# Never link this unreviewed patient-profile branch to the certified backend.
+# A real two-device physical P01–P09 certification is separate.
+if [ "${VERCEL_ENV:-}" != "preview" ]; then
+  echo "D7/D9 AUDIT REFUSED: non-preview Vercel environment" >&2
+  exit 70
+fi
+if [ "${VERCEL_PROJECT_ID:-}" != "prj_AYaUi32KTDHak8I7dmdQpDrqd8SI" ]; then
+  echo "D7/D9 AUDIT REFUSED: project mismatch" >&2
+  exit 71
+fi
+echo "D7/D9 SYNTHETIC PREVIEW ONLY: no patient data, remote account or certified API"
+flutter build web --release \
+  --dart-define=IAMINA_OFFLINE_DEMO=true \
+  --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+  --dart-define=API_BASE_URL=https://iamina-d7-preview.invalid
+exit 0
+
 # The public review frontend is a separate Vercel project from the certified
 # Django backend. Bind only that frontend project to the live backend so the
 # backend project itself and local/demo builds keep their existing behavior.
