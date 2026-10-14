@@ -29,8 +29,12 @@ Future<Map<String, dynamic>> hub(String method, String path,
       method, Uri.parse('http://127.0.0.1:8765' + path),
     );
     if (body != null) {
+      // The bounded Python evidence hub requires a Content-Length header.
+      // HttpClient.write() otherwise uses chunked encoding and is rejected 400.
+      final payload = utf8.encode(jsonEncode(body));
       request.headers.contentType = ContentType.json;
-      request.write(jsonEncode(body));
+      request.contentLength = payload.length;
+      request.add(payload);
     }
     final response = await request.close();
     expect(response.statusCode, 200);

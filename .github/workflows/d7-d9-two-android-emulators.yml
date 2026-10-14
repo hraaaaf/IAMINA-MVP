@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/d7-d9-two-android-emulators.yml'
       - 'scripts/ci_d7_d9_emulator_hub.py'
+      - 'scripts/tests/test_ci_d7_d9_emulator_hub.py'
       - 'scripts/ci_d7_d9_two_emulators.sh'
       - 'frontend/integration_test/d7_d9_ubuntu_two_emulators_test.dart'
   workflow_dispatch:
@@ -41,6 +42,8 @@ jobs:
         run: |
           flutter pub get
           git diff --exit-code -- pubspec.lock
+      - name: Test local synthetic evidence hub contract before emulator boot
+        run: python3 -m unittest discover -s scripts/tests -p 'test_ci_d7_d9_emulator_hub.py' -v
       - name: Enable KVM for Android instances
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
