@@ -88,6 +88,10 @@ void main() {
           expect(find.text(copy[lang]!), findsOneWidget);
           await tester.ensureVisible(action);
           await tester.pumpAndSettle();
+          final buttonBounds = tester.getRect(action);
+          expect(buttonBounds.left, greaterThanOrEqualTo(0));
+          expect(buttonBounds.right, lessThanOrEqualTo(size.width));
+          expect(buttonBounds.height, greaterThanOrEqualTo(40));
           expect(tester.takeException(), isNull);
           // Viewing a conflict cannot change or ACK its local data.
           final after = (await store.read())!;

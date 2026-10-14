@@ -131,15 +131,30 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
         if (_treatmentConflict)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: OutlinedButton.icon(
-              key: const Key('d7-resolve-treatment-conflict'),
-              onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
-                  ? null : _resolveTreatmentConflict,
-              icon: const Icon(Icons.sync_problem),
-              label: Text(_profileUiText(context,
-                fr: 'Comparer et résoudre le conflit',
-                en: 'Review and resolve conflict',
-                ar: 'مراجعة التعارض وحلّه')),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const Key('d7-resolve-treatment-conflict'),
+                onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
+                    ? null : _resolveTreatmentConflict,
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_problem, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _profileUiText(context,
+                          fr: 'Comparer et résoudre le conflit',
+                          en: 'Review and resolve conflict',
+                          ar: 'مراجعة التعارض وحلّه',
+                        ),
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         const SizedBox(height: 28),

@@ -1,3 +1,21 @@
+# D7 — 14 octobre 2026 — CORRECTION D'UN VRAI DÉBORDEMENT MOBILE (HEAD précédent 96302e25)
+
+**PR #986 DRAFT — D7 TOUJOURS OUVERTE, NI MERGE NI VERCEL.** Ceci est un correctif visuel non certifié avant le prochain run GitHub.
+
+**BEFORE / preuve rouge HEAD** `96302e2588b97a9b979f8ff4a1b7b38d38023dd7` : [CI #38544063497](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38544063497) : SQLite et PostgreSQL SUCCESS, Frontend FAIL `759 tests passed, 3 failed, 1 skipped` ; les 3 échecs sont le **RenderFlex overflow à 390×844** après expansion du Profil médical, sur `d7-resolve-treatment-conflict` : FR +114 px, EN +82 px, AR +94 px ; les tailles 768×1024 et 1280×900 réussissaient. Log job Flutter `115786704547`. Plusieurs autres workflows hors CI sont SUCCESS, UI browser screenshot encore en cours au premier contrôle de ce lot. Cela révèle une régression UX réelle : le label long de `OutlinedButton.icon` ne pouvait pas revenir à la ligne dans la largeur mobile.
+
+**GOAL observable :** bouton de réconciliation visible/entièrement dans le viewport mobile, label intact et lisible dans FR/EN/AR sans réduction arbitraire de police, RTL respecté, même action clinique explicite et aucune mutation lors d'une simple consultation. Aucun changement à CAS/back-end, app-lock ni à la logique de sauvegarde.
+
+**MOCKUP / cible de layout :** bouton largeur disponible sur une ligne de container, icône de conflit (~20 px) + espacement (~8 px) + libellé flexible centré pouvant prendre deux lignes ; pas de texte tronqué, ni de CTA masqué.
+
+**IMPLÉMENTATION de ce lot :** `frontend/lib/features/profile/profile_screen_presentation.dart` remplace `OutlinedButton.icon` par `SizedBox(width: double.infinity) → OutlinedButton → Row(Icon + SizedBox + Expanded(Text(softWrap:true)))` pour le **seul CTA D7** ; `frontend/test/features/profile/d7_conflict_cta_responsive_test.dart` conserve les neuf tests réels avec patient synthetic `conflict` et assertion `tester.takeException() isNull`, ajoute les bornes géométriques (`left ≥ 0`, `right ≤ viewport width`, hauteur ≥40) aux viewports **390×844, 768×1024 et 1280×900** × **FR/EN/AR**, et 1 test `pending` sans CTA. **CI de ce nouveau HEAD obligatoire, non encore prouvée.**
+
+**AFTER / score visuel :** à établir par nouvelle CI et captures spécifiques de l'état de conflit aux mêmes viewports ; un test widget ne remplace pas une comparaison screenshot BEFORE/AFTER. Aucun score attribué avant captures.
+
+**Next exact :** valider les 10 tests dans la nouvelle CI; si 390 encore rouge, diagnostiquer tree Flutter, corriger sans enlever les tests. Ensuite capturer/valider dialogue clinique 409, vérifier A→B→A sur deux terminaux réels/offline/409 et audits indépendants clinique/privacy, obtenir feu vert humain avant fusion. P5 historique 50 % inchangé.
+
+---
+
 # IAMINA D7 — ÉTAT CANONIQUE AU 14 OCTOBRE 2026 — TESTS AUTOMATISÉS VERTS
 
 **NE PAS CONFONDRE « CI VERTE » ET « CERTIFICATION CLINIQUE/UX ». D7 OUVERTE — PR #986 DRAFT, NI MERGE NI VERCEL.**
