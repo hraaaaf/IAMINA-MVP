@@ -121,4 +121,49 @@ void main() {
     expect(consentA.hasConsent, isFalse);
     consentA.dispose();
   });
+
+  test('D9 gap: same verified account on another fresh device has no local first-use proof',
+      () async {
+    // NEGATIVE CAPABILITY EVIDENCE, NOT AN ACCEPTANCE TEST for remote restore:
+    // the per-device vault cannot reconstruct an existing remote profile.
+    // Cross-device D9 requires a separately authenticated, owner-scoped
+    // hydration contract before the onboarding redirect is decided.
+    final deviceA = await Directory.systemTemp.createTemp('iamina-d9-phone-a-');
+    final deviceB = await Directory.systemTemp.createTemp('iamina-d9-phone-b-');
+    addTearDown(() => deviceA.delete(recursive: true));
+    addTearDown(() => deviceB.delete(recursive: true));
+    final scope = PatientVaultScope.nativeDjango(734);
+    final dbA = AppDatabase.testPatientVault(
+      NativeDatabase(File('${deviceA.path}/${scope.databaseName}.sqlite')),
+      scope,
+    );
+    final dbB = AppDatabase.testPatientVault(
+      NativeDatabase(File('${deviceB.path}/${scope.databaseName}.sqlite')),
+      scope,
+    );
+    addTearDown(dbA.close);
+    addTearDown(dbB.close);
+
+    await dbA.into(dbA.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: drift.Value(dbA.activeProfileRowId),
+        updatedAt: DateTime.utc(2026, 10, 14),
+      ),
+    );
+    final original = await dbA.getProfileForLocalUserId(734);
+    final originalConsent = ConsentService()..seedInitialProfile(original);
+    expect(_requiresFirstUse(originalConsent), isFalse);
+    originalConsent.dispose();
+
+    // Same authenticated server ID, different physical installation.
+    // No remote download is implemented in this local-only gate.
+    final newDevice = await dbB.getProfileForLocalUserId(734);
+    expect(newDevice, isNull);
+    final freshConsent = ConsentService()
+      ..seedInitialProfile(newDevice);
+    expect(_requiresFirstUse(freshConsent), isTrue);
+    expect(freshConsent.hasConsent, isFalse);
+    freshConsent.dispose();
+  });
+
 }
