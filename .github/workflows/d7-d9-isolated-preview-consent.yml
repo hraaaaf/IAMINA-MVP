@@ -1,0 +1,33 @@
+name: D7 D9 isolated consent preview
+
+on:
+  push:
+    branches:
+      - release/d7-d9-postmerge-preview-offline-20261014
+    paths:
+      - frontend/lib/features/auth/consent_screen.dart
+      - frontend/test/features/auth/consent_screen_test.dart
+      - frontend/vercel_build.sh
+      - .github/workflows/d7-d9-isolated-preview-consent.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-consent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Verify consent and mobile layout
+        working-directory: frontend
+        run: flutter test test/features/auth/consent_screen_test.dart --reporter expanded
