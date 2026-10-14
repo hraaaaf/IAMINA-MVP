@@ -57,13 +57,14 @@ Widget _makeApp({
   required ApiClient apiClient,
   required ConsentService consentService,
   required ConsentEvidenceStore evidenceStore,
+  bool isolatedPreview = false,
 }) {
   final router = GoRouter(
     initialLocation: '/consent',
     routes: [
       GoRoute(
         path: '/consent',
-        builder: (_, __) => const ConsentScreen(),
+        builder: (_, __) => ConsentScreen(isolatedPreview: isolatedPreview),
       ),
       GoRoute(
         path: '/dashboard',
@@ -150,7 +151,8 @@ void main() {
     await db.close();
   });
 
-  Widget app() => _makeApp(
+  Widget app({bool isolatedPreview = false}) => _makeApp(
+    isolatedPreview: isolatedPreview,
     db: db,
     apiClient: apiClient,
     consentService: consentService,
@@ -268,4 +270,45 @@ void main() {
     expect(consentService.hasConsent, isFalse);
     expect(find.byType(ConsentScreen), findsOneWidget);
   });
+
+  testWidgets('isolated preview continues without a fake AI consent', (tester) async {
+    await tester.pumpWidget(app(isolatedPreview: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Accepter et continuer'), findsNothing);
+    expect(find.textContaining('aucun service d’IA externe'), findsOneWidget);
+    final button = find.widgetWithText(FilledButton, 'Continuer sans IA');
+    expect(button, findsOneWidget);
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(capturedRequest, isNull);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+  for (final viewport in <Size>[
+    const Size(390, 844),
+    const Size(768, 1024),
+    const Size(1280, 900),
+  ]) {
+    testWidgets('isolated CTA fits ${viewport.width}x${viewport.height}', (tester) async {
+      await tester.binding.setSurfaceSize(viewport);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(app(isolatedPreview: true));
+      await tester.pumpAndSettle();
+      final button = find.widgetWithText(FilledButton, 'Continuer sans IA');
+      expect(button, findsOneWidget);
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      final bounds = tester.getRect(button);
+      expect(bounds.left, greaterThanOrEqualTo(0));
+      expect(bounds.right, lessThanOrEqualTo(viewport.width));
+      expect(bounds.top, greaterThanOrEqualTo(0));
+      expect(bounds.bottom, lessThanOrEqualTo(viewport.height));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
 }
