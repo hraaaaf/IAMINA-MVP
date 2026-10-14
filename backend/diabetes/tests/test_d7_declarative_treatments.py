@@ -107,7 +107,7 @@ class DeclarativeTreatmentPersistenceTests(TestCase):
     def test_explicit_unsure_and_none_remain_distinct_from_not_answered(
         self, _invalidate
     ):
-        a = SimpleNamespace(user=self.a)
+        a = self._declaration_request(self.a)
         patch_profile(
             a,
             ProfilePatchSchema(
