@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 from datetime import date
 
 from companion.narration_envelope import verify_and_reinject_protected_narration
@@ -116,6 +117,7 @@ def test_benchmark_module_imports_standalone_with_django_setup():
             "-c",
             "import evaluation.clinician_prep_protected_shadow_benchmark",
         ],
+        cwd=Path(__file__).resolve().parents[1],  # subprocess must resolve backend/evaluation
         capture_output=True,
         text=True,
         check=False,
