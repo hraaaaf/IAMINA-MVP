@@ -1,3 +1,21 @@
+# D7 — 14 octobre 2026 — diagnostic ciblé des débordements mobiles (sans relancer 759 tests)
+
+**PR #986 reste DRAFT, PAS DE MERGE / VERCEL.**
+
+**BEFORE + preuve factuelle :** sur `cf3c781145850353d0408bf96a4269b4d3c0311d`, CI principale #38545364529 Flutter **759 pass, 3 fail, 1 skip** ; les mêmes cas mobile 390×844 FR (+114 px), EN (+82 px), AR (+94 px) ont échoué malgré le bouton CTA à retour à la ligne. Backend SQLite/PostgreSQL et les 15 autres workflows SUCCESS. Le CTA n'était donc pas la cause. La correction précédente ciblait le mauvais widget.
+
+**Diagnostic minimal réel exécuté :** branche isolée `debug/d7-mobile-overflow-20261014` sans PR, workflow dédié `.github/workflows/d7-only-mobile-red.yml`, déclenché seulement par push sur cette branche et exécutant `flutter test --reporter expanded --name '390x844' test/features/profile/d7_conflict_cta_responsive_test.dart` : **uniquement les 3 rouges**. Run diagnostic [#38546806644](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38546806644), FAIL attendu, avec dump du RenderTree. Le `RenderFlex` OVERFLOWING est en réalité la `Row` de `_buildSectionTitle` dans `profile_screen_presentation.dart`, devant texte FR `Cible glycémique (mg/dL)` : contrainte de ligne **304 px**, `RenderParagraph` intrinsèque **390 px**, icône 20 + espacement 8 → +114 px exact. EN/AR même défaut localisé dans la même Row.
+
+**GOAL** : toutes les sections médicales conservent titres lisibles et sans overflow en FR/EN/AR au viewport 390×844 sans raccourcir le texte ou diminuer la police ; aucun changement de métier, confidentialité, serveur, outbox/CAS.
+
+**MOCKUP/layout cible** : icône fixe (20 px), écart 8 px, titre `Expanded(Text(softWrap:true))` dans la largeur restante (276 px sur 304), texte multi-ligne si nécessaire ; même header hors mobile et RTL.
+
+**IMPLÉMENTATION candidate** : remplacer uniquement le `Text(title)` non contraint dans `_buildSectionTitle` par `Expanded(child: Text(title, softWrap:true,...))`; le reste de l'interface, du CTA et des tests 10 cas restent identiques. Branche diagnostic commit `39774dd219c518488d9d626f08d14e538a00f7bb`, run de **3 tests seulement** [#38547036442](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38547036442). **RÉSULTAT CERTIFIÉ** : run ciblé #38547036442 job #115795537431 **SUCCESS**, journal `flutter test --reporter expanded --name '390x844' test/features/profile/d7_conflict_cta_responsive_test.dart` : FR +1, EN +2, AR +3, `All tests passed!`, aucune erreur. Correctif minimal vérifié AVANT l'intégration à PR #986. Un seul commit et une seule CI complète doivent ensuite vérifier la non-régression globale.
+
+**AFTER** : les 3 cas ciblés doivent passer d'abord ; captures et comparaison BEFORE/AFTER sur 390×844, 768×1024, 1280×900 spécifiques au conflit 409, score visuel seulement avec preuves ; essais sur deux appareils réels, revue clinique/privacy, consentement et validation humaine toujours à réaliser. Ne jamais clôturer D7 ni mer﻿ger sans gates. P5 50 % historique inchangé.
+
+---
+
 # D7 — 14 octobre 2026 — CORRECTION D'UN VRAI DÉBORDEMENT MOBILE (HEAD précédent 96302e25)
 
 **PR #986 DRAFT — D7 TOUJOURS OUVERTE, NI MERGE NI VERCEL.** Ceci est un correctif visuel non certifié avant le prochain run GitHub.
