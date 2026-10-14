@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/drift/patient_treatment_declaration_store.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
@@ -8,6 +11,7 @@ import 'package:amina/services/consent_service.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -18,6 +22,25 @@ void main() {
     Size(1280, 900),
   ];
   const locales = ['fr', 'en', 'ar'];
+  // Captures synthétiques uniquement lorsque le workflow dédié le demande.
+  const captureD7VisualEvidence = bool.fromEnvironment('D7_VISUAL_EVIDENCE');
+  setUpAll(() async {
+    if (!captureD7VisualEvidence) return;
+    for (final entry in <String, String?>{
+      'Roboto': Platform.environment['D7_VISUAL_FONT_LATIN'],
+      'Noto Naskh Arabic': Platform.environment['D7_VISUAL_FONT_ARABIC'],
+    }.entries) {
+      final path = entry.value;
+      if (path == null || path.isEmpty) {
+        throw StateError('Missing D7 capture font for ${entry.key}');
+      }
+      final loader = FontLoader(entry.key)
+        ..addFont(File(path).readAsBytes()
+            .then((bytes) => ByteData.sublistView(bytes)));
+      await loader.load();
+    }
+  });
+
   const copy = {
     'fr': 'Comparer et résoudre le conflit',
     'en': 'Review and resolve conflict',
@@ -27,7 +50,7 @@ void main() {
   for (final size in viewports) {
     for (final lang in locales) {
       testWidgets(
-        'D7 conflict CTA renders without overflow at '
+        'D7 pilot A keeps remote conflict CTA hidden at '
         '${size.width.toInt()}x${size.height.toInt()} in $lang',
         (tester) async {
           tester.view.physicalSize = size;
@@ -61,6 +84,10 @@ void main() {
 
           await tester.pumpWidget(MaterialApp(
             locale: Locale(lang),
+            theme: captureD7VisualEvidence
+                ? ThemeData(fontFamily: 'Roboto',
+                    fontFamilyFallback: const ['Noto Naskh Arabic'])
+                : null,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: MultiProvider(
@@ -73,26 +100,40 @@ void main() {
             ),
           ));
           await tester.pumpAndSettle();
-          // The medical section intentionally starts collapsed; a user must
-          // expand it before a conflict CTA becomes visible and actionable.
+          // The medical section starts collapsed; expansion must not reveal
+          // an unusable remote conflict CTA in the local-only pilot.
           final medical = find.byKey(const Key('profile-medical-section'));
           await tester.ensureVisible(medical);
           await tester.pumpAndSettle();
+          if (captureD7VisualEvidence) {
+            await expectLater(
+              find.byType(ProfileScreen),
+              matchesGoldenFile(
+                'goldens/d7-conflict-${size.width.toInt()}x${size.height.toInt()}-'
+                '$lang-collapsed.png',
+              ),
+            );
+          }
           await tester.tap(find.descendant(
             of: medical, matching: find.byType(ExpansionTile),
           ));
           await tester.pumpAndSettle();
 
-          final action = find.byKey(const Key('d7-resolve-treatment-conflict'));
-          expect(action, findsOneWidget);
-          expect(find.text(copy[lang]!), findsOneWidget);
-          await tester.ensureVisible(action);
-          await tester.pumpAndSettle();
-          final buttonBounds = tester.getRect(action);
-          expect(buttonBounds.left, greaterThanOrEqualTo(0));
-          expect(buttonBounds.right, lessThanOrEqualTo(size.width));
-          expect(buttonBounds.height, greaterThanOrEqualTo(40));
+          // Clinical transport is denied by default. A persisted 409 must
+          // remain stored without offering a remote-only resolution action.
+          expect(find.byKey(const Key('d7-resolve-treatment-conflict')),
+              findsNothing);
+          expect(find.text(copy[lang]!), findsNothing);
           expect(tester.takeException(), isNull);
+          if (captureD7VisualEvidence) {
+            await expectLater(
+              find.byType(ProfileScreen),
+              matchesGoldenFile(
+                'goldens/d7-conflict-${size.width.toInt()}x${size.height.toInt()}-'
+                '$lang-expanded.png',
+              ),
+            );
+          }
           // Viewing a conflict cannot change or ACK its local data.
           final after = (await store.read())!;
           expect(after.syncStatus, 'conflict');

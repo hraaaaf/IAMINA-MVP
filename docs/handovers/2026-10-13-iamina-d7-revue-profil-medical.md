@@ -1,3 +1,89 @@
+# IAMINA D7 / D30 — PILOT A LOCAL ONLY — 14 Oct 2026 — CANDIDATE NOT CERTIFIED
+
+USER DECISION: pilot A saves clinical data on-device only. No medical transport until patient-bound, purpose-specific, versioned and independently reviewed consent exists. This is NOT an authorization to merge or deploy to Vercel production.
+
+GOAL: no /api/v1/ non-auth transport from standard runtime; zero raw SSE/chat/image/audio/document egress; no auth token resolution or CurlInterceptor logs for blocked clinical calls; never consume or ACK pending Drift outbox while disabled; display honest local-only sync status FR/EN/AR without a fake Retry action.
+
+BEFORE code review: ApiClient PATCH profile/treatments, journal and AI direct HTTP could run with only bearer/device-unlock; SyncService retried data and showed upToDate when no queue. Native bearer is not clinical-sync consent. D30 drafts #988, #989, #990 all overlap in api_client.dart and are not integrated or clinically approved.
+
+VISUAL BEFORE: pre-change dashboard status is cloud checking/pending/upToDate (44x44 icon button); no directly comparable screenshot of this exact status was captured, so there is no supported pre-change pixel visual score.
+VISUAL MOCKUP TARGET: preserve 44x44 topbar geometry but use device icon and tooltip/status 'Offline pilot · saved on this device, not synchronized' / FR 'Pilote local · enregistré sur cet appareil, non synchronisé' / AR 'الوضع المحلي · محفوظ على هذا الجهاز، غير متزامن'. Disable tap/retry and show truthful local-only save feedback. Compare 390x844, 768x1024, 1280x900 in follow-up screenshots and human UI review before assigning score.
+
+CANDIDATE IMPLEMENTATION: ApiClient defaults to canSyncClinicalData=false and passes explicit local-only gate into AuthInterceptor and RetryInterceptor before token reads, sends, retries. All raw/direct media transports return prior to building a request or reading document stream; getProfile/mirrorTreatmentDeclaration/patchProfile/log sync return unavailable. CurlInterceptor removed. Public /api/v1/auth/ remains reachable for account functions. An explicit synthetic-test-only constructor capability allows controlled existing network contract tests to continue. SyncService prevents reads/restores/ACK/retries, emits SyncUiState.localOnly even when internet is available; pending/conflicts remain stored locally. UI uses localized ARB/generated messages and removes remote-conflict resolve CTA in pilot A. Django server code unchanged.
+
+EXPECTED PROOF, NOT YET CLAIMED: 17 GitHub workflows exact latest SHA success (SQLite, PostgreSQL, Flutter, browser, packaging), targeted negative tests pre-token/HTTP and outbox preservation; compare visual BEFORE/AFTER on same viewports. Earlier 17 green status belonged to an older head. If CI fails, fix then restart. No clinical data used.
+
+HUMAN GATES: an independent privacy/clinical review, actual device offline/restart behavior, versioned consent and owner/vault binding, direct Chrome authenticated 409 dialog screenshots if sync ever reenabled, explicit UX acceptance. Pilot A intentionally defers remote restoration and cross-device synchronization, not a bug to paper over.
+
+STATUS: PR #986 OPEN/DRAFT; NO MERGE, NO VERCEL PROD, NO REAL PATIENT ACTIVATION. P5 historic baseline 6/12=50% unchanged.
+
+---
+# IAMINA D7 — 14 octobre 2026 — VRAI HTTP SUR DJANGO LOCAL, DEUX CLIENTS SYNTHÉTIQUES — E2E ISOLÉ
+
+**Goal** : prouver à travers un véritable serveur Django TCP le contrat d'isolation des comptes et de résolution CAS sur deux clients HTTP indépendants, avec uniquement des identités synthétiques et une DB éphémère. Ce test reste distinct d'un test Flutter/Drift sur deux appareils physiques.
+
+**Preuve indépendante avant intégration** : branche audit `audit/d7-live-http-e2e-20261014@76236f3414c18b96e3417d23720436be7817d290`, [GitHub Actions #38582759703](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38582759703) **SUCCESS, 2 tests passed in 2.54s**, vrai `LiveServerTestCase` Django + HTTP réel via `urllib.request` et vrai parseur `HttpBearer`. Aucune communication avec Vercel ni backend certifié.
+
+**Assertions** : deux clients HTTP distincts et bearer A/B ; A et B n'accèdent qu'à leur profil ; second client A lit les valeurs serveur ; première création CAS `none` acceptée (200), modification concurrente depuis deuxième client acceptée avec révision exacte ; rejeu de l'intention périmée par premier client `409`, même intention sans en-tête `428` sans écrasement ; A→B→A sur un même client conserve l'identité explicite ; nouvelle révision choisie validée en 200 ; bearer absent ou falsifié refuse l'accès 401/403.
+
+**Limitations non négociables** : « offline intent » est une simple structure de test en mémoire, **PAS** une file Drift persistante ou un redémarrage hors ligne. Il s'agit de clients HTTP, **PAS** de deux sessions Flutter authentifiées ni d'appareils physiques. Consentement de synchronisation versionné, egress D30, contrôle de sécurité indépendant, captures de vraie modal 409 et validation clinique/UI demeurent nécessaires.
+
+**Action** : intégrer le test `backend/diabetes/tests/test_d7_live_http_e2e.py` à la branche D7 PR #986 pour l'inclure dans la **CI complète SQLite+PostgreSQL**, sans changement de code runtime ni déploiement. La nouvelle suite à HEAD final doit repasser tous les workflows ; les 17/17 verts précédents concernent `c9577c8e…`, pas le nouveau commit.
+
+**Vercel** : Preview DEV isolée https://iamina-review-la39twh0a-achraf-benmoussa-s-projects.vercel.app toujours dédiée au navigateur local-only ; preuve de deux contexts Chromium limitée, jamais utilisée pour les requêtes médicales. Backend certifié et production non modifiés.
+
+**GO/NO GO** : PR #986 DRAFT, D7 produit OPEN, PAS DE MERGE, PAS DE VERCEL PROD, PAS DE DONNÉE PATIENT RÉELLE. P5 historique 50 %, non modifié. Next exact = 17 verdicts GitHub exact HEAD, puis arbitrage privacy D30 #988/#989/#990, environnement de test physique et sign-off indépendant.
+
+---
+
+# IAMINA D7 — 14 octobre 2026 — CERTIFICATION TECHNIQUE AUTOMATISÉE VERTE (exact HEAD)
+ 
+**Goal** : profil médical progressif facultatif, multi-traitements déclarés sans inférence, isolement strict patient, outbox offline/CAS et refus des écritures concurrentes non versionnées. **Succès CI** : 17/17 workflows GitHub SUCCESS, **0 échec, 0 run actif** sur le commit fonctionnel exact `46a530f64215d00afe72bdd22eea88f365d72097`, vérifié après la fin des runs. Aucun merge ni déploiement.
+ 
+**Preuve principale** : [CI #38567600156](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38567600156) **6/6 jobs SUCCESS** ; SQLite **2810 passed / 5 skipped / 3 xfailed / 121 subtests**, PostgreSQL **2814 passed / 1 skipped / 3 xfailed / 121 subtests**, Flutter **772 passed / 1 skipped**, `✓ Built build/web`. Ne pas compter skipped/xfailed comme pass. Il s'agit de la validation sur `46a530f64215d00afe72bdd22eea88f365d72097`, pas d'un autre SHA.
+ 
+**Preuves complémentaires** : [D7 Conflict UI Evidence #38567600218](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38567600218) SUCCESS (génération vérifiée de 18 captures widget synthétiques FR/EN/AR aux 3 tailles, non équivalentes à un navigateur authentifié) ; app-lock TD-014, PWA offline/recovery/persistence, captures Chrome génériques, iOS/mobile packaging, migration drift, golden geometry, parcours P5-5 = SUCCESS au même SHA.
+ 
+**Sécurité corrigée et couverte** : `PATCH /api/v1/profile` avec `treatment_declaration` et sans précondition CAS -> HTTP **428** sans mutation ; révision obsolète -> 409 ; forme malformée -> 422 ; requête versionnée correcte -> 200. Les PATCH legacy sans déclaration ne sont pas soumis à CAS. Tests HTTP A/B synthétiques, SQLite et PostgreSQL tous verts. Le test D9 d'accès existant n'impose pas un diagnostic ou un traitement pour terminer le premier accueil : champs médicaux facultatifs.
+ 
+**Validation UI partielle** : les premières captures Ahem étaient illisibles, remplacées par des polices Latin/Arabic système et 18 PNG inspectées. Les textes et CTA sont majoritairement lisibles, sans overflow manifeste au widget-test, mais certaines icônes sont substituées et **la vraie boîte de dialogue distante 409 n'a pas été comparée dans Chrome réel**. Aucun score visuel final ni approbation humaine inventés.
+ 
+**Décision / HUMAN GATES** : **D7 PRODUIT RESTE OPEN**, PR [#986](https://github.com/hraaaaf/IAMINA-MVP/pull/986) DRAFT. Restent *deux appareils physiques* avec comptes synthétiques A→B→A + offline/retry/409 et état serveur, validation sécurité/privacy clinique indépendante, arbitrage consentement de synchronisation versionné et dépendances D30 #988/#989/#990, BEFORE/AFTER réel du dialogue et approbation visuelle clinique/UX. **Aucun merge, aucun Vercel, aucune donnée patient réelle** tant que non prouvé.
+ 
+**Prochaines actions** : réconcilier et recertifier toute nouvelle divergence de `main` ; compléter les preuves appareils/UI et audits indépendants ; seulement après feu vert humain envisager merge/post-merge. Baseline P5 roadmap historique **6/12 = 50 %**, non recalculée ici.
+ 
+**Historique ci-dessous** : les statuts « pending », « candidat non certifié » et SHA antérieurs sont historiques. La certification 17/17 ci-dessus est celle du code `46a530f64215d00afe72bdd22eea88f365d72097`.
+ 
+---
+ 
+# IAMINA D7 — 14 octobre 2026 — Intégration D9 GET A→B→A (TEST-ONLY)
+
+**Périmètre strict IAMINA** : PR #986 DRAFT, master non modifié. Avant intégration, D7 code HEAD `1a6d0f3da0b79fab1dfbd5503386b9de619f438a` contient le durcissement CAS HTTP 428, tests A/B et correction de fixture directe. Main alors courant `563766b35c7b28b86330a7d6987a9c86a738d794` ajoute uniquement `backend/diabetes/tests/test_d9_existing_account_profile_read.py`. Ce test exige par vrai bearer synthétique isolation GET A→B→A, fraîche instance HTTP et profil médical facultatif ; il ne prétend pas valider une récupération de coffre Flutter depuis un deuxième appareil physique.
+
+**Action préparée** : merger ce seul fichier test D9 dans la branche D7 et confirmer derrière=0 ; mêmes comportements code D7 inchangés ; exigences de test supplémentaires, pas de fusion dans main. CI sur nouveau HEAD obligatoire après tout merge ; ne pas réutiliser les verts des anciens HEAD.
+
+**Preuves visuelles de référence** : workflow D7 ciblé `38566577425` SUCCESS sur `73d5c829…`, artifact PNG #11895886103, 18 captures réelles de widget-test avec fontes Latin/Arabic, scène de section fermée / déployée inspectée à 390×844 / 768×1024 / 1280×900 FR/EN/AR. Les titres et CTA sont majoritairement lisibles, sans dépassement évident dans les captures ; quelques icônes Flutter et header mobile utilisent encore des glyphes substitutifs. **Pas de screenshot de la vraie modal 409 ni de preuve Chrome/PWA authentifiée du conflit ; score non attribué**.
+
+**Next exact** : relire les 17 workflows de certification exact HEAD ; vérifier 428 sans mutation en SQLite et PostgreSQL, 767+ tests Flutter et 18 screenshots ; si rouge corriger puis re-certifier. Puis vrai human gate : tests A→B→A/offline/409 sur deux devices physiques, versionnement/consentement sync D30, revue security/clinician et validation UI humaine. No merge/no Vercel/no patient réel ; P5 historique 6/12 = 50 %.
+
+---
+
+# IAMINA D7 — 14 octobre 2026 — durcissement de la précondition CAS (CANDIDAT NON CERTIFIÉ)
+
+**PR #986 OPEN/DRAFT, AUCUN MERGE / VERCEL / PATIENT RÉEL.** Référence avant ce correctif : fusion de main D9 et capture en fontes lisibles sur `f557795df1c0003fac43a45ec243577b5cb8c77d`; ses 17 workflows ne certifient PAS ce nouveau changement.
+
+**Goal** : interdire tout `PATCH /api/v1/profile` qui inclut `treatment_declaration` sans `X-Iamina-Treatment-Expected-Updated-At`. En l'absence d'en-tête => **HTTP 428** ; valeur `none` si aucune révision distante, ou timestamp TZ de la version lue ; révision obsolète => 409, invalidité => 422. **PATCH de préférences historiques sans déclaration reste admis** sans CAS. Risque visé : écrasement concurrent ; aucun comportement médical ou dose modifiés.
+
+**BEFORE prouvé par code** : backend ne vérifiait la précondition que si le client la soumettait. Tests directs/HTTP historiques créaient des déclarations sans header. Pas d'incident réel observé.
+
+**Implémentation candidate** : garde fail-closed HTTP 428 avant mutation ; tests directs ajustés à `none` puis révision serveur actualisée ; test HTTP A/B authentifié garantit refus création et écrasement sans header, aucune mutation, et succès avec révision exacte ; test legacy sans déclaration. Suite : CI exact HEAD SQLite/Postgres + Flutter puis sécurité indépendante. Aucun contournement bearer ni changement sync/consentement.
+
+**Visuel** : aucune modification de production. Correction de captures Flutter test D7 (chargement polices latines/arabes) sur parent `f557795d…`; workflow et inspection sur dernier HEAD requis. Les 18 premières images Ahem ne prouvent pas la lisibilité.
+
+**Gates** : essais A→B→A physiques/offline/409, consentement versionné D30, vrai dialogue 409 en Chrome, audit indépendant privacy/clinique et validation UI humaine. NO MERGE/NO VERCEL. Avancement global historique P5=50%.
+
+---
+
 # D7 — 14 octobre 2026 — diagnostic ciblé des débordements mobiles (sans relancer 759 tests)
 
 **PR #986 reste DRAFT, PAS DE MERGE / VERCEL.**

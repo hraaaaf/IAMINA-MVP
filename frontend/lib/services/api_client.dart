@@ -108,16 +108,31 @@ void requireUnlockedPatientSyncTransport(
   }
 }
 
+/// Pilot A: deny all clinical API routes except public authentication.
+void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
+  if (allowed != null && !allowed() &&
+      url.path.startsWith('/api/v1/') &&
+      !url.path.startsWith('/api/v1/auth/')) {
+    throw StateError('Clinical transport disabled: local-only pilot');
+  }
+}
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
   final bool Function()? canUsePatientSyncTransport;
-  AuthInterceptor(this.authService, {this.canUsePatientSyncTransport});
+  final bool Function()? canUseClinicalTransport;
+  AuthInterceptor(this.authService, {
+    this.canUsePatientSyncTransport,
+    this.canUseClinicalTransport,
+  });
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
     final token = await readForStableAuthEpoch(authService.getIdToken);
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
     // This executes AFTER any async credential lookup and immediately before
     // the Chopper chain is allowed to dispatch the medical request.
     requireUnlockedPatientSyncTransport(
@@ -154,13 +169,18 @@ class RetryInterceptor implements Interceptor {
   final bool Function()? canUsePatientSyncTransport;
   static const int _maxRetries = 3;
 
-  RetryInterceptor(this.authService, {this.canUsePatientSyncTransport});
+  final bool Function()? canUseClinicalTransport;
+  RetryInterceptor(this.authService, {
+    this.canUsePatientSyncTransport,
+    this.canUseClinicalTransport,
+  });
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
     final epoch = AuthEpoch.value;
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
     requireUnlockedPatientSyncTransport(
       chain.request.url, canUsePatientSyncTransport,
     );
@@ -178,6 +198,7 @@ class RetryInterceptor implements Interceptor {
           'Bearer $newToken',
           override: true,
         );
+        requirePilotClinicalTransport(retryRequest.url, canUseClinicalTransport);
         requireUnlockedPatientSyncTransport(
           retryRequest.url, canUsePatientSyncTransport,
         );
@@ -192,6 +213,7 @@ class RetryInterceptor implements Interceptor {
     while (_isServerError(response.statusCode) && attempt < _maxRetries) {
       await Future.delayed(Duration(seconds: 1 << attempt));
       requireCurrentAuthEpoch(epoch);
+      requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
       requireUnlockedPatientSyncTransport(
         chain.request.url, canUsePatientSyncTransport,
       );
@@ -253,6 +275,10 @@ class ApiClient {
   final String baseUrl;
   final AuthService _authService;
   final bool Function()? _canUsePatientSyncTransport;
+  final bool Function()? _allowClinicalTransportForSyntheticTests;
+  /// Local-only by default, including when a native bearer exists.
+  bool get canSyncClinicalData =>
+      _allowClinicalTransportForSyntheticTests?.call() ?? false;
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
@@ -260,20 +286,26 @@ class ApiClient {
     this.baseUrl = kBaseUrl,
     AuthService? authService,
     bool Function()? canUsePatientSyncTransport,
+    bool Function()? allowClinicalTransportForSyntheticTests,
   }) : _authService = authService ?? AuthService(),
-       _canUsePatientSyncTransport = canUsePatientSyncTransport;
+       _canUsePatientSyncTransport = canUsePatientSyncTransport,
+       _allowClinicalTransportForSyntheticTests =
+           allowClinicalTransportForSyntheticTests;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
       AuthInterceptor(
-        _authService, canUsePatientSyncTransport: _canUsePatientSyncTransport,
+        _authService,
+        canUsePatientSyncTransport: _canUsePatientSyncTransport,
+        canUseClinicalTransport: () => canSyncClinicalData,
       ),
       RetryInterceptor(
-        _authService, canUsePatientSyncTransport: _canUsePatientSyncTransport,
+        _authService,
+        canUsePatientSyncTransport: _canUsePatientSyncTransport,
+        canUseClinicalTransport: () => canSyncClinicalData,
       ),
-      CurlInterceptor(),
     ],
     converter: const JsonConverter(),
   );
@@ -282,6 +314,7 @@ class ApiClient {
 
   /// A response from the previous auth epoch is never exposed to its caller.
   Future<Map<String, dynamic>?> getProfile() async {
+    if (!canSyncClinicalData) return null;
     final epoch = AuthEpoch.value;
     try {
       final response = await _client.get(Uri.parse('/api/v1/profile'));
@@ -305,6 +338,9 @@ class ApiClient {
     required DateTime? expectedUpdatedAtUtc,
   }) async {
     final epoch = AuthEpoch.value;
+    if (!canSyncClinicalData) {
+      return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+    }
     final payload = <String, dynamic>{
       'treatment_declaration': {
         'version': 1,
@@ -357,6 +393,7 @@ class ApiClient {
   }
 
   Future<bool> patchProfile(Map<String, dynamic> patch) async {
+    if (!canSyncClinicalData) return false;
     try {
       final response = await _client.patch(
         Uri.parse('/api/v1/profile'),
@@ -385,6 +422,7 @@ class ApiClient {
 
   /// Envoie un log unique au backend.
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
+    if (!canSyncClinicalData) return Future.value(false);
     return guardSyncApiCall<bool>('sync_log_entry', () async {
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
@@ -393,6 +431,7 @@ class ApiClient {
 
   /// Envoie une liste de logs en une seule requête (Batch).
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
+    if (!canSyncClinicalData) return Future.value(const <String>[]);
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
       final response = await _client.post(
         Uri.parse('/api/v1/logs/batch'),
@@ -445,6 +484,7 @@ class ApiClient {
 
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
+    if (!canSyncClinicalData) return;
     final epoch = AuthEpoch.value;
     final token = await readForStableAuthEpoch(_authService.getIdToken);
     final uri = Uri.parse(
@@ -574,6 +614,7 @@ class ApiClient {
     String mimeType, {
     int contextDays = 14,
   }) async {
+    if (!canSyncClinicalData) return null;
     try {
       final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
@@ -618,6 +659,7 @@ class ApiClient {
     String base64Image,
     String mimeType,
   ) async {
+    if (!canSyncClinicalData) return null;
     try {
       final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
@@ -650,6 +692,7 @@ class ApiClient {
   /// Transcribe audio to text (STT only — no IAmina pipeline).
   /// Used for vocal input in the add-log page meal note field.
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
+    if (!canSyncClinicalData) return null;
     try {
       final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
@@ -805,6 +848,7 @@ class ApiClient {
     String filename,
     String mimeType,
   ) async {
+    if (!canSyncClinicalData) return null;
     if (!isDocumentUploadSizeAllowed(byteLength)) return null;
     if (!isMinimizableDocumentImage(filename: filename, mimeType: mimeType)) {
       return _ingestDocumentStreamRaw(
@@ -853,6 +897,7 @@ class ApiClient {
     String filename,
     String mimeType,
   ) async {
+    if (!canSyncClinicalData) return null;
     if (!isDocumentUploadSizeAllowed(byteLength)) {
       return null;
     }

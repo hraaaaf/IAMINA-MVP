@@ -350,6 +350,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get syncOffline => 'Hors ligne · données conservées sur cet appareil';
 
   @override
+  String get syncLocalOnly => 'Pilote local · enregistré sur cet appareil, non synchronisé';
+
+  @override
   String get syncFailed => 'Échec de synchronisation · appuyer pour réessayer';
 
   @override

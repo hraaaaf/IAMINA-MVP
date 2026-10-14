@@ -76,6 +76,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
 
+  // Fail closed when no clinical transport provider is mounted (e.g. offline
+  // pilot widget tests). The remote conflict action stays unavailable until
+  // a separately governed clinical-sync capability is explicitly enabled.
+  bool get _canResolveRemoteTreatmentConflict =>
+      context.read<ApiClient?>()?.canSyncClinicalData ?? false;
+
   void _setPresentationState(VoidCallback fn) => setState(fn);
 
   @override
@@ -607,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
 
-    bool remoteMirrorConfirmed = true;
+    bool remoteMirrorConfirmed = context.read<ApiClient>().canSyncClinicalData;
     if (_treatmentTouched && db.patientVaultScope != null) {
       // Durable local-first write. Do not use legacy unconditioned PATCH:
       // only the vault-bound synchronizer may upload and ACK this generation.
@@ -642,7 +648,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SnackBar(
           content: Text(fullyConfirmed
               ? AppLocalizations.of(context)!.profileUpdated
-              : _profileUiText(context,
+              : !context.read<ApiClient>().canSyncClinicalData
+                ? AppLocalizations.of(context)!.syncLocalOnly
+                : _profileUiText(context,
                   fr: 'Enregistré localement. Synchronisation non confirmée.',
                   en: 'Saved locally. Remote sync not confirmed.',
                   ar: 'تم الحفظ محليًا. لم يتم تأكيد المزامنة.',

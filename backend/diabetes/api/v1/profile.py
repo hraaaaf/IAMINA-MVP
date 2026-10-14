@@ -251,12 +251,15 @@ def patch_profile(request, data: ProfilePatchSchema):
     payload = data.model_dump(exclude_unset=True)
     declaration = payload.pop("treatment_declaration", None)
 
-    # Opt-in compare-and-swap for a client that already read the server.
-    # Legacy PATCH clients remain compatible until D7 outbox migration.
-    # "none" means no declaration has yet been persisted for this patient.
+    # D7 declarations always use compare-and-swap: a missing revision must
+    # never bypass a competing device's update. Legacy profile-only PATCH
+    # callers remain compatible because they do not submit a declaration.
+    # "none" explicitly means no declaration has yet been persisted.
     expected_text = getattr(request, "headers", {}).get(
         "X-Iamina-Treatment-Expected-Updated-At"
     )
+    if declaration is not None and expected_text is None:
+        raise HttpError(428, "Treatment revision required")
     if expected_text is not None:
         if declaration is None:
             raise HttpError(422, "Treatment revision without a declaration")

@@ -73,6 +73,7 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
                     "codes": ["insulin", "oral_meds", "lifestyle"],
                 }
             },
+            expected_updated_at="none",
         )
         self.assertEqual(patch_a.status_code, 200, patch_a.content)
         self.assertEqual(
@@ -96,6 +97,7 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
                     "codes": [],
                 }
             },
+            expected_updated_at="none",
         )
         self.assertEqual(patch_b.status_code, 200, patch_b.content)
         self.assertEqual(
@@ -106,6 +108,55 @@ class PatientDeclaredTreatmentHttpIsolationTests(TestCase):
             self._get(self.token_a).json()["treatment_declarations"],
             ["insulin", "oral_meds", "lifestyle"],
         )
+
+    def test_missing_revision_cannot_create_or_clobber_patient_declaration(self):
+        payload = {"treatment_declaration": {
+            "version": 1, "state": "declared", "codes": ["insulin"],
+        }}
+
+        def headerless_patch():
+            # Real Django-Ninja bearer path; only the CAS header is omitted.
+            with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
+                return self.client.patch(
+                    "/api/v1/profile",
+                    data=json.dumps(payload),
+                    content_type="application/json",
+                    headers={"Authorization": f"Bearer {self.token_a}"},
+                )
+
+        missing_first = headerless_patch()
+        self.assertEqual(missing_first.status_code, 428, missing_first.content)
+        before = self._get(self.token_a).json()
+        self.assertEqual(before["treatment_declarations"], [])
+        self.assertIsNone(before["treatment_declaration_updated_at"])
+
+        accepted = self._patch(self.token_a, payload, expected_updated_at="none")
+        self.assertEqual(accepted.status_code, 200, accepted.content)
+        current = accepted.json()["treatment_declaration_updated_at"]
+        self.assertIsNotNone(current)
+
+        payload["treatment_declaration"]["codes"] = ["oral_meds"]
+        missing_again = headerless_patch()
+        self.assertEqual(missing_again.status_code, 428, missing_again.content)
+        unchanged = self._get(self.token_a).json()
+        self.assertEqual(unchanged["treatment_declarations"], ["insulin"])
+        self.assertEqual(unchanged["treatment_declaration_updated_at"], current)
+        self.assertEqual(self._get(self.token_b).json()["treatment_declarations"], [])
+
+        accepted_with_revision = self._patch(
+            self.token_a, payload, expected_updated_at=current,
+        )
+        self.assertEqual(accepted_with_revision.status_code, 200)
+        self.assertEqual(
+            self._get(self.token_a).json()["treatment_declarations"],
+            ["oral_meds"],
+        )
+
+    def test_legacy_profile_patch_without_cas_header_remains_supported(self):
+        response = self._patch(self.token_a, {"preferred_language": "fr"})
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(self._get(self.token_a).json()["preferred_language"], "fr")
+        self.assertEqual(self._get(self.token_b).json()["treatment_declarations"], [])
 
     def test_compare_and_swap_prevents_stale_cross_device_declaration(self):
         first = self._patch(

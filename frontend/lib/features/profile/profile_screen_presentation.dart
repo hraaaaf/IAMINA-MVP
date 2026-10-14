@@ -128,7 +128,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             _treatmentTouched = true;
           }),
         ),
-        if (_treatmentConflict)
+        if (_treatmentConflict && _canResolveRemoteTreatmentConflict)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: SizedBox(

@@ -494,8 +494,9 @@ class _EmptyDashboard extends StatelessWidget {
     return ValueListenableBuilder<SyncUiState>(
       valueListenable: context.read<SyncService>().state,
       builder: (context, state, _) {
-        final note = state == SyncUiState.offline
-            ? '${AuditedPageCopy.of(context).sync('offline')} · ${l10n.firstUseTruthNote}'
+        final note = state == SyncUiState.offline ||
+                state == SyncUiState.localOnly
+            ? '${AuditedPageCopy.of(context).sync(state == SyncUiState.localOnly ? 'localOnly' : 'offline')} · ${l10n.firstUseTruthNote}'
             : l10n.firstUseTruthNote;
         return AminaFirstUsePanel(
           icon: Icons.monitor_heart_outlined,
