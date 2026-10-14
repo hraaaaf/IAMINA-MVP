@@ -317,14 +317,24 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
                 const Icon(Icons.lock_outline, size: 40),
               const SizedBox(height: 12),
               Text(message, textAlign: TextAlign.center),
-              if (!waiting) TextButton(
-                onPressed: () => unawaited(_verifyD9FirstUse()),
-                child: Text(switch (lang) {
-                  'fr' => 'Réessayer',
-                  'ar' => 'إعادة المحاولة',
-                  _ => 'Retry',
-                }),
-              ),
+              if (!waiting) ...[
+                TextButton(
+                  onPressed: () => unawaited(_verifyD9FirstUse()),
+                  child: Text(switch (lang) {
+                    'fr' => 'Réessayer',
+                    'ar' => 'إعادة المحاولة',
+                    _ => 'Retry',
+                  }),
+                ),
+                TextButton(
+                  onPressed: () => unawaited(widget.auth.signOut()),
+                  child: Text(switch (lang) {
+                    'fr' => 'Se déconnecter',
+                    'ar' => 'تسجيل الخروج',
+                    _ => 'Sign out',
+                  }),
+                ),
+              ],
             ],
           ),
         ),
