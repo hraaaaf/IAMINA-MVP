@@ -1,3 +1,28 @@
+# IAMINA D7 — ÉTAT CANONIQUE AU 14 OCTOBRE 2026 — TESTS AUTOMATISÉS VERTS
+
+**NE PAS CONFONDRE « CI VERTE » ET « CERTIFICATION CLINIQUE/UX ». D7 OUVERTE — PR #986 DRAFT, NI MERGE NI VERCEL.**
+
+**Goal exact** : profil médical optionnel à choix multi-traitements déclarés par le patient ; serveur Django avec CAS strict, offline outbox + récupération/sauvegardes, isolation A→B→A, app-lock empêchant sorties réseau cliniques, conflit 409 explicitement comparé/résolu avec consentement du patient.
+
+**Dernier HEAD complet VALIDÉ** : [`ac902f091e275f3c066918705b02e7c9f387eda2`](https://github.com/hraaaaf/IAMINA-MVP/commit/ac902f091e275f3c066918705b02e7c9f387eda2), PR [#986](https://github.com/hraaaaf/IAMINA-MVP/pull/986). [CI #38542149288](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38542149288) = **6/6 jobs SUCCESS** (ruff + pytest SQLite, PostgreSQL source-of-truth, Flutter analyze/tests/PWA, secrets/scope/taille). **16/16 workflows SUCCESS** : P5-5, P5-4A offline shell/browser persistence/update-recovery, iOS/mobile, TD-014 app-lock, Django drift, golden geometry, First-use/mobile, login/local-first, Chrome CTA, UI browser screenshot/navigation. [PWA update/recovery #38542149097](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38542149097) SUCCESS, la précédente erreur Chrome 9225 ne se reproduit pas. Le test Flutter local-first a été réparé de manière ciblée sur `_saveProfile()` dans `ac902f09` (pas de modification runtime).
+
+**Matrice de preuves au HEAD ac902** :
+- Déclaration médicale multi-code, états absent/unsure/none/later, génération CAS, conflits 409, sauvegarde v11→v12, tests de migration et refus de vieux ACK : **tests CI verts**. Ce n'est pas un essai réel multi-appareils.
+- App-lock : gardes `AuthInterceptor`/`RetryInterceptor`, HTTP directs, SSE et token tardif ; tests et TD014 verts. Pas de preuve de retrait d'une requête déjà partie avant verrouillage (impossible côté navigateur).
+- Isolation A→B→A et offline : simulations sur deux coffres SQLite physiques + retry serveur validées en CI. **Deux terminaux physiques/OS et comptes réels non testés**.
+- Visuels : workflow UI browser screenshot SUCCESS, artéfacts GitHub `iamina-ui-browser-cert-390x844`, `iamina-ui-browser-cert-768x1024`, `iamina-ui-browser-cert-1280x900` rattachés au run [#38542149177](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38542149177). **Ces captures générales n'établissent PAS une comparaison BEFORE/AFTER du dialogue D7 conflit 409.**
+- Nouvel écran de conflit D7 : section CTA conditional `d7-resolve-treatment-conflict` si statut 409, boîte locale/distante trilingue, confirmation choisie et méthode de comparaison de génération ; tests backend/store verts, mais **certification spécifique de la scène 409 manque encore**.
+
+**LOT DE PREUVE UI PRÉPARÉ DANS LE PROCHAIN COMMIT** : `frontend/test/features/profile/d7_conflict_cta_responsive_test.dart` ajoute **10 tests widgets** : neuf tailles/langues [390×844, 768×1024, 1280×900] × [FR, EN, AR] avec vraie déclaration de traitement en état `conflict`, vérification présence CTA sans exception de layout, et absence de mutation/ACK en consultation ; dixième test vérifie absence de CTA si `pending`. **Ce lot n'est PAS validé par la CI ac902** : identifier prochain HEAD, puis run et logs.
+
+**UI/UX protocole** : BEFORE : profil sans action de réconciliation ; cible/micro-mockup : CTA « Comparer et résoudre le conflit », dialogue côte à côte logique appareil/serveur + avertissement + « Annuler / Conserver ma version », aucun ACK avant accord ; AFTER : compare captures de l'état 409 à viewports identiques 390×844, 768×1024, 1280×900 et contrôle FR/EN/AR/RTL/clavier/a11y. Les tests widgets de rendu seuls NE SONT PAS des captures comparées : score visuel NON NOTÉ, ne pas inventer.
+
+**Gates indispensables non franchis** : revue confidentialité/consentement et sécurité clinique indépendante ; scénario A→logout→B→A sur deux appareils réels (récupération et offline/409) ; preuve visuelle comparée de l'état conflit ; approbation UI et clinique du responsable. **Ne pas fusionner #986 ni déployer Vercel** sans gates. P5 roadmap global 50 % HISTORIQUE inchangé, ne pas inférer un nouveau %. Aucun action irréversible à exécuter automatiquement.
+
+**Next exact** : publier les tests widgets en commit unique, vérifier CI du HEAD ; si rouge diagnostiquer et corriger. Puis captures UI avant/après à partir d'un environnement capable de rendre la scène conflit et faire valider par humain, audits clinique/privacy, 2 vrais appareils, et seulement ensuite discussion merge/deploy.
+
+---
+
 # REPRISE D7 — 14 octobre 2026 — fermeture des réponses HTTP tardives
 
 **D7 EN COURS — PR #986 DRAFT, NI MERGE NI VERCEL.**
