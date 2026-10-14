@@ -1,3 +1,13 @@
+## 14 octobre 2026 — dernier état de reprise pour Pulper/Groq
+
+**Objectif** : maintenir Groq sur PDF/DOCX avec preuves de provenance et seuils médicaux inchangés. **Preuve acquise** : SHA `e44b1a9e`, Pulper #38646278280, CI #38646278329, Protected Shadow #38646278296 et migration #38646278289 SUCCESS ; artefact Pulper #11933046605 vérifié 18/18 faits critiques, 6/6 rejets, 0 corruption, Groq texte 4 cas live fictifs, images simulées seulement.
+
+**Portabilité macOS** : job #38646278327 rouge (autonomous `python -c` depuis racine repo, `ModuleNotFoundError: evaluation`). Correction sûre test-only sur SHA `87dc3972` : `cwd=Path(__file__).resolve().parents[1]` dans `backend/evaluation/test_clinician_prep_protected_shadow_benchmark.py`, sans modifier code patient. Le passage CI #38651962051 a révélé une erreur Ruff `I001` (ordre `datetime`/`pathlib`) ; ce dernier correctif de tri d'import est inclus dans la présente révision, et aucun succès du SHA final n'est encore revendiqué. Les runs Pulper #38651962043, Protected Shadow #38651962042 et Django drift #38651962054 avaient déjà SUCCESS sur la révision intermédiaire.
+
+**Next exact** : contrôler CI générale, portabilité macOS et qualification Pulper sur ce nouveau SHA ; réparer seulement en cas de nouvel échec. PR [#1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005) DRAFT/unmerged `main`. **Human gate** : validation clinique/sécurité/privacy et autorisation d'egress patient réels vers Groq non acquises ; ne pas merger ni déployer Vercel. D7/#7 et D9/#9 séparés. P5 historique 50 %.
+
+---
+
 # IAMINA — Pulper Groq — qualification synthétique et gates
 _Date : 14 octobre 2026. Statut : correctif technique en PR #1005, non fusionné à main._
 

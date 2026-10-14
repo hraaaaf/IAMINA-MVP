@@ -1,7 +1,7 @@
 import subprocess
 import sys
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 
 from companion.narration_envelope import verify_and_reinject_protected_narration
 from diabetes.services.clinical.clinician_prep_protected_narration_verifier import (
