@@ -1,0 +1,45 @@
+name: IAMINA D7 Isolated Vercel Preview Browser Smoke
+
+on:
+  push:
+    branches:
+      - audit/d7-vercel-preview-offline-20261014
+    paths:
+      - .github/workflows/d7-vercel-preview-browser-smoke.yml
+      - tools/d7_preview_browser_smoke.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  preview-browser:
+    name: Two isolated real-Chrome contexts — no certified backend egress
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned browser driver (Chrome already installed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/iamina-d7-playwright"
+          cd "$RUNNER_TEMP/iamina-d7-playwright"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact playwright-core@1.56.1
+      - name: Run limited-scope Vercel DEV isolation smoke
+        shell: bash
+        env:
+          NODE_PATH: ${{ runner.temp }}/iamina-d7-playwright/node_modules
+        run: |
+          set -euo pipefail
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          export CHROME_BIN
+          node tools/d7_preview_browser_smoke.cjs
+      - name: Upload non-patient browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-d7-vercel-dev-two-context-smoke
+          path: d7-preview-browser-evidence/
+          if-no-files-found: warn
+          retention-days: 14
