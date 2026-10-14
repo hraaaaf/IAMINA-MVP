@@ -50,7 +50,7 @@ void main() {
   for (final size in viewports) {
     for (final lang in locales) {
       testWidgets(
-        'D7 conflict CTA renders without overflow at '
+        'D7 pilot A keeps remote conflict CTA hidden at '
         '${size.width.toInt()}x${size.height.toInt()} in $lang',
         (tester) async {
           tester.view.physicalSize = size;
@@ -100,8 +100,8 @@ void main() {
             ),
           ));
           await tester.pumpAndSettle();
-          // The medical section intentionally starts collapsed; a user must
-          // expand it before a conflict CTA becomes visible and actionable.
+          // The medical section starts collapsed; expansion must not reveal
+          // an unusable remote conflict CTA in the local-only pilot.
           final medical = find.byKey(const Key('profile-medical-section'));
           await tester.ensureVisible(medical);
           await tester.pumpAndSettle();
@@ -119,15 +119,11 @@ void main() {
           ));
           await tester.pumpAndSettle();
 
-          final action = find.byKey(const Key('d7-resolve-treatment-conflict'));
-          expect(action, findsOneWidget);
-          expect(find.text(copy[lang]!), findsOneWidget);
-          await tester.ensureVisible(action);
-          await tester.pumpAndSettle();
-          final buttonBounds = tester.getRect(action);
-          expect(buttonBounds.left, greaterThanOrEqualTo(0));
-          expect(buttonBounds.right, lessThanOrEqualTo(size.width));
-          expect(buttonBounds.height, greaterThanOrEqualTo(40));
+          // Clinical transport is denied by default. A persisted 409 must
+          // remain stored without offering a remote-only resolution action.
+          expect(find.byKey(const Key('d7-resolve-treatment-conflict')),
+              findsNothing);
+          expect(find.text(copy[lang]!), findsNothing);
           expect(tester.takeException(), isNull);
           if (captureD7VisualEvidence) {
             await expectLater(
