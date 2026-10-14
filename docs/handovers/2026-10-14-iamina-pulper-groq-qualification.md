@@ -1,3 +1,17 @@
+## 14 octobre 2026 — AUDITS PAR DISCIPLINE EXÉCUTÉS (IA, NON SIGNÉS) — SHA `e3073670`
+
+**Précision d'indépendance :** trois pré-analyses distinctes clinique, CNDP/privacy et sécurité ont été réalisées dans le même système IA, et NE SONT PAS trois avis humains indépendants, ne signent ni ne certifient un logiciel médical ou un transfert réel de données patients. Aucun nouvel essai sur patient réel ni test d'intrusion n'a été exécuté.
+
+- **Audit clinique [rapport PR #1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005#issuecomment-6181089756) : NO-GO patient réel.** Code `pulper.py:327-346` ne relie pas strictement valeur normalisée et extrait source : `verified=True` est possible sur une ligne contenant `raw_value` sans vérifier l'accord numérique/unité. `api/v1/documents.py:148-154,211-221` permet `confirm=true` dans le POST initial, contournant l'aperçu comme étape serveur obligatoire. Deux P1 de revue statique, tests négatifs à écrire. Besoin de formats IFCC mmol/mol, NGSP %, glycémie mmol/L / mg/dL, discordances multi-pages, posologies, OCR vrai.
+- **Audit privacy/CNDP [rapport PR #1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005#issuecomment-6181091121) : NO-GO egress patient.** Groq `PENDING` et fondement juridique vide dans `backend/core/ai_processor_policy.py`. Cinq preuves contractuelles/réglementaires internes non obtenues : CNDP santé, transferts à l'étranger, DPA IAMINA/Groq, ZDR réellement actif sur compte production, notice/consentement patient. Références CNDP et Groq sur le rapport. Gate existant [#320](https://github.com/hraaaaf/IAMINA-MVP/issues/320).
+- **Audit AppSec [rapport PR #1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005#issuecomment-6181092553) : GO technique synthétique conditionnel, NO-GO patient.** Vérifications de code des portes auth, policy consentement, ZIP/MIME et enveloppe JSON ; P1 intégrité/confirmation ci-dessus, preuve d'absence globale de PHI non établie, tests négatifs Groq à compléter. P2 à tester : exception `PulperShield.validate` enregistrant du texte d'exception potentiellement non nettoyé.
+- **Ticket de correction P1 [#1011](https://github.com/hraaaaf/IAMINA-MVP/issues/1011)** créé, conditions de succès explicites et tests à ajouter SANS abaisser les seuils ni envoyer de vraies données patient. [Issue qualification #1002](https://github.com/hraaaaf/IAMINA-MVP/issues/1002) et [Notion Handover maître](https://app.notion.com/p/3f477c66336281b28c78eb11c22f5ee6) actualisés.
+- **CI du SHA étudié : 5/5 SUCCESS**, 18/18 faits synthétiques, 6/6 rejets, mais les CI n'ont pas testé ces nouveaux scénarios P1. La présente modification n'est que documentaire : ne pas prétendre que les CI du nouveau SHA sont déjà vertes.
+
+**Verdict commun :** NO-GO fusion clinique/productive et envoi de documents réels à Groq. **Next exact :** corriger #1011 avec tests, requalifier le nouveau code, collecter les cinq justificatifs account-specific et obtenir les trois approbations datées de professionnels indépendants avant le moindre merge main/egress patient. PR #1005 DRAFT, aucun Vercel.
+
+---
+
 ## 14 octobre 2026 — CLOSEOUT TECHNIQUE VÉRIFIÉ sur `8be7da98` (5/5 vert)
 
 **Goal** : préserver Groq GPT-OSS pour les textes PDF/DOCX Pulper, corriger les erreurs de format/réponse et prouver l'extraction synthétique sans assouplir provenance, seuils, protection egress ni contrôle médical.
