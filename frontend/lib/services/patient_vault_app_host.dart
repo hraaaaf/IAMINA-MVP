@@ -155,6 +155,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       current.d9Gate = _D9FirstUseGate.unavailable;
     }
     setState(() {});
+    _maybeStartSync();
   }
 
   void _maybeStartSync() {
@@ -163,7 +164,10 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         current.authEpoch != AuthService.authEpoch ||
         !widget.appLock.isUnlocked ||
         !widget.auth.hasRemoteApiCredential ||
-        current.scope.nativeDjangoUserId == null) {
+        current.scope.nativeDjangoUserId == null ||
+        current.d9Gate == _D9FirstUseGate.unresolved ||
+        current.d9Gate == _D9FirstUseGate.checking ||
+        current.d9Gate == _D9FirstUseGate.unavailable) {
       return;
     }
     if (current.syncStarted) {
