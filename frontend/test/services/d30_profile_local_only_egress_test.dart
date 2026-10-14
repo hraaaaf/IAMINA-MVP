@@ -2,7 +2,6 @@ import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 const _syntheticProfilePatch = <String, dynamic>{
