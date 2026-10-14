@@ -15,8 +15,11 @@ void main() {
       expect(source, contains('hasRemoteApiCredential'));
       expect(source, contains('nativeDjangoUserId != null'));
     }
-    expect(profile.indexOf('PatientTreatmentDeclarationStore(db).write('),
-        lessThan(profile.indexOf('sendPendingTreatmentDeclaration()')));
+    // Limit ordering to the save handler: conflict-resolution UI also calls
+    // the synchronizer, but cannot replace the local-first save invariant.
+    final profileSave = profile.substring(profile.indexOf('  void _saveProfile() async {'));
+    expect(profileSave.indexOf('PatientTreatmentDeclarationStore(db).write('),
+        lessThan(profileSave.indexOf('sendPendingTreatmentDeclaration()')));
     expect(onboarding.indexOf('PatientTreatmentDeclarationStore(db).write('),
         lessThan(onboarding.indexOf('sendPendingTreatmentDeclaration()')));
   });
