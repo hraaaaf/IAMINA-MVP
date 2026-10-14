@@ -73,16 +73,33 @@ class ProviderApiException implements Exception {
       'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
+bool _denyClinicalProfileUpload() => false;
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
-  AuthInterceptor(this.authService);
+  final bool Function() canUploadClinicalProfile;
+
+  AuthInterceptor(
+    this.authService, {
+    bool Function()? canUploadClinicalProfile,
+  }) : canUploadClinicalProfile =
+           canUploadClinicalProfile ?? _denyClinicalProfileUpload;
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
-    final token = await authService.getIdToken();
     Request request = chain.request;
+    // A local or unrelated remote bearer cannot prove profile ownership or
+    // purpose-specific consent. Never transmit medical profile fields before
+    // those separate authorities have been implemented and reviewed.
+    if (request.method.toUpperCase() == 'PATCH' &&
+        request.url.path == '/api/v1/profile' &&
+        !canUploadClinicalProfile()) {
+      throw StateError('patient_bound_profile_consent_required');
+    }
+
+    final token = await authService.getIdToken();
     if (token != null && token.isNotEmpty) {
       request = applyHeader(
         request,
@@ -162,6 +179,12 @@ bool isDocumentUploadSizeAllowed(int byteLength) =>
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+
+  /// D30 safety hold: current local profile is not bound to a remote patient
+  /// principal, and clinical profile sync lacks independent explicit consent.
+  /// Keep all remote profile PATCH operations disabled until both are proved.
+  bool get canUploadClinicalProfile => false;
+
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
@@ -172,7 +195,10 @@ class ApiClient {
     baseUrl: Uri.parse(baseUrl),
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
-      AuthInterceptor(_authService),
+      AuthInterceptor(
+        _authService,
+        canUploadClinicalProfile: () => canUploadClinicalProfile,
+      ),
       RetryInterceptor(_authService),
       CurlInterceptor(),
     ],
@@ -182,6 +208,7 @@ class ApiClient {
   ChopperClient get client => _client;
 
   Future<bool> patchProfile(Map<String, dynamic> patch) async {
+    if (!canUploadClinicalProfile) return false;
     try {
       final response = await _client.patch(
         Uri.parse('/api/v1/profile'),
