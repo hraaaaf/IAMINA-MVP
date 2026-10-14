@@ -538,6 +538,23 @@ void main() {
     expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
   });
 
+  test('D7 remote GET with naive timestamp is not a confirmed declaration',
+      () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final receiver = SyncService(db, mockApi);
+    addTearDown(receiver.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': <String>['insulin'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00',
+    });
+    await receiver.restorePatientTreatmentDeclaration();
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+  });
+
   test('D7 a local offline declaration takes precedence over a server GET', () async {
     final db = await nativeVault(734);
     addTearDown(db.close);

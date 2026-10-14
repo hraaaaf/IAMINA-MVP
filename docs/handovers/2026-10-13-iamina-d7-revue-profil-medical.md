@@ -1,3 +1,21 @@
+# REPRISE D7 — 14 octobre 2026 — mise à jour après CI VERTE et test d'isolation
+
+**PR #986 DRAFT, NON MERGED, NO VERCEL. D7 NON CLOSE.** Le prochain opérateur doit vérifier le HEAD/CI avant de poursuivre.
+
+**Goal** : coffres patient isolés, traitements déclaratifs multi-choix, synchronisation CAS + offline sans perte de données, sécurité app-lock, réconciliation explicite, contrôle clinique/privacy et UX certifiée.
+
+**Preuve dernière CI entièrement verte** : commit [`6ce3cf63ddbf4552574bb90511b23a3a312b8bf3`](https://github.com/hraaaaf/IAMINA-MVP/commit/6ce3cf63ddbf4552574bb90511b23a3a312b8bf3) / [CI #38487298188](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38487298188) **6/6 JOBS SUCCESS** : backend SQLite, PostgreSQL, frontend Flutter analyse/tests + PWA, contrôles Git/sécurité. Autres certifications du même commit partiellement `in_progress` au relevé, NE PAS extrapoler 16/16.
+
+**HEAD suivant prouvé poussé** : [`56aa31a948d3d2fcddbde58f1237f7ecebe84756`](https://github.com/hraaaaf/IAMINA-MVP/commit/56aa31a948d3d2fcddbde58f1237f7ecebe84756), PR #986 DRAFT. Tests uniquement : patient A→B→A par vrais fichiers SQLite distincts (traitement de B ne traverse pas vers A; déclaration A reste pending intacte), outbox après upload indisponible puis confirmation sur retry sans modifier génération/choix. **CI du HEAD** [#38487824691](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38487824691) **QUEUED au relevé** ; migrations et géométrie déjà SUCCESS, autres certifications encore running/queued. Pas encore prouvé que les nouveaux tests passent.
+
+**Travail indépendant PRÉPARÉ mais non commité** : arbre Git `a7bf5ef5c651990c1e0c373461823ff64880a6bd` parent `56aa31a9`, `frontend/lib/services/sync_service.dart` utilise désormais `verifiedServerTreatmentRevision(profile)` au lieu de `DateTime.tryParse(timestamp)` pour restauration distante ; ceci refuse un timestamp sans timezone comme faux ACK de serveur. Nouveau test dans `frontend/test/services/sync_service_test.dart` confirme qu'un profil distant avec horodatage naïf ne crée aucune déclaration locale. **NON TESTÉ, NE PAS COMPTER LIVRÉ.** Après résultat CI de 56aa31 : commit de l'arbre préparé si HEAD inchangé et code revu ; sinon rebase.
+
+**Risque non résolu :** véritable cycle sur deux appareils (backend Django+client), coupures réseau et 409 réalistes, déconnexion/récupération coffre device-only, revue confidentialité + sûreté clinique, réconciliation conflit, captures AVANT/APRÈS aux mêmes 390×844/768×1024/1280×900 et gate de validation humaine. Aucun merge ni déploiement Vercel sans gate explicite. P5 50 % historique non recalculé.
+
+**Next exact :** conclure CI #38487824691 pour HEAD 56aa31, traiter failure si présente ; si success pousser garde timestamp + test, certifier sa nouvelle CI, puis suivre le reste de la séquence jusqu'aux vrais human gates. Interdiction de polling/sleep et de déclarer terminé sans preuve.
+
+---
+
 # D7 — ÉTAT DE REPRISE AU 13/10/2026 23h+ UTC — PR #986 DRAFT
 
 **D7 OUVERTE : NE PAS MERGER, NE PAS DÉPLOYER VERCEL.** Lire cette section avant les historiques ci-dessous.

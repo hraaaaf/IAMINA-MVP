@@ -138,7 +138,9 @@ class SyncService {
       if (status is! String || codes is! List ||
           codes.any((item) => item is! String) ||
           timestamp is! String) return;
-      final updatedAt = DateTime.tryParse(timestamp);
+      // Remote CAS evidence must be timezone-aware, exactly like the
+      // acknowledgement path. A naive timestamp is not server proof.
+      final updatedAt = verifiedServerTreatmentRevision(profile);
       if (updatedAt == null || !_sessionActive) return;
       await store.restoreRemoteIfAbsent(
         state: status,
