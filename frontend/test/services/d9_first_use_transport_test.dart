@@ -8,12 +8,14 @@ import 'package:http/testing.dart';
 
 const _serverConfirmed = <String, Object?>{
   'version': 1,
+  'owner_user_id': 734,
   'completed': true,
   'completed_at': '2026-10-14T12:00:00Z',
 };
 
 const _serverPending = <String, Object?>{
   'version': 1,
+  'owner_user_id': 734,
   'completed': false,
   'completed_at': null,
 };
@@ -27,10 +29,23 @@ http.Response _json(Object payload, [int status = 200]) => http.Response(
 void main() {
   test('D9 proof parsing rejects contradictory, missing and untrusted status',
       () {
-    final confirmed = D9FirstUseProof.parse(_serverConfirmed);
+    final confirmed = D9FirstUseProof.parse(_serverConfirmed, expectedOwner: 734);
     expect(confirmed?.completed, isTrue);
     expect(confirmed?.completedAt, DateTime.utc(2026, 10, 14, 12));
-    expect(D9FirstUseProof.parse(_serverPending)?.completed, isFalse);
+    expect(D9FirstUseProof.parse(_serverPending, expectedOwner: 734)?.completed, isFalse);
+    expect(D9FirstUseProof.parse(
+      _serverConfirmed, expectedOwner: 812,
+    ), isNull);
+    expect(D9FirstUseProof.parse(
+      <String, Object?>{
+        ..._serverConfirmed,
+        'owner_user_id': null,
+      },
+      expectedOwner: 734,
+    ), isNull);
+    expect(D9FirstUseProof.parse(
+      _serverConfirmed, expectedOwner: 0,
+    ), isNull);
     for (final bad in <Object?>[
       null,
       <String, Object?>{'version': 2, 'completed': true,
@@ -45,7 +60,7 @@ void main() {
       <String, Object?>{'version': 1, 'completed': true,
         'completed_at': '2026-10-14T12:00:00'},
     ]) {
-      expect(D9FirstUseProof.parse(bad), isNull, reason: '$bad');
+      expect(D9FirstUseProof.parse(bad, expectedOwner: 734), isNull, reason: '$bad');
     }
   });
 
@@ -217,6 +232,10 @@ void main() {
       _json(_serverConfirmed, 404),
       _json(_serverConfirmed, 503),
       _json(_serverConfirmed, 302),
+      _json(<String, Object?>{
+        ..._serverConfirmed,
+        'owner_user_id': 812,
+      }),
       _json(<String, Object>{'version': 2, 'completed': true}),
       http.Response('<html>not JSON</html>', 200),
       _json(_serverPending),
