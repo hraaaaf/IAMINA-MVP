@@ -32,6 +32,7 @@ class AuditedPageCopy {
     'pending' => l10n.syncPending,
     'syncing' => l10n.syncing,
     'offline' => l10n.syncOffline,
+    'localOnly' => l10n.syncLocalOnly,
     _ => l10n.syncFailed,
   };
 

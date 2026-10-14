@@ -135,7 +135,8 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               width: double.infinity,
               child: OutlinedButton(
                 key: const Key('d7-resolve-treatment-conflict'),
-                onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
+                onPressed: (_resolvingTreatmentConflict || _treatmentTouched ||
+                    !context.read<ApiClient>().canSyncClinicalData)
                     ? null : _resolveTreatmentConflict,
                 child: Row(
                   children: [

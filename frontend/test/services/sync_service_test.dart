@@ -36,7 +36,42 @@ void main() {
   setUp(() {
     mockDb = MockAppDatabase();
     mockApi = MockApiClient();
+    when(() => mockApi.canSyncClinicalData).thenReturn(true);
     syncService = SyncService(mockDb, mockApi);
+  });
+
+  test('Pilot A retains local declarations and skips all clinical outbox work',
+      () async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    addTearDown(db.close);
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(734),
+        updatedAt: DateTime.utc(2026, 10, 14),
+      ),
+    );
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    when(() => mockApi.canSyncClinicalData).thenReturn(false);
+    final localOnly = SyncService(db, mockApi);
+    addTearDown(localOnly.dispose);
+    localOnly.init();
+    await localOnly.refreshState();
+    await localOnly.syncPendingLogs();
+    expect(await localOnly.sendPendingTreatmentDeclaration(), isFalse);
+    await localOnly.restorePatientTreatmentDeclaration();
+    expect(localOnly.state.value, SyncUiState.localOnly);
+    expect((await store.read())?.syncStatus, 'pending');
+    expect((await store.read())?.codes, ['lifestyle']);
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+    verifyNever(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    ));
+    verifyNever(() => mockApi.getProfile());
   });
 
   test('syncPendingLogs does nothing when no pending logs', () async {

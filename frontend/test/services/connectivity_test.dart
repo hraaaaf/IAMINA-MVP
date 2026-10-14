@@ -12,6 +12,7 @@ void main() {
   setUp(() {
     mockDb = MockAppDatabase();
     mockApi = MockApiClient();
+    when(() => mockApi.canSyncClinicalData).thenReturn(true);
     syncService = SyncService(mockDb, mockApi);
   });
 

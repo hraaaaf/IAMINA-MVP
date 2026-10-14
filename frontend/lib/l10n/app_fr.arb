@@ -110,6 +110,7 @@
   "syncPending": "Données en attente de synchronisation",
   "syncing": "Synchronisation en cours",
   "syncOffline": "Hors ligne · données conservées sur cet appareil",
+  "syncLocalOnly": "Pilote local · enregistré sur cet appareil, non synchronisé",
   "syncFailed": "Échec de synchronisation · appuyer pour réessayer",
   "goodMorning": "Bonjour",
   "goodAfternoon": "Bon après-midi",

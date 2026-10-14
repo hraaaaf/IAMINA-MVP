@@ -1,3 +1,23 @@
+# IAMINA D7 / D30 — PILOT A LOCAL ONLY — 14 Oct 2026 — CANDIDATE NOT CERTIFIED
+
+USER DECISION: pilot A saves clinical data on-device only. No medical transport until patient-bound, purpose-specific, versioned and independently reviewed consent exists. This is NOT an authorization to merge or deploy to Vercel production.
+
+GOAL: no /api/v1/ non-auth transport from standard runtime; zero raw SSE/chat/image/audio/document egress; no auth token resolution or CurlInterceptor logs for blocked clinical calls; never consume or ACK pending Drift outbox while disabled; display honest local-only sync status FR/EN/AR without a fake Retry action.
+
+BEFORE code review: ApiClient PATCH profile/treatments, journal and AI direct HTTP could run with only bearer/device-unlock; SyncService retried data and showed upToDate when no queue. Native bearer is not clinical-sync consent. D30 drafts #988, #989, #990 all overlap in api_client.dart and are not integrated or clinically approved.
+
+VISUAL BEFORE: pre-change dashboard status is cloud checking/pending/upToDate (44x44 icon button); no directly comparable screenshot of this exact status was captured, so there is no supported pre-change pixel visual score.
+VISUAL MOCKUP TARGET: preserve 44x44 topbar geometry but use device icon and tooltip/status 'Offline pilot · saved on this device, not synchronized' / FR 'Pilote local · enregistré sur cet appareil, non synchronisé' / AR 'الوضع المحلي · محفوظ على هذا الجهاز، غير متزامن'. Disable tap/retry and show truthful local-only save feedback. Compare 390x844, 768x1024, 1280x900 in follow-up screenshots and human UI review before assigning score.
+
+CANDIDATE IMPLEMENTATION: ApiClient defaults to canSyncClinicalData=false and passes explicit local-only gate into AuthInterceptor and RetryInterceptor before token reads, sends, retries. All raw/direct media transports return prior to building a request or reading document stream; getProfile/mirrorTreatmentDeclaration/patchProfile/log sync return unavailable. CurlInterceptor removed. Public /api/v1/auth/ remains reachable for account functions. An explicit synthetic-test-only constructor capability allows controlled existing network contract tests to continue. SyncService prevents reads/restores/ACK/retries, emits SyncUiState.localOnly even when internet is available; pending/conflicts remain stored locally. UI uses localized ARB/generated messages and removes remote-conflict resolve CTA in pilot A. Django server code unchanged.
+
+EXPECTED PROOF, NOT YET CLAIMED: 17 GitHub workflows exact latest SHA success (SQLite, PostgreSQL, Flutter, browser, packaging), targeted negative tests pre-token/HTTP and outbox preservation; compare visual BEFORE/AFTER on same viewports. Earlier 17 green status belonged to an older head. If CI fails, fix then restart. No clinical data used.
+
+HUMAN GATES: an independent privacy/clinical review, actual device offline/restart behavior, versioned consent and owner/vault binding, direct Chrome authenticated 409 dialog screenshots if sync ever reenabled, explicit UX acceptance. Pilot A intentionally defers remote restoration and cross-device synchronization, not a bug to paper over.
+
+STATUS: PR #986 OPEN/DRAFT; NO MERGE, NO VERCEL PROD, NO REAL PATIENT ACTIVATION. P5 historic baseline 6/12=50% unchanged.
+
+---
 # IAMINA D7 — 14 octobre 2026 — VRAI HTTP SUR DJANGO LOCAL, DEUX CLIENTS SYNTHÉTIQUES — E2E ISOLÉ
 
 **Goal** : prouver à travers un véritable serveur Django TCP le contrat d'isolation des comptes et de résolution CAS sur deux clients HTTP indépendants, avec uniquement des identités synthétiques et une DB éphémère. Ce test reste distinct d'un test Flutter/Drift sur deux appareils physiques.

@@ -28,6 +28,39 @@ class _Chain implements Chain<Object?> {
 }
 
 void main() {
+  test('Pilot A rejects profile and journal requests before bearer lookup', () async {
+    final auth = _Auth();
+    final profile = _Chain('PATCH', '/api/v1/profile');
+    await expectLater(
+      Future<Response<Object?>>.value(AuthInterceptor(
+        auth, canUseClinicalTransport: () => false,
+      ).intercept<Object?>(profile)),
+      throwsStateError,
+    );
+    expect(profile.dispatched, 0);
+    verifyNever(() => auth.getIdToken());
+
+    final retry = _Chain('POST', '/api/v1/logs/batch');
+    await expectLater(
+      Future<Response<Object?>>.value(RetryInterceptor(
+        auth, canUseClinicalTransport: () => false,
+      ).intercept<Object?>(retry)),
+      throwsStateError,
+    );
+    expect(retry.dispatched, 0);
+  });
+
+  test('Pilot A keeps public login transport working', () async {
+    final auth = _Auth();
+    when(() => auth.getIdToken()).thenAnswer((_) async => null);
+    final login = _Chain('POST', '/api/v1/auth/login');
+    final response = await AuthInterceptor(
+      auth, canUseClinicalTransport: () => false,
+    ).intercept<Object?>(login);
+    expect(response.statusCode, 200);
+    expect(login.dispatched, 1);
+  });
+
   test('D7 real AuthInterceptor never dispatches if lock closes while token awaits',
       () async {
     final auth = _Auth();

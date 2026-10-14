@@ -11,7 +11,7 @@ import 'auth_epoch.dart';
 import 'api_client.dart';
 import 'sync_api_contract.dart';
 
-enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
+enum SyncUiState { checking, upToDate, pending, syncing, offline, error, localOnly }
 
 typedef SyncFailureLogger =
     void Function(String operation, String errorType, StackTrace stackTrace);
@@ -80,6 +80,10 @@ class SyncService {
 
   void init() {
     if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
     unawaited(_resumeTreatmentOnAuthenticatedStartup());
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
       results,
@@ -101,6 +105,10 @@ class SyncService {
   /// and sessions must never resume, even if an old connectivity event fires.
   Future<void> resumeAfterUnlock() async {
     if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
     await _resumeTreatmentOnAuthenticatedStartup();
     if (!_sessionActive) return;
     await syncPendingLogs();
@@ -122,6 +130,7 @@ class SyncService {
   /// Recover an explicit patient declaration on a newly authenticated device.
   /// Never treat an empty server default as a patient-reported answer.
   Future<void> restorePatientTreatmentDeclaration() async {
+    if (!_apiClient.canSyncClinicalData) return;
     if (!_sessionActive || _db.patientVaultScope?.nativeDjangoUserId == null) {
       return;
     }
@@ -161,6 +170,10 @@ class SyncService {
   /// Attempt one optimistic upload, preserving local data until a matching
   /// server receipt is observed. Call only while the native vault is unlocked.
   Future<bool> sendPendingTreatmentDeclaration() async {
+    if (!_apiClient.canSyncClinicalData) {
+      if (_sessionActive) state.value = SyncUiState.localOnly;
+      return false;
+    }
     if (!_sessionActive || _treatmentSyncing ||
         _db.patientVaultScope?.nativeDjangoUserId == null) return false;
     _treatmentSyncing = true;
@@ -230,6 +243,10 @@ class SyncService {
 
   Future<void> refreshState() async {
     if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
     final connectivity = await _connectivity.checkConnectivity();
     if (!_sessionActive) return;
     if (_isOffline(connectivity)) {
@@ -248,6 +265,10 @@ class SyncService {
     List<LogEntryData>? knownPendingLogs,
   }) async {
     if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
     try {
       // Reuse an already verified snapshot for a no-op log synchronization.
       // The treatment outbox still gets checked independently.
@@ -281,6 +302,10 @@ class SyncService {
 
   Future<void> syncPendingLogs() async {
     if (!_sessionActive || isSyncing.value) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
 
     // An explicit retry must remain usable and testable without consulting a
     // platform channel first. Connectivity events set the offline state; the
