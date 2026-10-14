@@ -18,6 +18,8 @@ void main() {
     Size(1280, 900),
   ];
   const locales = ['fr', 'en', 'ar'];
+  // Captures synthétiques uniquement lorsque le workflow dédié le demande.
+  const captureD7VisualEvidence = bool.fromEnvironment('D7_VISUAL_EVIDENCE');
   const copy = {
     'fr': 'Comparer et résoudre le conflit',
     'en': 'Review and resolve conflict',
@@ -78,6 +80,15 @@ void main() {
           final medical = find.byKey(const Key('profile-medical-section'));
           await tester.ensureVisible(medical);
           await tester.pumpAndSettle();
+          if (captureD7VisualEvidence) {
+            await expectLater(
+              find.byType(ProfileScreen),
+              matchesGoldenFile(
+                'goldens/d7-conflict-${size.width.toInt()}x${size.height.toInt()}-'
+                '$lang-collapsed.png',
+              ),
+            );
+          }
           await tester.tap(find.descendant(
             of: medical, matching: find.byType(ExpansionTile),
           ));
@@ -93,6 +104,15 @@ void main() {
           expect(buttonBounds.right, lessThanOrEqualTo(size.width));
           expect(buttonBounds.height, greaterThanOrEqualTo(40));
           expect(tester.takeException(), isNull);
+          if (captureD7VisualEvidence) {
+            await expectLater(
+              find.byType(ProfileScreen),
+              matchesGoldenFile(
+                'goldens/d7-conflict-${size.width.toInt()}x${size.height.toInt()}-'
+                '$lang-expanded.png',
+              ),
+            );
+          }
           // Viewing a conflict cannot change or ACK its local data.
           final after = (await store.read())!;
           expect(after.syncStatus, 'conflict');
