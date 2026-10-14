@@ -94,6 +94,18 @@ class BasePatientProfile(models.Model):
         help_text="End of paid Premium access.",
     )
 
+    # D9 — explicit first-use assertion, independent of clinical declarations
+    # and AI consent. A created base profile or successful login never sets it.
+    first_use_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Set only by an authenticated, explicit first-use completion action. "
+            "Not a clinical completeness or consent marker."
+        ),
+    )
+
+
     gender = models.CharField(
         max_length=6,
         choices=GENDER_CHOICES,
