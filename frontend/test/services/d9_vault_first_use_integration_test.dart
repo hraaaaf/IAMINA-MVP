@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:amina/data/drift/database.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/d9_first_use_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,15 +44,13 @@ void main() {
 
   test('D9 remote completion survives null profile streams; AI stays denied',
       () async {
-    final stream = StreamController<dynamic>.broadcast();
-    addTearDown(stream.close);
     final consent = ConsentService()..seedInitialProfile(null);
     addTearDown(consent.dispose);
     expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 734),
         isTrue);
     // Use a correctly typed null patient-profile stream: no clinical record is
     // invented by D9 and no AI consent is allowed.
-    consent.attachStream(Stream<Never?>.value(null));
+    consent.attachStream(Stream<PatientProfileData?>.value(null));
     await Future<void>.delayed(Duration.zero);
     expect(consent.hasCompletedOnboarding, isTrue);
     expect(consent.hasConsent, isFalse);
