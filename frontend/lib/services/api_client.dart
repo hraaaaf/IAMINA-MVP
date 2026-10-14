@@ -445,6 +445,7 @@ class ApiClient {
 
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
+    final epoch = AuthEpoch.value;
     final token = await readForStableAuthEpoch(_authService.getIdToken);
     final uri = Uri.parse(
       '$baseUrl/api/v1/ai/chat/stream',
@@ -461,9 +462,13 @@ class ApiClient {
       final streamed = await client
           .send(request)
           .timeout(TimeoutInterceptor._kTimeout);
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
 
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
         try {
           final payload = jsonDecode(body) as Map<String, dynamic>;
           throw ProviderApiException.fromJson(
@@ -479,6 +484,8 @@ class ApiClient {
 
       String buffer = '';
       await for (final chunk in streamed.stream.transform(utf8.decoder)) {
+        requireCurrentAuthEpoch(epoch);
+        requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
         buffer += chunk;
         final lines = buffer.split('\n');
         buffer = lines.removeLast(); // last may be incomplete
@@ -489,7 +496,13 @@ class ApiClient {
             try {
               final json = jsonDecode(payload) as Map<String, dynamic>;
               final tok = json['token'] as String?;
-              if (tok != null) yield tok;
+              if (tok != null) {
+                requireCurrentAuthEpoch(epoch);
+                requireUnlockedPatientSyncTransport(
+                  uri, _canUsePatientSyncTransport,
+                );
+                yield tok;
+              }
             } catch (_) {}
           }
         }
@@ -562,6 +575,7 @@ class ApiClient {
     int contextDays = 14,
   }) async {
     try {
+      final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse(
         '$baseUrl/api/v1/ai/voice?context_days=$contextDays',
@@ -585,6 +599,8 @@ class ApiClient {
       requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
 
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;
@@ -603,6 +619,7 @@ class ApiClient {
     String mimeType,
   ) async {
     try {
+      final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
       final req = http.Request('POST', uri)
@@ -617,6 +634,8 @@ class ApiClient {
       requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await req.send();
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         return GlucometerOcrResponse.fromJson(
           jsonDecode(body) as Map<String, dynamic>,
@@ -632,6 +651,7 @@ class ApiClient {
   /// Used for vocal input in the add-log page meal note field.
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
     try {
+      final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
       final request = http.MultipartRequest('POST', uri);
@@ -649,6 +669,8 @@ class ApiClient {
       requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;
         return json['transcript'] as String?;
@@ -836,6 +858,7 @@ class ApiClient {
     }
 
     try {
+      final epoch = AuthEpoch.value;
       final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
 
@@ -858,6 +881,8 @@ class ApiClient {
         const Duration(seconds: 60),
       ); // extraction can take time
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
 
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;

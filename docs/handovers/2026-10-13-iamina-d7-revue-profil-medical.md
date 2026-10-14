@@ -1,3 +1,20 @@
+# REPRISE D7 — 14 octobre 2026 — fermeture des réponses HTTP tardives
+
+**D7 EN COURS — PR #986 DRAFT, NI MERGE NI VERCEL.**
+**Dernière preuve intégralement verte :** HEAD `56aa31a948d3d2fcddbde58f1237f7ecebe84756`, [CI #38487824691](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38487824691) **6/6 jobs et 16/16 workflows SUCCESS**. Les HEADs `f790b51b` (horodatages serveur), `3550ce7c` (routes médicales et coffre device-only) et `db792fad` (conflit 409 UI + CAS explicite) **ne sont pas certifiés par ce vert**. [CI du HEAD db792fad #38537317205](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38537317205) QUEUED au premier contrôle. Ne pas déclarer clôture avant CI complète du HEAD ultime.
+
+**Goal du lot courant** : aucune consommation de réponse médicale d'une session expirée, après relock/app switch. **Implémentation ajoutée depuis db792fad dans `frontend/lib/services/api_client.dart`** : les cinq appels HTTP directs (SSE IA/chat, voice, photo de glucomètre, transcription, ingest de document) capturent l'AuthEpoch au départ et le revérifient après réception des octets, avec `requireUnlockedPatientSyncTransport(uri,...)` ; le SSE vérifie également chaque chunk et chaque token avant exposition. Ces gardes complètent les gardes déjà vérifiées au moment de `send()` ; les requêtes déjà parties avant verrouillage ne peuvent pas être physiquement rétractées. **Cet ajout n'est pas encore certifié en CI.**
+
+**D7 fonctionnalités maintenant implémentées mais devant passer la CI du HEAD final :** choix patient multi-traitements optionnels ; coffre SQLite isolé A/B ; outbox et CAS Django strict ; restauration nouvelle device et backup v11→v12 ; traitement d'erreur et non-fabrication d'ACK ; garde Chopper et HTTP direct ; session révoquée mais UUID de coffre local récupérable derrière app-lock ; résolution de conflit 409 sur choix explicite avec relecture distante, bouton si `conflict`, SQL compare-generation, message d'absence de confirmation.
+
+**QA visuelle D7 — obligatoire et NON achevée :** avant : sélecteur sans résolution ; cible : CTA conditionnel « Comparer et résoudre le conflit » et boîte FR/EN/AR montrant choix local/distant, avertissement du remplacement distant, boutons Annuler / Conserver ma version ; après : screenshot aux viewports `390×844`, `768×1024`, `1280×900`, comparaison avec BEFORE, contrôle accessibilité/RTL/clavier, score visuel et revue humaine. Pas de score inventé.
+
+**Autres gates réels** : tests sur deux appareils et comptes de test réels A→logout→B→A, offline/409 et reprise multi-devices ; privacy/consentement et sûreté clinique revues indépendamment par experts et responsables habilités. Ne pas déployer Vercel ni fusionner en absence des preuves. P5 historique 50 % inchangé.
+
+**Next exact** : contrôler workflows/jobs CI du prochain HEAD, corriger bugs observés, compléter preuve UI et tests réels si infrastructure disponible, recueillir validations humaines requises. **Ne pas poll CI.**
+
+---
+
 # D7 — 14 octobre 2026 — dernier lot de réconciliation clinique (PR #986 DRAFT)
 
 **Goal** : rendre un conflit de déclaration médicale visible et récupérable sans perte, jamais choisir à la place du patient. **Succès observable** : vue locale et distante comparées, action humaine explicite, CAS basé sur dernière révision, aucune écriture serveur sans choix ; confirmation uniquement après ACK. **Preuve** : test SQL de génération, CI Flutter/backend du HEAD courant, captures comparatives et validation clinique.
