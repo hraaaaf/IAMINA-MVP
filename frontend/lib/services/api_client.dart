@@ -73,6 +73,16 @@ class ProviderApiException implements Exception {
       'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
+// Deny all non-read clinical methods, including trailing-slash route variants.
+// Never rely on a remote 405 or redirect to protect sensitive request bodies.
+String _clinicalWritePath(Uri url) =>
+    url.path.replaceFirst(RegExp(r'/+$'), '');
+
+bool _isClinicalWriteMethod(String method) =>
+    method.toUpperCase() != 'GET' &&
+    method.toUpperCase() != 'HEAD' &&
+    method.toUpperCase() != 'OPTIONS';
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
   final bool Function() canSyncClinicalJournal;
@@ -92,9 +102,9 @@ class AuthInterceptor implements Interceptor {
 
     // Deny journal HTTP before even consulting remote/Firebase credentials.
     // Local-only use must never need the remote authentication provider.
-    final isJournalUpload = request.method.toUpperCase() == 'POST' &&
-        (request.url.path == '/api/v1/logs' ||
-            request.url.path == '/api/v1/logs/batch');
+    final path = _clinicalWritePath(request.url);
+    final isJournalUpload = _isClinicalWriteMethod(request.method) &&
+        (path == '/api/v1/logs' || path == '/api/v1/logs/batch');
     if (isJournalUpload && !canSyncClinicalJournal()) {
       throw StateError('remote_journal_credential_required');
     }
@@ -102,10 +112,10 @@ class AuthInterceptor implements Interceptor {
     // Separate from journal consent: verified patient owner and explicit
     // purpose-specific profile consent must both exist before any PATCH.
     // A historical bearer is never enough and must not even be consulted.
-    final isClinicalProfilePatch =
-        request.method.toUpperCase() == 'PATCH' &&
-        request.url.path == '/api/v1/profile';
-    if (isClinicalProfilePatch && !canUploadClinicalProfile()) {
+    final isClinicalProfileWrite =
+        _isClinicalWriteMethod(request.method) &&
+        path == '/api/v1/profile';
+    if (isClinicalProfileWrite && !canUploadClinicalProfile()) {
       throw StateError('patient_bound_profile_consent_required');
     }
 
@@ -164,10 +174,12 @@ class RetryInterceptor implements Interceptor {
     // could replay it after account switch/logout or without explicit consent.
     // Leave the local outbox pending until a newly authorized sync attempt.
     final request = chain.request;
-    final isClinicalJournalPost = request.method.toUpperCase() == 'POST' &&
-        (request.url.path == '/api/v1/logs' ||
-            request.url.path == '/api/v1/logs/batch');
-    if (isClinicalJournalPost) return response;
+    final path = _clinicalWritePath(request.url);
+    final isClinicalJournalPost = _isClinicalWriteMethod(request.method) &&
+        (path == '/api/v1/logs' || path == '/api/v1/logs/batch');
+    final isClinicalProfileWrite = _isClinicalWriteMethod(request.method) &&
+        path == '/api/v1/profile';
+    if (isClinicalJournalPost || isClinicalProfileWrite) return response;
 
     // 401 — refresh token and retry once
     if (response.statusCode == 401) {
