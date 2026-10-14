@@ -73,6 +73,15 @@ void main() {
             ),
           ));
           await tester.pumpAndSettle();
+          // The medical section intentionally starts collapsed; a user must
+          // expand it before a conflict CTA becomes visible and actionable.
+          final medical = find.byKey(const Key('profile-medical-section'));
+          await tester.ensureVisible(medical);
+          await tester.pumpAndSettle();
+          await tester.tap(find.descendant(
+            of: medical, matching: find.byType(ExpansionTile),
+          ));
+          await tester.pumpAndSettle();
 
           final action = find.byKey(const Key('d7-resolve-treatment-conflict'));
           expect(action, findsOneWidget);
@@ -121,6 +130,13 @@ void main() {
         ],
         child: const ProfileScreen(),
       ),
+    ));
+    await tester.pumpAndSettle();
+    final medical = find.byKey(const Key('profile-medical-section'));
+    await tester.ensureVisible(medical);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+      of: medical, matching: find.byType(ExpansionTile),
     ));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('d7-resolve-treatment-conflict')), findsNothing);
