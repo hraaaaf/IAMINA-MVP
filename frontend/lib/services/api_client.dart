@@ -179,6 +179,7 @@ bool isDocumentUploadSizeAllowed(int byteLength) =>
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final http.Client? _httpClient;
 
   /// D30 safety hold: current local profile is not bound to a remote patient
   /// principal, and clinical profile sync lacks independent explicit consent.
@@ -188,11 +189,16 @@ class ApiClient {
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({
+    this.baseUrl = kBaseUrl,
+    AuthService? authService,
+    http.Client? httpClient,
+  }) : _authService = authService ?? AuthService(),
+       _httpClient = httpClient;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
+    client: _httpClient,
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
       AuthInterceptor(
