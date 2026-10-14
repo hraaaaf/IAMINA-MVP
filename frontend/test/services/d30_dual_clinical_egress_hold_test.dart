@@ -57,6 +57,29 @@ void main() {
       ),
       throwsA(isA<StateError>()),
     );
+    // Alternate URL spelling or noncanonical write verb must not bypass
+    // either hold, even when the server might redirect or return HTTP 405.
+    for (final path in <String>['/api/v1/logs/', '/api/v1/logs/batch/']) {
+      await expectLater(
+        api.client.post<Object, Object>(Uri.parse(path), body: [log]),
+        throwsA(isA<StateError>()),
+      );
+    }
+    await expectLater(
+      api.client.patch<Object, Object>(
+        Uri.parse('/api/v1/profile/'),
+        body: profile,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      api.client.post<Object, Object>(
+        Uri.parse('/api/v1/profile'),
+        body: profile,
+      ),
+      throwsA(isA<StateError>()),
+    );
+
     expect(authRequests, 0);
     expect(medicalRequests, 0);
     auth.dispose();
