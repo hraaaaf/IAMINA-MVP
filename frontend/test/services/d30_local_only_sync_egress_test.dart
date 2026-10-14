@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:amina/services/api_client.dart';
@@ -32,21 +31,6 @@ class _NonNativeTokenAuthService extends AuthService {
 
   @override
   Future<String?> getIdToken() async => 'legacy-auth-token';
-}
-
-class _PausedTokenAuthService extends AuthService {
-  final Completer<void> tokenCaptured = Completer<void>();
-  final Completer<void> permitTokenReturn = Completer<void>();
-
-  _PausedTokenAuthService({required super.httpClient});
-
-  @override
-  Future<String?> getIdToken() async {
-    final previousToken = await super.getIdToken();
-    if (!tokenCaptured.isCompleted) tokenCaptured.complete();
-    await permitTokenReturn.future;
-    return previousToken;
-  }
 }
 
 void main() {
@@ -130,37 +114,40 @@ void main() {
     auth.dispose();
   });
 
-  test('D30 session change during bearer read prevents medical HTTP egress',
+  test('D30 native journal egress remains blocked across sign-out',
       () async {
     FlutterSecureStorage.setMockInitialValues({
       'iamina_native_access_token': 'iamina.e30:1abcde:signature_123',
     });
-    final auth = _PausedTokenAuthService(
+    final auth = AuthService(
       httpClient: MockClient((request) async => http.Response('', 204)),
     );
     await auth.initialize();
+    expect(auth.hasRemoteApiCredential, isTrue);
 
-    var clinicalRequests = 0;
+    var clinicalPosts = 0;
     final api = ApiClient(
       baseUrl: 'https://synthetic.example',
       authService: auth,
       httpClient: MockClient((request) async {
-        clinicalRequests++;
-        fail('Epoch changed: clinical HTTP must be suppressed');
+        clinicalPosts++;
+        fail('No patient-bound consent: journal HTTP forbidden');
       }),
     );
 
-    final inFlight = api.client.post<Object, Object>(
-      Uri.parse('/api/v1/logs/batch'),
-      body: [_syntheticLog],
-    );
-    await auth.tokenCaptured.future;
-    await auth.signOut();
+    // The fail-closed hold applies before logout and after auth epoch changes.
+    for (var i = 0; i < 2; i++) {
+      await expectLater(
+        api.client.post<Object, Object>(
+          Uri.parse('/api/v1/logs/batch'),
+          body: [_syntheticLog],
+        ),
+        throwsA(isA<StateError>()),
+      );
+      if (i == 0) await auth.signOut();
+    }
     expect(auth.isAuthenticated, isFalse);
-    auth.permitTokenReturn.complete();
-
-    await expectLater(inFlight, throwsA(isA<StateError>()));
-    expect(clinicalRequests, 0);
+    expect(clinicalPosts, 0);
     auth.dispose();
   });
 
