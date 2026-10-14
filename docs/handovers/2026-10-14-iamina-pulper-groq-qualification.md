@@ -1,3 +1,26 @@
+## 14 octobre 2026 — CLOSEOUT TECHNIQUE VÉRIFIÉ sur `8be7da98` (5/5 vert)
+
+**Goal** : préserver Groq GPT-OSS pour les textes PDF/DOCX Pulper, corriger les erreurs de format/réponse et prouver l'extraction synthétique sans assouplir provenance, seuils, protection egress ni contrôle médical.
+
+**Succès observable / preuve exacte :** HEAD `8be7da98736ed2fd8806b811c967bf382ce30dda` sur [PR #1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005) : cinq workflows TERMINÉS SUCCESS :
+- [Pulper Golden Corpus #38652269367](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38652269367)
+- [CI #38652269378](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38652269378)
+- [Protected Shadow #38652269402](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38652269402)
+- [Django migration drift #38652269360](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38652269360)
+- [Developer portability #38652269357](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38652269357)
+
+**Artefact de qualification exact** [#11935875573](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38652269367/artifacts/11935875573) téléchargé et lu : `passed=true`, `18/18` faits critiques, zéro FP/FN, précision/rappel/provenance/couverture/timestamps/version/fail-closed 100 %, `6/6` rejets, `0` corrosion clinique, `0` fuite sentinelle, `4` appels réels à Groq **sur corpus fictif** PDF/DOCX. Images `3` fixtures synthétiques, PAS qualification OCR vision réelle. Tous les seuils inchangés.
+
+**Fix macOS** : subprocess d'un test `evaluation` relancé depuis `backend` ; import Ruff I001 corrigé ; CI PostgreSQL, Ruff, passerelle anti-bypass, portabilité macOS/Windows toutes SUCCESS au SHA certifié.
+
+**Décision de closeout** : le **lot de qualification logicielle synthétique Pulper/Groq est techniquement clos** sur SHA `8be7da98`. Cette insertion de documentation est un commit post-preuve, sans modification runtime, et aura **son propre verdict CI** ; ne PAS transférer automatiquement l'état 5/5 au HEAD documentaire. **PR #1005 reste DRAFT NON FUSIONNÉE vers main**, et [issue #1002](https://github.com/hraaaaf/IAMINA-MVP/issues/1002) reste ouverte pour la livraison contrôlée.
+
+**VRAI HUMAN GATE pour la fusion / usage patient** : évaluation clinique indépendante, vérification sécurité et confidentialité de l'envoi de documents médicaux à Groq (finalité, données envoyées, résidence/traitance et politiques patient), puis autorisation explicite de mise en production. Le benchmark n'autorise pas l'egress clinique réel et n'apporte aucune précision OCR image clinique. Aucun patient réel, aucun Vercel. D7/#7/D9/#9 séparés. P5 historique 50 %, pas recalculé.
+
+**Next exact** : vérifier CI sur le commit documentaire final ; si verte, transmettre la PR au circuit de revue clinique/privacy/sécurité, sans merge main ni déploiement avant signatures. Si rouge, diagnostiquer échec, corriger, relancer.
+
+---
+
 ## 14 octobre 2026 — dernier état de reprise pour Pulper/Groq
 
 **Objectif** : maintenir Groq sur PDF/DOCX avec preuves de provenance et seuils médicaux inchangés. **Preuve acquise** : SHA `e44b1a9e`, Pulper #38646278280, CI #38646278329, Protected Shadow #38646278296 et migration #38646278289 SUCCESS ; artefact Pulper #11933046605 vérifié 18/18 faits critiques, 6/6 rejets, 0 corruption, Groq texte 4 cas live fictifs, images simulées seulement.
