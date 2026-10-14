@@ -76,6 +76,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
 
+  // Fail closed when no clinical transport provider is mounted (e.g. offline
+  // pilot widget tests). The remote conflict action stays unavailable until
+  // a separately governed clinical-sync capability is explicitly enabled.
+  bool get _canResolveRemoteTreatmentConflict =>
+      context.read<ApiClient?>()?.canSyncClinicalData ?? false;
+
   void _setPresentationState(VoidCallback fn) => setState(fn);
 
   @override
