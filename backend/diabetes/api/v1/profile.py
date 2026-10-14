@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from core.ai_egress import grant_media_consent, revoke_media_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
@@ -195,6 +195,9 @@ def _media_consent_state(
 
 
 class D9FirstUseCompletionCommand(BaseModel):
+    # No clinical fields, consent stamps, or client-selected owner allowed.
+    model_config = ConfigDict(extra="forbid")
+
     # The client must explicitly assert completion after a successful local
     # first-use save. Absence of this action never counts as proof.
     version: Literal[1]
