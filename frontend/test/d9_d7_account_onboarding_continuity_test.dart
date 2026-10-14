@@ -200,6 +200,7 @@ void main() {
     );
     await initialA.into(initialA.logEntries).insert(
       LogEntriesCompanion.insert(
+        createdAt: DateTime.utc(2026, 10, 14),
         bloodSugar: 112,
         clientUuid: 'd9-synthetic-a-offline-1',
       ),
