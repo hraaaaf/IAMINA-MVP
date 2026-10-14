@@ -18,6 +18,7 @@ final class D9FirstUseProof {
 
   static D9FirstUseProof? parse(Object? body, {required int expectedOwner}) {
     if (expectedOwner <= 0 || body is! Map || body['version'] != 1 ||
+        body['owner_user_id'] is! int ||
         body['owner_user_id'] != expectedOwner ||
         body['completed'] is! bool) {
       return null;
@@ -100,7 +101,7 @@ final class D9FirstUseTransport {
     if (owner == null || !_authorized(owner, epoch, generation)) return null;
 
     try {
-      final bearer = await readBearer();
+      final bearer = await readBearer().timeout(timeout);
       if (bearer == null || !bearer.startsWith('iamina.') ||
           !_authorized(owner, epoch, generation)) {
         return null;
