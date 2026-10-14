@@ -1,4 +1,6 @@
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
+import 'package:drift/native.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/d9_first_use_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,12 +73,24 @@ void main() {
     expect(newA.hasConsent, isFalse);
   });
 
+  test('D9 new device with no local profile cannot persist AI consent', () async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    addTearDown(db.close);
+    expect(await db.getProfileForLocalUserId(734), isNull);
+    await db.setAiConsent(granted: true);
+    // Local persistence must not manufacture a clinical profile or invent an
+    // AI consent timestamp merely because the account was remotely onboarded.
+    expect(await db.getProfileForLocalUserId(734), isNull);
+  });
+
   test('D9 only server-confirmed completion can bypass first-use; not consent',
       () {
     final consent = ConsentService(hasVerifiedEvidence: false)
       ..seedInitialProfile(null);
     addTearDown(consent.dispose);
-    final incomplete = D9FirstUseProof(
+    const incomplete = D9FirstUseProof(
       ownerUserId: 734, completed: true, completedAt: null,
     );
     expect(consent.adoptVerifiedD9FirstUseProof(incomplete, activeOwner: 734),
