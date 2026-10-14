@@ -46,6 +46,14 @@ String _profileValidationMessage(BuildContext context) {
   return 'Saisissez une plage glycémique valide. Le diagnostic et le traitement peuvent être ajoutés plus tard.';
 }
 
+/// Do not claim remote confirmation while treatment data is pending or in conflict.
+bool d7ProfileSaveCanShowConfirmed({
+  required bool mirrorConfirmed,
+  required String? treatmentSyncStatus,
+}) =>
+    mirrorConfirmed &&
+    (treatmentSyncStatus == null || treatmentSyncStatus == 'confirmed');
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -621,6 +629,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? await PatientTreatmentDeclarationStore(db).read()
           : null;
       if (!mounted) return;
+      final fullyConfirmed = d7ProfileSaveCanShowConfirmed(
+        mirrorConfirmed: remoteMirrorConfirmed,
+        treatmentSyncStatus: latest?.syncStatus,
+      );
       setState(() {
         _hasPersistedProfile = true;
         _treatmentTouched = false;
@@ -628,14 +640,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(remoteMirrorConfirmed
+          content: Text(fullyConfirmed
               ? AppLocalizations.of(context)!.profileUpdated
               : _profileUiText(context,
                   fr: 'Enregistré localement. Synchronisation non confirmée.',
                   en: 'Saved locally. Remote sync not confirmed.',
                   ar: 'تم الحفظ محليًا. لم يتم تأكيد المزامنة.',
                 )),
-          backgroundColor: remoteMirrorConfirmed
+          backgroundColor: fullyConfirmed
               ? AminaTheme.successEmerald : AminaTheme.warningOrange,
           behavior: SnackBarBehavior.floating,
         ),
