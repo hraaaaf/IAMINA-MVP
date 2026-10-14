@@ -134,7 +134,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             tuning.update(
                 {
                     "response_format": _GPT_OSS_REPLY_FORMAT,
-                    "extra_body": {"reasoning_format": "hidden"},
+                    "extra_body": {"include_reasoning": False},
                 }
             )
         return tuning
@@ -159,7 +159,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
         """Single-turn plain-text completion for bounded non-JSON contracts."""
         tuning = self._request_tuning()
         if self._is_groq_gpt_oss():
-            tuning["extra_body"] = {"reasoning_format": "hidden"}
+            tuning["extra_body"] = {"include_reasoning": False}
         try:
             response = self.client.chat.completions.create(
                 model=self.model,

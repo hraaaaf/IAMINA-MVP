@@ -44,7 +44,7 @@ def test_pdf_golden_fixture_is_admissible_digital_pdf():
 
 
 def test_sparse_prompt_contract_stays_versioned_and_placeholder_free():
-    assert _PARSE_PROMPT_VERSION == "pulper-parse-v4-sparse-output"
+    assert _PARSE_PROMPT_VERSION == "pulper-parse-v5-groq-envelope"
     rendered = _PARSE_PROMPT_TEMPLATE.format(text="L0001|HbA1c: 7.2 %")
     assert "null" not in rendered.lower()
     assert "omit every absent field" in rendered.lower()

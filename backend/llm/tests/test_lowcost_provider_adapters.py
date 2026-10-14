@@ -117,7 +117,7 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     assert kwargs["max_completion_tokens"] == 384
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
-    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
+    assert kwargs["extra_body"] == {"include_reasoning": False}
     assert kwargs["response_format"] == {
         "type": "json_schema",
         "json_schema": {
