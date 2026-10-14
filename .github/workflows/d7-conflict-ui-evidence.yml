@@ -33,6 +33,16 @@ jobs:
           cache: true
       - name: Install Flutter dependencies
         run: flutter pub get
+      - name: Install readable Latin and Arabic fonts for screenshot capture
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core fonts-noto-core
+          LATIN="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          ARABIC="$(fc-match -f '%{file}' 'Noto Naskh Arabic')"
+          test -r "$LATIN"
+          test -r "$ARABIC"
+          echo "D7_VISUAL_FONT_LATIN=$LATIN" >> "$GITHUB_ENV"
+          echo "D7_VISUAL_FONT_ARABIC=$ARABIC" >> "$GITHUB_ENV"
       - name: Capture synthetic D7 conflict CTA BEFORE interaction and AFTER expansion
         run: |
           flutter test --no-pub --update-goldens --reporter expanded \

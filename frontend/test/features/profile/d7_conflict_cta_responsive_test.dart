@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/drift/patient_treatment_declaration_store.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
@@ -8,6 +11,7 @@ import 'package:amina/services/consent_service.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +24,23 @@ void main() {
   const locales = ['fr', 'en', 'ar'];
   // Captures synthétiques uniquement lorsque le workflow dédié le demande.
   const captureD7VisualEvidence = bool.fromEnvironment('D7_VISUAL_EVIDENCE');
+  setUpAll(() async {
+    if (!captureD7VisualEvidence) return;
+    for (final entry in <String, String?>{
+      'Roboto': Platform.environment['D7_VISUAL_FONT_LATIN'],
+      'Noto Naskh Arabic': Platform.environment['D7_VISUAL_FONT_ARABIC'],
+    }.entries) {
+      final path = entry.value;
+      if (path == null || path.isEmpty) {
+        throw StateError('Missing D7 capture font for ${entry.key}');
+      }
+      final loader = FontLoader(entry.key)
+        ..addFont(File(path).readAsBytes()
+            .then((bytes) => ByteData.sublistView(bytes)));
+      await loader.load();
+    }
+  });
+
   const copy = {
     'fr': 'Comparer et résoudre le conflit',
     'en': 'Review and resolve conflict',
@@ -63,6 +84,10 @@ void main() {
 
           await tester.pumpWidget(MaterialApp(
             locale: Locale(lang),
+            theme: captureD7VisualEvidence
+                ? ThemeData(fontFamily: 'Roboto',
+                    fontFamilyFallback: const ['Noto Naskh Arabic'])
+                : null,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: MultiProvider(
