@@ -76,7 +76,13 @@ class ProviderApiException implements Exception {
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
   final bool Function() canSyncClinicalJournal;
-  AuthInterceptor(this.authService, {required this.canSyncClinicalJournal});
+  final bool Function() canUploadClinicalProfile;
+
+  AuthInterceptor(
+    this.authService, {
+    required this.canSyncClinicalJournal,
+    required this.canUploadClinicalProfile,
+  });
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
@@ -91,6 +97,16 @@ class AuthInterceptor implements Interceptor {
             request.url.path == '/api/v1/logs/batch');
     if (isJournalUpload && !canSyncClinicalJournal()) {
       throw StateError('remote_journal_credential_required');
+    }
+
+    // Separate from journal consent: verified patient owner and explicit
+    // purpose-specific profile consent must both exist before any PATCH.
+    // A historical bearer is never enough and must not even be consulted.
+    final isClinicalProfilePatch =
+        request.method.toUpperCase() == 'PATCH' &&
+        request.url.path == '/api/v1/profile';
+    if (isClinicalProfilePatch && !canUploadClinicalProfile()) {
+      throw StateError('patient_bound_profile_consent_required');
     }
 
     final authEpochAtStart = AuthService.authEpoch;
@@ -202,6 +218,12 @@ class ApiClient {
   /// A bearer (including a valid Django bearer) is not sufficient authority.
   /// No production path may upload journal entries until both gates exist.
   bool get canSyncClinicalJournal => false;
+
+  /// D30 safety hold for profile PATCH: neither current local owner binding
+  /// nor purpose-specific patient consent has been independently proven.
+  /// This must remain false until security, privacy and sync gates are met.
+  bool get canUploadClinicalProfile => false;
+
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
@@ -220,6 +242,7 @@ class ApiClient {
       AuthInterceptor(
         _authService,
         canSyncClinicalJournal: () => canSyncClinicalJournal,
+        canUploadClinicalProfile: () => canUploadClinicalProfile,
       ),
       RetryInterceptor(_authService),
     ],
@@ -229,6 +252,7 @@ class ApiClient {
   ChopperClient get client => _client;
 
   Future<bool> patchProfile(Map<String, dynamic> patch) async {
+    if (!canUploadClinicalProfile) return false;
     try {
       final response = await _client.patch(
         Uri.parse('/api/v1/profile'),
