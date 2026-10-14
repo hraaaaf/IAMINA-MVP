@@ -83,6 +83,12 @@ class SyncService {
   }
 
   Future<void> refreshState() async {
+    // Until a patient-bound sync consent contract exists, never claim that
+    // local clinical records have been remotely synchronized.
+    if (!_apiClient.canSyncClinicalJournal) {
+      state.value = SyncUiState.pending;
+      return;
+    }
     final connectivity = await _connectivity.checkConnectivity();
     if (_isOffline(connectivity)) {
       state.value = SyncUiState.offline;
@@ -95,6 +101,14 @@ class SyncService {
 
   Future<void> syncPendingLogs() async {
     if (isSyncing.value) return;
+
+    // A local-only vault is not tied to any verified remote patient identity.
+    // Do not fetch, serialize, retry or mark local health rows as failed/synced
+    // until a separately consented, patient-bound sync capability exists.
+    if (!_apiClient.canSyncClinicalJournal) {
+      state.value = SyncUiState.pending;
+      return;
+    }
 
     // An explicit retry must remain usable and testable without consulting a
     // platform channel first. Connectivity events set the offline state; the
