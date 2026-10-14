@@ -12,6 +12,25 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --enable-web
 flutter pub get
 
+# IAMINA D7 preview-isolated audit, NEVER production and NEVER certified API.
+# This branch exists for ephemeral synthetic browser checks only. The normal
+# review project build script on main/D7 remains unchanged.
+if [ "${VERCEL_ENV:-}" != "preview" ]; then
+  echo "D7 AUDIT BLOCKED: preview environment required" >&2
+  exit 70
+fi
+if [ "${VERCEL_PROJECT_ID:-}" != "prj_AYaUi32KTDHak8I7dmdQpDrqd8SI" ]; then
+  echo "D7 AUDIT BLOCKED: expected iamina-review project" >&2
+  exit 71
+fi
+echo "IAMINA D7 isolated demo build: NO certified backend and no remote enrollment"
+flutter build web --release \
+  --dart-define=IAMINA_OFFLINE_DEMO=true \
+  --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+  --dart-define=API_BASE_URL=https://iamina-d7-preview.invalid
+exit 0
+
+
 # The public review frontend is a separate Vercel project from the certified
 # Django backend. Bind only that frontend project to the live backend so the
 # backend project itself and local/demo builds keep their existing behavior.
