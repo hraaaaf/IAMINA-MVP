@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/d9_first_use_transport.dart';
