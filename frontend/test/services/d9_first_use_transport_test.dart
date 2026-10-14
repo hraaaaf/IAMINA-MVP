@@ -55,6 +55,7 @@ void main() {
     final client = MockClient((request) async {
       requests++;
       expect(request.method, 'GET');
+      expect(request.followRedirects, isFalse);
       expect(request.url.path, '/api/v1/profile/first-use');
       expect(request.headers['Authorization'], 'Bearer iamina.synthetic');
       return _json(_serverConfirmed);
@@ -80,6 +81,7 @@ void main() {
     final client = MockClient((request) async {
       requests++;
       expect(request.method, 'POST');
+      expect(request.followRedirects, isFalse);
       expect(request.url.path, '/api/v1/profile/first-use');
       expect(request.headers['Authorization'], 'Bearer iamina.synthetic');
       expect(jsonDecode(request.body), <String, Object>{
@@ -214,6 +216,7 @@ void main() {
       _json(_serverConfirmed, 403),
       _json(_serverConfirmed, 404),
       _json(_serverConfirmed, 503),
+      _json(_serverConfirmed, 302),
       _json(<String, Object>{'version': 2, 'completed': true}),
       http.Response('<html>not JSON</html>', 200),
       _json(_serverPending),
