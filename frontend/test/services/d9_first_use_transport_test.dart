@@ -46,6 +46,14 @@ void main() {
     expect(D9FirstUseProof.parse(
       _serverConfirmed, expectedOwner: 0,
     ), isNull);
+    expect(D9FirstUseProof.parse(
+      <String, Object?>{..._serverConfirmed, 'owner_user_id': 734.0},
+      expectedOwner: 734,
+    ), isNull);
+    expect(D9FirstUseProof.parse(
+      <String, Object?>{..._serverConfirmed, 'owner_user_id': '734'},
+      expectedOwner: 734,
+    ), isNull);
     for (final bad in <Object?>[
       null,
       <String, Object?>{'version': 2, 'completed': true,
@@ -256,6 +264,29 @@ void main() {
       expect(await transport.confirmSavedFirstUse(), isNull);
     }
     expect(called, responses.length);
+    client.close();
+  });
+
+  test('D9 bearer lookup timeout fails closed without network', () async {
+    final never = Completer<String?>();
+    var calls = 0;
+    final client = MockClient((request) async {
+      calls++;
+      return _json(_serverConfirmed);
+    });
+    final transport = D9FirstUseTransport(
+      baseUri: Uri.parse('https://synthetic.example'),
+      client: client,
+      readBearer: () => never.future,
+      hasNativeCredential: () => true,
+      appLockUnlocked: () => true,
+      activePatientOwner: () => 734,
+      authEpoch: () => 1,
+      vaultGeneration: () => 1,
+      timeout: const Duration(milliseconds: 10),
+    );
+    expect(await transport.fetch(), isNull);
+    expect(calls, 0);
     client.close();
   });
 
