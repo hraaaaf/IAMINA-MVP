@@ -124,6 +124,8 @@ class D9ExplicitFirstUseProofTests(TestCase):
             {"version": 1},
             {"confirmed": True},
             {"version": 1, "confirmed": "false"},
+            {"version": 1, "confirmed": True, "patient_id": self.b.pk},
+            {"version": 1, "confirmed": True, "diabetes_type": "type2"},
         ):
             response = self._request("POST", self.token_a, payload)
             self.assertEqual(response.status_code, 422, response.content)
