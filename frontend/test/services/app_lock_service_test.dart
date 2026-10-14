@@ -313,6 +313,106 @@ void main() {
     );
   });
 
+
+  // D10 choice B is product intent, not a verified opt-out implementation.
+  // These are immutable safety baseline tests until independent review.
+  test('D10-B: untrusted opt-out marker cannot unlock a protected vault', () async {
+    seedStorage({'iamina_app_lock_opt_out_v1': 'true'});
+    final authenticator = _FakeAuthenticator();
+    final service = AppLockService(
+      authenticator: authenticator,
+      protectedLocalStateProbe: () async => true,
+    );
+    await service.initialize();
+
+    expect(service.recoveryRequired, isTrue);
+    expect(service.isUnlocked, isFalse);
+    expect(service.needsSetup, isFalse);
+    await expectLater(
+      service.configure(),
+      throwsA(
+        isA<AppLockException>().having(
+          (error) => error.code,
+          'code',
+          'recovery_required',
+        ),
+      ),
+    );
+    await expectLater(
+      service.unlock(),
+      throwsA(
+        isA<AppLockException>().having(
+          (error) => error.code,
+          'code',
+          'recovery_required',
+        ),
+      ),
+    );
+    expect(authenticator.enrollCalls, 0);
+    expect(authenticator.unlockCalls, 0);
+    service.dispose();
+  });
+
+  test('D10-B: local-only login cannot recover protected app-lock state', () async {
+    seedStorage({
+      _localSessionKey: _localSessionValue,
+      _requiredKey: 'required',
+      'iamina_app_lock_opt_out_v1': 'true',
+    });
+    final auth = AuthService(
+      httpClient: MockClient((request) async {
+        fail('Unverified local-only recovery must not call the network');
+      }),
+    );
+    await auth.initialize();
+    expect(auth.isAuthenticated, isTrue);
+    expect(auth.hasRemoteApiCredential, isFalse);
+
+    final service = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      authService: auth,
+      protectedLocalStateProbe: () async => true,
+    );
+    await service.initialize();
+    expect(service.recoveryRequired, isTrue);
+
+    await expectLater(
+      service.recoverWithVerifiedRemoteAccount(),
+      throwsA(
+        isA<AppLockException>().having(
+          (error) => error.code,
+          'code',
+          'verified_remote_recovery_required',
+        ),
+      ),
+    );
+    expect(service.isUnlocked, isFalse);
+    expect(service.recoveryRequired, isTrue);
+    expect(
+      await const FlutterSecureStorage().read(key: _requiredKey),
+      'required',
+    );
+    service.dispose();
+    auth.dispose();
+  });
+
+  test('D10-B: untrusted opt-out marker cannot bypass a valid cold lock', () async {
+    seedStorage({
+      _credentialKey: _credential.encode(),
+      _requiredKey: 'required',
+      'iamina_app_lock_opt_out_v1': 'true',
+    });
+    final authenticator = _FakeAuthenticator();
+    final service = AppLockService(authenticator: authenticator);
+    await service.initialize();
+
+    expect(service.isConfigured, isTrue);
+    expect(service.isRequired, isTrue);
+    expect(service.isUnlocked, isFalse);
+    expect(authenticator.unlockCalls, 0);
+    service.dispose();
+  });
+
   test('secure persistence precedes public unlocked state in source', () {
     final source = File('lib/services/app_lock_service.dart').readAsStringSync();
 
