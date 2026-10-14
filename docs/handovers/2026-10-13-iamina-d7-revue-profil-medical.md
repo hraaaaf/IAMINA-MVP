@@ -1,3 +1,23 @@
+# IAMINA D7 — 14 octobre 2026 — CERTIFICATION TECHNIQUE AUTOMATISÉE VERTE (exact HEAD)
+ 
+**Goal** : profil médical progressif facultatif, multi-traitements déclarés sans inférence, isolement strict patient, outbox offline/CAS et refus des écritures concurrentes non versionnées. **Succès CI** : 17/17 workflows GitHub SUCCESS, **0 échec, 0 run actif** sur le commit fonctionnel exact `46a530f64215d00afe72bdd22eea88f365d72097`, vérifié après la fin des runs. Aucun merge ni déploiement.
+ 
+**Preuve principale** : [CI #38567600156](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38567600156) **6/6 jobs SUCCESS** ; SQLite **2810 passed / 5 skipped / 3 xfailed / 121 subtests**, PostgreSQL **2814 passed / 1 skipped / 3 xfailed / 121 subtests**, Flutter **772 passed / 1 skipped**, `✓ Built build/web`. Ne pas compter skipped/xfailed comme pass. Il s'agit de la validation sur `46a530f64215d00afe72bdd22eea88f365d72097`, pas d'un autre SHA.
+ 
+**Preuves complémentaires** : [D7 Conflict UI Evidence #38567600218](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38567600218) SUCCESS (génération vérifiée de 18 captures widget synthétiques FR/EN/AR aux 3 tailles, non équivalentes à un navigateur authentifié) ; app-lock TD-014, PWA offline/recovery/persistence, captures Chrome génériques, iOS/mobile packaging, migration drift, golden geometry, parcours P5-5 = SUCCESS au même SHA.
+ 
+**Sécurité corrigée et couverte** : `PATCH /api/v1/profile` avec `treatment_declaration` et sans précondition CAS -> HTTP **428** sans mutation ; révision obsolète -> 409 ; forme malformée -> 422 ; requête versionnée correcte -> 200. Les PATCH legacy sans déclaration ne sont pas soumis à CAS. Tests HTTP A/B synthétiques, SQLite et PostgreSQL tous verts. Le test D9 d'accès existant n'impose pas un diagnostic ou un traitement pour terminer le premier accueil : champs médicaux facultatifs.
+ 
+**Validation UI partielle** : les premières captures Ahem étaient illisibles, remplacées par des polices Latin/Arabic système et 18 PNG inspectées. Les textes et CTA sont majoritairement lisibles, sans overflow manifeste au widget-test, mais certaines icônes sont substituées et **la vraie boîte de dialogue distante 409 n'a pas été comparée dans Chrome réel**. Aucun score visuel final ni approbation humaine inventés.
+ 
+**Décision / HUMAN GATES** : **D7 PRODUIT RESTE OPEN**, PR [#986](https://github.com/hraaaaf/IAMINA-MVP/pull/986) DRAFT. Restent *deux appareils physiques* avec comptes synthétiques A→B→A + offline/retry/409 et état serveur, validation sécurité/privacy clinique indépendante, arbitrage consentement de synchronisation versionné et dépendances D30 #988/#989/#990, BEFORE/AFTER réel du dialogue et approbation visuelle clinique/UX. **Aucun merge, aucun Vercel, aucune donnée patient réelle** tant que non prouvé.
+ 
+**Prochaines actions** : réconcilier et recertifier toute nouvelle divergence de `main` ; compléter les preuves appareils/UI et audits indépendants ; seulement après feu vert humain envisager merge/post-merge. Baseline P5 roadmap historique **6/12 = 50 %**, non recalculée ici.
+ 
+**Historique ci-dessous** : les statuts « pending », « candidat non certifié » et SHA antérieurs sont historiques. La certification 17/17 ci-dessus est celle du code `46a530f64215d00afe72bdd22eea88f365d72097`.
+ 
+---
+ 
 # IAMINA D7 — 14 octobre 2026 — Intégration D9 GET A→B→A (TEST-ONLY)
 
 **Périmètre strict IAMINA** : PR #986 DRAFT, master non modifié. Avant intégration, D7 code HEAD `1a6d0f3da0b79fab1dfbd5503386b9de619f438a` contient le durcissement CAS HTTP 428, tests A/B et correction de fixture directe. Main alors courant `563766b35c7b28b86330a7d6987a9c86a738d794` ajoute uniquement `backend/diabetes/tests/test_d9_existing_account_profile_read.py`. Ce test exige par vrai bearer synthétique isolation GET A→B→A, fraîche instance HTTP et profil médical facultatif ; il ne prétend pas valider une récupération de coffre Flutter depuis un deuxième appareil physique.
