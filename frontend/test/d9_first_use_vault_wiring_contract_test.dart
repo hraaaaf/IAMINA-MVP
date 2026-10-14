@@ -40,6 +40,19 @@ void main() {
     expect(onboarding, contains('Reprise sur un autre appareil non confirmée'));
   });
 
+  test('D9 cannot grant AI consent without a local patient profile row',
+      () {
+    final screen = source('lib/features/auth/consent_screen.dart');
+    final check = screen.indexOf(
+      'db.getProfileForLocalUserId(db.activeProfileRowId) == null',
+    );
+    final grant = screen.indexOf('api.giveVersionedConsent(claim)');
+    expect(check, greaterThan(0));
+    expect(grant, greaterThan(check));
+    expect(screen, contains('AI consent was not enabled'));
+    expect(screen, contains('return;'));
+  });
+
   test('D9 fail-closed gate permits a retry AND safe logout when offline',
       () {
     final host = source('lib/services/patient_vault_app_host.dart');
