@@ -28,7 +28,7 @@ void main() {
       () {
     final onboarding = source('lib/features/auth/onboarding_chat_screen.dart');
     final readTransport = onboarding.indexOf(
-      'final d9Transport = context.read<D9FirstUseTransport?>();',
+      'final d9Transport = _optionalD9Transport(context);',
     );
     final localSave = onboarding.indexOf('.insertOnConflictUpdate(profile)');
     final remoteAck = onboarding.indexOf('d9Transport.confirmSavedFirstUse()');
