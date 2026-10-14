@@ -12,11 +12,22 @@ import '../../data/drift/database.dart';
 import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
+import '../../services/d9_first_use_transport.dart';
 import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
 import '../../services/sync_service.dart';
 import '../profile/medical_treatment_declaration_v1.dart';
 import '../profile/medical_treatment_multi_selector.dart';
+
+/// Widget tests and local-only flows may not provide a remote D9 transport.
+/// A verified native patient vault always publishes the transport explicitly.
+D9FirstUseTransport? _optionalD9Transport(BuildContext context) {
+  try {
+    return context.read<D9FirstUseTransport?>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
 
 String _preferencesCopy(
   BuildContext context, {
@@ -140,6 +151,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       }
 
       final db = context.read<AppDatabase>();
+      // Capture the D9 transport BEFORE saving: the local profile stream may
+      // redirect/dispose the screen immediately after the successful write.
+      final d9Transport = _optionalD9Transport(context);
       // Scoped physical vault selects the owner; Firebase hashCode is neither
       // stable nor an authenticated patient identifier.
       final userId = db.activeProfileRowId;
@@ -158,6 +172,24 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .into(db.patientProfiles)
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
+
+      // D9: this explicit local first-use save is the ONLY moment at which
+      // the current authenticated owner can assert completion to the server.
+      // Never PATCH clinical /profile, never send diagnosis or AI consent.
+      // Offline is a local save, not a false server acknowledgement.
+      if (d9Transport != null) {
+        final ack = await d9Transport.confirmSavedFirstUse();
+        if (ack == null && mounted &&
+            db.patientVaultScope?.nativeDjangoUserId != null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_preferencesCopy(context,
+              fr: 'Profil enregistré localement. Reprise sur un autre appareil non confirmée.',
+              en: 'Saved on this device. Recovery on another device is not confirmed.',
+              ar: 'تم الحفظ على هذا الجهاز. لم يتم تأكيد الاستعادة على جهاز آخر.',
+            )),
+          ));
+        }
+      }
 
       // A fresh authenticated device starts without a local profile. Never
       // fabricate one just to restore clinical declarations: first-use remains
