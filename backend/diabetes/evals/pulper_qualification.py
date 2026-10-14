@@ -231,6 +231,7 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
         with ExitStack() as stack:
             provider = install_synthetic_groq(stack)
             for case in build_corpus():
+                case_log_start = len(capture.messages)
                 output = ingest(case.payload, case.filename, case.mime_type)
                 actual = critical_facts(output)
                 if case.expected_error_code:
@@ -271,7 +272,34 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
                             ts_total += 1
                             ts_ok += int(actual.get(path) == _canonical(expected))
                     mode = "synthetic_vision_then_deterministic_fixture_parser" if case.format_name in SYNTHETIC_VISION_FORMATS else "live_groq_parser" if case.format_name in LIVE_TEXT_FORMATS else "deterministic_native"
-                    cases_out.append({"id": case.case_id, "format": case.format_name, "status": "pass" if exact else "fail", "expected_outcome": "exact_critical_fields", "provider_mode": mode})
+                    # Sanitized case-level diagnostics, never source values,
+                    # provider messages, patient data, or request/response text.
+                    safe_errors = []
+                    safe_transport = []
+                    for message in capture.messages[case_log_start:]:
+                        marker = "pulper: LLM call failed error_class="
+                        if message.startswith(marker):
+                            name = message.removeprefix(marker)
+                            if name.isidentifier():
+                                safe_errors.append(name)
+                        marker = "pulper_benchmark_transport status="
+                        if message.startswith(marker):
+                            values = message.removeprefix(marker).split(" exception_type=")
+                            if len(values) == 2 and values[0].isdigit() and values[1].isidentifier():
+                                safe_transport.append({
+                                    "status": int(values[0]), "exception_type": values[1],
+                                })
+                    cases_out.append({
+                        "id": case.case_id,
+                        "format": case.format_name,
+                        "status": "pass" if exact else "fail",
+                        "expected_outcome": "exact_critical_fields",
+                        "provider_mode": mode,
+                        "missing_field_names": sorted(set(case.expected) - set(actual)),
+                        "parser_metadata_present": bool(output.parser_model and output.prompt_version),
+                        "safe_llm_error_classes": sorted(set(safe_errors)),
+                        "safe_transport": safe_transport,
+                    })
     finally:
         root.removeHandler(capture)
         close = getattr(getattr(provider, "client", None), "close", None)
