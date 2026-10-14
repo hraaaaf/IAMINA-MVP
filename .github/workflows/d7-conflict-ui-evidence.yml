@@ -1,4 +1,4 @@
-name: IAMINA D7 Conflict UI Evidence
+name: IAMINA D7 Local-Only Conflict UI Evidence
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   conflict-visual:
-    name: D7 409 conflict CTA real Flutter widget captures (3 viewports x 3 languages)
+    name: D7 local-only hidden remote conflict CTA captures (3 viewports x 3 languages)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
@@ -43,7 +43,7 @@ jobs:
           test -r "$ARABIC"
           echo "D7_VISUAL_FONT_LATIN=$LATIN" >> "$GITHUB_ENV"
           echo "D7_VISUAL_FONT_ARABIC=$ARABIC" >> "$GITHUB_ENV"
-      - name: Capture synthetic D7 conflict CTA BEFORE interaction and AFTER expansion
+      - name: Capture synthetic D7 local-only profile collapsed and expanded
         run: |
           flutter test --no-pub --update-goldens --reporter expanded \
             --dart-define=D7_VISUAL_EVIDENCE=true \

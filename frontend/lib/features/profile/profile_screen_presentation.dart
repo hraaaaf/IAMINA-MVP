@@ -128,15 +128,14 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             _treatmentTouched = true;
           }),
         ),
-        if (_treatmentConflict)
+        if (_treatmentConflict && _canResolveRemoteTreatmentConflict)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton(
                 key: const Key('d7-resolve-treatment-conflict'),
-                onPressed: (_resolvingTreatmentConflict || _treatmentTouched ||
-                    !context.read<ApiClient>().canSyncClinicalData)
+                onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
                     ? null : _resolveTreatmentConflict,
                 child: Row(
                   children: [
