@@ -798,9 +798,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        Expanded(
+          child: Text(
+            title,
+            softWrap: true,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     );
