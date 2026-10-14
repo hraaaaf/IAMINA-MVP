@@ -1,0 +1,36 @@
+name: D7 three red mobile cases ONLY
+
+on:
+  push:
+    branches:
+      - debug/d7-mobile-overflow-20261014
+    paths:
+      - 'frontend/test/features/profile/d7_conflict_cta_responsive_test.dart'
+      - 'frontend/lib/features/profile/**'
+      - '.github/workflows/d7-only-mobile-red.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-mobile-targeted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  only-three-red:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: ONLY the three failing 390x844 FR EN AR tests
+        run: flutter test --reporter expanded --name '390x844' test/features/profile/d7_conflict_cta_responsive_test.dart

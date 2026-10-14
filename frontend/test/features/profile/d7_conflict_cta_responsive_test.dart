@@ -8,6 +8,7 @@ import 'package:amina/services/consent_service.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -92,7 +93,14 @@ void main() {
           expect(buttonBounds.left, greaterThanOrEqualTo(0));
           expect(buttonBounds.right, lessThanOrEqualTo(size.width));
           expect(buttonBounds.height, greaterThanOrEqualTo(40));
-          expect(tester.takeException(), isNull);
+          final layoutError = tester.takeException();
+          if (layoutError != null) {
+            // Diagnostic branch only; dump the real offending RenderFlex and
+            // constraints instead of hiding them behind a null matcher.
+            debugPrint('D7_RENDERFLEX_DIAGNOSTIC $lang $size: $layoutError');
+            debugDumpRenderTree();
+          }
+          expect(layoutError, isNull);
           // Viewing a conflict cannot change or ACK its local data.
           final after = (await store.read())!;
           expect(after.syncStatus, 'conflict');
