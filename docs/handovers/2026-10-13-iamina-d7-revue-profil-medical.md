@@ -1,3 +1,21 @@
+# IAMINA D7 — 14 octobre 2026 — VRAI HTTP SUR DJANGO LOCAL, DEUX CLIENTS SYNTHÉTIQUES — E2E ISOLÉ
+
+**Goal** : prouver à travers un véritable serveur Django TCP le contrat d'isolation des comptes et de résolution CAS sur deux clients HTTP indépendants, avec uniquement des identités synthétiques et une DB éphémère. Ce test reste distinct d'un test Flutter/Drift sur deux appareils physiques.
+
+**Preuve indépendante avant intégration** : branche audit `audit/d7-live-http-e2e-20261014@76236f3414c18b96e3417d23720436be7817d290`, [GitHub Actions #38582759703](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38582759703) **SUCCESS, 2 tests passed in 2.54s**, vrai `LiveServerTestCase` Django + HTTP réel via `urllib.request` et vrai parseur `HttpBearer`. Aucune communication avec Vercel ni backend certifié.
+
+**Assertions** : deux clients HTTP distincts et bearer A/B ; A et B n'accèdent qu'à leur profil ; second client A lit les valeurs serveur ; première création CAS `none` acceptée (200), modification concurrente depuis deuxième client acceptée avec révision exacte ; rejeu de l'intention périmée par premier client `409`, même intention sans en-tête `428` sans écrasement ; A→B→A sur un même client conserve l'identité explicite ; nouvelle révision choisie validée en 200 ; bearer absent ou falsifié refuse l'accès 401/403.
+
+**Limitations non négociables** : « offline intent » est une simple structure de test en mémoire, **PAS** une file Drift persistante ou un redémarrage hors ligne. Il s'agit de clients HTTP, **PAS** de deux sessions Flutter authentifiées ni d'appareils physiques. Consentement de synchronisation versionné, egress D30, contrôle de sécurité indépendant, captures de vraie modal 409 et validation clinique/UI demeurent nécessaires.
+
+**Action** : intégrer le test `backend/diabetes/tests/test_d7_live_http_e2e.py` à la branche D7 PR #986 pour l'inclure dans la **CI complète SQLite+PostgreSQL**, sans changement de code runtime ni déploiement. La nouvelle suite à HEAD final doit repasser tous les workflows ; les 17/17 verts précédents concernent `c9577c8e…`, pas le nouveau commit.
+
+**Vercel** : Preview DEV isolée https://iamina-review-la39twh0a-achraf-benmoussa-s-projects.vercel.app toujours dédiée au navigateur local-only ; preuve de deux contexts Chromium limitée, jamais utilisée pour les requêtes médicales. Backend certifié et production non modifiés.
+
+**GO/NO GO** : PR #986 DRAFT, D7 produit OPEN, PAS DE MERGE, PAS DE VERCEL PROD, PAS DE DONNÉE PATIENT RÉELLE. P5 historique 50 %, non modifié. Next exact = 17 verdicts GitHub exact HEAD, puis arbitrage privacy D30 #988/#989/#990, environnement de test physique et sign-off indépendant.
+
+---
+
 # IAMINA D7 — 14 octobre 2026 — CERTIFICATION TECHNIQUE AUTOMATISÉE VERTE (exact HEAD)
  
 **Goal** : profil médical progressif facultatif, multi-traitements déclarés sans inférence, isolement strict patient, outbox offline/CAS et refus des écritures concurrentes non versionnées. **Succès CI** : 17/17 workflows GitHub SUCCESS, **0 échec, 0 run actif** sur le commit fonctionnel exact `46a530f64215d00afe72bdd22eea88f365d72097`, vérifié après la fin des runs. Aucun merge ni déploiement.
