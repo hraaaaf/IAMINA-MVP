@@ -1,0 +1,40 @@
+name: D7 Live HTTP A/B CAS Isolated Proof
+
+on:
+  push:
+    branches:
+      - audit/d7-live-http-e2e-20261014
+    paths:
+      - backend/diabetes/tests/test_d7_live_http_e2e.py
+      - .github/workflows/d7-live-http-e2e.yml
+
+permissions:
+  contents: read
+
+jobs:
+  real-loopback-http:
+    name: Two independent HTTP clients / Django live server / CAS 409 and 428
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: synthetic-ci-d7-only-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///ci-d7-live-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install isolated Django test dependencies
+        run: pip install -r requirements.txt
+      - name: Run authentic TCP HTTP isolation tests
+        run: pytest -q --tb=short diabetes/tests/test_d7_live_http_e2e.py
