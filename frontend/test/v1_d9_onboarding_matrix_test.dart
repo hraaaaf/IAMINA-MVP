@@ -31,7 +31,7 @@ void main() {
     expect(consent.hasConsent, isFalse);
   });
 
-  test('D9 incomplete account profile cannot be mistaken for completed onboarding',
+  test('D9 partial medical profile does not force another first-use',
       () async {
     for (final fields in [
       (type: null, treatment: null),
@@ -54,8 +54,13 @@ void main() {
         consent.seedInitialProfile(
           await db.select(db.patientProfiles).getSingleOrNull(),
         );
-        expect(_firstUseRequired(consent), isTrue,
-            reason: 'type=${fields.type} treatment=${fields.treatment}');
+        // D7: diagnosis and treatment are optional; saved preferences count.
+        // Do not infer any medical declaration or AI consent from a profile.
+        expect(_firstUseRequired(consent), isFalse,
+            reason: 'optional type=${fields.type} treatment=${fields.treatment}');
+        final persisted = await db.select(db.patientProfiles).getSingle();
+        expect(persisted.diabetesType, fields.type);
+        expect(persisted.treatment, fields.treatment);
         expect(consent.hasConsent, isFalse);
       } finally {
         consent.dispose();
@@ -80,7 +85,8 @@ void main() {
         completed.complete();
       }
     });
-    consent.attachStream(db.watchProfile());
+    // D7 requires explicitly owner-scoped profile hydration.
+    consent.attachStream(db.watchProfileForLocalUserId(734));
     await initialized.future.timeout(const Duration(seconds: 5));
     expect(_firstUseRequired(consent), isTrue);
 

@@ -110,6 +110,7 @@
   "syncPending": "Data waiting to sync",
   "syncing": "Synchronizing",
   "syncOffline": "Offline · data kept on this device",
+  "syncLocalOnly": "Offline pilot · saved on this device, not synchronized",
   "syncFailed": "Synchronization failed · tap to retry",
   "goodMorning": "Good morning",
   "goodAfternoon": "Good afternoon",

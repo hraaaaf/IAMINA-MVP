@@ -11,9 +11,14 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../services/auth_service.dart';
+import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import '../../services/sync_service.dart';
+import 'medical_treatment_declaration_v1.dart';
+import 'medical_treatment_multi_selector.dart';
 
 part 'profile_screen_presentation.dart';
 
@@ -33,13 +38,21 @@ String _profileUiText(
 String _profileValidationMessage(BuildContext context) {
   final code = Localizations.localeOf(context).languageCode;
   if (code == 'ar') {
-    return 'اختر نوع السكري والعلاج وأدخل نطاق غلوكوز صالحًا قبل الحفظ.';
+    return 'أدخل نطاق غلوكوز صالحًا. يمكنك إضافة نوع السكري والعلاج لاحقًا.';
   }
   if (code == 'en') {
-    return 'Select diabetes type and treatment, and enter a valid glucose range before saving.';
+    return 'Enter a valid glucose range. Diagnosis and treatment can be added later.';
   }
-  return 'Sélectionnez le type de diabète et le traitement, puis saisissez une plage glycémique valide avant d’enregistrer.';
+  return 'Saisissez une plage glycémique valide. Le diagnostic et le traitement peuvent être ajoutés plus tard.';
 }
+
+/// Do not claim remote confirmation while treatment data is pending or in conflict.
+bool d7ProfileSaveCanShowConfirmed({
+  required bool mirrorConfirmed,
+  required String? treatmentSyncStatus,
+}) =>
+    mirrorConfirmed &&
+    (treatmentSyncStatus == null || treatmentSyncStatus == 'confirmed');
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -52,12 +65,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _targetLowController = TextEditingController();
   final _targetHighController = TextEditingController();
   String? _diabetesType;
-  String? _treatment;
+  String? _treatment; // legacy clinical scalar stays unchanged
+  D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
+  bool _treatmentTouched = false;
+  bool _treatmentConflict = false;
+  bool _resolvingTreatmentConflict = false;
   String _unit = 'mg/dL';
   bool _hasPersistedProfile = false;
   DateTime? _ramadanStartDate;
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
+
+  // Fail closed when no clinical transport provider is mounted (e.g. offline
+  // pilot widget tests). The remote conflict action stays unavailable until
+  // a separately governed clinical-sync capability is explicitly enabled.
+  bool get _canResolveRemoteTreatmentConflict =>
+      context.read<ApiClient?>()?.canSyncClinicalData ?? false;
 
   void _setPresentationState(VoidCallback fn) => setState(fn);
 
@@ -69,8 +92,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _loadProfile() async {
     final db = context.read<AppDatabase>();
-    final profile = await db.select(db.patientProfiles).getSingleOrNull();
+    final profile = await db.getProfileForLocalUserId(db.activeProfileRowId);
     if (profile != null) {
+      if (!mounted) return;
       setState(() {
         _hasPersistedProfile = true;
         _diabetesType = profile.diabetesType;
@@ -80,6 +104,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _targetHighController.text = profile.targetRangeHigh.toStringAsFixed(0);
         _ramadanStartDate = profile.ramadanStartDate;
         _ramadanEndDate = profile.ramadanEndDate;
+      });
+    }
+    if (db.patientVaultScope != null) {
+      final record = await PatientTreatmentDeclarationStore(db).read();
+      if (!mounted || record == null) return;
+      final status = D7TreatmentStatus.values.firstWhere(
+        (value) => d7StateCode(value) == record.state,
+      );
+      setState(() {
+        _declaredTreatments = D7TreatmentDeclaration(status, record.codes);
+        _treatmentConflict = record.syncStatus == 'conflict';
       });
     }
   }
@@ -404,6 +439,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _conflictSummary(String state, List<String> codes) {
+    if (state != 'declared') {
+      return switch (state) {
+        'unsure' => _profileUiText(context, fr: 'Je ne sais pas',
+          en: 'Not sure', ar: 'لا أعرف'),
+        'none_declared' => _profileUiText(context, fr: 'Aucun traitement déclaré',
+          en: 'No treatment reported', ar: 'لا يوجد علاج مصرّح به'),
+        _ => _profileUiText(context, fr: 'Je répondrai plus tard',
+          en: 'Answer later', ar: 'سأجيب لاحقًا'),
+      };
+    }
+    return codes.map((code) => switch (code) {
+      'insulin' => _profileUiText(context,
+        fr: 'Insuline', en: 'Insulin', ar: 'الأنسولين'),
+      'oral_meds' => _profileUiText(context,
+        fr: 'Médicaments oraux', en: 'Oral medicines', ar: 'أدوية فموية'),
+      'lifestyle' => _profileUiText(context,
+        fr: 'Habitudes de vie', en: 'Lifestyle measures', ar: 'نمط الحياة'),
+      _ => _profileUiText(context,
+        fr: 'Autre traitement déclaré', en: 'Other reported treatment',
+        ar: 'علاج آخر مصرّح به'),
+    }).join(' + ');
+  }
+
+  Future<void> _resolveTreatmentConflict() async {
+    if (_resolvingTreatmentConflict) return;
+    final db = context.read<AppDatabase>();
+    final api = context.read<ApiClient>();
+    final auth = context.read<AuthService>();
+    final lock = context.read<AppLockService>();
+    final sync = context.read<SyncService>();
+    final epoch = AuthService.authEpoch;
+    if (db.patientVaultScope?.nativeDjangoUserId == null ||
+        !auth.hasRemoteApiCredential || !lock.isUnlocked) return;
+    setState(() => _resolvingTreatmentConflict = true);
+    try {
+      final store = PatientTreatmentDeclarationStore(db);
+      final local = await store.read();
+      if (!mounted || AuthService.authEpoch != epoch ||
+          !lock.isUnlocked || local == null ||
+          local.syncStatus != 'conflict') return;
+      final remote = await api.getProfile();
+      if (!mounted || AuthService.authEpoch != epoch ||
+          !lock.isUnlocked || remote == null) return;
+      final remoteState = remote['treatment_declaration_state'];
+      final remoteCodes = remote['treatment_declarations'];
+      final serverAt = verifiedServerTreatmentRevision(remote);
+      if (remote['treatment_declaration_source'] != 'patient_declared' ||
+          remote['treatment_declaration_version'] != 1 ||
+          remoteState is! String || remoteCodes is! List ||
+          remoteCodes.any((item) => item is! String) ||
+          serverAt == null) return;
+      final codes = remoteCodes.cast<String>().toList(growable: false);
+      try {
+        validatePatientTreatmentDeclarationV1(
+          state: remoteState, codes: codes,
+        );
+      } on ArgumentError {
+        return;
+      }
+      final apply = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(_profileUiText(context,
+            fr: 'Conflit de synchronisation',
+            en: 'Synchronization conflict',
+            ar: 'تعارض في المزامنة')),
+          content: SingleChildScrollView(child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_profileUiText(context, fr: 'Sur cet appareil :',
+                en: 'On this device:', ar: 'على هذا الجهاز:')),
+              Text(_conflictSummary(local.state, local.codes)),
+              const SizedBox(height: 12),
+              Text(_profileUiText(context, fr: 'Sur votre compte :',
+                en: 'On your account:', ar: 'على حسابك:')),
+              Text(_conflictSummary(remoteState, codes)),
+              const SizedBox(height: 12),
+              Text(_profileUiText(context,
+                fr: 'Conserver ma version remplacera la déclaration distante après confirmation du serveur.',
+                en: 'Keeping my version will replace the remote declaration only after server confirmation.',
+                ar: 'الاحتفاظ بنسختي سيستبدل التصريح البعيد فقط بعد تأكيد الخادم.')),
+            ])),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(_profileUiText(context, fr: 'Annuler',
+                en: 'Cancel', ar: 'إلغاء')),
+            ),
+            FilledButton(
+              key: const Key('d7-keep-local-conflict'),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(_profileUiText(context,
+                fr: 'Conserver ma version', en: 'Keep my version',
+                ar: 'الاحتفاظ بنسختي')),
+            ),
+          ],
+        ),
+      );
+      if (apply != true || !mounted || AuthService.authEpoch != epoch ||
+          !lock.isUnlocked) return;
+      final rebased = await store.retryConflictAfterExplicitReview(
+        expectedGeneration: local.localGeneration,
+        currentServerRevisionUtc: serverAt,
+      );
+      if (!rebased || !mounted || AuthService.authEpoch != epoch ||
+          !lock.isUnlocked) return;
+      final confirmed = await sync.sendPendingTreatmentDeclaration();
+      if (!mounted || AuthService.authEpoch != epoch) return;
+      final latest = await store.read();
+      if (!mounted || AuthService.authEpoch != epoch) return;
+      setState(() => _treatmentConflict = latest?.syncStatus == 'conflict');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(confirmed
+          ? _profileUiText(context, fr: 'Déclaration synchronisée.',
+              en: 'Declaration synchronized.', ar: 'تمت مزامنة التصريح.')
+          : _profileUiText(context,
+              fr: 'Déclaration conservée sur cet appareil. Synchronisation non confirmée.',
+              en: 'Declaration kept on this device. Remote synchronization not confirmed.',
+              ar: 'تم الاحتفاظ بالتصريح على هذا الجهاز. لم يتم تأكيد المزامنة.')),
+      ));
+    } catch (_) {
+      if (mounted && AuthService.authEpoch == epoch) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_profileUiText(context,
+            fr: 'Impossible de vérifier la déclaration distante. Les données locales sont conservées.',
+            en: 'Unable to verify remote declaration. Local data is preserved.',
+            ar: 'تعذر التحقق من التصريح البعيد. تم الاحتفاظ بالبيانات المحلية.')),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _resolvingTreatmentConflict = false);
+    }
+  }
+
   void _saveProfile() async {
     final diabetesType = _diabetesType;
     final treatment = _treatment;
@@ -418,7 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         high > 0 &&
         low < high;
 
-    if (diabetesType == null || treatment == null || !validRange) {
+    if (!validRange) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_profileValidationMessage(context))),
       );
@@ -430,7 +600,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .into(db.patientProfiles)
         .insertOnConflictUpdate(
           PatientProfilesCompanion.insert(
-            userId: const drift.Value(1),
+            userId: drift.Value(db.activeProfileRowId),
             preferredLanguage: drift.Value(
               Localizations.localeOf(context).languageCode,
             ),
@@ -443,12 +613,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
 
+    bool remoteMirrorConfirmed = context.read<ApiClient>().canSyncClinicalData;
+    if (_treatmentTouched && db.patientVaultScope != null) {
+      // Durable local-first write. Do not use legacy unconditioned PATCH:
+      // only the vault-bound synchronizer may upload and ACK this generation.
+      await PatientTreatmentDeclarationStore(db).write(
+        state: d7StateCode(_declaredTreatments.state),
+        codes: _declaredTreatments.codes,
+      );
+      final auth = context.read<AuthService>();
+      remoteMirrorConfirmed = false;
+      if (mounted && auth.hasRemoteApiCredential &&
+          db.patientVaultScope?.nativeDjangoUserId != null) {
+        remoteMirrorConfirmed =
+            await context.read<SyncService>().sendPendingTreatmentDeclaration();
+      }
+    }
+
     if (mounted) {
-      setState(() => _hasPersistedProfile = true);
+      final latest = db.patientVaultScope != null
+          ? await PatientTreatmentDeclarationStore(db).read()
+          : null;
+      if (!mounted) return;
+      final fullyConfirmed = d7ProfileSaveCanShowConfirmed(
+        mirrorConfirmed: remoteMirrorConfirmed,
+        treatmentSyncStatus: latest?.syncStatus,
+      );
+      setState(() {
+        _hasPersistedProfile = true;
+        _treatmentTouched = false;
+        _treatmentConflict = latest?.syncStatus == 'conflict';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.profileUpdated),
-          backgroundColor: AminaTheme.successEmerald,
+          content: Text(fullyConfirmed
+              ? AppLocalizations.of(context)!.profileUpdated
+              : !context.read<ApiClient>().canSyncClinicalData
+                ? AppLocalizations.of(context)!.syncLocalOnly
+                : _profileUiText(context,
+                  fr: 'Enregistré localement. Synchronisation non confirmée.',
+                  en: 'Saved locally. Remote sync not confirmed.',
+                  ar: 'تم الحفظ محليًا. لم يتم تأكيد المزامنة.',
+                )),
+          backgroundColor: fullyConfirmed
+              ? AminaTheme.successEmerald : AminaTheme.warningOrange,
           behavior: SnackBarBehavior.floating,
         ),
       );

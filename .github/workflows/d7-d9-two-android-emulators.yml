@@ -1,0 +1,72 @@
+name: D7 D9 two Android emulators Ubuntu
+
+on:
+  pull_request:
+    branches:
+      - feat/v1-d7-medical-profile-relevance-20261013
+    paths:
+      - '.github/workflows/d7-d9-two-android-emulators.yml'
+      - 'scripts/ci_d7_d9_emulator_hub.py'
+      - 'scripts/tests/test_ci_d7_d9_emulator_hub.py'
+      - 'scripts/ci_d7_d9_two_emulators.sh'
+      - 'frontend/integration_test/d7_d9_ubuntu_two_emulators_test.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-d9-dual-android-ubuntu
+  cancel-in-progress: true
+
+jobs:
+  ubuntu-dual-emulators:
+    name: Two Android emulators, one local synthetic hub
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Flutter 3.41
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter packages
+        working-directory: frontend
+        run: |
+          flutter pub get
+          git diff --exit-code -- pubspec.lock
+      - name: Test local synthetic evidence hub contract before emulator boot
+        run: python3 -m unittest discover -s scripts/tests -p 'test_ci_d7_d9_emulator_hub.py' -v
+      - name: Enable KVM for Android instances
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+      - name: Start both Android devices and run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 1536M
+          heap-size: 256M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
+          disable-animations: true
+          script: bash scripts/ci_d7_d9_two_emulators.sh
+      - name: Preserve synthetic-only test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d7-d9-ubuntu-dual-emulator-evidence
+          path: artifacts/d7-d9-two-emulators/
+          if-no-files-found: warn
+          retention-days: 14

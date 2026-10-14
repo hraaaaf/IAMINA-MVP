@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'patient_vault_scope.dart';
+
 part 'database.g.dart';
 
 // ============================================================================
@@ -102,12 +104,22 @@ class ChatMessages extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  // Constructor for custom openers (useful for tests)
-  AppDatabase(super.e);
+  // Every table in a vault lives in one isolated physical SQLite/IndexedDB
+  // database. A legacy database cannot claim this identity post-hoc.
+  final PatientVaultScope? patientVaultScope;
+
+  // Legacy/testing path: never considered to be patient-isolated.
+  AppDatabase(super.e) : patientVaultScope = null;
+
+  // Synthetic tests can verify the vault boundaries without writing to disk.
+  AppDatabase.testPatientVault(super.e, this.patientVaultScope);
 
   // Default constructor using drift_flutter's recommended setup
+  // LEGACY vault for existing pre-D7 data. Never interpret this historical
+  // unscoped storage as belonging to the next authenticated account.
   AppDatabase.defaults()
-    : super(
+    : patientVaultScope = null,
+      super(
         driftDatabase(
           name: 'amina',
           web: DriftWebOptions(
@@ -117,13 +129,35 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  // Isolated physical SQLite/IndexedDB vault for a verified principal.
+  // This constructor intentionally does NOT migrate or read the legacy DB.
+  // Integrating the runtime vault switch requires an independent full-flow
+  // A→logout→B certification before any real patient use.
+  AppDatabase.forPatientVault(PatientVaultScope scope)
+    : patientVaultScope = scope,
+      super(
+        driftDatabase(
+          name: scope.databaseName,
+          web: DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          ),
+        ),
+      );
+
+  /// Local row key resolved only within the already-selected physical vault.
+  /// Device-only sessions use row 1 inside their own UUID vault; native Django
+  /// accounts must use the authenticated server ID, never a Firebase hash.
+  int get activeProfileRowId => patientVaultScope?.nativeDjangoUserId ?? 1;
+
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
+      await _createPatientTreatmentDeclarationTable();
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
@@ -163,8 +197,51 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(medicationEvents);
         await m.createTable(reminders);
       }
+      // D7 additive data only. Retain PatientProfiles.treatment verbatim;
+      // no legacy medication inference or cross-account adoption.
+      if (from < 11) {
+        await _createPatientTreatmentDeclarationTable();
+      } else if (from < 12) {
+        // Existing v11 rows are unacknowledged; never silently promote them
+        // to synced after a schema upgrade.
+        await customStatement("""
+          ALTER TABLE patient_treatment_declarations_v1
+          ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'pending'
+            CHECK (sync_status IN ('pending', 'confirmed', 'conflict'))
+        """);
+        await customStatement("""
+          ALTER TABLE patient_treatment_declarations_v1
+          ADD COLUMN base_server_updated_at TEXT
+        """);
+        await customStatement("""
+          ALTER TABLE patient_treatment_declarations_v1
+          ADD COLUMN local_generation INTEGER NOT NULL DEFAULT 1
+            CHECK (local_generation >= 1)
+        """);
+      }
     },
   );
+
+  Future<void> _createPatientTreatmentDeclarationTable() => customStatement('''
+    CREATE TABLE IF NOT EXISTS patient_treatment_declarations_v1 (
+      user_id INTEGER NOT NULL PRIMARY KEY,
+      declaration_state TEXT NOT NULL
+        CHECK (declaration_state IN
+          ('not_answered', 'unsure', 'declared', 'none_declared')),
+      codes_json TEXT NOT NULL,
+      declaration_version INTEGER NOT NULL DEFAULT 1
+        CHECK (declaration_version = 1),
+      provenance TEXT NOT NULL CHECK (provenance = 'patient_declared'),
+      updated_at_utc TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (sync_status IN ('pending', 'confirmed', 'conflict')),
+      base_server_updated_at TEXT,
+      local_generation INTEGER NOT NULL DEFAULT 1
+        CHECK (local_generation >= 1),
+      FOREIGN KEY (user_id) REFERENCES patient_profiles(user_id)
+        ON DELETE CASCADE
+    )
+  ''');
 
   Future<bool> setRamadanPeriod({DateTime? start, DateTime? end}) async {
     if ((start == null) != (end == null)) {
@@ -173,9 +250,11 @@ class AppDatabase extends _$AppDatabase {
     if (start != null && end != null && start.isAfter(end)) {
       throw ArgumentError('Ramadan period start must not be after end');
     }
-    final existing = await (select(
-      patientProfiles,
-    )..limit(1)).getSingleOrNull();
+    // Pre-D7 legacy fixtures retain their historical behavior. Patient vaults
+    // never select or mutate an arbitrary first profile.
+    final existing = patientVaultScope == null
+        ? await (select(patientProfiles)..limit(1)).getSingleOrNull()
+        : await getProfileForLocalUserId(activeProfileRowId);
     if (existing == null) return false;
 
     final updated =
@@ -222,6 +301,30 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  // D7 migration primitive: a *local* ID must be resolved to a verified
+  // account owner before it is passed here. Filtering alone does not provide
+  // authentication or native/Firebase identity binding.
+  Stream<PatientProfileData?> watchProfileForLocalUserId(int userId) {
+    if (userId <= 0) {
+      throw ArgumentError.value(userId, 'userId', 'Invalid local patient ID');
+    }
+    return (select(patientProfiles)
+          ..where((row) => row.userId.equals(userId)))
+        .watchSingleOrNull();
+  }
+
+  Future<PatientProfileData?> getProfileForLocalUserId(int userId) {
+    if (userId <= 0) {
+      throw ArgumentError.value(userId, 'userId', 'Invalid local patient ID');
+    }
+    return (select(patientProfiles)
+          ..where((row) => row.userId.equals(userId)))
+        .getSingleOrNull();
+  }
+
+  // LEGACY UNSCOPED: not safe for multi-account clinical sessions.
+  // Keep until every caller is converted under a verified identity contract;
+  // deleting/replacing without consumer migration could break enrollment.
   Stream<PatientProfileData?> watchProfile() {
     return (select(patientProfiles)..limit(1)).watchSingleOrNull();
   }
@@ -275,9 +378,11 @@ class AppDatabase extends _$AppDatabase {
   /// [granted] true = consent given, false = consent withdrawn.
   Future<void> setAiConsent({required bool granted}) async {
     final ts = granted ? DateTime.now() : null;
-    final existing = await (select(
-      patientProfiles,
-    )..limit(1)).getSingleOrNull();
+    // Pre-D7 legacy fixtures retain their historical behavior. Patient vaults
+    // never select or mutate an arbitrary first profile.
+    final existing = patientVaultScope == null
+        ? await (select(patientProfiles)..limit(1)).getSingleOrNull()
+        : await getProfileForLocalUserId(activeProfileRowId);
     if (existing != null) {
       await (update(patientProfiles)
             ..where((t) => t.userId.equals(existing.userId)))

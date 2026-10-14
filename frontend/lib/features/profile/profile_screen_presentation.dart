@@ -102,24 +102,61 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             l10n.diabetesType2,
             l10n.diabetesGestational,
             l10n.diabetesPreDiabetes,
+            _profileUiText(context,
+              fr: 'Autre diagnostic déclaré',
+              en: 'Another declared condition',
+              ar: 'تشخيص آخر مصرّح به',
+            ),
+            _profileUiText(context,
+              fr: 'Je ne sais pas / plus tard',
+              en: 'Not sure / later',
+              ar: 'لا أعرف / لاحقًا',
+            ),
           ],
-          ['type1', 'type2', 'gestational', 'pre'],
+          ['type1', 'type2', 'gestational', 'pre', 'other', 'unknown'],
           _diabetesType,
           (val) => _setPresentationState(() => _diabetesType = val),
         ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.science_outlined, l10n.treatment),
         const SizedBox(height: 12),
-        _buildChoiceGrid(
-          [
-            l10n.treatmentInsulin,
-            l10n.treatmentTablets,
-            l10n.treatmentLifestyle,
-          ],
-          ['insulin', 'tablets', 'lifestyle'],
-          _treatment,
-          (val) => _setPresentationState(() => _treatment = val),
+        MedicalTreatmentMultiSelector(
+          diabetesType: _diabetesType,
+          value: _declaredTreatments,
+          onChanged: (value) => _setPresentationState(() {
+            _declaredTreatments = value;
+            _treatmentTouched = true;
+          }),
         ),
+        if (_treatmentConflict && _canResolveRemoteTreatmentConflict)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const Key('d7-resolve-treatment-conflict'),
+                onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
+                    ? null : _resolveTreatmentConflict,
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_problem, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _profileUiText(context,
+                          fr: 'Comparer et résoudre le conflit',
+                          en: 'Review and resolve conflict',
+                          ar: 'مراجعة التعارض وحلّه',
+                        ),
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
         const SizedBox(height: 12),
@@ -624,17 +661,65 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       'type2' => l10n.diabetesType2,
       'gestational' => l10n.diabetesGestational,
       'pre' => l10n.diabetesPreDiabetes,
+      'other' => _profileUiText(context,
+        fr: 'Autre diagnostic déclaré',
+        en: 'Another declared condition',
+        ar: 'تشخيص آخر مصرّح به',
+      ),
+      'unknown' => _profileUiText(context,
+        fr: 'Diagnostic non précisé',
+        en: 'Diagnosis not specified',
+        ar: 'لم يحدد التشخيص',
+      ),
       _ => null,
     };
     final treatment = switch (_treatment) {
       'insulin' => l10n.treatmentInsulin,
-      'tablets' => l10n.treatmentTablets,
-      'lifestyle' => l10n.treatmentLifestyle,
+      'tablets' => _profileUiText(context,
+        fr: 'Médicaments déclarés',
+        en: 'Medicines I take',
+        ar: 'أدوية أتناولها',
+      ),
+      'lifestyle' => _profileUiText(context,
+        fr: 'Habitudes de vie',
+        en: 'Lifestyle measures',
+        ar: 'نمط الحياة',
+      ),
+      'other' => _profileUiText(context,
+        fr: 'Autre traitement déclaré',
+        en: 'Other declared treatment',
+        ar: 'علاج آخر مصرّح به',
+      ),
+      'unknown' => _profileUiText(context,
+        fr: 'Traitement non précisé',
+        en: 'Treatment not specified',
+        ar: 'لم يحدد العلاج',
+      ),
       _ => null,
     };
+    final reported = _declaredTreatments.state == D7TreatmentStatus.declared
+        ? _declaredTreatments.codes.map((code) => switch (code) {
+            'insulin' => l10n.treatmentInsulin,
+            'oral_meds' => _profileUiText(context, fr: 'Médicaments oraux',
+                en: 'Oral medicines', ar: 'أدوية فموية'),
+            'lifestyle' => _profileUiText(context, fr: 'Habitudes de vie',
+                en: 'Lifestyle measures', ar: 'نمط الحياة'),
+            'other' => _profileUiText(context, fr: 'Autre traitement déclaré',
+                en: 'Other reported treatment', ar: 'علاج آخر مصرّح به'),
+            _ => code,
+          }).join(' + ')
+        : switch (_declaredTreatments.state) {
+            D7TreatmentStatus.unsure => _profileUiText(context,
+                fr: 'Traitements inconnus', en: 'Treatments unknown',
+                ar: 'العلاجات غير معروفة'),
+            D7TreatmentStatus.noneDeclared => _profileUiText(context,
+                fr: 'Aucun traitement déclaré', en: 'No treatment reported',
+                ar: 'لا يوجد علاج مصرّح به'),
+            _ => treatment,
+          };
     final parts = <String>[
       if (diabetes != null) diabetes,
-      if (treatment != null) treatment,
+      if (reported != null) reported,
       _unit,
     ];
     return parts.join(' · ');
@@ -713,9 +798,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        Expanded(
+          child: Text(
+            title,
+            softWrap: true,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     );

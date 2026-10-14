@@ -119,7 +119,7 @@ void main() {
       expect(await db.select(db.reminders).get(), isEmpty);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 10);
+      expect(version.data['user_version'], 12);
     } finally {
       await db.close();
       await dir.delete(recursive: true);

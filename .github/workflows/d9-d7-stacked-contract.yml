@@ -1,0 +1,44 @@
+name: D9 x D7 stacked vault contract
+
+on:
+  push:
+    branches:
+      - test/d9-d7-vault-onboarding-continuity-20261014
+  pull_request:
+    branches:
+      - feat/v1-d7-medical-profile-relevance-20261013
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d9-d7-stacked-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-vault-contract:
+    name: D9 x D7 local A-B-A, fresh-device gap and consent tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos
+      - name: Run synthetic D9-D7 and local-only safety contracts
+        run: |
+          flutter test --no-pub --reporter expanded \
+            test/d9_d7_account_onboarding_continuity_test.dart \
+            test/v1_d9_existing_account_onboarding_gate_test.dart \
+            test/v1_d9_onboarding_matrix_test.dart \
+            test/services/d30_local_only_pilot_transport_test.dart

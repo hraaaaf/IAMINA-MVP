@@ -1,0 +1,85 @@
+name: IAMINA D7 Local-Only Conflict UI Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d7-conflict-ui-evidence.yml'
+      - 'frontend/test/features/profile/d7_conflict_cta_responsive_test.dart'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-conflict-ui-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conflict-visual:
+    name: D7 local-only hidden remote conflict CTA captures (3 viewports x 3 languages)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      - name: Install readable Latin and Arabic fonts for screenshot capture
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core fonts-noto-core
+          LATIN="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          ARABIC="$(fc-match -f '%{file}' 'Noto Naskh Arabic')"
+          test -r "$LATIN"
+          test -r "$ARABIC"
+          echo "D7_VISUAL_FONT_LATIN=$LATIN" >> "$GITHUB_ENV"
+          echo "D7_VISUAL_FONT_ARABIC=$ARABIC" >> "$GITHUB_ENV"
+      - name: Capture synthetic D7 local-only profile collapsed and expanded
+        run: |
+          flutter test --no-pub --update-goldens --reporter expanded \
+            --dart-define=D7_VISUAL_EVIDENCE=true \
+            test/features/profile/d7_conflict_cta_responsive_test.dart
+      - name: Verify screenshots exist, dimensions and visible interaction change
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import struct
+
+          directory = Path('test/features/profile/goldens')
+          sizes = ((390, 844), (768, 1024), (1280, 900))
+          languages = ('fr', 'en', 'ar')
+          captures = []
+          for width, height in sizes:
+              for lang in languages:
+                  pictures = []
+                  for scene in ('collapsed', 'expanded'):
+                      p = directory / f'd7-conflict-{width}x{height}-{lang}-{scene}.png'
+                      data = p.read_bytes()
+                      assert data[:8] == b'\x89PNG\r\n\x1a\n', p
+                      dimensions = struct.unpack('>II', data[16:24])
+                      assert dimensions == (width, height), (p, dimensions)
+                      assert len(data) > 2500, (p, len(data))
+                      pictures.append(hashlib.sha256(data).hexdigest())
+                      captures.append(str(p))
+                  assert pictures[0] != pictures[1], f'No visible expansion: {width} {lang}'
+          assert len(captures) == 18
+          print('Verified 18 synthetic PNG screenshots, correct viewport sizes, distinct collapsed/expanded scenes.')
+          PY
+      - name: Upload targeted D7 409 UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-d7-conflict-ui-evidence
+          path: frontend/test/features/profile/goldens/d7-conflict-*.png
+          if-no-files-found: error
+          retention-days: 14

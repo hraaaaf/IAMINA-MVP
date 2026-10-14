@@ -1,0 +1,191 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_treatment_declaration_store.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
+import 'package:amina/features/profile/profile_screen.dart';
+import 'package:amina/l10n/app_localizations.dart';
+import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/consent_service.dart';
+import 'package:drift/drift.dart' as drift;
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+void main() {
+  const viewports = <Size>[
+    Size(390, 844),
+    Size(768, 1024),
+    Size(1280, 900),
+  ];
+  const locales = ['fr', 'en', 'ar'];
+  // Captures synthétiques uniquement lorsque le workflow dédié le demande.
+  const captureD7VisualEvidence = bool.fromEnvironment('D7_VISUAL_EVIDENCE');
+  setUpAll(() async {
+    if (!captureD7VisualEvidence) return;
+    for (final entry in <String, String?>{
+      'Roboto': Platform.environment['D7_VISUAL_FONT_LATIN'],
+      'Noto Naskh Arabic': Platform.environment['D7_VISUAL_FONT_ARABIC'],
+    }.entries) {
+      final path = entry.value;
+      if (path == null || path.isEmpty) {
+        throw StateError('Missing D7 capture font for ${entry.key}');
+      }
+      final loader = FontLoader(entry.key)
+        ..addFont(File(path).readAsBytes()
+            .then((bytes) => ByteData.sublistView(bytes)));
+      await loader.load();
+    }
+  });
+
+  const copy = {
+    'fr': 'Comparer et résoudre le conflit',
+    'en': 'Review and resolve conflict',
+    'ar': 'مراجعة التعارض وحلّه',
+  };
+
+  for (final size in viewports) {
+    for (final lang in locales) {
+      testWidgets(
+        'D7 pilot A keeps remote conflict CTA hidden at '
+        '${size.width.toInt()}x${size.height.toInt()} in $lang',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          final db = AppDatabase.testPatientVault(
+            NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+          );
+          addTearDown(db.close);
+          await db.into(db.patientProfiles).insert(
+            PatientProfilesCompanion.insert(
+              userId: const drift.Value(734),
+              preferredLanguage: drift.Value(lang),
+              updatedAt: DateTime.utc(2026, 10, 14),
+              diabetesType: const drift.Value('type2'),
+              treatment: const drift.Value('tablets'),
+            ),
+          );
+          final store = PatientTreatmentDeclarationStore(db);
+          await store.write(state: 'declared', codes: ['insulin', 'oral_meds']);
+          final record = (await store.read())!;
+          expect(await store.markConflictIfUnchanged(record.localGeneration),
+              isTrue);
+          final profile = await db.getProfileForLocalUserId(734);
+          final consent = ConsentService()..seedInitialProfile(profile!);
+          addTearDown(consent.dispose);
+          final auth = AuthService();
+          addTearDown(auth.dispose);
+
+          await tester.pumpWidget(MaterialApp(
+            locale: Locale(lang),
+            theme: captureD7VisualEvidence
+                ? ThemeData(fontFamily: 'Roboto',
+                    fontFamilyFallback: const ['Noto Naskh Arabic'])
+                : null,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: MultiProvider(
+              providers: [
+                Provider<AppDatabase>.value(value: db),
+                ChangeNotifierProvider<ConsentService>.value(value: consent),
+                ChangeNotifierProvider<AuthService>.value(value: auth),
+              ],
+              child: const ProfileScreen(),
+            ),
+          ));
+          await tester.pumpAndSettle();
+          // The medical section starts collapsed; expansion must not reveal
+          // an unusable remote conflict CTA in the local-only pilot.
+          final medical = find.byKey(const Key('profile-medical-section'));
+          await tester.ensureVisible(medical);
+          await tester.pumpAndSettle();
+          if (captureD7VisualEvidence) {
+            await expectLater(
+              find.byType(ProfileScreen),
+              matchesGoldenFile(
+                'goldens/d7-conflict-${size.width.toInt()}x${size.height.toInt()}-'
+                '$lang-collapsed.png',
+              ),
+            );
+          }
+          await tester.tap(find.descendant(
+            of: medical, matching: find.byType(ExpansionTile),
+          ));
+          await tester.pumpAndSettle();
+
+          // Clinical transport is denied by default. A persisted 409 must
+          // remain stored without offering a remote-only resolution action.
+          expect(find.byKey(const Key('d7-resolve-treatment-conflict')),
+              findsNothing);
+          expect(find.text(copy[lang]!), findsNothing);
+          expect(tester.takeException(), isNull);
+          if (captureD7VisualEvidence) {
+            await expectLater(
+              find.byType(ProfileScreen),
+              matchesGoldenFile(
+                'goldens/d7-conflict-${size.width.toInt()}x${size.height.toInt()}-'
+                '$lang-expanded.png',
+              ),
+            );
+          }
+          // Viewing a conflict cannot change or ACK its local data.
+          final after = (await store.read())!;
+          expect(after.syncStatus, 'conflict');
+          expect(after.codes, record.codes);
+          expect(after.localGeneration, record.localGeneration);
+        },
+      );
+    }
+  }
+
+  testWidgets('D7 non-conflicted declaration has no conflict CTA', (tester) async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    addTearDown(db.close);
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(734),
+        updatedAt: DateTime.utc(2026, 10, 14),
+      ),
+    );
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final profile = await db.getProfileForLocalUserId(734);
+    final consent = ConsentService()..seedInitialProfile(profile!);
+    addTearDown(consent.dispose);
+    final auth = AuthService();
+    addTearDown(auth.dispose);
+
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('fr'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MultiProvider(
+        providers: [
+          Provider<AppDatabase>.value(value: db),
+          ChangeNotifierProvider<ConsentService>.value(value: consent),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+        ],
+        child: const ProfileScreen(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final medical = find.byKey(const Key('profile-medical-section'));
+    await tester.ensureVisible(medical);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+      of: medical, matching: find.byType(ExpansionTile),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('d7-resolve-treatment-conflict')), findsNothing);
+    expect((await store.read())?.syncStatus, 'pending');
+    expect(tester.takeException(), isNull);
+  });
+}

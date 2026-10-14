@@ -9,10 +9,14 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
 import '../../services/country_choices.dart';
 import '../../services/locale_preference_service.dart';
+import '../../services/sync_service.dart';
+import '../profile/medical_treatment_declaration_v1.dart';
+import '../profile/medical_treatment_multi_selector.dart';
 
 String _preferencesCopy(
   BuildContext context, {
@@ -45,7 +49,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   String? _language;
   String? _country;
   String? _diabetesType;
-  String? _treatment;
+  String? _treatment; // existing optional legacy scalar; never inferred
+  D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
+  bool _treatmentTouched = false;
   String _unit = 'mg/dL';
   bool _saving = false;
   bool _preferencesInitialized = false;
@@ -110,11 +116,6 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
   Future<void> _finish() async {
     if (_language == null || _country == null) return;
-    if (!widget.preferencesOnly &&
-        (_diabetesType == null || _treatment == null)) {
-      return;
-    }
-
     setState(() => _saving = true);
 
     try {
@@ -139,14 +140,15 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       }
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = context.read<AuthService>().firebaseUser;
-      final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
+      // Scoped physical vault selects the owner; Firebase hashCode is neither
+      // stable nor an authenticated patient identifier.
+      final userId = db.activeProfileRowId;
       final profile = PatientProfilesCompanion.insert(
         userId: drift.Value(userId),
         preferredLanguage: drift.Value(_language!),
         updatedAt: DateTime.now(),
-        diabetesType: drift.Value(_diabetesType!),
-        treatment: drift.Value(_treatment!),
+        diabetesType: drift.Value(_diabetesType),
+        treatment: drift.Value(_treatment),
         unitPreference: drift.Value(_unit),
         targetRangeLow: const drift.Value(70),
         targetRangeHigh: const drift.Value(180),
@@ -156,6 +158,45 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .into(db.patientProfiles)
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
+
+      // A fresh authenticated device starts without a local profile. Never
+      // fabricate one just to restore clinical declarations: first-use remains
+      // explicit. Once the patient has saved this real profile, recover only
+      // a server-explicit declaration and only if the patient made no new
+      // treatment choice on this device.
+      if (!_treatmentTouched && mounted &&
+          db.patientVaultScope?.nativeDjangoUserId != null &&
+          context.read<AuthService>().hasRemoteApiCredential) {
+        // Remote restoration is best-effort and must not hold the patient
+        // inside first-use if the network is down. The vault-bound sync
+        // service verifies the auth epoch before accepting the response.
+        unawaited(
+          context.read<SyncService>().restorePatientTreatmentDeclaration(),
+        );
+      }
+      if (_treatmentTouched && db.patientVaultScope != null) {
+        await PatientTreatmentDeclarationStore(db).write(
+          state: d7StateCode(_declaredTreatments.state),
+          codes: _declaredTreatments.codes,
+        ).timeout(_persistenceTimeout);
+        // Keep any offline choice in the patient vault. The native upload
+        // uses conditional CAS and generation-scoped ACK, never legacy PATCH.
+        if (mounted && db.patientVaultScope?.nativeDjangoUserId != null &&
+            context.read<AuthService>().hasRemoteApiCredential) {
+          final mirrored = await context.read<SyncService>()
+              .sendPendingTreatmentDeclaration()
+              .timeout(_persistenceTimeout, onTimeout: () => false);
+          if (!mirrored && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(_preferencesCopy(context,
+                fr: 'Traitements enregistrés localement. Synchronisation non confirmée.',
+                en: 'Treatments saved locally. Remote sync not confirmed.',
+                ar: 'تم حفظ العلاجات محليًا. لم يتم تأكيد المزامنة.',
+              )),
+            ));
+          }
+        }
+      }
 
       if (mounted) context.go('/dashboard');
     } on TimeoutException catch (error, stackTrace) {
@@ -270,30 +311,45 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               selected: _diabetesType == 'pre',
               onTap: () => setState(() => _diabetesType = 'pre'),
             ),
+            _Choice(
+              label: _preferencesCopy(context,
+                fr: 'Autre diagnostic déclaré',
+                en: 'Another declared condition',
+                ar: 'تشخيص آخر مصرّح به',
+              ),
+              selected: _diabetesType == 'other',
+              onTap: () => setState(() => _diabetesType = 'other'),
+            ),
+            _Choice(
+              label: _preferencesCopy(context,
+                fr: 'Je ne sais pas / plus tard',
+                en: 'Not sure / later',
+                ar: 'لا أعرف / لاحقًا',
+              ),
+              selected: _diabetesType == 'unknown',
+              onTap: () => setState(() => _diabetesType = 'unknown'),
+            ),
           ],
         ),
-      if (_diabetesType != null)
+      if (_country != null)
         _Question(
-          title: l10n.onboardingTreatmentQuestion,
+          title: _preferencesCopy(context,
+            fr: 'Quels traitements suivez-vous actuellement ? (facultatif)',
+            en: 'Which treatments do you currently follow? (optional)',
+            ar: 'ما العلاجات التي تتبعها حاليًا؟ (اختياري)',
+          ),
           children: [
-            _Choice(
-              label: l10n.onboardingTreatmentInsulin,
-              selected: _treatment == 'insulin',
-              onTap: () => setState(() => _treatment = 'insulin'),
-            ),
-            _Choice(
-              label: l10n.treatmentTablets,
-              selected: _treatment == 'tablets',
-              onTap: () => setState(() => _treatment = 'tablets'),
-            ),
-            _Choice(
-              label: l10n.onboardingTreatmentLifestyle,
-              selected: _treatment == 'lifestyle',
-              onTap: () => setState(() => _treatment = 'lifestyle'),
+            MedicalTreatmentMultiSelector(
+              diabetesType: _diabetesType,
+              value: _declaredTreatments,
+              onChanged: (value) => setState(() {
+                _declaredTreatments = value;
+                _treatmentTouched = true;
+              }),
             ),
           ],
         ),
-      if (_treatment != null)
+      if (_country != null)
         _Question(
           title: l10n.onboardingUnitQuestion,
           children: [
@@ -318,14 +374,12 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             language: _language,
             country: _country,
             diabetesType: _diabetesType,
-            treatment: _treatment,
+            treatment: _treatmentTouched ? d7StateCode(_declaredTreatments.state) : null,
           );
 
-    final ready =
-        _language != null &&
-        _country != null &&
-        (widget.preferencesOnly ||
-            (_diabetesType != null && _treatment != null));
+    // Language and country are the only first-use prerequisites.
+    // The five-step medical questionnaire stays available, never mandatory.
+    final ready = _language != null && _country != null;
 
     final assistantLabel = widget.preferencesOnly
         ? _preferencesCopy(

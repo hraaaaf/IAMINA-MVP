@@ -61,14 +61,15 @@ void main() {
       expect(svc.hasCompletedOnboarding, isFalse);
     });
 
-    test('partial profile is not completed', () async {
+    test('D7 persisted profile with unknown medical facts completes first-use', () async {
       final db = _openDb();
       addTearDown(db.close);
       await _insertProfile(db);
       final profile = await db.select(db.patientProfiles).getSingle();
       final svc = ConsentService();
       svc.seedInitialProfile(profile);
-      expect(svc.hasCompletedOnboarding, isFalse);
+      expect(svc.hasCompletedOnboarding, isTrue);
+      expect(svc.hasConsent, isFalse);
     });
 
     test('diabetes type and treatment complete onboarding', () async {
@@ -124,21 +125,17 @@ void main() {
     test(
       'onboarding completion notifies listeners when consent stays false',
       () async {
-        await _insertProfile(db);
         final svc = ConsentService();
         var notifications = 0;
         svc.addListener(() => notifications++);
         svc.attachStream(db.watchProfile());
         await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(svc.hasCompletedOnboarding, isFalse);
 
         notifications = 0;
-        await (db.update(db.patientProfiles)..where((tbl) => tbl.userId.equals(1)))
-            .write(
-          const PatientProfilesCompanion(
-            diabetesType: drift.Value('type2'),
-            treatment: drift.Value('tablets'),
-          ),
-        );
+        // D7: persisting a profile with no declared clinical facts is enough
+        // to finish first use. This does not grant medical or AI consent.
+        await _insertProfile(db);
         await Future<void>.delayed(const Duration(milliseconds: 100));
 
         expect(svc.hasCompletedOnboarding, isTrue);
