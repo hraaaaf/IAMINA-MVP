@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
+import 'package:amina/data/drift/patient_treatment_declaration_store.dart';
 import 'package:amina/services/auth_epoch.dart';
 import 'package:amina/services/patient_vault_session_controller.dart';
 import 'package:drift/native.dart';
@@ -110,6 +111,12 @@ void main() {
       ),
     );
 
+    final storeA = PatientTreatmentDeclarationStore(dbA);
+    await storeA.write(
+      state: 'declared', codes: ['oral_meds', 'lifestyle'],
+    );
+    expect((await storeA.read())?.syncStatus, 'pending');
+
     selected = 812;
     AuthEpoch.advance();
     auth.changed();
@@ -117,6 +124,8 @@ void main() {
     await controller.reconcile();
     final dbB = controller.activeDatabase!;
     expect(await dbB.select(dbB.patientProfiles).get(), isEmpty);
+    final storeB = PatientTreatmentDeclarationStore(dbB);
+    expect(await storeB.read(), isNull);
     await dbB.into(dbB.patientProfiles).insert(
       PatientProfilesCompanion.insert(
         userId: const drift.Value(812),
@@ -124,6 +133,9 @@ void main() {
         diabetesType: const drift.Value('type2'),
       ),
     );
+
+    await storeB.write(state: 'declared', codes: ['insulin']);
+    expect((await storeB.read())?.codes, ['insulin']);
 
     selected = 734;
     AuthEpoch.advance();
@@ -135,6 +147,12 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single.userId, 734);
     expect(rows.single.diabetesType, 'type1');
+    final recoveredA = (await PatientTreatmentDeclarationStore(again).read())!;
+    expect(recoveredA.codes, ['oral_meds', 'lifestyle']);
+    expect(recoveredA.syncStatus, 'pending');
+    expect(recoveredA.localGeneration, 1);
+    // A never inherited B's insulin declaration when switching back.
+    expect(recoveredA.codes, isNot(contains('insulin')));
   });
 
 }

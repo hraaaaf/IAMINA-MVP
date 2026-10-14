@@ -388,6 +388,47 @@ void main() {
     )).called(1);
   });
 
+  test('D7 offline upload remains pending and later retry confirms receipt',
+      () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final serverAt = DateTime.utc(2026, 10, 13, 22, 30, 0, 123, 456);
+    var tries = 0;
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) async {
+      tries++;
+      if (tries == 1) {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      return TreatmentMirrorResult(
+        TreatmentMirrorStatus.confirmed,
+        serverUpdatedAtUtc: serverAt,
+      );
+    });
+
+    expect(await sender.sendPendingTreatmentDeclaration(), isFalse);
+    final pending = (await store.read())!;
+    expect(pending.codes, ['lifestyle', 'oral_meds']);
+    expect(pending.syncStatus, 'pending');
+    expect(pending.localGeneration, 1);
+    expect(pending.baseServerUpdatedAtUtc, isNull);
+
+    expect(await sender.sendPendingTreatmentDeclaration(), isTrue);
+    final confirmed = (await store.read())!;
+    expect(confirmed.codes, pending.codes);
+    expect(confirmed.localGeneration, pending.localGeneration);
+    expect(confirmed.syncStatus, 'confirmed');
+    expect(confirmed.baseServerUpdatedAtUtc, serverAt);
+    expect(tries, 2);
+  });
+
   test('D7 409 conflict never overwrites local treatment choices', () async {
     final db = await nativeVault(734);
     addTearDown(db.close);
