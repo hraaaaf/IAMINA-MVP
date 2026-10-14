@@ -1,3 +1,20 @@
+/// Pure D30 journal egress decision. A bearer alone never grants sync consent.
+///
+/// The current patient runtime supplies [patientBoundSyncApproved] = false
+/// until ownership, explicit consent and vault isolation are proven.
+bool mayDispatchClinicalJournal({
+  required bool patientBoundSyncApproved,
+  required bool hasNativeRemoteCredential,
+  required String? bearerToken,
+  required int requestAuthEpoch,
+  required int currentAuthEpoch,
+}) =>
+    patientBoundSyncApproved &&
+    hasNativeRemoteCredential &&
+    bearerToken != null &&
+    bearerToken.isNotEmpty &&
+    requestAuthEpoch == currentAuthEpoch;
+
 class SyncApiException implements Exception {
   final String operation;
   final String errorType;

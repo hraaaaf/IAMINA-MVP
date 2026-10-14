@@ -73,16 +73,66 @@ class ProviderApiException implements Exception {
       'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
+// Deny all non-read clinical methods, including trailing-slash route variants.
+// Never rely on a remote 405 or redirect to protect sensitive request bodies.
+String _clinicalWritePath(Uri url) =>
+    url.path.replaceFirst(RegExp(r'/+$'), '');
+
+bool _isClinicalWriteMethod(String method) =>
+    method.toUpperCase() != 'GET' &&
+    method.toUpperCase() != 'HEAD' &&
+    method.toUpperCase() != 'OPTIONS';
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
-  AuthInterceptor(this.authService);
+  final bool Function() canSyncClinicalJournal;
+  final bool Function() canUploadClinicalProfile;
+
+  AuthInterceptor(
+    this.authService, {
+    required this.canSyncClinicalJournal,
+    required this.canUploadClinicalProfile,
+  });
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
-    final token = await authService.getIdToken();
     Request request = chain.request;
+
+    // Deny journal HTTP before even consulting remote/Firebase credentials.
+    // Local-only use must never need the remote authentication provider.
+    final path = _clinicalWritePath(request.url);
+    final isJournalUpload = _isClinicalWriteMethod(request.method) &&
+        (path == '/api/v1/logs' || path == '/api/v1/logs/batch');
+    if (isJournalUpload && !canSyncClinicalJournal()) {
+      throw StateError('remote_journal_credential_required');
+    }
+
+    // Separate from journal consent: verified patient owner and explicit
+    // purpose-specific profile consent must both exist before any PATCH.
+    // A historical bearer is never enough and must not even be consulted.
+    final isClinicalProfileWrite =
+        _isClinicalWriteMethod(request.method) &&
+        path == '/api/v1/profile';
+    if (isClinicalProfileWrite && !canUploadClinicalProfile()) {
+      throw StateError('patient_bound_profile_consent_required');
+    }
+
+    final authEpochAtStart = AuthService.authEpoch;
+    final token = await authService.getIdToken();
+
+    if (isJournalUpload &&
+        !mayDispatchClinicalJournal(
+          patientBoundSyncApproved: canSyncClinicalJournal(),
+          hasNativeRemoteCredential: authService.hasRemoteApiCredential,
+          bearerToken: token,
+          requestAuthEpoch: authEpochAtStart,
+          currentAuthEpoch: AuthService.authEpoch,
+        )) {
+      throw StateError('remote_journal_credential_required');
+    }
+
     if (token != null && token.isNotEmpty) {
       request = applyHeader(
         request,
@@ -119,6 +169,17 @@ class RetryInterceptor implements Interceptor {
     Chain<BodyType> chain,
   ) async {
     Response<BodyType> response = await chain.proceed(chain.request);
+
+    // Journal uploads can contain patient health data. A delayed HTTP retry
+    // could replay it after account switch/logout or without explicit consent.
+    // Leave the local outbox pending until a newly authorized sync attempt.
+    final request = chain.request;
+    final path = _clinicalWritePath(request.url);
+    final isClinicalJournalPost = _isClinicalWriteMethod(request.method) &&
+        (path == '/api/v1/logs' || path == '/api/v1/logs/batch');
+    final isClinicalProfileWrite = _isClinicalWriteMethod(request.method) &&
+        path == '/api/v1/profile';
+    if (isClinicalJournalPost || isClinicalProfileWrite) return response;
 
     // 401 — refresh token and retry once
     if (response.statusCode == 401) {
@@ -162,19 +223,40 @@ bool isDocumentUploadSizeAllowed(int byteLength) =>
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final http.Client? _httpClient;
+
+  /// D30 safety hold: Drift journal rows lack a verified remote patient owner
+  /// and IAMINA has no independent, versioned journal-sync opt-in yet.
+  /// A bearer (including a valid Django bearer) is not sufficient authority.
+  /// No production path may upload journal entries until both gates exist.
+  bool get canSyncClinicalJournal => false;
+
+  /// D30 safety hold for profile PATCH: neither current local owner binding
+  /// nor purpose-specific patient consent has been independently proven.
+  /// This must remain false until security, privacy and sync gates are met.
+  bool get canUploadClinicalProfile => false;
+
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({
+    this.baseUrl = kBaseUrl,
+    AuthService? authService,
+    http.Client? httpClient,
+  }) : _authService = authService ?? AuthService(),
+       _httpClient = httpClient;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
+    client: _httpClient,
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
-      AuthInterceptor(_authService),
+      AuthInterceptor(
+        _authService,
+        canSyncClinicalJournal: () => canSyncClinicalJournal,
+        canUploadClinicalProfile: () => canUploadClinicalProfile,
+      ),
       RetryInterceptor(_authService),
-      CurlInterceptor(),
     ],
     converter: const JsonConverter(),
   );
@@ -182,6 +264,7 @@ class ApiClient {
   ChopperClient get client => _client;
 
   Future<bool> patchProfile(Map<String, dynamic> patch) async {
+    if (!canUploadClinicalProfile) return false;
     try {
       final response = await _client.patch(
         Uri.parse('/api/v1/profile'),
@@ -208,17 +291,37 @@ class ApiClient {
     }
   }
 
-  /// Envoie un log unique au backend.
+  /// Send one clinical log only when a remote credential exists.
+  ///
+  /// A device-local IAMINA enrollment is not remote consent or authentication.
+  /// Never put a local-only patient's clinical payload on the wire to get a 401.
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
     return guardSyncApiCall<bool>('sync_log_entry', () async {
+      if (!canSyncClinicalJournal) return false;
+      final token = await _authService.getIdToken();
+      if (token == null ||
+          token.isEmpty ||
+          !_authService.hasRemoteApiCredential) {
+        return false;
+      }
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
     });
   }
 
-  /// Envoie une liste de logs en une seule requête (Batch).
+  /// Sync clinical logs only for a remotely authenticated session.
+  ///
+  /// A null bearer must stop egress BEFORE the HTTP body is constructed/sent.
+  /// Optional-sync consent, epoch races and full recovery remain D30 gates.
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
+      if (!canSyncClinicalJournal) return const <String>[];
+      final token = await _authService.getIdToken();
+      if (token == null ||
+          token.isEmpty ||
+          !_authService.hasRemoteApiCredential) {
+        return const <String>[];
+      }
       final response = await _client.post(
         Uri.parse('/api/v1/logs/batch'),
         body: logs,

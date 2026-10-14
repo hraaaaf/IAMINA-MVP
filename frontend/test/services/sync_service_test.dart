@@ -29,7 +29,32 @@ void main() {
   setUp(() {
     mockDb = MockAppDatabase();
     mockApi = MockApiClient();
+    // Existing contract tests exercise an explicitly authorized fake client.
+    // Production ApiClient denies journal sync pending D30 owner/consent proof.
+    when(() => mockApi.canSyncClinicalJournal).thenReturn(true);
     syncService = SyncService(mockDb, mockApi);
+  });
+
+  test('D30 local-only sync hold never reads or mutates patient outbox',
+      () async {
+    when(() => mockApi.canSyncClinicalJournal).thenReturn(false);
+
+    await syncService.syncPendingLogs();
+    expect(syncService.state.value, SyncUiState.pending);
+    expect(syncService.isSyncing.value, isFalse);
+    verifyNever(() => mockDb.getPendingLogs());
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+    verifyNever(() => mockDb.markLogAsSynced(any()));
+    verifyNever(() => mockDb.reportSyncFailure(any(), any()));
+  });
+
+  test('D30 local-only refresh does not claim up-to-date or query network',
+      () async {
+    when(() => mockApi.canSyncClinicalJournal).thenReturn(false);
+
+    await syncService.refreshState();
+    expect(syncService.state.value, SyncUiState.pending);
+    verifyNever(() => mockDb.getPendingLogs());
   });
 
   test('syncPendingLogs does nothing when no pending logs', () async {

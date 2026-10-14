@@ -12,6 +12,9 @@ void main() {
   setUp(() {
     mockDb = MockAppDatabase();
     mockApi = MockApiClient();
+    // These legacy connectivity tests exercise an approved fake sync client.
+    // The production ApiClient remains fail-closed until D30 consent and owner proof.
+    when(() => mockApi.canSyncClinicalJournal).thenReturn(true);
     syncService = SyncService(mockDb, mockApi);
   });
 
