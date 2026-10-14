@@ -281,6 +281,16 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
                             candidate = message.removeprefix(marker)
                             if candidate.isidentifier():
                                 failure_classes.add(candidate)
+                    safe_transport = []
+                    for message in capture.messages[case_log_start:]:
+                        marker = "pulper_benchmark_transport status="
+                        if message.startswith(marker):
+                            tokens = message.removeprefix(marker).split(" exception_type=")
+                            if len(tokens) == 2 and tokens[0].isdigit() and tokens[1].isidentifier():
+                                safe_transport.append({
+                                    "status": int(tokens[0]),
+                                    "exception_type": tokens[1],
+                                })
                     cases_out.append({
                         "id": case.case_id,
                         "format": case.format_name,
@@ -290,6 +300,7 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
                         "missing_field_names": sorted(set(case.expected) - set(actual)),
                         "parser_metadata_present": bool(output.parser_model and output.prompt_version),
                         "safe_llm_error_classes": sorted(failure_classes),
+                        "safe_transport": safe_transport,
                     })
     finally:
         root.removeHandler(capture)
