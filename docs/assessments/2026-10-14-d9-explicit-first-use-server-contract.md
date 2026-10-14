@@ -6,7 +6,7 @@
 Permettre à un appareil nouvellement connecté de distinguer, pour **ce patient authentifié**, l'achèvement **explicitement enregistré** de la première utilisation, sans déduire celui-ci d'un profil médical (éventuellement vide) ou d'une date de consentement IA.
 
 ## Contrat V1
-- `GET /api/v1/profile/first-use` : `{ "version": 1, "completed": false, "completed_at": null }` en absence de preuve. Le principal est extrait du bearer côté serveur, jamais de l'URL/corps client.
+- `GET /api/v1/profile/first-use` : `{ "version": 1, "owner_user_id": <Django patient ID>, "completed": false, "completed_at": null }` en absence de preuve. `owner_user_id` provient EXCLUSIVEMENT de `request.user` côté serveur. Le client doit comparer exactement cet ID avec le coffre actif avant de croire la réponse (y compris `completed=false`). Le principal est extrait du bearer côté serveur, jamais de l'URL/corps client.
 - `POST /api/v1/profile/first-use` avec **uniquement** `{ "version": 1, "confirmed": true }` : action explicite suivant une sauvegarde locale first-use réussie. Même réponse avec horodatage serveur, commande **idempotente**. Le `confirmed` est une déclaration **du client authentifié**, pas une preuve biométrique ou clinique.
 - Conservation : champ nullable `core.BasePatientProfile.first_use_completed_at`; null par défaut sur anciens comptes. Aucune migration automatique d'anciens champs cliniques, aucun défaut de diagnostic, aucune modification des consentements.
 - Authentification : mêmes protections Django-Ninja `HybridBearerAuth` existantes que `GET /api/v1/profile`; jeton natif révoqué/invalide refusé. La sélection du propriétaire est exclusivement `request.user`.
@@ -23,3 +23,8 @@ Permettre à un appareil nouvellement connecté de distinguer, pour **ce patient
 - **Sécurité** : la validation de statut reste une assertion d'un patient authentifié, pas une autorisation de traitement IA ni de synchronisation des journaux/profils. Tout déploiement médical doit passer une revue indépendante de confidentialité et de sécurité ; la CI seule ne certifie pas cette revue.
 
 **Succès de cette tranche seulement** = modèles + migration + endpoint + 8 tests authentifiés et CI backend/PostgreSQL/migration-drift + snapshot OpenAPI exact au SHA final. **Succès D9 global** = en plus restauration client sur appareil neuf, tests A→B→A réels, fail-closed, consentement distinct et revue. Pas de déploiement Vercel.
+
+## Contrôle supplémentaire de liaison de propriétaire (14/10/2026)
+
+- Les deux réponses GET et POST incluent `owner_user_id` correspondant au `request.user.pk` validé par le serveur. **Jamais** accepter une réponse avec ID manquant, 0, une chaîne ou un ID différent du coffre local ; la simple présence d'un bearer ne garantit pas que le coffre actuellement affiché correspond à l'identité résolue.
+- [PR D9 #996](https://github.com/hraaaaf/IAMINA-MVP/pull/996) ajoute la vérification `expectedOwner` côté client, avec tests A→B→A et réponse propriétaire B dans le coffre A. Les deux PR restent isolées jusqu'aux validations exactes et revue indépendante.
