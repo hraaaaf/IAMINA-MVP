@@ -206,6 +206,7 @@ class D9FirstUseCompletionCommand(BaseModel):
 
 class D9FirstUseCompletionState(BaseModel):
     version: Literal[1] = 1
+    owner_user_id: int
     completed: bool
     completed_at: Optional[datetime]
 
@@ -213,6 +214,7 @@ class D9FirstUseCompletionState(BaseModel):
 def _d9_completion_state(profile: BasePatientProfile) -> D9FirstUseCompletionState:
     completed_at = profile.first_use_completed_at
     return D9FirstUseCompletionState(
+        owner_user_id=profile.patient_id,
         completed=completed_at is not None,
         completed_at=completed_at,
     )
