@@ -54,7 +54,10 @@ class D9ExplicitFirstUseProofTests(TestCase):
         result = self._request("GET", self.token_a)
         self.assertEqual(result.status_code, 200, result.content)
         self.assertEqual(result.json(), {
-            "version": 1, "completed": False, "completed_at": None,
+            "version": 1,
+            "owner_user_id": self.a.pk,
+            "completed": False,
+            "completed_at": None,
         })
         self.a_profile.refresh_from_db()
         self.assertIsNone(self.a_profile.first_use_completed_at)
@@ -65,6 +68,7 @@ class D9ExplicitFirstUseProofTests(TestCase):
         self.assertEqual(recorded.status_code, 200, recorded.content)
         proof = recorded.json()
         self.assertEqual(proof["version"], 1)
+        self.assertEqual(proof["owner_user_id"], self.a.pk)
         self.assertIs(proof["completed"], True)
         self.assertIsNotNone(proof["completed_at"])
 
@@ -80,7 +84,9 @@ class D9ExplicitFirstUseProofTests(TestCase):
     def test_a_b_a_cannot_borrow_completion_or_consent(self):
         self.assertEqual(self._request("POST", self.token_a).status_code, 200)
         self.assertTrue(self._request("GET", self.token_a).json()["completed"])
-        self.assertFalse(self._request("GET", self.token_b).json()["completed"])
+        b_before = self._request("GET", self.token_b).json()
+        self.assertFalse(b_before["completed"])
+        self.assertEqual(b_before["owner_user_id"], self.b.pk)
         self.assertEqual(self._request("POST", self.token_b).status_code, 200)
         self.assertTrue(self._request("GET", self.token_b).json()["completed"])
         self.assertTrue(self._request("GET", self.token_a).json()["completed"])
@@ -97,6 +103,7 @@ class D9ExplicitFirstUseProofTests(TestCase):
         # database; only the verified bearer selects the server-side owner.
         new_device = self._request("GET", self.token_a)
         self.assertTrue(new_device.json()["completed"])
+        self.assertEqual(new_device.json()["owner_user_id"], self.a.pk)
         self.assertFalse(self._request("GET", self.token_b).json()["completed"])
 
     def test_absent_or_invalid_bearer_never_exposes_or_writes_completion(self):
