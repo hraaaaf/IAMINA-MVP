@@ -82,6 +82,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   late final AppRouterHolder _guestRouter;
   _VaultBindings? _bindings;
   int _generation = 0;
+  int _d9LockNonce = 0;
 
   @override
   void initState() {
@@ -98,8 +99,19 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   }
 
   void _onLockChanged() {
+    // A lock/re-unlock during an awaited GET invalidates the old bearer
+    // response even if the patient owner and auth epoch stayed unchanged.
+    ++_d9LockNonce;
+    final current = _bindings;
+    if (!widget.appLock.isUnlocked) {
+      if (current != null && current.d9Gate == _D9FirstUseGate.checking) {
+        current.d9Gate = _D9FirstUseGate.unresolved;
+        if (mounted) setState(() {});
+      }
+      return;
+    }
     _maybeStartSync();
-    if (widget.appLock.isUnlocked) unawaited(_verifyD9FirstUse());
+    unawaited(_verifyD9FirstUse());
   }
 
   Future<void> _verifyD9FirstUse() async {
@@ -112,6 +124,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       return;
     }
     final generation = _generation;
+    final lockNonce = _d9LockNonce;
     final epoch = AuthService.authEpoch;
     final owner = current.scope.nativeDjangoUserId;
     if (owner == null || widget.controller.activeDatabase != current.db) {
@@ -122,6 +135,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     final proof = await current.d9FirstUse!.fetch();
     if (!mounted ||
         generation != _generation ||
+        lockNonce != _d9LockNonce ||
         epoch != AuthService.authEpoch ||
         widget.controller.activeDatabase != current.db ||
         _bindings != current ||
@@ -221,7 +235,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         activePatientOwner: () =>
             widget.controller.activeScope?.nativeDjangoUserId,
         authEpoch: () => AuthService.authEpoch,
-        vaultGeneration: () => _generation,
+        vaultGeneration: () => _generation + _d9LockNonce,
       );
       final sync = SyncService(
         db,
