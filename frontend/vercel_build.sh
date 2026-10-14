@@ -26,6 +26,7 @@ fi
 echo "D7/D9 SYNTHETIC PREVIEW ONLY: no patient data, remote account or certified API"
 flutter build web --release \
   --dart-define=IAMINA_OFFLINE_DEMO=true \
+  --dart-define=IAMINA_D7_D9_ISOLATED_PREVIEW=true \
   --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
   --dart-define=API_BASE_URL=https://iamina-d7-preview.invalid
 exit 0
