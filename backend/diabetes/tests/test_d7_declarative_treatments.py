@@ -61,11 +61,18 @@ class DeclarativeTreatmentPersistenceTests(TestCase):
                 treatment_type="oral_meds",
             )
 
+    @staticmethod
+    def _declaration_request(user, revision="none"):
+        return SimpleNamespace(
+            user=user,
+            headers={"X-Iamina-Treatment-Expected-Updated-At": revision},
+        )
+
     @patch("diabetes.services.session_cache.invalidate")
     def test_multiselect_round_trip_does_not_overwrite_legacy_or_other_patient(
         self, _invalidate
     ):
-        a = SimpleNamespace(user=self.a)
+        a = self._declaration_request(self.a)
         b = SimpleNamespace(user=self.b)
         patch_profile(
             a,
@@ -110,6 +117,9 @@ class DeclarativeTreatmentPersistenceTests(TestCase):
         record = DiabetesProfile.objects.get(base_profile__patient=self.a)
         self.assertEqual(record.treatment_declarations, [])
         self.assertEqual(record.treatment_declaration_state, "unsure")
+        a.headers["X-Iamina-Treatment-Expected-Updated-At"] = (
+            record.treatment_declaration_updated_at.isoformat()
+        )
         patch_profile(
             a,
             ProfilePatchSchema(
@@ -118,6 +128,9 @@ class DeclarativeTreatmentPersistenceTests(TestCase):
         )
         record.refresh_from_db()
         self.assertEqual(record.treatment_declaration_state, "none_declared")
+        a.headers["X-Iamina-Treatment-Expected-Updated-At"] = (
+            record.treatment_declaration_updated_at.isoformat()
+        )
         patch_profile(
             a,
             ProfilePatchSchema(
@@ -143,7 +156,7 @@ class DeclarativeTreatmentPersistenceTests(TestCase):
             ]
         )
         patch_profile(
-            SimpleNamespace(user=self.a),
+            self._declaration_request(self.a),
             ProfilePatchSchema(
                 treatment_declaration=declaration(codes=["oral_meds"])
             ),

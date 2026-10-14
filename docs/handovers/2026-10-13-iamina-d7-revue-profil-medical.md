@@ -1,3 +1,19 @@
+# IAMINA D7 — 14 octobre 2026 — durcissement de la précondition CAS (CANDIDAT NON CERTIFIÉ)
+
+**PR #986 OPEN/DRAFT, AUCUN MERGE / VERCEL / PATIENT RÉEL.** Référence avant ce correctif : fusion de main D9 et capture en fontes lisibles sur `f557795df1c0003fac43a45ec243577b5cb8c77d`; ses 17 workflows ne certifient PAS ce nouveau changement.
+
+**Goal** : interdire tout `PATCH /api/v1/profile` qui inclut `treatment_declaration` sans `X-Iamina-Treatment-Expected-Updated-At`. En l'absence d'en-tête => **HTTP 428** ; valeur `none` si aucune révision distante, ou timestamp TZ de la version lue ; révision obsolète => 409, invalidité => 422. **PATCH de préférences historiques sans déclaration reste admis** sans CAS. Risque visé : écrasement concurrent ; aucun comportement médical ou dose modifiés.
+
+**BEFORE prouvé par code** : backend ne vérifiait la précondition que si le client la soumettait. Tests directs/HTTP historiques créaient des déclarations sans header. Pas d'incident réel observé.
+
+**Implémentation candidate** : garde fail-closed HTTP 428 avant mutation ; tests directs ajustés à `none` puis révision serveur actualisée ; test HTTP A/B authentifié garantit refus création et écrasement sans header, aucune mutation, et succès avec révision exacte ; test legacy sans déclaration. Suite : CI exact HEAD SQLite/Postgres + Flutter puis sécurité indépendante. Aucun contournement bearer ni changement sync/consentement.
+
+**Visuel** : aucune modification de production. Correction de captures Flutter test D7 (chargement polices latines/arabes) sur parent `f557795d…`; workflow et inspection sur dernier HEAD requis. Les 18 premières images Ahem ne prouvent pas la lisibilité.
+
+**Gates** : essais A→B→A physiques/offline/409, consentement versionné D30, vrai dialogue 409 en Chrome, audit indépendant privacy/clinique et validation UI humaine. NO MERGE/NO VERCEL. Avancement global historique P5=50%.
+
+---
+
 # D7 — 14 octobre 2026 — diagnostic ciblé des débordements mobiles (sans relancer 759 tests)
 
 **PR #986 reste DRAFT, PAS DE MERGE / VERCEL.**
