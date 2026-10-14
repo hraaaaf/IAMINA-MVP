@@ -4,9 +4,9 @@ Not a Flutter UI or two physical devices. No Vercel, remote DB, or real patients
 """
 
 import json
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import ProxyHandler, Request, build_opener
-from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import LiveServerTestCase
