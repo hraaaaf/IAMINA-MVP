@@ -12,7 +12,6 @@ from typing import Literal, Optional
 
 from django.db import transaction
 from django.utils import timezone
-
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, field_validator, model_validator
