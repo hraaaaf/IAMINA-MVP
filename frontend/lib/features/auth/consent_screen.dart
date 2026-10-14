@@ -36,6 +36,26 @@ class _ConsentScreenState extends State<ConsentScreen> {
       Localizations.localeOf(context).toLanguageTag(),
     );
     try {
+      // D9: an authenticated account can have an explicit remote first-use
+      // receipt without any local medical/profile row on this new device.
+      // Do not accept remote AI consent if the local evidence timestamp could
+      // not be persisted to the CURRENT owner's physical patient vault.
+      // In particular, setAiConsent() intentionally does not create a
+      // PatientProfiles row for a new device.
+      if (db.patientVaultScope?.nativeDjangoUserId != null &&
+          await db.getProfileForLocalUserId(db.activeProfileRowId) == null) {
+        if (mounted) {
+          final language = Localizations.localeOf(context).languageCode;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(switch (language) {
+              'fr' => 'Consentement IA non activé : configurez d’abord votre profil local sur cet appareil.',
+              'ar' => 'لم يتم تفعيل موافقة الذكاء الاصطناعي. يرجى إعداد ملفك المحلي أولاً.',
+              _ => 'AI consent was not enabled. Set up your local profile on this device first.',
+            }),
+          ));
+        }
+        return;
+      }
       final accepted = await api.giveVersionedConsent(claim);
       if (!accepted) return;
 
