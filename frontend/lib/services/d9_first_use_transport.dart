@@ -61,7 +61,7 @@ final class D9FirstUseTransport {
   });
 
   bool _hasSafeOrigin() {
-    if (baseUri.userInfo.isNotEmpty) return false;
+    if (baseUri.host.isEmpty || baseUri.userInfo.isNotEmpty) return false;
     if (baseUri.scheme == 'https') return true;
     return baseUri.scheme == 'http' &&
         const <String>['localhost', '127.0.0.1', '::1']
@@ -97,25 +97,22 @@ final class D9FirstUseTransport {
       }
 
       final uri = baseUri.resolve('/api/v1/profile/first-use');
-      final response = await (confirm
-              ? client.post(
-                  uri,
-                  headers: <String, String>{
-                    'Authorization': 'Bearer $bearer',
-                    'Content-Type': 'application/json',
-                  },
-                  body: jsonEncode(<String, Object>{
-                    'version': 1,
-                    'confirmed': true,
-                  }),
-                )
-              : client.get(
-                  uri,
-                  headers: <String, String>{
-                    'Authorization': 'Bearer $bearer',
-                  },
-                ))
-          .timeout(timeout);
+      // Do not automatically follow redirects carrying the bearer. Use a
+      // per-request redirect policy, rather than Client.get/post defaults.
+      final request = http.Request(confirm ? 'POST' : 'GET', uri)
+        ..followRedirects = false
+        ..headers['Authorization'] = 'Bearer $bearer';
+      if (confirm) {
+        request.headers['Content-Type'] = 'application/json';
+        request.body = jsonEncode(<String, Object>{
+          'version': 1,
+          'confirmed': true,
+        });
+      }
+      final response = await (() async {
+        final stream = await client.send(request);
+        return http.Response.fromStream(stream);
+      })().timeout(timeout);
 
       if (!_authorized(owner, epoch, generation) ||
           response.statusCode != 200) {
