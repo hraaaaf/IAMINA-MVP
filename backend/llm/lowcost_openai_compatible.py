@@ -148,20 +148,6 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                 **self._complete_tuning(),
             )
         except Exception as exc:
-            if (
-                self.provider_id == "groq"
-                and os.environ.get("PULPER_SYNTHETIC_QUALIFICATION") == "1"
-            ):
-                status = getattr(exc, "status_code", None)
-                safe_status = status if type(status) is int and 100 <= status <= 599 else 0
-                safe_type = type(exc).__name__
-                if not safe_type.isidentifier():
-                    safe_type = "Unknown"
-                logger.warning(
-                    "pulper_benchmark_transport status=%d exception_type=%s",
-                    safe_status,
-                    safe_type,
-                )
             raise normalize_provider_exception(exc, self.provider_id) from exc
         return LLMResponse(
             content=response.choices[0].message.content or "",

@@ -167,30 +167,3 @@ def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id,
     assert "reasoning_effort" not in kwargs
     assert "response_format" not in kwargs
     assert "extra_body" not in kwargs
-
-
-def test_synthetic_benchmark_logs_only_safe_error_code_and_type(monkeypatch, caplog):
-    from llm.errors import LLMProviderInternalFailure
-
-    monkeypatch.setenv("PULPER_SYNTHETIC_QUALIFICATION", "1")
-    error = SyntheticHTTPError(400)
-    # In a real SDK exception its string may contain confidential metadata.
-    error.args = ("SECRET_PATIENT_PROMPT_MUST_NOT_LOG",)
-    provider, _ = _synthetic_provider(error)
-    with pytest.raises(LLMProviderInternalFailure):
-        provider.complete("sensitive system", "sensitive patient data")
-
-    assert "pulper_benchmark_transport status=400 exception_type=SyntheticHTTPError" in caplog.text
-    assert "SECRET_PATIENT_PROMPT_MUST_NOT_LOG" not in caplog.text
-    assert "sensitive system" not in caplog.text
-    assert "sensitive patient data" not in caplog.text
-
-
-def test_no_synthetic_diagnostic_outside_benchmark_gate(monkeypatch, caplog):
-    from llm.errors import LLMProviderInternalFailure
-
-    monkeypatch.delenv("PULPER_SYNTHETIC_QUALIFICATION", raising=False)
-    provider, _ = _synthetic_provider(SyntheticHTTPError(400))
-    with pytest.raises(LLMProviderInternalFailure):
-        provider.complete("system", "user")
-    assert "pulper_benchmark_transport" not in caplog.text

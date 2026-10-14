@@ -1,7 +1,6 @@
 import subprocess
 import sys
 from datetime import date
-from pathlib import Path
 
 from companion.narration_envelope import verify_and_reinject_protected_narration
 from diabetes.services.clinical.clinician_prep_protected_narration_verifier import (
@@ -117,7 +116,6 @@ def test_benchmark_module_imports_standalone_with_django_setup():
             "-c",
             "import evaluation.clinician_prep_protected_shadow_benchmark",
         ],
-        cwd=Path(__file__).resolve().parents[1],
         capture_output=True,
         text=True,
         check=False,
