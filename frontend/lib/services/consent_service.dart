@@ -5,12 +5,14 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/drift/database.dart';
+import 'd9_first_use_transport.dart';
 
 class ConsentService extends ChangeNotifier {
   bool? _hasConsent;
   bool _hasVerifiedEvidence;
   bool _profileHasTimestamp = false;
   bool _hasCompletedOnboarding = false;
+  bool _d9VerifiedRemoteCompletion = false;
   StreamSubscription<PatientProfileData?>? _sub;
 
   ConsentService({bool hasVerifiedEvidence = false})
@@ -28,7 +30,7 @@ class ConsentService extends ChangeNotifier {
   bool _profileCompletesOnboarding(PatientProfileData? profile) {
     // D7: diagnosis and treatment are optional patient declarations. The
     // clinical engine must independently fail closed when they are missing.
-    return profile != null;
+    return profile != null || _d9VerifiedRemoteCompletion;
   }
 
   void _applyProfile(PatientProfileData? profile) {
@@ -59,6 +61,28 @@ class ConsentService extends ChangeNotifier {
     _hasCompletedOnboarding = _profileCompletesOnboarding(profile);
     _profileHasTimestamp = profile?.aiConsentGivenAt != null;
     _hasConsent = _profileHasTimestamp && _hasVerifiedEvidence;
+  }
+
+  /// D9: accept an explicit server proof for THIS owner only. No PatientProfile
+  /// row is fabricated, and AI consent must remain independently verified.
+  /// This instance is scoped to one physical vault and disposed on auth switch.
+  bool adoptVerifiedD9FirstUseProof(
+    D9FirstUseProof? proof, {
+    required int activeOwner,
+  }) {
+    if (proof == null ||
+        !proof.completed ||
+        activeOwner <= 0 ||
+        proof.ownerUserId != activeOwner ||
+        proof.completedAt == null) {
+      return false;
+    }
+    _d9VerifiedRemoteCompletion = true;
+    if (!_hasCompletedOnboarding) {
+      _hasCompletedOnboarding = true;
+      notifyListeners();
+    }
+    return true;
   }
 
   /// Called only after server acceptance, exact response verification, secure
