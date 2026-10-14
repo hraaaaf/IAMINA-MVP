@@ -19,6 +19,16 @@ import '../../services/sync_service.dart';
 import '../profile/medical_treatment_declaration_v1.dart';
 import '../profile/medical_treatment_multi_selector.dart';
 
+/// Widget tests and local-only flows may not provide a remote D9 transport.
+/// A verified native patient vault always publishes the transport explicitly.
+D9FirstUseTransport? _optionalD9Transport(BuildContext context) {
+  try {
+    return context.read<D9FirstUseTransport?>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
+
 String _preferencesCopy(
   BuildContext context, {
   required String fr,
@@ -143,7 +153,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       final db = context.read<AppDatabase>();
       // Capture the D9 transport BEFORE saving: the local profile stream may
       // redirect/dispose the screen immediately after the successful write.
-      final d9Transport = context.read<D9FirstUseTransport?>();
+      final d9Transport = _optionalD9Transport(context);
       // Scoped physical vault selects the owner; Firebase hashCode is neither
       // stable nor an authenticated patient identifier.
       final userId = db.activeProfileRowId;
