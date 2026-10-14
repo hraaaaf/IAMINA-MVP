@@ -73,6 +73,12 @@ class ProviderApiException implements Exception {
       'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
+/// Clinical raw transports bypass Chopper/AuthInterceptor. A missing bearer
+/// must stop them BEFORE constructing requests or attaching health payloads.
+/// This is a pre-auth egress floor, not consent or patient-vault ownership.
+bool hasBearerForDirectClinicalTransport(String? token) =>
+    token != null && token.isNotEmpty;
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
   AuthInterceptor(this.authService);
@@ -271,6 +277,7 @@ class ApiClient {
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
     final token = await _authService.getIdToken();
+    if (!hasBearerForDirectClinicalTransport(token)) return;
     final uri = Uri.parse(
       '$baseUrl/api/v1/ai/chat/stream',
     ).replace(queryParameters: {'message': message});
@@ -387,6 +394,7 @@ class ApiClient {
   }) async {
     try {
       final token = await _authService.getIdToken();
+      if (!hasBearerForDirectClinicalTransport(token)) return null;
       final uri = Uri.parse(
         '$baseUrl/api/v1/ai/voice?context_days=$contextDays',
       );
@@ -427,6 +435,7 @@ class ApiClient {
   ) async {
     try {
       final token = await _authService.getIdToken();
+      if (!hasBearerForDirectClinicalTransport(token)) return null;
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
       final req = http.Request('POST', uri)
         ..headers['Content-Type'] = 'application/json'
@@ -455,6 +464,7 @@ class ApiClient {
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
     try {
       final token = await _authService.getIdToken();
+      if (!hasBearerForDirectClinicalTransport(token)) return null;
       final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
       final request = http.MultipartRequest('POST', uri);
       if (token != null && token.isNotEmpty) {
@@ -658,6 +668,7 @@ class ApiClient {
 
     try {
       final token = await _authService.getIdToken();
+      if (!hasBearerForDirectClinicalTransport(token)) return null;
       final uri = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
 
       final request = http.MultipartRequest('POST', uri);
