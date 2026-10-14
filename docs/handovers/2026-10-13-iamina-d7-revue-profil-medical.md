@@ -1,3 +1,15 @@
+# IAMINA D7 — 14 octobre 2026 — Intégration D9 GET A→B→A (TEST-ONLY)
+
+**Périmètre strict IAMINA** : PR #986 DRAFT, master non modifié. Avant intégration, D7 code HEAD `1a6d0f3da0b79fab1dfbd5503386b9de619f438a` contient le durcissement CAS HTTP 428, tests A/B et correction de fixture directe. Main alors courant `563766b35c7b28b86330a7d6987a9c86a738d794` ajoute uniquement `backend/diabetes/tests/test_d9_existing_account_profile_read.py`. Ce test exige par vrai bearer synthétique isolation GET A→B→A, fraîche instance HTTP et profil médical facultatif ; il ne prétend pas valider une récupération de coffre Flutter depuis un deuxième appareil physique.
+
+**Action préparée** : merger ce seul fichier test D9 dans la branche D7 et confirmer derrière=0 ; mêmes comportements code D7 inchangés ; exigences de test supplémentaires, pas de fusion dans main. CI sur nouveau HEAD obligatoire après tout merge ; ne pas réutiliser les verts des anciens HEAD.
+
+**Preuves visuelles de référence** : workflow D7 ciblé `38566577425` SUCCESS sur `73d5c829…`, artifact PNG #11895886103, 18 captures réelles de widget-test avec fontes Latin/Arabic, scène de section fermée / déployée inspectée à 390×844 / 768×1024 / 1280×900 FR/EN/AR. Les titres et CTA sont majoritairement lisibles, sans dépassement évident dans les captures ; quelques icônes Flutter et header mobile utilisent encore des glyphes substitutifs. **Pas de screenshot de la vraie modal 409 ni de preuve Chrome/PWA authentifiée du conflit ; score non attribué**.
+
+**Next exact** : relire les 17 workflows de certification exact HEAD ; vérifier 428 sans mutation en SQLite et PostgreSQL, 767+ tests Flutter et 18 screenshots ; si rouge corriger puis re-certifier. Puis vrai human gate : tests A→B→A/offline/409 sur deux devices physiques, versionnement/consentement sync D30, revue security/clinician et validation UI humaine. No merge/no Vercel/no patient réel ; P5 historique 6/12 = 50 %.
+
+---
+
 # IAMINA D7 — 14 octobre 2026 — durcissement de la précondition CAS (CANDIDAT NON CERTIFIÉ)
 
 **PR #986 OPEN/DRAFT, AUCUN MERGE / VERCEL / PATIENT RÉEL.** Référence avant ce correctif : fusion de main D9 et capture en fontes lisibles sur `f557795df1c0003fac43a45ec243577b5cb8c77d`; ses 17 workflows ne certifient PAS ce nouveau changement.
