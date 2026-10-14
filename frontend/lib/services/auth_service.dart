@@ -184,6 +184,19 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Inspect a dormant device-only vault for lock-recovery purposes only.
+  /// This does NOT enroll a user or grant access to patient data.
+  Future<PatientVaultScope?> dormantDeviceVaultForProtectedStateProbe() async {
+    if (!_initialized || _auditSession) return null;
+    final deviceId = await _storage.read(key: _localDeviceIdKey);
+    if (deviceId == null) return null;
+    try {
+      return PatientVaultScope.deviceLocal(deviceId);
+    } on ArgumentError {
+      return null;
+    }
+  }
+
   Future<void> initialize() async {
     try {
       _localSessionEnrolled =
@@ -339,7 +352,10 @@ class AuthService extends ChangeNotifier {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _nativeIdentityKey);
     await _storage.delete(key: _localSessionKey);
-    await _storage.delete(key: _localDeviceIdKey);
+    // Preserve the stable local-only vault locator: deleting it orphaned
+    // offline clinical records without removing their SQLite database.
+    // The revoked session cannot resolve it until explicit re-enrollment;
+    // the existing app-lock remains mandatory for reopening the vault.
     await _firebaseAuth?.signOut();
 
     if (token != null) {

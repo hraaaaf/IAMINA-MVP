@@ -75,7 +75,8 @@ Future<void> main() async {
   if (!auditAllowed && !legacyProtected) {
     AppDatabase? protectedStateProbe;
     try {
-      final scope = await authService.resolvePatientVaultScope();
+      final scope = await authService.resolvePatientVaultScope() ??
+          await authService.dormantDeviceVaultForProtectedStateProbe();
       if (scope != null) {
         protectedStateProbe = AppDatabase.forPatientVault(scope);
         currentVaultProtected = await hasProtectedMedicalVaultRows(protectedStateProbe);
@@ -99,9 +100,10 @@ Future<void> main() async {
 
   final apiClient = ApiClient(
     authService: authService,
-    // Login/enrollment remain available while locked. Only patient-owned
-    // profile/log sync is stopped at the final transport boundary.
-    canUsePatientSyncTransport: () => appLockService.isUnlocked,
+    // Every clinical API call is locked (including direct HTTP uploads).
+    // Loopback audit previews remain isolated from real patient vaults.
+    canUsePatientSyncTransport: () =>
+        auditAllowed || appLockService.isUnlocked,
   );
   final localePreferenceService = LocalePreferenceService(
     apiClient,

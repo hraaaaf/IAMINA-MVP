@@ -237,7 +237,7 @@ void main() {
     service.dispose();
   });
 
-  test('explicit sign-out clears local enrollment and device id even if remote logout fails', () async {
+  test('explicit sign-out revokes session but preserves dormant device vault locator', () async {
     seedStorage({
       _tokenKey: _token,
       _localSessionKey: _localSessionValue,
@@ -254,7 +254,27 @@ void main() {
     expect(service.isAuthenticated, isFalse);
     expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
     expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
-    expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), 'device-id');
+    expect(await service.resolvePatientVaultScope(), isNull);
+    service.dispose();
+  });
+
+  test('D7 offline local vault stays dormant until explicitly re-enrolled',
+      () async {
+    seedStorage({});
+    final service = AuthService(httpClient: noBootNetworkClient());
+    await service.initialize();
+    await service.enrollLocalDevice();
+    final original = (await service.resolvePatientVaultScope())!.databaseName;
+    await service.signOut();
+    expect(service.isAuthenticated, isFalse);
+    expect(await service.resolvePatientVaultScope(), isNull);
+    expect(
+      (await service.dormantDeviceVaultForProtectedStateProbe())?.databaseName,
+      original,
+    );
+    await service.enrollLocalDevice();
+    expect((await service.resolvePatientVaultScope())?.databaseName, original);
     service.dispose();
   });
 
@@ -276,7 +296,7 @@ void main() {
     expect(service.isAuthenticated, isFalse);
     expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
     expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
-    expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), 'device-id');
 
     remoteLogout.complete(http.Response('', 204));
     await signOut;

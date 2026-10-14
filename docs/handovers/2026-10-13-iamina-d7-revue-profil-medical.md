@@ -1,3 +1,25 @@
+# D7 — PRIORITÉ DE REPRISE — 14 octobre 2026 : durcissement transport + coffre local
+
+**PR #986 DRAFT, D7 NON CLOSE, aucun merge ni Vercel.** Ce bloc précède les statuts historiques ci-dessous.
+
+**Goal** : déclaration multi-traitement sous coffre patient isolé, récupération offline, CAS sans fausse confirmation, aucun envoi clinique après fermeture d'app-lock, consultation médicale non activée sans validation clinique ; validation de l'UX aux mêmes viewports.
+
+**Dernier vert intégral certifié** : HEAD `56aa31a948d3d2fcddbde58f1237f7ecebe84756` [CI #38487824691](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38487824691) **6/6 CI et 16/16 workflows SUCCESS**, tests A→B→A sur 2 DB SQLite isolées et reprise offline simulée compris.
+
+**HEAD précédent** : `f790b51b1303aacff2f22e38e2383439aae64ae8` sur PR #986, test de refus du timestamp serveur sans timezone pour restauration. [CI #38535368012](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38535368012) **QUEUED au premier contrôle du 14/10/2026**, pas de preuve verte sur cette version.
+
+**NOUVEAU LOT EN VOIE DE COMMIT (vérifier HEAD réel GitHub pour preuve) :**
+- `api_client.dart` : garde `requireUnlockedPatientSyncTransport` appliquée à **toutes les routes /api/v1/** sauf `/api/v1/auth/*`, plus seulement profil/logs. Cela couvre AI/chat, KPIs, personal response, documents, consentement, demo seed et toutes routes dynamiques. Les 5 appels HTTP directs `chatStream`, audio voice/transcribe, photo de glucomètre et document ingest utilisent `readForStableAuthEpoch` et la garde immédiatement avant `send()`. Login/password reset non bloqués. `main.dart` autorise seulement les tests audit loopback explicitement autorisés en cas de lock (callback `auditAllowed || appLock.isUnlocked`). Test de 12 chemins patients refusés + login/récup autorisés.
+- `auth_service.dart` : `signOut` invalide toujours immédiatement l'epoch et les sessions, mais **ne supprime plus l'identifiant stable du coffre local** qui aurait orpheliné les soins hors ligne ; le coffre n'est PAS accessible tant que local enrollment n'a pas été refait et app-lock déverrouillé. `dormantDeviceVaultForProtectedStateProbe` permet de sonder une ancienne DB pour empêcher un reset app-lock qui considérerait à tort l'installation vide ; `main.dart` l'emploie uniquement dans le probe fail-closed.
+- `auth_service_local_first_test.dart` : tests de signOut révoquant la session en conservant l'identifiant, et test de ré-enrollment récupérant exactement le nom de coffre initial sans réseau. **Toute confidentialité exige que le véritable app-lock soit configuré et actif : tests d'intégration sur appareil réel restant.**
+- **Ces modifications ont besoin de CI sur le HEAD qui les porte.** Ne pas extrapoler le vert précédent, ni confondre un source-level invariant avec la certification d'absence totale de fuite en vol (requêtes déjà dispatchées avant lock).
+
+**Reste après vert** : tester flux complet A→logout→B→A avec vrais identifiants serveur et deux appareils, limites réseau/cancel et conflits 409 ; revue clinique/confidentialité externe ; preuves UI BEFORE→cible→AFTER (390×844, 768×1024, 1280×900), score visuel puis gate humain. Pas de nouveau déploiement Vercel sans autorisation. P5 = **50 % historique**, inchangé.
+
+**Next exact** : constater SHA HEAD, valider CI correspondante, corriger tout rouge, étendre tests si un bypass découvert, confirmer artefacts UI et privacy puis attendre seulement vrai gate humain.
+
+---
+
 # REPRISE D7 — 14 octobre 2026 — mise à jour après CI VERTE et test d'isolation
 
 **PR #986 DRAFT, NON MERGED, NO VERCEL. D7 NON CLOSE.** Le prochain opérateur doit vérifier le HEAD/CI avant de poursuivre.

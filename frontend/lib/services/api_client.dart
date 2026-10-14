@@ -96,12 +96,12 @@ void requireUnlockedPatientSyncTransport(
   Uri url,
   bool Function()? canUsePatientSyncTransport,
 ) {
-  const patientSyncPaths = <String>{
-    '/api/v1/profile',
-    '/api/v1/logs',
-    '/api/v1/logs/batch',
-  };
-  if (patientSyncPaths.contains(url.path) &&
+  // All API v1 routes other than public credential/recovery endpoints can
+  // carry or mutate medical state (including AI, documents and consent).
+  // The demo route is also protected outside explicit local audit sessions.
+  final protected = url.path.startsWith('/api/v1/') &&
+      !url.path.startsWith('/api/v1/auth/');
+  if (protected &&
       canUsePatientSyncTransport != null &&
       !canUsePatientSyncTransport()) {
     throw StateError('Patient sync blocked while device is locked');
@@ -445,7 +445,7 @@ class ApiClient {
 
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
-    final token = await _authService.getIdToken();
+    final token = await readForStableAuthEpoch(_authService.getIdToken);
     final uri = Uri.parse(
       '$baseUrl/api/v1/ai/chat/stream',
     ).replace(queryParameters: {'message': message});
@@ -457,6 +457,7 @@ class ApiClient {
 
     final client = http.Client();
     try {
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await client
           .send(request)
           .timeout(TimeoutInterceptor._kTimeout);
@@ -561,7 +562,7 @@ class ApiClient {
     int contextDays = 14,
   }) async {
     try {
-      final token = await _authService.getIdToken();
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse(
         '$baseUrl/api/v1/ai/voice?context_days=$contextDays',
       );
@@ -581,6 +582,7 @@ class ApiClient {
         ),
       );
 
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
 
@@ -601,7 +603,7 @@ class ApiClient {
     String mimeType,
   ) async {
     try {
-      final token = await _authService.getIdToken();
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
       final req = http.Request('POST', uri)
         ..headers['Content-Type'] = 'application/json'
@@ -612,6 +614,7 @@ class ApiClient {
       if (token != null && token.isNotEmpty) {
         req.headers['Authorization'] = 'Bearer $token';
       }
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await req.send();
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
@@ -629,7 +632,7 @@ class ApiClient {
   /// Used for vocal input in the add-log page meal note field.
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
     try {
-      final token = await _authService.getIdToken();
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
       final request = http.MultipartRequest('POST', uri);
       if (token != null && token.isNotEmpty) {
@@ -643,6 +646,7 @@ class ApiClient {
           contentType: MediaType.parse(mimeType),
         ),
       );
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
@@ -832,7 +836,7 @@ class ApiClient {
     }
 
     try {
-      final token = await _authService.getIdToken();
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
 
       final request = http.MultipartRequest('POST', uri);
@@ -849,6 +853,7 @@ class ApiClient {
         ),
       );
 
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send().timeout(
         const Duration(seconds: 60),
       ); // extraction can take time

@@ -34,10 +34,36 @@ void main() {
         returnsNormally,
       );
     }
-    // Authentication and enrollment must work before a device is unlocked.
-    expect(() => requireUnlockedPatientSyncTransport(
-      Uri.parse('/api/v1/auth/login'), () => false,
-    ), returnsNormally);
+    for (final path in [
+      '/api/v1/personal-response/?days=14',
+      '/api/v1/kpis/?days=14',
+      '/api/v1/ai/chat',
+      '/api/v1/ai/chat/stream',
+      '/api/v1/ai/voice',
+      '/api/v1/ai/analyze-glucometer-image',
+      '/api/v1/ai/transcribe',
+      '/api/v1/account/consent',
+      '/api/v1/account/modules/test/activate',
+      '/api/v1/documents/ingest?confirm=false',
+      '/api/v1/documents/confirm/batch',
+      '/api/v1/documents/?limit=50',
+      '/api/v1/demo/seed',
+    ]) {
+      expect(() => requireUnlockedPatientSyncTransport(
+        Uri.parse(path), () => false,
+      ), throwsStateError, reason: path);
+    }
+    // Authentication, recovery, and unrelated endpoints stay available.
+    for (final path in [
+      '/api/v1/auth/login',
+      '/api/v1/auth/register',
+      '/api/v1/auth/password/reset/request',
+      '/public/health',
+    ]) {
+      expect(() => requireUnlockedPatientSyncTransport(
+        Uri.parse(path), () => false,
+      ), returnsNormally, reason: path);
+    }
   });
 
   test('D7 locking during async token lookup blocks profile egress', () async {
