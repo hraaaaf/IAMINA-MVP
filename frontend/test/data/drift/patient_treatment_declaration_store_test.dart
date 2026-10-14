@@ -245,6 +245,37 @@ void main() {
     expect(second.localGeneration, first.localGeneration + 1);
   });
 
+  test('D7 patient-reviewed conflict retries only with a fresh CAS baseline',
+      () async {
+    final db = await vault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['insulin', 'lifestyle']);
+    final first = (await store.read())!;
+    expect(await store.markConflictIfUnchanged(first.localGeneration), isTrue);
+    final serverAt = DateTime.utc(2026, 10, 14, 8, 11, 22, 123, 456);
+    expect(await store.retryConflictAfterExplicitReview(
+      expectedGeneration: first.localGeneration + 1,
+      currentServerRevisionUtc: serverAt,
+    ), isFalse);
+    expect((await store.read())?.syncStatus, 'conflict');
+    expect(await store.retryConflictAfterExplicitReview(
+      expectedGeneration: first.localGeneration,
+      currentServerRevisionUtc: serverAt,
+    ), isTrue);
+    final pending = (await store.read())!;
+    expect(pending.codes, first.codes);
+    expect(pending.state, first.state);
+    expect(pending.syncStatus, 'pending');
+    expect(pending.localGeneration, first.localGeneration + 1);
+    expect(pending.baseServerUpdatedAtUtc, serverAt);
+    expect(await store.retryConflictAfterExplicitReview(
+      expectedGeneration: pending.localGeneration,
+      currentServerRevisionUtc: DateTime.utc(2026, 10, 14, 9),
+    ), isFalse);
+    expect((await store.read())?.baseServerUpdatedAtUtc, serverAt);
+  });
+
   test('D7 restored native snapshot begins confirmed with server revision', () async {
     final db = await vault(734);
     addTearDown(db.close);

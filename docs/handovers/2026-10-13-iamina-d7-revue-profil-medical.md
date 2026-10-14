@@ -1,3 +1,24 @@
+# D7 — 14 octobre 2026 — dernier lot de réconciliation clinique (PR #986 DRAFT)
+
+**Goal** : rendre un conflit de déclaration médicale visible et récupérable sans perte, jamais choisir à la place du patient. **Succès observable** : vue locale et distante comparées, action humaine explicite, CAS basé sur dernière révision, aucune écriture serveur sans choix ; confirmation uniquement après ACK. **Preuve** : test SQL de génération, CI Flutter/backend du HEAD courant, captures comparatives et validation clinique.
+
+**Base prouvée :** HEAD `56aa31a948d3d2fcddbde58f1237f7ecebe84756`, CI #38487824691 **16/16 workflows verts**, 6/6 jobs CI. Les commits suivants `f790b51b` (horodatage GET) et `3550ce7c` (sécurité toutes routes patient + récupération d'identité local-only) ne sont PAS couverts par cet historique. CI [#38536308029](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38536308029) sur 3550ce7c **QUEUED** au dernier contrôle ; ne pas annoncer un vert non prouvé.
+
+**NOUVEAU LOT PRÉPARÉ À COMMITTER :** une méthode `PatientTreatmentDeclarationStore.retryConflictAfterExplicitReview(expectedGeneration,currentServerRevisionUtc)` est conditionnée par SQL au statut `conflict` et à la génération locale, et ne modifie JAMAIS les codes/état ; place seulement `pending` et avance le CAS et la génération. Le test protège contre la génération obsolète, le faux ACK et le second rattrapage. `ProfileScreen` repère `sync_status=conflict`, propose une comparaison bilingue/trilingue locale/distante, vérifie provenance, version, codes et timestamp TZ sur GET, puis ne relance le synchroniseur qu'après sélection explicite « Conserver ma version » (avec avertissement que la version distante pourra être remplacée). Annuler ne change rien ; app-lock/authEpoch et retour de réseau sont revérifiés.
+
+**UI/UX — séquence obligatoire :**
+- **BEFORE observé dans code précédent** : sélecteur de traitement et snackbar d'échec réseau, mais pas d'action utilisateur pour traiter un conflit 409 ; capture visuelle baseline spécifique état 409 NON acquise.
+- **GOAL** : résolution non destructive et consentie, compatible mobile FR/EN/AR.
+- **MOCKUP FONCTIONNEL** : sous le sélecteur : `[Comparer et résoudre le conflit]`; après ouverture : `Conflit de synchronisation` + `Sur cet appareil : [choix]` + `Sur votre compte : [choix]` + note de remplacement explicite + `[Annuler]` / `[Conserver ma version]`. Le bouton est bloqué en cas de changements UI non encore enregistrés.
+- **IMPLÉMENTATION** : 4 fichiers Flutter/Drift + test de stockage, à certifier après commit.
+- **AFTER restant** : captures réelles BEFORE/AFTER mêmes viewports `390×844`, `768×1024`, `1280×900`, vérification accessibilité/navigation/clavier/RTL et score visuel ; ne pas attribuer 10/10 sans preuves.
+
+**Risques / human gates** : requête envoyée avant app-lock impossible à retirer après départ ; résolutions 409 répétées si autre appareil modifie entre GET/PATCH restent bloquées, jamais silencieuses. Test sur deux appareils physiques, clinique/privacy indépendante, validation UI humaine et consentement explicite à la fusion nécessaires. **Aucun merge, aucun Vercel**, P5 50 % historique inchangé.
+
+**Next exact** : vérifier le HEAD poussé et sa CI ; lire erreur concrète si rouge et corriger ; réaliser preuve visuelle conflict-state par captures ; revue clinique/privacy ; obtenir gate humain puis merge/post-merge seulement si tous tests verts.
+
+---
+
 # D7 — PRIORITÉ DE REPRISE — 14 octobre 2026 : durcissement transport + coffre local
 
 **PR #986 DRAFT, D7 NON CLOSE, aucun merge ni Vercel.** Ce bloc précède les statuts historiques ci-dessous.

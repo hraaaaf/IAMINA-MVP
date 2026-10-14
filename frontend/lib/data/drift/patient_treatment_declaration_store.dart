@@ -202,6 +202,28 @@ final class PatientTreatmentDeclarationStore {
     return updated == 1;
   }
 
+  /// Only a patient-initiated, reviewed choice may resolve a 409.
+  /// The latest owner-scoped remote CAS revision is supplied by a verified GET.
+  /// The local statement itself is never rewritten here.
+  Future<bool> retryConflictAfterExplicitReview({
+    required int expectedGeneration,
+    required DateTime currentServerRevisionUtc,
+  }) async {
+    final updated = await db.customUpdate('''
+      UPDATE patient_treatment_declarations_v1
+      SET sync_status = 'pending',
+          base_server_updated_at = ?,
+          local_generation = local_generation + 1
+      WHERE user_id = ? AND local_generation = ?
+        AND sync_status = 'conflict'
+    ''', variables: [
+      Variable<String>(currentServerRevisionUtc.toUtc().toIso8601String()),
+      Variable<int>(_ownerId),
+      Variable<int>(expectedGeneration),
+    ]);
+    return updated == 1;
+  }
+
   Future<void> write({
     required String state,
     required List<String> codes,

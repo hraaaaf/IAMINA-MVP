@@ -128,6 +128,20 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             _treatmentTouched = true;
           }),
         ),
+        if (_treatmentConflict)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: OutlinedButton.icon(
+              key: const Key('d7-resolve-treatment-conflict'),
+              onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
+                  ? null : _resolveTreatmentConflict,
+              icon: const Icon(Icons.sync_problem),
+              label: Text(_profileUiText(context,
+                fr: 'Comparer et résoudre le conflit',
+                en: 'Review and resolve conflict',
+                ar: 'مراجعة التعارض وحلّه')),
+            ),
+          ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
         const SizedBox(height: 12),
