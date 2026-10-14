@@ -141,6 +141,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       }
 
       final db = context.read<AppDatabase>();
+      // Capture the D9 transport BEFORE saving: the local profile stream may
+      // redirect/dispose the screen immediately after the successful write.
+      final d9Transport = context.read<D9FirstUseTransport?>();
       // Scoped physical vault selects the owner; Firebase hashCode is neither
       // stable nor an authenticated patient identifier.
       final userId = db.activeProfileRowId;
@@ -164,12 +167,10 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       // the current authenticated owner can assert completion to the server.
       // Never PATCH clinical /profile, never send diagnosis or AI consent.
       // Offline is a local save, not a false server acknowledgement.
-      if (!mounted) return;
-      final d9Transport = context.read<D9FirstUseTransport?>();
       if (d9Transport != null) {
         final ack = await d9Transport.confirmSavedFirstUse();
-        if (!mounted) return;
-        if (ack == null && db.patientVaultScope?.nativeDjangoUserId != null) {
+        if (ack == null && mounted &&
+            db.patientVaultScope?.nativeDjangoUserId != null) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(_preferencesCopy(context,
               fr: 'Profil enregistré localement. Reprise sur un autre appareil non confirmée.',
