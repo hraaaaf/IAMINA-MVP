@@ -6,20 +6,28 @@ import 'package:http/http.dart' as http;
 /// D9 server assertion only. It never authorizes AI, clinical uploads or
 /// adoption of an unrelated patient's Drift profile.
 final class D9FirstUseProof {
+  final int ownerUserId;
   final bool completed;
   final DateTime? completedAt;
 
-  const D9FirstUseProof({required this.completed, required this.completedAt});
+  const D9FirstUseProof({
+    required this.ownerUserId,
+    required this.completed,
+    required this.completedAt,
+  });
 
-  static D9FirstUseProof? parse(Object? body) {
-    if (body is! Map || body['version'] != 1 ||
+  static D9FirstUseProof? parse(Object? body, {required int expectedOwner}) {
+    if (expectedOwner <= 0 || body is! Map || body['version'] != 1 ||
+        body['owner_user_id'] != expectedOwner ||
         body['completed'] is! bool) {
       return null;
     }
     final completed = body['completed'] as bool;
     final stamp = body['completed_at'];
     if (!completed && stamp == null) {
-      return const D9FirstUseProof(completed: false, completedAt: null);
+      return D9FirstUseProof(
+        ownerUserId: expectedOwner, completed: false, completedAt: null,
+      );
     }
     if (!completed || stamp is! String ||
         !RegExp(r'(Z|[+-][0-9]{2}:[0-9]{2})$').hasMatch(stamp)) {
@@ -28,7 +36,9 @@ final class D9FirstUseProof {
     final parsed = DateTime.tryParse(stamp)?.toUtc();
     return parsed == null
         ? null
-        : D9FirstUseProof(completed: true, completedAt: parsed);
+        : D9FirstUseProof(
+            ownerUserId: expectedOwner, completed: true, completedAt: parsed,
+          );
   }
 }
 
@@ -118,7 +128,9 @@ final class D9FirstUseTransport {
           response.statusCode != 200) {
         return null;
       }
-      final proof = D9FirstUseProof.parse(jsonDecode(response.body));
+      final proof = D9FirstUseProof.parse(
+        jsonDecode(response.body), expectedOwner: owner,
+      );
       return confirm && proof?.completed != true ? null : proof;
     } catch (_) {
       // Offline, revoked bearer, malformed JSON, timeout, disposed client:
