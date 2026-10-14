@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - backend/requirements.txt
+      - backend/llm/lowcost_openai_compatible.py
+      - backend/llm/tests/test_lowcost_provider_adapters.py
+      - backend/llm/tests/test_gemini_sdk_init_contract.py
       - backend/diabetes/evals/pulper_qualification.py
       - backend/diabetes/services/documents/**
       - backend/diabetes/tests/test_pulper*.py
@@ -51,7 +54,7 @@ jobs:
           pip install "reportlab>=4.2,<5" "xlwt==1.3.0"
       - name: Verify deterministic qualification contracts
         working-directory: backend
-        run: pytest diabetes/tests/test_pulper_qualification.py -q
+        run: pytest diabetes/tests/test_pulper_qualification.py diabetes/tests/test_pulper_groq_transport_contract.py llm/tests/test_lowcost_provider_adapters.py llm/tests/test_gemini_sdk_init_contract.py -q
       - name: Require live Groq credential
         shell: bash
         run: |
