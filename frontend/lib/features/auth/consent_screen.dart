@@ -17,10 +17,19 @@ import '../../services/consent_notice_contract.dart';
 import '../../services/consent_service.dart';
 
 class ConsentScreen extends StatefulWidget {
-  const ConsentScreen({super.key});
+  final bool isolatedPreview;
+  const ConsentScreen({super.key, this.isolatedPreview = const bool.fromEnvironment('IAMINA_D7_D9_ISOLATED_PREVIEW', defaultValue: false)});
 
   @override
   State<ConsentScreen> createState() => _ConsentScreenState();
+}
+
+String _previewNotice(Locale locale) {
+  switch (locale.languageCode) {
+    case 'fr': return 'Démo hors ligne : aucun service d’IA externe n’est connecté. Aucun consentement IA ne sera enregistré. Continue sans IA avec des données fictives uniquement.';
+    case 'ar': return 'نسخة تجريبية بدون خدمة ذكاء اصطناعي خارجية. لن يتم تسجيل موافقة على الذكاء الاصطناعي. تابع بدون ذكاء اصطناعي واستخدم بيانات وهمية فقط.';
+    default: return 'Offline demo: no external AI service is connected. No AI consent will be recorded. Continue without AI using fictional data only.';
+  }
 }
 
 class _ConsentScreenState extends State<ConsentScreen> {
@@ -172,7 +181,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ),
                         child: Text(
-                          l10n.consentBody,
+                          widget.isolatedPreview ? _previewNotice(Localizations.localeOf(context)) : l10n.consentBody,
                           style: TextStyle(
                             fontSize: compactHeight ? 11.5 : 13.25,
                             color: AminaTheme.textSecondary(context),
@@ -186,7 +195,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         child: SizedBox(
                           width: desktop ? 300 : double.infinity,
                           child: FilledButton(
-                            onPressed: _isLoading ? null : _accept,
+                            onPressed: _isLoading ? null : (widget.isolatedPreview ? _declineWithoutAI : _accept),
                             style: FilledButton.styleFrom(
                               backgroundColor: AminaTheme.teal500,
                               padding: EdgeInsets.symmetric(
@@ -208,7 +217,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                                     ),
                                   )
                                 : Text(
-                                    l10n.consentAccept,
+                                    widget.isolatedPreview ? l10n.consentDeclineWithoutAI : l10n.consentAccept,
                                     style: TextStyle(
                                       fontSize: compactHeight ? 13.5 : 15,
                                       fontWeight: FontWeight.w700,
@@ -217,8 +226,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: compactHeight ? 8 : 10),
-                      Align(
+                      if (!widget.isolatedPreview) SizedBox(height: compactHeight ? 8 : 10),
+                      if (!widget.isolatedPreview) Align(
                         alignment: Alignment.center,
                         child: SizedBox(
                           width: desktop ? 300 : double.infinity,
