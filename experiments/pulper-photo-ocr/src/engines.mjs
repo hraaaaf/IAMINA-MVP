@@ -1,5 +1,6 @@
 import {createWorker} from 'tesseract.js';
-import {PaddleOCR} from '@paddleocr/paddleocr-js';
+// Load PaddleOCR only for its own profile: a module-level failure must not
+// prevent independent Tesseract.js qualification under strict browser CSP.
 const LANGS={fr:['fra','eng'],ar:['ara','eng'],mixed:['fra','ara','eng']};
 
 export async function createLocalEngine(engine,language) {
@@ -17,6 +18,7 @@ export async function createLocalEngine(engine,language) {
   }
   if(engine==='paddle') {
     if(language!=='fr') throw Error('PaddleOCR.js Arabic NOT qualified');
+    const {PaddleOCR}=await import('@paddleocr/paddleocr-js');
     const ocr=await PaddleOCR.create({
       lang:'fr',ocrVersion:'PP-OCRv6',
       textDetectionModelName:'PP-OCRv6_small_det',

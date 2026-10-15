@@ -30,20 +30,38 @@ try{
     report.blockedRequests++;
     return route.abort();
   });
-  const page=await context.newPage();
-  page.on('pageerror',error=>report.errors.push({stage:'pageerror',errorClass:error.name}));
-  await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'load'});
-  await page.waitForFunction(()=>window.__iaminaOcrProbeLoaded===true,null,{timeout:60000});
   for(const profile of profiles){
-    try{
+    const page=await context.newPage();
+    let stage='bootstrap';
+    page.on('pageerror',error=>report.errors.push({
+      ...profile,stage:'pageerror',errorClass:error.name||'Error',
+      message:String(error.message||'').slice(0,350)
+    }));
+    page.on('console',message=>{
+      if(message.type()==='error')report.errors.push({
+        ...profile,stage:'browser_console',errorClass:'ConsoleError',
+        message:String(message.text()).slice(0,350)
+      });
+    });
+    try {
+      await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'load',timeout:45000});
+      await page.waitForFunction(()=>window.__iaminaOcrProbeLoaded===true,null,{timeout:45000});
+      stage='engine';
       const items=cases.filter(x=>x.language===profile.language);
-      const result=await page.evaluate(args=>window.__runIaminaOcrBatch(args),{...profile,cases:items});
+      // Bound one engine to make its failures observable, not an indefinite CI hang.
+      const result=await page.evaluate(args=>Promise.race([
+        window.__runIaminaOcrBatch(args),
+        new Promise((_,reject)=>setTimeout(()=>reject(Error('engine_timeout_180s')),180000))
+      ]),{...profile,cases:items});
       report.results.push(result);
       console.log(JSON.stringify({engine:profile.engine,language:profile.language,
         passed:result.results.filter(x=>x.safeForReview).length,total:result.results.length,initMs:result.initMs}));
     }catch(error){
-      report.errors.push({...profile,stage:'engine',errorClass:error.name||'Error'});
-      console.error(profile.engine+'/'+profile.language+': '+(error.name||'Error')+' '+error.message.slice(0,120));
+      report.errors.push({...profile,stage,errorClass:error.name||'Error',
+        message:String(error.message||'').slice(0,350)});
+      console.error(profile.engine+'/'+profile.language+': '+(error.name||'Error')+' '+String(error.message||'').slice(0,200));
+    }finally{
+      await page.close();
     }
   }
   await context.close();

@@ -29,4 +29,4 @@ Unsupported today: HEIC iPhone image decoding, scanned PDF OCR, Arabic PaddleOCR
 
 Existing native, *non-browser* evidence in repository: `scripts/run_local_ocr_smoke.py`, `scripts/run_tesseract_arabic_robustness.py` (C23), `scripts/run_paddleocr_local_benchmark.py` (C12), `scripts/run_paddleocr_hardening_benchmark.py` (C15). The smoke records `HbA1c` misread as `HbAlc`. None certify this spike or Safari.
 
-**Status:** test harness staged; no production deploy or merge. Track P0 #1067.
+**Status:** Initial CI #38737928952 failed before any OCR with a browser CSP `EvalError`. The follow-up benchmark isolates engines via lazy PaddleOCR import, emits bounded browser failure details and limits each engine to 180 seconds. No production deploy or merge. Track P0 #1067.
