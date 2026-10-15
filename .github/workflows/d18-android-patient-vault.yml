@@ -21,7 +21,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: d18-native-android-test
+  # Isolate D18 from D20 and other branches; the previous constant group
+  # caused GitHub to cancel our Android run on unrelated PR updates.
+  group: d18-native-android-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
