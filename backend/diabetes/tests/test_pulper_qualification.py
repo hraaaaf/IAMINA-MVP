@@ -44,11 +44,21 @@ def test_pdf_golden_fixture_is_admissible_digital_pdf():
 
 
 def test_sparse_prompt_contract_stays_versioned_and_placeholder_free():
-    assert _PARSE_PROMPT_VERSION == "pulper-parse-v5-groq-envelope"
+    assert _PARSE_PROMPT_VERSION == "pulper-parse-v6-fasting-evidence"
     rendered = _PARSE_PROMPT_TEMPLATE.format(text="L0001|HbA1c: 7.2 %")
     assert "null" not in rendered.lower()
     assert "omit every absent field" in rendered.lower()
     assert '"lab_values":{"hba1c_pct":7.2}' in rendered
+
+
+def test_fasting_glucose_example_is_not_fallback_or_missing_source_permission():
+    rendered = _PARSE_PROMPT_TEMPLATE.format(
+        text="L0001|Completely unrelated document",
+    )
+    assert "lab_values.fasting_glucose_mgdl" in rendered
+    assert "NEVER a fallback measurement" in rendered
+    assert "invented timestamp" in rendered
+    assert "if its numeric glucose value or unit is missing" in rendered
 
 
 def test_synthetic_image_parser_is_deterministic_and_other_text_stays_live():

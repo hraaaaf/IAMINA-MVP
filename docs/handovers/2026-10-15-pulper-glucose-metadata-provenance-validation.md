@@ -10,3 +10,8 @@
 - A field-level cited text occurrence is evidence for human review, NOT a medical interpretation or physician acceptance.
 - This is a **follow-up** distinct from closed technical #1011/#1019/#1023; do not retroactively inflate the previously passed 16-case corpus.
 - No patient data, no merge main, no Vercel. Parent [#1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005) remains DRAFT. Separate real-world clinical/provider/privacy gates are outside this technical lot.
+
+## Reliability follow-up #1045 — prompt refinement candidate
+- Two live synthetic attempts on prior head `c82e93d13c605536a487fde9ee9250ff76501b84` failed DOCX fasting field (17/18 critical, no false positive). First HTTP 400, second ungrounded/omitted field; cause of second is not proven from provider response. See [#1045](https://github.com/hraaaaf/IAMINA-MVP/issues/1045).
+- This candidate adds a **source-grounded fasting glucose example** to prompt version `pulper-parse-v6-fasting-evidence` and tests correct strict reply, rejection of unsourced exemplar, and timestamp non-invention. **No deterministic fallback**, no change of Groq parameters, no threshold relaxation.
+- Status: source/test change created, exact SHA CI and one live synthetic benchmark not yet verified. If it fails, keep child open and do not merge parent; investigate provider separately, no further blind reruns.

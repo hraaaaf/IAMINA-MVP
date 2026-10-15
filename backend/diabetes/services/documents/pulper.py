@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 _SCHEMA_VERSION = "pulper-output-v2"
 _EXTRACTOR_VERSION = "2"
-_PARSE_PROMPT_VERSION = "pulper-parse-v5-groq-envelope"
+_PARSE_PROMPT_VERSION = "pulper-parse-v6-fasting-evidence"
 _LINE_REF_RE = re.compile(r"^L(\d{4})$")
 _EVIDENCE_NUMBER_RE = re.compile(
     r"^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:%|mg\s*/\s*d[lL]|mmol\s*/\s*(?:mol|[lL])|[uµμ]mol\s*/\s*[lL])?\s*$",
@@ -104,6 +104,14 @@ Allowed medications item keys: name, dose, frequency, drug_type.
 Evidence is keyed by the exact extracted field path and each value is {{"r":"L####","v":"verbatim source value"}}.
 Example for one HbA1c finding:
 {{"document_type":"lab_report","confidence":0.99,"lab_values":{{"hba1c_pct":7.2}},"evidence":{{"lab_values.hba1c_pct":{{"r":"L0001","v":"7.2"}}}}}}
+Example for a separately and unambiguously reported FASTING GLUCOSE LAB VALUE:
+If the source line is L0001|Fasting glucose: 126 mg/dL, map it to
+lab_values.fasting_glucose_mgdl=126 (NOT to a glucose_readings entry with an
+invented timestamp). Cite the exact line and source number as:
+{{"document_type":"lab_report","confidence":0.99,"lab_values":{{"fasting_glucose_mgdl":126}},"evidence":{{"lab_values.fasting_glucose_mgdl":{{"r":"L0001","v":"126"}}}}}}
+This example is instruction only, NEVER a fallback measurement. Use only actual
+document text; if its numeric glucose value or unit is missing, unclear, or
+conflicting, omit the field rather than copying any example.
 
 Rules:
 - confidence: 0.0–1.0 — how certain you are about the extracted values
