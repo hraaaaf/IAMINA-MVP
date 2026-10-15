@@ -385,8 +385,9 @@ def chat_with_amina(request, data: ChatRequest):
     try:
         iamina = IAmina(user, language)
         reply = iamina.chat(data.message, context_days=data.context_days)
-    except Exception:
-        logger.exception("chat_with_amina: unhandled error for user=%s", user.id)
+    except Exception as exc:
+        # Exception messages/tracebacks may contain the patient's message or PHI.
+        logger.error("chat_with_amina: failed (exception_type=%s)", type(exc).__name__)
         reply = "Désolé, une erreur inattendue s'est produite. Réessaie dans quelques instants."
     reply_language = detect_language(data.message, language)
     track(EVT_CHAT_MESSAGE, patient_id=user.id, props={"context_days": data.context_days})
@@ -576,8 +577,9 @@ def chat_stream(request, message: str, context_days: int = 14):
 
             yield "data: [DONE]\n\n"
 
-        except Exception:
-            logger.exception("SSE chat stream failed")
+        except Exception as exc:
+            # Do not log arbitrary provider errors or patient conversation content.
+            logger.error("SSE chat stream failed (exception_type=%s)", type(exc).__name__)
             yield f"data: {json.dumps({'token': 'Une erreur est survenue.'})}\n\n"
             yield "data: [DONE]\n\n"
 
