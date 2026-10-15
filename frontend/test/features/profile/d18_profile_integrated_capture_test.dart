@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:amina/core/theme/amina_visual_language.dart';
 import 'package:amina/core/theme/app_theme.dart';
+import 'package:amina/core/widgets/mobile_page_header.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/drift/patient_progressive_demographics_store.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
@@ -108,6 +109,14 @@ Future<void> _capture(WidgetTester tester, String lang, Size size) async {
   ));
   await tester.pumpAndSettle();
   expect(find.byType(ProfileScreen), findsOneWidget);
+  if (size.width < 700) {
+    final header = find.byType(AminaMobilePageHeader);
+    expect(header, findsOneWidget);
+    final title = tester.widget<Text>(find.descendant(
+      of: header, matching: find.byType(Text)).first);
+    // Arabic title must not force the bundled Latin-only Georgia subset.
+    expect(title.style?.fontFamily, lang == 'ar' ? isNot('Georgia') : 'Georgia');
+  }
   expect(find.byKey(const Key('d18-expand-profile')), findsOneWidget);
   expect(tester.takeException(), isNull);
   await expectLater(find.byKey(const Key('d18-canonical-profile')),
