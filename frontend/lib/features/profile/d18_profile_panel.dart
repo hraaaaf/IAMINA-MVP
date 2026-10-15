@@ -85,7 +85,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
     if (_yearDirty && raw.isNotEmpty &&
         (!RegExp(r'^\d{4}$').hasMatch(raw) ||
         birthYear == null || birthYear < 1900 ||
-        birthYear > DateTime.now().year)) {
+        birthYear > DateTime.now().toUtc().year)) {
       setState(() => _notice = _t('Année non valide.', 'Invalid birth year.',
           'سنة الميلاد غير صالحة.'));
       return;
@@ -318,7 +318,11 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.history),
                   title: Text(_weightText(row)),
-                  subtitle: Text(_date(row.measuredAtUtc)),
+                  subtitle: Text(
+                    _date(row.measuredAtUtc) + ' · ' +
+                    _t('Déclaré par le patient', 'Patient-entered',
+                        'صرّح به المريض'),
+                  ),
                 ),
             ],
           ],

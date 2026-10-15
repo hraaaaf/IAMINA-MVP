@@ -56,3 +56,5 @@
 - Les captures navigateur Web ne certifient pas le widget D18 natif, volontairement interdit Web tant que #1054 n'est pas résolu. Visuels BEFORE/AFTER réels et revue indépendante sont encore ouverts. CI du nouveau HEAD à vérifier avant tout verdict.
 
 - Correction UX complémentaire : bouton « Actualiser » désactivé lorsqu'une déclaration démographique reste modifiée mais non enregistrée ; évite l'effacement silencieux du brouillon. Régression Flutter ajoutée.
+
+- Traçabilité UI complémentaire : l'historique montre désormais une provenance lisible par pesée (« Déclaré par le patient » / EN / AR), et l'année maximale est comparée à l'année UTC comme dans le store. Test Flutter de provenance visible ajouté.

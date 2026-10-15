@@ -81,6 +81,7 @@ void main() {
     expect(readings.single.unit, 'kg');
     expect(readings.single.provenance, 'patient_declared');
     expect(find.text('72.50 kg'), findsOneWidget);
+    expect(find.textContaining('Patient-entered'), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('d18-weight-value')), '70');
     await _confirmMeasuredAt(tester);
