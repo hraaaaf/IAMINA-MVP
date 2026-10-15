@@ -503,9 +503,11 @@ def _discard_contradicted_fact(output: PulperOutput, path: str) -> None:
 
 
 def _enforce_model_evidence_coverage(output: PulperOutput) -> None:
-    """Fail closed on LLM facts without a verified source/value/field binding."""
-    if not output.parser_model:
-        return
+    """Fail closed on LLM facts without a verified source/value/field binding.
+
+    Called exclusively from _parse_with_llm: an absent provider label must
+    never turn off clinical provenance checks.
+    """
     discarded = False
     for field_name in _LAB_EVIDENCE_FIELDS - {"report_date"}:
         value = getattr(output.lab_values, field_name)
