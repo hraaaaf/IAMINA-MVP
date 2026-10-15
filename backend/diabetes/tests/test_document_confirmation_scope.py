@@ -1,12 +1,9 @@
 from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase as DjangoTestCase
-
-from diabetes.models import LabReport
-from diabetes.services.documents.schema import LabValues
-from unittest.mock import patch
 
 from diabetes.api.v1.documents import (
     PulperConfirmResponse,
@@ -14,7 +11,8 @@ from diabetes.api.v1.documents import (
     confirm_import,
     ingest_document,
 )
-from diabetes.services.documents.schema import PulperOutput
+from diabetes.models import LabReport
+from diabetes.services.documents.schema import LabValues, PulperOutput
 
 
 class _FakeCache:

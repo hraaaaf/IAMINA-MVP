@@ -195,7 +195,8 @@ class PulperTextProvenanceTest(SimpleTestCase):
                 "confidence": 0.9,
                 "medications": [{"name": "metformin", "dose": "1000 mg"}],
                 "evidence": {
-                    "medications[0].dose": {"r": "L0001", "v": "500 mg"}
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"},
                 },
             },
             "metformin 500 mg",
