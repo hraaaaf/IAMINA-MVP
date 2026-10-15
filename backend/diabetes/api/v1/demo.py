@@ -2,7 +2,7 @@
 Demo scenarios endpoint — Pre-configured patient data for testing.
 GET  /api/v1/demo/scenarios — Returns 8 demo scenarios (A–H)
 POST /api/v1/demo/chat      — Production IAmina runtime over synthetic patient data
-POST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
+POST /api/v1/demo/seed      — Disabled: rejects patient-context demo injection
 """
 
 import hashlib
