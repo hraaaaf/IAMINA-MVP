@@ -126,6 +126,150 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertTrue(any("provenance" in item.lower() for item in output.warnings))
         self.assertNotIn("9.9%", "\n".join(output.warnings))
 
+
+    def test_cited_value_must_match_normalized_hba1c(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.99,
+                "lab_values": {"hba1c_pct": 9.2},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7.2"}
+                },
+            },
+            "HbA1c: 7.2 %",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertNotIn("hba1c_pct", output.lab_values.evidence)
+        self.assertTrue(output.warnings)
+
+    def test_ifcc_hba1c_is_not_silently_mislabelled_ngsp_percent(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.9,
+                "lab_values": {"hba1c_pct": 53.0},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "53"}
+                },
+            },
+            "HbA1c: 53 mmol/mol",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+
+    def test_glucose_mmol_l_is_verified_only_after_correct_conversion(self):
+        base = {
+            "document_type": "lab_report",
+            "confidence": 0.9,
+            "lab_values": {"fasting_glucose_mgdl": 126.0},
+            "evidence": {
+                "lab_values.fasting_glucose_mgdl": {"r": "L0001", "v": "7.0"}
+            },
+        }
+        good = self._ingest_docx(base, "Fasting glucose: 7.0 mmol/L")
+        self.assertEqual(good.lab_values.fasting_glucose_mgdl, 126)
+        self.assertTrue(good.lab_values.evidence["fasting_glucose_mgdl"].verified)
+        base["lab_values"]["fasting_glucose_mgdl"] = 7.0
+        bad = self._ingest_docx(base, "Fasting glucose: 7.0 mmol/L")
+        self.assertIsNone(bad.lab_values.fasting_glucose_mgdl)
+
+    def test_ambiguous_multiple_values_cannot_be_source_verified(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.9,
+                "lab_values": {"hba1c_pct": 7.2},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7.2"}
+                },
+            },
+            "HbA1c: 7.2 % or 8.1 % (review required)",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertNotIn("hba1c_pct", output.lab_values.evidence)
+
+
+    def test_citation_cannot_target_digits_inside_another_number(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.99,
+                "lab_values": {"hba1c_pct": 7.0},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7"}
+                },
+            },
+            "HbA1c: 17.2 %",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertFalse(output.lab_values.evidence)
+
+    def test_glucose_with_timestamp_on_same_line_can_keep_numeric_evidence(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "glucose_log",
+                "confidence": 0.9,
+                "glucose_readings": [{"value_mgdl": 126}],
+                "evidence": {
+                    "glucose_readings[0].value_mgdl": {
+                        "r": "L0001", "v": "126"
+                    }
+                },
+            },
+            "Glucose: 126 mg/dL at 2026-08-20T08:00:00+01:00",
+        )
+        self.assertEqual(len(output.glucose_readings), 1)
+        self.assertTrue(output.glucose_readings[0].evidence["value_mgdl"].verified)
+
+    def test_unknown_glucose_unit_is_not_silently_assumed_mgdl(self):
+        output = self._ingest_docx(
+            {"document_type": "lab_report", "confidence": 0.99,
+             "lab_values": {"fasting_glucose_mgdl": 126},
+             "evidence": {
+                 "lab_values.fasting_glucose_mgdl": {"r": "L0001", "v": "126"}
+             }},
+            "Fasting glucose 126 (unit not provided)",
+        )
+        self.assertIsNone(output.lab_values.fasting_glucose_mgdl)
+
+    def test_wrong_medication_dose_is_not_verified(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.9,
+                "medications": [{"name": "metformin", "dose": "1000 mg"}],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"},
+                },
+            },
+            "metformin 500 mg",
+        )
+        self.assertNotIn("dose", output.medications[0].evidence)
+        self.assertIsNone(output.medications[0].dose)
+
+
+    def test_missing_source_evidence_drops_numeric_fact(self):
+        output = self._ingest_docx(
+            {"document_type": "lab_report", "confidence": 0.99,
+             "lab_values": {"hba1c_pct": 8.2}},
+            "HbA1c: 8.2 %",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertFalse(output.lab_values.evidence)
+
+    def test_mismatched_glucose_reading_cannot_reach_storage(self):
+        output = self._ingest_docx(
+            {"document_type": "glucose_log", "confidence": 0.99,
+             "glucose_readings": [{"value_mgdl": 200,
+                                   "timestamp": "2026-08-20T08:00:00+01:00"}],
+             "evidence": {
+                 "glucose_readings[0].value_mgdl": {"r": "L0001", "v": "126"}
+             }},
+            "Glucose: 126 mg/dL at 2026-08-20T08:00:00+01:00",
+        )
+        self.assertEqual(output.glucose_readings, [])
+
     def test_shield_rejection_also_removes_field_evidence(self):
         output = self._ingest_docx(
             {
