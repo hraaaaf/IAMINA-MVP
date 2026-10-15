@@ -42,7 +42,7 @@ jobs:
         run: |
           flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens --reporter expanded test/features/profile/d18_profile_capture_test.dart
           flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens --reporter expanded test/features/profile/d18_profile_integrated_capture_test.dart
-      - name: Validate 24 raster PNGs, record SHA256
+      - name: Validate 24 isolated plus 30 real ProfileScreen PNGs
         shell: bash
         run: |
           set -euo pipefail
@@ -59,7 +59,7 @@ jobs:
           test "$(find . -maxdepth 1 -name 'd18-raster-*.png' | wc -l)" -eq 24
           test "$(sha256sum d18-raster-*.png | awk '{print $1}' | sort -u | wc -l)" -ge 12
           for locale in fr ar; do
-            for viewport in 360x560 390x844 768x1024 1280x900; do
+            for viewport in 360x560 390x844 430x932 768x1024 1280x900; do
               for state in top open history; do
                 file="d18-real-profile-$locale-$viewport-$state.png"
                 test -s "$file"
@@ -67,11 +67,11 @@ jobs:
               done
             done
           done
-          test "$(find . -maxdepth 1 -name 'd18-real-profile-*.png' | wc -l)" -eq 24
+          test "$(find . -maxdepth 1 -name 'd18-real-profile-*.png' | wc -l)" -eq 30
           sha256sum d18-raster-*.png d18-real-profile-*.png > SHA256SUMS.txt
           cat > PROVENANCE.txt <<'EOF'
           ISOLATED: 24 D18 panel captures, synthetic SQLite.
-          CANONICAL: 24 captures of actual IAMINA ProfileScreen in
+          CANONICAL: 30 captures of actual IAMINA ProfileScreen in
           AminaTheme/AminaVisualLanguage and ResponsiveContentSurface.
           Inter and Inter Tight font files replaced with DejaVu audit fallback.
           AppLock deliberately synthetic unlocked, not a security proof.
