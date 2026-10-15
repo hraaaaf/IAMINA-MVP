@@ -71,6 +71,29 @@ void main() {
     }
   });
 
+  test('D11 direct fixture attempt preserves an existing real reading', () async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(84),
+    );
+    try {
+      final id = await db.into(db.logEntries).insert(
+        LogEntriesCompanion.insert(
+          createdAt: DateTime.now(),
+          bloodSugar: 126.0,
+          clientUuid: 'd11-synthetic-existing-real-reading',
+        ),
+      );
+      await expectLater(db.seedDemoData(), throwsStateError);
+      expect(await db.countLogs(), 1);
+      final original = await db.getLogById(id);
+      expect(original, isNotNull);
+      expect(original!.bloodSugar, 126.0);
+      expect(original.syncStatus, 'pending');
+    } finally {
+      await db.close();
+    }
+  });
+
   test('D11 synthetic audit-only vault still supports visual demo fixtures',
       () async {
     final db = AppDatabase.testPatientVault(
