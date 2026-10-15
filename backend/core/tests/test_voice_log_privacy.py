@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 from core.input_safety import InputSafetyDecision, URGENT
 from core.middleware.triage_vital import TriageVitalMiddleware
-from media.voice import TranscriptionError
 
 
 def _fake_voice_request():
@@ -55,6 +54,8 @@ def test_emergency_voice_reply_preserved_without_transcript_in_logs():
 
 
 def test_stt_failure_retains_safe_reply_without_exception_or_user_in_logs():
+    from media.voice import TranscriptionError
+
     canary = "synthetic_secret_inside_provider_exception"
     request, audio = _fake_voice_request()
     with (
