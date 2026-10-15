@@ -640,7 +640,14 @@ def _map_json_to_output(output: PulperOutput, data: dict) -> None:
                 )
             )
 
-    output.clinical_notes = (data.get("clinical_notes") or "").strip()
+    # Free-form model notes have no governed source-evidence contract.
+    # Never treat them as patient-facing clinical facts or persistable advice.
+    # Source-backed note capture requires a separately qualified evidence path.
+    output.clinical_notes = ""
+    if data.get("clinical_notes"):
+        output.warnings.append(
+            "Notes cliniques IA masquées : provenance non vérifiable."
+        )
 
 
 def _float(value) -> float | None:

@@ -200,6 +200,37 @@ class DocumentConfirmationDatabaseContractTest(DjangoTestCase):
             self.assertFalse(replay.ok)
             self.assertEqual(LabReport.objects.count(), 1)
 
+    def test_llm_notes_are_absent_from_preview_and_database(self):
+        from diabetes.services.documents.pulper import _map_json_to_output
+
+        patient = User.objects.create_user(username="pulper-no-model-notes")
+        output = PulperOutput(source_format="docx", document_type="lab_report")
+        _map_json_to_output(output, {
+            "document_type": "lab_report",
+            "confidence": 0.91,
+            "lab_values": {"hba1c_pct": 7.2},
+            "clinical_notes": "Increase insulin dose now",
+        })
+        # The model text was eliminated by the mapper before either boundary.
+        self.assertEqual(output.clinical_notes, "")
+        cache = _FakeCache()
+        with (
+            patch("diabetes.api.v1.documents.cache", cache),
+            patch("diabetes.api.v1.documents.ingest", return_value=output),
+        ):
+            status, preview = ingest_document.__wrapped__(
+                SimpleNamespace(auth=patient), _Upload(), confirm=False,
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(preview.clinical_notes, "")
+            self.assertFalse(LabReport.objects.filter(patient=patient).exists())
+            result = confirm_import(
+                SimpleNamespace(auth=patient), preview.batch_id,
+            )
+        self.assertTrue(result.ok, result.errors)
+        report = LabReport.objects.get(pk=result.lab_report_id)
+        self.assertEqual(report.clinical_notes, "")
+
     def test_invalid_extraction_cannot_persist_after_preview(self):
         patient = User.objects.create_user(username="pulper-invalid-review")
         cache = _FakeCache()
