@@ -57,3 +57,21 @@
 - PR #1021: base main at PR creation `0b33abbbbfb9093314cf45e6fe2f98c9f32ba9d5`; code/test HEAD before this documentation update `0702b947902963769536fec0a38e37225477d40a`. Final documentation commit requires fresh exact-head CI; no previous green transfers.
 - CI `#38695946163` on previous SHA `a37d9e5` found stale OpenAPI description; schema updated to match `/demo/seed` fail-closed description in commit `b530a2a`. Intermediate runs on newer commits were cancelled by subsequent pushes and do NOT count green. Exact verdict for final HEAD **PENDING** until observed. Previous P5-5 and PWA successes on older SHAs do not certify final code.
 - **Next exact:** check exact-HEAD CI, diagnose and repair any red job. If full green, verify PR scope/diff and update GitHub/Notion closeout with final SHA and evidence. Independent privacy/security + physical multi-patient gate still blocks release/merge.
+
+## D11 test-lab white-screen regression / verified recovery (2026-10-15)
+
+**Goal:** prevent transient blank screens from mixed versions of PWA app-shell files without purging patient IndexedDB.
+
+**BEFORE:** user reported white screen on Vercel test frontend. In source, `frontend/web/flutter_bootstrap.js` invoked `_flutter.loader.load()` before asynchronous hosted-review SW unregistration/app-shell cache cleanup. This ordering can permit an old controlling SW to serve stale Flutter assets after new deployment. A desktop Opera browser screenshot of the old build at `https://iamina-review.vercel.app/#/login` nevertheless showed the French login screen; user's affected device/cache state was not reproduced. This is a verified code race, not a proven single root cause on user's device.
+
+**AFTER — code SHA `60de80ec070157f912cb62c80a7ded1e9bde75a6`:**
+- Hosted Vercel build awaits cleanup of only `iamina-app-shell-*` caches + SW registrations before Flutter boot. A still-controlled document is reloaded **at most once** per tab via sessionStorage; second attempt proceeds to render. No IndexedDB delete, no storage clear, no unrelated cache deletion.
+- New `frontend/test/services/d11_web_review_bootstrap_contract_test.dart` enforces ordering/bounded reload. Separate JS execution with synthetic browser mocks was performed for (1) clean, (2) controlled first load and (3) controlled repeat — all produced the expected sequence with no unrelated cache deletion.
+- **Exact SHA CI:** [CI #38718391963](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38718391963), [migration #38718391842](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38718391842), [P5-5 #38718391837](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38718391837), [PWA browser persistence #38718391813](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38718391813), [PWA offline #38718391925](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38718391925), [PWA update/recovery #38718392095](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38718392095): **6/6 COMPLETED SUCCESS**.
+- **Vercel preview:** `dpl_66U7ffeqnM7tdmDxDqaqMycvxvTF` READY on this SHA, desktop screenshot opened login screen with logo, e-mail/password, demo CTA.
+- **Vercel production-of-TEST:** `dpl_8eqWcB1cTJudwE9Rw581WenUsy1K` READY on same SHA, alias `https://iamina-review.vercel.app` verified by new browser load and screenshot showing the same login layout. Backend test alias remains `https://iamina-certified.vercel.app`, previously READY and health/db OK.
+- **UI review:** no intended layout/styling changes; desktop BEFORE/AFTER screenshots visually equivalent at full-screen browser dimensions. No quantitative pixel-diff score or affected-user device replay, so no `10/10` claim.
+- **Human/device gate OPEN:** user should check previously white-screen browser without wiping private site data; interactive account onboarding A→B→A and real persistence remain unverified on their device. No old patient data purged.
+- **Git state:** D11 PR #1021 is DRAFT/unmerged; this markdown closeout introduces a documentation-only SHA, so its exact-HEAD CI must be checked separately. Vercel test production already serves the green code SHA above; no new deployment required for prose-only changes.
+- **Next:** exact docs-HEAD CI, then user/device white-screen reproduction outcome, closeout security gates; D18 independent work may proceed.
+
