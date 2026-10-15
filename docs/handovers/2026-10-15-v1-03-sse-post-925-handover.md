@@ -69,3 +69,12 @@ The project owner explicitly stated on [#925](https://github.com/hraaaaf/IAMINA-
 **Stop condition now:** handover is requested; PR #1056 is deliberately not merged due to security-sensitive clinical/auth/API cutover and missing independent/human gates. Do not claim whole-app certification.
 
 **Resume prompt:** “Reprends IAMINA #925 sur la PR #1056. Lis `docs/handovers/2026-10-15-v1-03-sse-post-925-handover.md` puis `docs/security/2026-10-15-sse-post-migration-gates.md`. Vérifie `main`, HEAD PR et CI exacts avant d'agir, respecte 0 client, ne merge ni déploie sans vrais gates.”
+
+## 2026-10-15 continuation — fresh exact-head CI required
+
+- Pre-change PR HEAD `f5ee38067793c4af5bf8d5a62d8c471455f92dc3`, main `0851cdf014f559aa31a84884b4e49876e8638275`: 7 ahead/3 behind. The three main-only commits touch D10 iOS backup/config/tests, with no path overlap with #925; no reconciliation merge was performed.
+- Exact pre-change CI [#38721038775](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38721038775) SUCCESS: SQLite 2829 passed/5 skipped/3 xfailed; PostgreSQL 2833 passed/1 skipped/3 xfailed; Flutter 785 passed/1 skipped and PWA built. Separate migration drift, synthetic pilot and general Companion browser E2E succeeded, but not browser-to-server SSE.
+- Added a synthetic **Django HTTP stack** test: `test_http_post_session_normal_sse_disconnect_scopes_provider_cleanup`; checks valid session/CSRF, nonurgent POST body-only canary, no URL canary, lazy iteration, first SSE frame, stream disconnect, upstream generator cleanup under the correct patient egress scope and scope reset. **Its own exact-head CI is pending at this documentation update; do not inherit the previous green.**
+- Unresolved gates: a real browser-to-server POST SSE run, reverse-proxy access-log canary inspection, first clean-install/cache-version and safe rollback acceptance, independent security/clinical reviewers and release certifier. The static `IAMINA_CACHE_SCHEMA = '0.1.0+1'` requires first-release cache coordination. Desktop Commander device was offline during this verification, so no local live-server run was possible.
+- PR remains DRAFT; no merge, Vercel deployment, provider egress or real-patient use is authorized. Record final CI outcome in PR/#925/Notion without fabricating release certification.
+
