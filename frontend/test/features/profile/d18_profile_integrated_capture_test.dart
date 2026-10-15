@@ -122,6 +122,7 @@ Future<void> _capture(WidgetTester tester, String lang, Size size) async {
       of: header, matching: find.byType(Text)).first);
     // Arabic title must not force the bundled Latin-only Georgia subset.
     expect(title.style?.fontFamily, lang == 'ar' ? isNot('Georgia') : 'Georgia');
+    expect(title.style?.fontFamilyFallback, contains('Inter'));
   }
   expect(find.byKey(const Key('d18-expand-profile')), findsOneWidget);
   expect(tester.takeException(), isNull);
