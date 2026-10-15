@@ -31,7 +31,7 @@ def test_regular_chat_exception_is_not_copied_into_logs():
 
 
 def test_streaming_chat_exception_keeps_sse_end_without_private_log():
-    from ai.api.v1.ai import chat_stream
+    from ai.api.v1.ai import ChatRequest, chat_stream
 
     canary = "synthetic_private_sse_provider_exception"
     queryset = MagicMock()
@@ -44,7 +44,9 @@ def test_streaming_chat_exception_keeps_sse_end_without_private_log():
         patch("companion.router.route", side_effect=RuntimeError(canary)),
         patch("ai.api.v1.ai.logger.error") as log_event,
     ):
-        response = chat_stream.__wrapped__(_request(), message="synthetic question")
+        response = chat_stream.__wrapped__(
+            _request(), ChatRequest(message="synthetic question")
+        )
         content = b"".join(response.streaming_content).decode()
 
     assert "Une erreur est survenue." in content
