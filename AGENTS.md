@@ -2,16 +2,15 @@
 
 This file is a **stable execution contract for coding agents**, not a session diary, branch tracker, or historical status log.
 
-## Active product delivery directive — WEB FIRST (2026-10-15)
+## Active product delivery directive — WEB-ONLY V2 (2026-10-15)
 
-**User-approved, durable prioritization for all next D decisions:** focus IAMINA execution on the **web version (Flutter Web / PWA)**. Read the controlling `docs/ROADMAP.md` web-first directive before scoping any new D, handover, agent implementation, UI review or certification.
+**Single forward plan:** `docs/ROADMAP.md` — IAMINA ROADMAP UNIQUE WEB V2, W00–W14. All D1–D29 are product decisions to re-examine individually (keep/adapt/drop/defer); decision number never dictates execution order. D30/D31 are architecture scoping additions. Old V1/P5 sequences are history, not the current backlog; retained P5 real-patient gates remain mandatory.
 
-- Scope and build the real **browser** workflow first, responsive on mobile, tablet and desktop; validate keyboard, focus, accessible controls, RTL, browser persistence/offline and truthful browser API support as relevant. For UI work retain BEFORE → Goal → mockup → AFTER same real-browser viewports → comparison → functional and accessibility evidence.
-- Do **not** prioritize new native-iOS/Android-only implementation or CI work unless the owner explicitly reactivates it or a verified non-deferrable clinical/safety/security/data-integrity/compliance dependency requires it. Preserve open native issues/PRs as **open or deferred, never silently closed or certified**.
-- Browser-specific restrictions remain enforceable: no insecure local clinical storage; no presumption that D10-B encrypted web vault, recovery, CGM bridges, OS notifications or biometrics already work. Block or adapt unsupported functionality, and test on real browsers.
-- This is a **surface priority**, not permission to replace Flutter, change backend/clinical authority, relax safety/privacy gates, deploy Vercel, enable real-patient use or change historical roadmap progress. Preserve existing release-review chain and obtain separate explicit deployment authorization.
-- Future decisions and agents must cite this cross-cutting priority, treat Web/PWA as the default acceptance target, and record any justified platform exception in its D/LOT evidence.
-
+- **Only frontend product surface:** Flutter Web/PWA in actual mobile/tablet/desktop browsers, with keyboard, accessibility, RTL, browser persistence/offline and real browser capabilities. No new native iOS/Android-only feature work in this roadmap; preserve legacy work as deferred evidence.
+- **Target topology to design/prove in W01/W02 (not automatically deployed):** separate Vercel frontend and Django/django-ninja backend projects; PostgreSQL on a separately managed Neon database connected to backend. Verify serverless support, consent, auth, migrations, secrets, isolation, encrypted Web storage, backup/restore and browser/offline truth before operational use. Do not claim the two-project production architecture is implemented today.
+- UI evidence: BEFORE → Goal → mockup → implementation → AFTER identical browser viewports → comparison, functional/accessibility/RTL checks and serious score.
+- CGM D1/D25 and OCR/Vision D14/D15 require brainstorming and user onboarding designs before any integration; manufacturer/provider/legal and privacy gates still apply.
+- No generated clinical authority, no implicit patient consent or real-patient use. **Never deploy to Vercel without separate explicit owner authorization**. 
 ## Read first
 
 1. `docs/ROADMAP.md` — single forward backlog and gates.
@@ -42,18 +41,13 @@ Do not choose work from old phase numbers, archived plans, assessments, or stale
 
 ## Current critical path
 
-Execute only explicitly assigned work from these roadmap areas:
+1. **W00** audit exact `main`/PR/CI, Web capability inventory and D1–D29 mapping; synchronize V2 canonical roadmap.
+2. **W01 → W02** design separated Web/API/Neon topology and resolve patient auth/vault/consent/secure Web persistence without any deployment.
+3. **W04 → W05/W06 → W07 → W09**, with **W08 before any third-party AI**; independent W03 browser UI improvements where safe.
+4. **W11 CGM** and **W12 OCR/Vision** brainstorming/onboarding may run in parallel after W00, but integration follows the explicit architecture, safety and privacy prerequisites.
+5. **W13 → W14** Web quality and release gates. Retain P5-6A/#318 and P5-6B/#320 before real patients, and human authorization before any Vercel deployment.
 
-1. P0-MENA-1 — outbound AI/data-egress boundary.
-2. P0-MENA-2 — locale + safety contract.
-3. P0-MENA-3 — Django-native auth migration.
-4. P0-MENA-4 — multimodal provider benchmark.
-5. Pilot safety/compliance + staging + one-country pilot.
-6. P2-COMPANION — only the explicit ordered companion-intelligence LOTs in `docs/ROADMAP.md`.
-
-Do not resume the superseded P2-DOCTOR assembler-first sequence unless the roadmap is explicitly changed through normal governance. The certified `consultation-brief.v1` contract remains a restricted P2-COMPANION consultation sub-capability.
-
-Do not pull gated platform/module work forward.
+Never elevate historical V1/P5 order or legacy native PRs above `docs/ROADMAP.md`.
 
 ## Architecture facts
 
