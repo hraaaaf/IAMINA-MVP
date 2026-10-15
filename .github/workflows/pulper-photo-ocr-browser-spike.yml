@@ -1,0 +1,54 @@
+name: Pulper browser OCR synthetic spike
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - spike/pulper-photo-ocr-browser-20261015
+    paths:
+      - 'experiments/pulper-photo-ocr/**'
+      - '.github/workflows/pulper-photo-ocr-browser-spike.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser-ocr:
+    name: Tesseract.js vs PaddleOCR.js local-only synthetic comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: experiments/pulper-photo-ocr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser runtime and fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-dejavu-core fonts-noto-core
+          python -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+          npm install --no-audit --no-fund
+      - name: Generate synthetic corpus and unit contract
+        run: |
+          npm test
+          npm run fixtures
+      - name: Download official OCR assets at build-time only
+        run: npm run assets
+      - name: Install Chromium for browser-only benchmark
+        run: npx playwright install --with-deps chromium
+      - name: Execute strict same-origin browser comparison
+        run: npm run bench
+      - name: Archive synthetic safety metrics only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulper-photo-ocr-synthetic-${{ github.sha }}
+          path: experiments/pulper-photo-ocr/out/*.json
+          if-no-files-found: warn
+          retention-days: 14
