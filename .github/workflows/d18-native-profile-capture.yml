@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'frontend/lib/features/profile/**'
+      - 'frontend/lib/core/widgets/mobile_page_header.dart'
       - 'frontend/test/features/profile/d18_profile_capture_test.dart'
       - 'frontend/test/features/profile/d18_profile_integrated_capture_test.dart'
       - '.github/workflows/d18-native-profile-capture.yml'
