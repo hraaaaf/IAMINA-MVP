@@ -6,6 +6,8 @@ All destinations must be loopback; no Vercel, Neon or patient records accessed.
 from __future__ import annotations
 
 import json
+import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -13,8 +15,6 @@ import tempfile
 import time
 import urllib.request
 from pathlib import Path
-
-from websocket import create_connection
 
 APP_URL = "http://127.0.0.1:7364/"
 DEVTOOLS_URL = "http://127.0.0.1:9229/json/list"
@@ -41,6 +41,8 @@ def _chrome_binary() -> str:
 
 
 def _confirm_title(page: dict, deadline: float) -> str:
+    from websocket import create_connection
+
     # Same bounded Chrome CDP mechanism as existing P5-4A PWA proof.
     ws = create_connection(page["webSocketDebuggerUrl"], timeout=20)
     try:
@@ -74,8 +76,35 @@ def _confirm_title(page: dict, deadline: float) -> str:
         ws.close()
 
 
+def _stop_chrome(process: subprocess.Popen) -> None:
+    """Tear down a dedicated Chrome process group; already-exited is success.
+
+    Chromium may exit after DevTools reports success while child processes still
+    write the ephemeral browser profile. This cleanup must never turn a genuine
+    successful browser assertion into an infrastructure failure.
+    """
+    if process.poll() is not None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=5)
+
+
 def main() -> int:
-    with tempfile.TemporaryDirectory(prefix="iamina-w01b-chrome-") as directory:
+    # Each GitHub Actions runner is ephemeral and uses only synthetic browser data.
+    # Suppress Linux Chrome profile-deletion races, never assertion failures.
+    with tempfile.TemporaryDirectory(
+        prefix="iamina-w01b-chrome-", ignore_cleanup_errors=True
+    ) as directory:
         logpath = Path(directory) / "chrome.log"
         chrome = _chrome_binary()
         with logpath.open("w", encoding="utf-8") as logfile:
@@ -93,6 +122,7 @@ def main() -> int:
                 ],
                 stdout=logfile,
                 stderr=subprocess.STDOUT,
+                start_new_session=True,
             )
             try:
                 pages = _get_pages(time.monotonic() + 30)
@@ -109,12 +139,7 @@ def main() -> int:
                 }, indent=2))
                 return 0
             finally:
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=5)
+                _stop_chrome(process)
 
 
 if __name__ == "__main__":
