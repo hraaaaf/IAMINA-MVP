@@ -126,7 +126,8 @@ Future<void> runNativeD18DiskIsolation() async {
     expect(rows.last.unit, 'kg');
     expect(rows.last.clientUuid, weightA);
     expect((await aFinal.getProfileForLocalUserId(idA))?.diabetesType, 'type1');
-    expect((await aFinal.getProfileForLocalUserId(idA))?.weight, isNull);
+    // The local Drift PatientProfile does not have a weight snapshot column.
+    // D18 readings must live only in their explicitly dated history store.
     expect(await aFinal.getProfileForLocalUserId(idB), isNull);
     await PatientProgressiveDemographicsStore(aFinal).update(
       updateBirthYear: true, birthYear: null,
