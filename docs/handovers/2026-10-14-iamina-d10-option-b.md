@@ -1,3 +1,14 @@
+## 15 octobre 2026 — D10-B baseline défensive fusionnée ; gate humaine maintenue
+
+- **Code source main certifié fusionné, pas produit B activé :** [PR #1012](https://github.com/hraaaaf/IAMINA-MVP/pull/1012) **MERGED** commit `b9588bf9fb37fc1d6dc922f91b4039a380f839a9`, HEAD `main` vérifié au même SHA immédiatement après fusion. Un seul fichier de **tests** `frontend/test/services/app_lock_service_test.dart` modifié ; aucun accès clinique, consentement, route, stockage, UI ou lock service runtime modifié.
+- **Avant merge, exact HEAD `a7811eb4eb4be167d424b49331892374a9f3b978` : 3/3 SUCCESS** : [TD-014 #38657348652](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657348652), [CI #38657348657](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657348657), [P5-5 #38657348727](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657348727). Trois assertions ajoutées contre faux marqueur de désactivation app-lock : coffre protégé sans credential fail-closed, récupération local-only non vérifiée refusée, cold boot avec credential valide reste verrouillé.
+- **Postmerge du SHA `b9588bf9` :** [CI #38657961166](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657961166) et [P5-5 #38657961163](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657961163) lancés ; **aucun SUCCESS affirmé sans lecture de leurs conclusions**.
+- **Human gate :** [issue indépendante #1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013) **OPEN**. Absence de preuve suffisante de protection au repos SQLite/IndexedDB et d'avis indépendants sécurité/privacy sur opt-out iOS/Android/Web. Ne pas désactiver le verrou ni déclarer D10 livrée. Option B choisie reste la cible ; implémentation runtime **bloquée** avant avis.
+- **Parallèle TD-008 :** [PR #1010](https://github.com/hraaaaf/IAMINA-MVP/pull/1010) MERGED sur `7cdda5a3284306d0dd15ae54f05c0420583413a9`. [Run Android prémerge #38656735672](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38656735672) SUCCESS après réparation KVM, et CI #38656735687 SUCCESS. Postmerge [TD-008 #38657927043](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657927043) initialement IN_PROGRESS ; CI #38657927045 SUCCESS.
+- **Next exact :** vérifier conclusions postmerge des 2 PR ; pour D10, obtenir sign-off indépendant de #1013 et préciser les plateformes autorisant B, ensuite seulement programmer un opt-out propriétaire/terminal sans faux déverrouillage et avec tests. **P5 historique : 50 %.**
+
+---
+
 # IAMINA V1 — D10/B : app-lock facultatif — décision, sûreté, reprise canonique
 
 Date : 14 octobre 2026. Repo : `hraaaaf/IAMINA-MVP`. Base inspectée : `main@e1ae8eb3687bd3b30f49999c437c8fb2bbeedeeb`.
