@@ -183,6 +183,23 @@ class RealCgmSufficiencyContractTests(TestCase):
         self.assertEqual(result.received_readings, 0)
         self.assertFalse(result.verified)
 
+    def test_sensor_end_reading_does_not_inflate_coverage_after_session(self):
+        session = self._session(key="end-boundary")
+        for index, recorded_at in enumerate((self.start, self.end)):
+            CGMReadingRecord.objects.create(
+                patient=self.patient, session=session, source=session.source,
+                recorded_at=recorded_at, glucose_mg_dl=110,
+                dedupe_key=f"end-test-{index}",
+            )
+
+        result = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end + dt.timedelta(days=1),
+        )
+        self.assertEqual(result.expected_readings, 14 * 24 * 4)
+        self.assertEqual(result.received_readings, 1)
+
     def test_naive_timezone_window_fails_closed(self):
         result = assess_cgm_window(
             patient_id=self.patient.id,
