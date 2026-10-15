@@ -30,6 +30,47 @@ jobs:
       - name: Resolve Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Diagnostic-only CocoaPods integration workaround (NOT production)
+        working-directory: frontend/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CocoaPods injects Pods_Runner.framework and Pods_RunnerTests.framework
+          # into the host targets, but neither is present as a compiled product.
+          # Remove ONLY these phantom aggregate links after each CocoaPods integration.
+          # This Podfile mutation is isolated to the CI workspace and not committed.
+          cat >> Podfile <<'RUBY'
+
+          post_integrate do |_installer|
+            require 'xcodeproj'
+            project = Xcodeproj::Project.open(File.join(__dir__, 'Runner.xcodeproj'))
+            removed = []
+            %w[Runner RunnerTests].each do |name|
+              target = project.targets.find { |t| t.name == name }
+              raise "Missing Xcode target #{name}" unless target
+              bad = "Pods_#{name}.framework"
+              target.frameworks_build_phase.files.each do |entry|
+                next unless entry.file_ref && entry.file_ref.path.to_s == bad
+                entry.remove_from_project
+                removed << bad
+              end
+            end
+            raise "No generated phantom aggregate framework links found" if removed.empty?
+            project.save
+            puts "CI_ONLY_REMOVED_PHANTOM_FRAMEWORK_LINKS #{removed.join(',')}"
+          end
+          RUBY
+          pod install
+          ruby - <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('Runner.xcodeproj')
+          %w[Runner RunnerTests].each do |name|
+            target = project.targets.find { |t| t.name == name }
+            bad = "Pods_#{name}.framework"
+            raise "CocoaPods link still present: #{bad}" if target.frameworks_build_phase.files.any? { |f| f.file_ref && f.file_ref.path.to_s == bad }
+          end
+          puts 'CI_ONLY_LINK_REFERENCE_REMOVAL_VERIFIED'
+          RUBY
       - name: Select available iOS 18 iPhone Simulator
         shell: bash
         run: |
