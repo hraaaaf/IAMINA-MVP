@@ -174,8 +174,19 @@ final class PatientWeightHistoryStore {
 
   /// A read-only export for a later versioned, owner-verified local backup.
   /// Nothing is automatically uploaded or copied out of the selected vault.
+  Future<void> prepareBackupTable() => _ensureTable();
+
+  /// Fail closed if a damaged physical vault holds an additional owner's
+  /// rows; filtering the export query alone would hide that contamination.
   Future<List<Map<String, Object?>>> exportOwnedRows() async {
     await _ensureTable();
+    final foreign = await db.customSelect('''
+      SELECT user_id FROM patient_weight_observations_v1
+      WHERE user_id <> ? LIMIT 1
+    ''', variables: [Variable<int>(_owner)]).get();
+    if (foreign.isNotEmpty) {
+      throw StateError('Foreign weight data inside patient vault');
+    }
     final rows = await db.customSelect('''
       SELECT user_id, client_uuid, value_hundredths, unit,
              kilograms_hundredths, measured_at_utc, provenance
@@ -183,5 +194,37 @@ final class PatientWeightHistoryStore {
       ORDER BY measured_at_utc DESC, client_uuid DESC
     ''', variables: [Variable<int>(_owner)]).get();
     return [for (final row in rows) Map<String, Object?>.from(row.data)];
+  }
+
+  /// Validate the complete untrusted backup row BEFORE destructive restore.
+  static void validateBackupRow(Map<String, dynamic> row, int owner) {
+    const fields = {
+      'user_id', 'client_uuid', 'value_hundredths', 'unit',
+      'kilograms_hundredths', 'measured_at_utc', 'provenance',
+    };
+    if (row.keys.toSet().difference(fields).isNotEmpty ||
+        fields.difference(row.keys.toSet()).isNotEmpty ||
+        row['user_id'] != owner ||
+        row['client_uuid'] is! String ||
+        !RegExp(_uuidV4).hasMatch(row['client_uuid'] as String) ||
+        row['value_hundredths'] is! int ||
+        row['kilograms_hundredths'] is! int ||
+        row['unit'] is! String ||
+        row['measured_at_utc'] is! String ||
+        row['provenance'] != 'patient_declared') {
+      throw const FormatException('Invalid D18 weight backup row');
+    }
+    try {
+      final hundredths = row['value_hundredths'] as int;
+      if (hundredths <= 0 || hundredths > 999999 ||
+          _toKilogramsHundredths(hundredths, row['unit'] as String) !=
+              row['kilograms_hundredths']) {
+        throw const FormatException('Inconsistent D18 weight units');
+      }
+      final at = DateTime.parse(row['measured_at_utc'] as String);
+      if (!at.isUtc) throw const FormatException('Non-UTC D18 measurement');
+    } catch (_) {
+      throw const FormatException('Invalid D18 measurement backup');
+    }
   }
 }
