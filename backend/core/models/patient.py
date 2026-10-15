@@ -107,6 +107,11 @@ class BasePatientProfile(models.Model):
         blank=True,
         help_text="Patient-declared date of birth. NULL = not provided.",
     )
+    birth_year = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Patient-declared year only; no exact birth date is inferred.",
+    )
 
     weight = models.DecimalField(
         max_digits=5,
