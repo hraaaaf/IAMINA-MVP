@@ -8,7 +8,7 @@ Do not auto-backfill it with an invented timestamp or provenance.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from uuid import UUID, uuid4
 
 from django.conf import settings
