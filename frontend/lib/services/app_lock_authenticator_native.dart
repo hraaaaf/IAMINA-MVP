@@ -41,6 +41,9 @@ final class NativeAppLockAuthenticator implements AppLockAuthenticator {
       throw const AppLockException('strong_auth_unavailable');
     }
     final reply = await _invoke('enroll');
+    if (reply['verified'] != true) {
+      throw const AppLockException('signature_not_verified');
+    }
     final credential = AppLockCredential.decode(
       // The existing app-lock persistence protocol contains WebAuthn-shaped
       // fields. On native we pin a DISTINCT origin and RP and store a native
@@ -52,6 +55,14 @@ final class NativeAppLockAuthenticator implements AppLockAuthenticator {
         !credential.credentialId.startsWith('native-bio-v1-') ||
         credential.signCount != 0) {
       throw const AppLockException('invalid_native_enrollment');
+    }
+    try {
+      final spki = base64Decode(credential.publicKeySpki);
+      if (spki.length != 91 || spki[0] != 0x30 || spki[1] != 0x59) {
+        throw const AppLockException('invalid_native_public_key');
+      }
+    } on FormatException {
+      throw const AppLockException('invalid_native_public_key');
     }
     return credential;
   }
