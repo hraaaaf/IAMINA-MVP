@@ -40,7 +40,7 @@ if ('serviceWorker' in navigator) {
     // between deployments because it can hide the current candidate.
     cleanupHostedReviewCaches();
   } else {
-    const IAMINA_FALLBACK_RELEASE = '0.1.0+1';
+    const IAMINA_FALLBACK_RELEASE = '0.1.0+2';
 
     const readCurrentIaminaRelease = async () => {
       try {
