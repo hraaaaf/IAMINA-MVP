@@ -36,6 +36,22 @@
 - D30 identity, sync consent, PWA egress, D31 physical A/B and data recovery remain distinct certification gates. Do not infer patient isolation merely from this PR's code.
 - **No merge / no clinical pilot / no Vercel** without exact-head CI + independent privacy/security approval and required real-device evidence.
 
+## Verified exact-code-HEAD CI and PWA evidence — 2026-10-15
+
+**Reviewed code/test HEAD before this documentation-only closeout commit:** `550a76eb7ff99242dea000018ea6ca5a89a1dfde` on [PR #1021](https://github.com/hraaaaf/IAMINA-MVP/pull/1021), **DRAFT, NOT MERGED**.
+
+- [Main CI #38697582946](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582946): **COMPLETED/SUCCESS**, including Ruff, OpenAPI schema check, Django/Pytest (**2,822 passed; 5 skipped; 3 xfailed; 121 subtests**), PostgreSQL (**2,826 passed; 1 skipped; 3 xfailed; 121 subtests**), Flutter analyze/tests (**787 passed; 1 skipped**, explicitly including four D11 vault tests), and self-contained PWA release build.
+- [Django migration drift #38697582950](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582950): **SUCCESS**.
+- [P5-5 synthetic pilot #38697582952](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582952): **SUCCESS**.
+- [PWA offline shell #38697582948](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582948): **SUCCESS**.
+- [PWA update/recovery #38697582945](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582945): **SUCCESS**.
+- [PWA Chrome persistent storage #38697582982](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582982): initial attempt **FAILURE** because Chrome's DevTools port 9223 never opened; synthetic persistence tests did not execute then (not evidence of a storage fault). **Single-job rerun, attempt 2: COMPLETED/SUCCESS**, same exact SHA, with [browser proof artifact #11960588503](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697582982/artifacts/11960588503). The proof artifact is present; its contents have **not** been independently re-parsed here.
+- Thus **6/6 exact-code-SHA workflows green after Chrome re-run**. All tests used synthetic patients / runtime; no new clinical real-patient certification is claimed.
+- Recent unrelated `main` commits advanced beyond the PR base. Recheck PR mergeability and rebase if required **only after independent review**; do not conflate this green code SHA with future integration or deployment.
+- The **documentation-only update that adds this section produces a NEW HEAD**. Run its new exact-HEAD CI independently before declaring a final documentation/git closeout. Historical `550a76eb` green must not be silently transferred to a newer SHA.
+
+**Status:** D11 code and synthetic CI proof green on `550a76eb`; **D11 real-patient certification / merge OPEN** pending independent security/privacy, existing-data audit and physical A→logout→B→A. No Vercel/real-patient release or destructive cleaning.
+
 ## Execution evidence register
 
 - PR #1021: base main at PR creation `0b33abbbbfb9093314cf45e6fe2f98c9f32ba9d5`; code/test HEAD before this documentation update `0702b947902963769536fec0a38e37225477d40a`. Final documentation commit requires fresh exact-head CI; no previous green transfers.
