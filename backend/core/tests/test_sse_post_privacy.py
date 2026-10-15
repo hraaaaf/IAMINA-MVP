@@ -159,7 +159,7 @@ def test_deferred_generator_scopes_each_patient_and_resets_between_yields():
 
 def test_without_consent_provider_cannot_enter_even_inside_deferred_scope():
     from ai.api.v1.ai import ChatRequest, chat_stream
-    from core.ai_egress import AIConsentRequired, TEXT, _CURRENT_EGRESS, assert_ai_egress_allowed
+    from core import ai_egress
 
     entered_provider = MagicMock()
     class FakeCompanion:
@@ -167,7 +167,7 @@ def test_without_consent_provider_cannot_enter_even_inside_deferred_scope():
             self.deep = MagicMock()
 
         def stream_chat(self, message, context_days=14):
-            assert_ai_egress_allowed(TEXT)
+            ai_egress.assert_ai_egress_allowed(ai_egress.TEXT)
             entered_provider()
             yield "must never be sent"
 
@@ -178,11 +178,11 @@ def test_without_consent_provider_cannot_enter_even_inside_deferred_scope():
         patch("companion.core.IAmina", FakeCompanion),
         patch("companion.router.route"),
         patch("core.ai_egress._load_current_consent_profile",
-              side_effect=AIConsentRequired("synthetic no consent")),
+              side_effect=ai_egress.AIConsentRequired("synthetic no consent")),
     ):
         response = chat_stream.__wrapped__(_request(), ChatRequest(message="synthetic chat"))
         body = b"".join(response.streaming_content).decode()
     entered_provider.assert_not_called()
     assert "Une erreur est survenue." in body
     assert "data: [DONE]" in body
-    assert _CURRENT_EGRESS.get() is None
+    assert ai_egress._CURRENT_EGRESS.get() is None
