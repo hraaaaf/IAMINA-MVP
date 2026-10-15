@@ -8,6 +8,8 @@ PUT    /api/v1/profile/ai-media-consents/{purpose}/{modality}
 DELETE /api/v1/profile/ai-media-consents/{purpose}/{modality}
 """
 from datetime import date, datetime
+from decimal import Decimal
+from uuid import UUID
 from typing import Literal, Optional
 
 from django.db import transaction
@@ -19,6 +21,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from core.ai_egress import grant_media_consent, revoke_media_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
+from core.models.patient_weight import (
+    PatientWeightIdempotencyConflict,
+    PatientWeightObservation,
+    append_patient_weight,
+    validated_birth_year,
+)
 from diabetes.models import DiabetesProfile
 
 from .schemas import PatientProfileSchema
@@ -84,6 +92,8 @@ class ProfilePatchSchema(BaseModel):
     target_range_low: Optional[float] = None
     target_range_high: Optional[float] = None
     gender: Optional[str] = None
+    gender_identity: Optional[str] = None
+    birth_year: Optional[int] = None
     date_of_birth: Optional[date] = None
     weight: Optional[float] = None
     height: Optional[int] = None
@@ -126,6 +136,19 @@ class ProfilePatchSchema(BaseModel):
         if v is not None and v not in _VALID_GENDERS:
             raise ValueError(f"gender must be one of {_VALID_GENDERS}")
         return v
+
+    @field_validator("gender_identity")
+    @classmethod
+    def validate_gender_identity(cls, v):
+        allowed = {key for key, _ in BasePatientProfile.GENDER_IDENTITY_CHOICES}
+        if v is not None and v not in allowed:
+            raise ValueError("Unsupported self-declared gender identity")
+        return v
+
+    @field_validator("birth_year")
+    @classmethod
+    def validate_birth_year(cls, v):
+        return validated_birth_year(v)
 
     @field_validator("unit_preference")
     @classmethod
@@ -237,6 +260,77 @@ def _media_consent_state(
     }
 
 
+class PatientWeightWriteSchema(BaseModel):
+    """One explicitly dated patient declaration; never inferred from profile."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    client_uuid: UUID
+    value: Decimal
+    unit: Literal["kg", "lb"]
+    measured_at: datetime
+    provenance: Literal["patient_declared"] = "patient_declared"
+
+
+class PatientWeightReadSchema(BaseModel):
+    id: int
+    client_uuid: UUID
+    value: Decimal
+    unit: str
+    weight_kg: Decimal
+    measured_at: datetime
+    provenance: str
+    created_at: datetime
+
+
+def _read_weight(observation: PatientWeightObservation) -> dict:
+    return {
+        "id": observation.pk,
+        "client_uuid": observation.client_uuid,
+        "value": observation.value,
+        "unit": observation.unit,
+        "weight_kg": observation.weight_kg,
+        "measured_at": observation.measured_at,
+        "provenance": observation.provenance,
+        "created_at": observation.created_at,
+    }
+
+
+@router.get("/profile/weight-observations", response=list[PatientWeightReadSchema])
+def list_patient_weights(request, limit: int = 100):
+    """Read this authenticated patient's history only, most recent first."""
+    _get_base_profile(request.user)
+    if not 1 <= limit <= 200:
+        raise HttpError(422, "limit must be between 1 and 200")
+    observations = PatientWeightObservation.objects.filter(
+        patient=request.user
+    ).order_by("-measured_at", "-pk")[:limit]
+    return [_read_weight(item) for item in observations]
+
+
+@router.post(
+    "/profile/weight-observations",
+    response={200: PatientWeightReadSchema, 201: PatientWeightReadSchema},
+)
+def add_patient_weight(request, data: PatientWeightWriteSchema):
+    """Append; a matching retry is a read, never an update of history."""
+    _get_base_profile(request.user)
+    try:
+        observation, created = append_patient_weight(
+            patient=request.user,
+            value=data.value,
+            unit=data.unit,
+            measured_at=data.measured_at,
+            client_uuid=data.client_uuid,
+            provenance=data.provenance,
+        )
+    except PatientWeightIdempotencyConflict as exc:
+        raise HttpError(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HttpError(422, str(exc)) from exc
+    return (201 if created else 200), _read_weight(observation)
+
+
 @router.get("/profile", response=PatientProfileSchema)
 def get_profile(request):
     return _get_diabetes_profile(request.user)
@@ -280,9 +374,18 @@ def patch_profile(request, data: ProfilePatchSchema):
     if float(proposed_low) >= float(proposed_high):
         raise HttpError(422, "target_range_low must be lower than target_range_high")
 
+    # D18: the old singleton profile.weight has neither a timestamp nor
+    # provenance. New writes MUST go through the append-only endpoint.
+    if "weight" in payload:
+        raise HttpError(
+            422, "Use /profile/weight-observations for dated weight entries"
+        )
+
     base_fields = {
         "preferred_language",
         "gender",
+        "gender_identity",
+        "birth_year",
         "date_of_birth",
         "weight",
         "height",
