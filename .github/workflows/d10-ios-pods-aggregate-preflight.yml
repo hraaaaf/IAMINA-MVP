@@ -1,0 +1,74 @@
+name: D10 iOS Pods aggregate preflight
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d10-ios-pods-aggregate-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pods-structure:
+    name: Inspect generated Pods structures without Simulator build
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode and CocoaPods versions
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+          pod --version
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          channel: stable
+          cache: true
+      - name: Resolve and generate CocoaPods
+        working-directory: frontend
+        run: |
+          flutter pub get
+          cd ios
+          pod install
+      - name: Probe targets, project links, and binary simulator slices
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, plistlib, re, subprocess
+          root = pathlib.Path("frontend/ios")
+          project = (root/"Runner.xcodeproj/project.pbxproj").read_text(errors="replace")
+          pods_project = (root/"Pods/Pods.xcodeproj/project.pbxproj").read_text(errors="replace")
+          xcconfig = root/"Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+          data = {"project_runner_pods_framework_links": [],
+                  "pods_runner_aggregate_type": bool(re.search(r'productType = "com.apple.product-type.aggregate"', pods_project)),
+                  "xcconfig_exists": xcconfig.is_file(),
+                  "xcframeworks": []}
+          for line in project.splitlines():
+              if re.search(r'Pods[_-]Runner|libPods-Runner|Pods_Runner', line):
+                  # Tracked generated project metadata only; no environment or secrets.
+                  data["project_runner_pods_framework_links"].append(line.strip()[:380])
+          for file in sorted((root/"Pods").glob("**/*.xcframework/Info.plist")):
+              try:
+                  with file.open("rb") as fp:
+                      pl=plistlib.load(fp)
+                  relative=str(file.relative_to(root/"Pods"))
+                  if any(s in relative for s in ("MLImage","MLKit","GoogleMLKit")):
+                      choices=[{"id":v.get("LibraryIdentifier"),"architectures":v.get("SupportedArchitectures"),"platform":v.get("SupportedPlatform"),"variant":v.get("SupportedPlatformVariant")} for v in pl.get("AvailableLibraries",[])]
+                      data["xcframeworks"].append({"path":relative[:240],"slices":choices})
+              except (OSError,ValueError,plistlib.InvalidFileException):
+                  continue
+          report=pathlib.Path("d10-ios-pods-preflight.json")
+          report.write_text(json.dumps(data,indent=2)+"\n")
+          print(json.dumps(data,indent=2)[:12000])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d10-ios-pods-aggregate-preflight
+          path: d10-ios-pods-preflight.json
+          if-no-files-found: error
+          retention-days: 7
