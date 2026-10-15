@@ -50,8 +50,8 @@ def test_request_contains_only_locale_script_and_opaque_token():
     assert request.protected_body_token == envelope.protected_body_token
     assert "142" in envelope.protected_body_token
     assert prompt == (
-        f"locale=fr\\n"
-        f"script=default\\n"
+        f"locale=fr\n"
+        f"script=default\n"
         f"protected_body_token={envelope.protected_body_token}"
     )
     payload_without_token = prompt.replace(envelope.protected_body_token, "")
