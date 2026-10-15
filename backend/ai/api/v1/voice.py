@@ -137,7 +137,9 @@ def voice_chat(
     try:
         transcript = transcribe(audio_bytes, mime_type, language, language_hints=AR_MA_STT_HINTS)
     except (TranscriptionError, ValueError) as exc:
-        logger.warning("voice_chat: STT failed for user=%s — %s", user.id, exc)
+        logger.warning(
+            "voice_chat: STT failed (exception_type=%s)", type(exc).__name__
+        )
         return _error(user, "transcription_failed")
 
     if not transcript:
@@ -156,11 +158,8 @@ def voice_chat(
 
     decision = evaluate_input_safety(transcript, language)
     if decision.action == URGENT:
-        logger.critical(
-            "TriageVital(voice): EMERGENCY — user_id=%s | snippet='%s'",
-            user.id,
-            transcript[:120],
-        )
+        # Never log raw voice/transcript content, especially on a clinical event.
+        logger.critical("TriageVital(voice): EMERGENCY")
         return {
             **_pick_emergency_response(transcript),
             "transcript": transcript,
