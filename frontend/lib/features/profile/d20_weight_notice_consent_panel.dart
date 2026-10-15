@@ -169,7 +169,17 @@ class _ConsentState extends State<D20WeightNoticeConsentPanel> {
   );
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => Theme(
+    // Inter is the IAMINA body font. Explicitly bind form-specific Material
+    // label/button typography so audit rendering never falls back to Ahem.
+    data: Theme.of(context).copyWith(
+      textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Inter'),
+      inputDecorationTheme: Theme.of(context).inputDecorationTheme.copyWith(
+        labelStyle: const TextStyle(fontFamily: 'Inter'),
+        hintStyle: const TextStyle(fontFamily: 'Inter'),
+      ),
+    ),
+    child: Container(
     key: const Key('d20-consent-panel'),
     decoration: BoxDecoration(
       border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
@@ -248,6 +258,7 @@ class _ConsentState extends State<D20WeightNoticeConsentPanel> {
           child: Text(_message!, key: const Key('d20-consent-message')),
         ),
       ],
+    ),
     ),
   );
 }
