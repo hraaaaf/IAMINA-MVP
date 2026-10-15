@@ -1,4 +1,4 @@
-name: D18 iOS Secure Enclave bridge compile (scope only)
+name: D18 iOS native bridge and isolated simulator A-B-A
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   d18-ios-compile:
-    name: Compile Secure Enclave native bridge without signing (NO physical biometric proof)
+    name: Compile iOS native bridge and run simulator A-B-A (NO physical biometrics)
     runs-on: macos-15
     timeout-minutes: 65
     defaults:
@@ -37,6 +37,23 @@ jobs:
         run: flutter test --no-pub --reporter expanded test/features/profile/d18_native_app_lock_boundary_test.dart
       - name: Compile iOS app with native Secure Enclave bridge (no signing)
         run: flutter build ios --release --no-codesign --dart-define=ENABLE_FIREBASE_MIGRATION=false
+      - name: Verify unsigned device-release compilation and privacy prompt
+        run: |
+          test -d build/ios/iphoneos/Runner.app
+          /usr/libexec/PlistBuddy -c 'Print :NSFaceIDUsageDescription' ios/Runner/Info.plist
+          echo 'D18_IOS_DEVICE_RELEASE_COMPILED=true' >> "$GITHUB_ENV"
+      - name: Isolate simulator Debug build from preceding device Release build
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter clean
+          flutter pub get
+          (
+            cd ios
+            pod install
+          )
+          test -f 'ios/Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig'
+          test -f ios/Runner.xcworkspace/contents.xcworkspacedata
       - name: Select and boot a genuine iOS simulator on macOS
         shell: bash
         run: |
@@ -60,24 +77,24 @@ jobs:
       - name: Install Flutter app and exercise D18 A-B-A on iOS simulator
         env:
           CI: "true"
-        run: flutter test --no-pub --reporter expanded -d "$D18_IOS_SIMULATOR_ID" integration_test/d18_android_patient_profile_test.dart
-      - name: Check compiled application and privacy prompt
         run: |
-          test -d build/ios/iphoneos/Runner.app
-          /usr/libexec/PlistBuddy -c 'Print :NSFaceIDUsageDescription' ios/Runner/Info.plist
+          flutter test --no-pub --reporter expanded -d "$D18_IOS_SIMULATOR_ID" integration_test/d18_android_patient_profile_test.dart
+          echo 'D18_IOS_SIMULATOR_A_B_A_PASSED=true' >> "$GITHUB_ENV"
       - name: Record limits
         if: always()
         run: |
           mkdir -p ../artifacts/d18-ios
-          cat > ../artifacts/d18-ios/PROVENANCE.txt <<'EOF'
-          D18-only native iOS Swift/Security/LocalAuthentication compile
-          plus installed iPhone simulator D18 A-B-A and ProfileScreen gate.
-          Native app is built and D18 integration is run on an actual iOS Simulator.
+          {
+            printf 'D18_IOS_DEVICE_RELEASE_COMPILED=%s\n' "${D18_IOS_DEVICE_RELEASE_COMPILED:-false}"
+            printf 'D18_IOS_SIMULATOR_A_B_A_PASSED=%s\n' "${D18_IOS_SIMULATOR_A_B_A_PASSED:-false}"
+            cat <<'EOF'
+          Simulator test result is true ONLY after Flutter integration test exit code 0.
           The simulator cannot prove Face ID / Touch ID hardware or Secure Enclave signing.
           Not a proof of biometric enrollment, Secure Enclave attestation,
           device-key invalidation or physical-device treatment safety.
           No patient data, no deployed binary, no App Store distribution.
           EOF
+          } > ../artifacts/d18-ios/PROVENANCE.txt
       - name: Upload provenance
         if: always()
         uses: actions/upload-artifact@v4
