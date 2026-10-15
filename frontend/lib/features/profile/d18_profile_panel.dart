@@ -118,6 +118,10 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   }
 
   Future<void> _selectTime() async {
+    // A date picker may remain open while the authenticated vault switches.
+    // Never transfer a pending patient-declared measurement time to a new owner.
+    final db = widget.db;
+    final epoch = _loadEpoch;
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
@@ -125,11 +129,13 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
           ? _measuredAt! : now,
       firstDate: DateTime(1900), lastDate: now,
     );
-    if (!mounted || date == null) return;
+    if (!mounted || date == null || epoch != _loadEpoch ||
+        !identical(db, widget.db)) return;
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_measuredAt ?? now));
-    if (!mounted || time == null) return;
+    if (!mounted || time == null || epoch != _loadEpoch ||
+        !identical(db, widget.db)) return;
     setState(() {
       _measuredAt = DateTime(
           date.year, date.month, date.day, time.hour, time.minute);
