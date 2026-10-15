@@ -10,6 +10,45 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  testWidgets('decision #3 A→B→A database switch never shows previous owner', (tester) async {
+    final a = AppDatabase(NativeDatabase.memory());
+    final b = AppDatabase(NativeDatabase.memory());
+    addTearDown(a.close);
+    addTearDown(b.close);
+    final selected = ValueNotifier<AppDatabase>(a);
+    addTearDown(selected.dispose);
+    await a.addReminder(title: 'A private', dueAt: DateTime(2026, 11, 12));
+    await b.addReminder(title: 'B first', dueAt: DateTime(2026, 11, 12));
+    await b.addReminder(title: 'B second', dueAt: DateTime(2026, 11, 13));
+
+    await tester.pumpWidget(ValueListenableBuilder<AppDatabase>(
+      valueListenable: selected,
+      builder: (context, db, _) => Provider<AppDatabase>.value(
+        value: db,
+        child: const MaterialApp(
+          locale: Locale('fr'),
+          home: Scaffold(body: DashboardRemindersSummaryCard()),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('1 rappel actif'), findsOneWidget);
+
+    selected.value = b;
+    await tester.pump();
+    expect(find.text('1 rappel actif'), findsNothing,
+        reason: 'Never retain patient A count while B vault is loading.');
+    await tester.pumpAndSettle();
+    expect(find.text('2 rappels actifs'), findsOneWidget);
+
+    selected.value = a;
+    await tester.pump();
+    expect(find.text('2 rappels actifs'), findsNothing,
+        reason: 'Never retain patient B count while A vault is loading.');
+    await tester.pumpAndSettle();
+    expect(find.text('1 rappel actif'), findsOneWidget);
+  });
+
   test('decision #3 keeps the clinical trend section ahead of reminders', () {
     final source = File('lib/features/dashboard/dashboard_premium_screen.dart')
         .readAsStringSync();

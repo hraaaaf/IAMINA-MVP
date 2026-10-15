@@ -27,17 +27,27 @@ class DashboardRemindersSummaryCard extends StatefulWidget {
 
 class _DashboardRemindersSummaryCardState
     extends State<DashboardRemindersSummaryCard> {
-  late final Stream<List<ReminderData>> _reminders;
+  AppDatabase? _activeDatabase;
+  late Stream<List<ReminderData>> _reminders;
 
   @override
-  void initState() {
-    super.initState();
-    _reminders = context.read<AppDatabase>().watchReminders();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Rebind when the selected owner's physical vault changes. Never retain
+    // the previous patient's reminder subscription across a provider swap.
+    final database = Provider.of<AppDatabase>(context);
+    if (!identical(_activeDatabase, database)) {
+      _activeDatabase = database;
+      _reminders = database.watchReminders();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ReminderData>>(
+      // A new builder state prevents displaying an old owner's snapshot while
+      // the new vault emits its first reminder list.
+      key: ObjectKey(_activeDatabase),
       stream: _reminders,
       builder: (context, snapshot) {
         final activeCount = snapshot.hasData
