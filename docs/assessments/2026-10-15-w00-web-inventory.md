@@ -70,6 +70,19 @@ Toute extension du registre produit demeure un arbitrage humain distinct. La mat
 
 **QA-01** : l'inventaire est une preuve de présence de source + CI consultée, **non un test Web E2E complet de W01–W14**. W00 ne ferme aucune D et ne modifie pas P5 historique **6/12=50%** ; avancement V2 non encore quantifié.
 
+## 3 bis. Dettes techniques canoniques à reprendre (audit `docs/TECHDEBT.md`)
+
+Ce registre actuel comporte **quatre dettes non résolues**. Elles ne sont pas confondues avec les 86 PR ni comptabilisées comme fonctionnalités D livrées.
+
+| Dette | Etat constaté | W / action nécessaire |
+|---|---|---|
+| **TD-001 — egress texte/media non structuré** | Le contrôle central existe, mais la désidentification du texte libre n'est pas universelle ; OCR cloud d'un document patient demeure volontairement bloqué | **W02/W08 avant W12** : conserver fail-closed, bench OCR local et données synthétiques, revue PHI, ne pas expédier d'images brutes patient |
+| **TD-002 — Firebase migration** | L'identité distante cible Django existe ; dépendances Firebase de migration encore installées, désactivées par défaut | **W01/W02** : inventaire SDK et mode de migration, supprimer seulement après plan de reprise/compatibilité |
+| **TD-009 — MFA staff/pro** | Authentification forte des rôles privilégiés incomplète | **W02/W14**, hors ouverture patient/professionnel sans gate |
+| **TD-012 — grands widgets Flutter** | Plusieurs découplages de composants terminés, dette résiduelle sur grands composants | **W03/W13** selon changement concret, ne pas refactoriser sans risque reproduit ou gain de maintenance vérifiable |
+
+Autre écart : `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` est un contrat existant non réécrit ici ; sa notion de patient runtime local-first ne devient pas automatiquement compatible avec la topologie Vercel proposée. W01 doit documenter l'arbitrage dans un nouvel ADR plutôt que modifier discrètement cette doctrine.
+
 ## 4. Ordre consolidé en fonction des dépendances
 - **Chemin critique :** W00 (matrice/état) → **W01** (ADR topologie et contrats navigateur↔API↔Neon) → **W02** (patient, coffre Web/consentement, D30 privacy-first) ; **W04** (calculs et unités) → W05 (onboarding) + W06 (capture) → W07 (insights) ; W08 doit précéder IA externe W09 ; W14 après W13 et toutes gates.
 - **Parallèle sans intégration prématurée :** W03 quick wins et revue des captures, préparation W04/CAL, ateliers W11 CGM et W12 OCR/Vision. Le D3 rouge exige remédiation dans son lot, pas validation dans W00.
