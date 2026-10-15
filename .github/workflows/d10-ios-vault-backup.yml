@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/Runner/SceneDelegate.swift'
       - 'frontend/ios/RunnerTests/RunnerTests.swift'
       - '.github/workflows/d10-ios-vault-backup.yml'
       - 'docs/security/2026-10-15-d10-b-ios-backup-exclusion.md'
@@ -12,6 +13,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/Runner/SceneDelegate.swift'
       - 'frontend/ios/RunnerTests/RunnerTests.swift'
       - '.github/workflows/d10-ios-vault-backup.yml'
       - 'docs/security/2026-10-15-d10-b-ios-backup-exclusion.md'

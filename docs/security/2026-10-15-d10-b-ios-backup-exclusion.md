@@ -11,3 +11,16 @@
 Primary sources: [Apple isExcludedFromBackup](https://developer.apple.com/documentation/foundation/urlresourcevalues/isexcludedfrombackup), [Apple FileProtectionType](https://developer.apple.com/documentation/foundation/fileprotectiontype), [drift_flutter native database path](https://pub.dev/documentation/drift_flutter/latest/drift_flutter/driftDatabase.html).
 
 **Next:** if compile/test green, merge this narrow change, verify postmerge. Then qualify stronger iOS file protection + lifecycle and Web vault encryption/owner policy for optional lock B. No patient data and no Vercel deployment in this lot.
+
+
+## UIKit scene lifecycle correction — 15 Oct 2026
+
+`Info.plist` enables `UIApplicationSceneManifest`; UIKit dispatches
+scene foreground/background transitions to `FlutterSceneDelegate`, rather
+than equivalent `AppDelegate` callbacks. Added `SceneDelegate` reapplication
+of `ClinicalVaultBackupExclusion.applyToDocumentsDirectory()` in
+`sceneWillEnterForeground` and `sceneDidEnterBackground`, retaining
+launch handling in `AppDelegate`. Reference: [Apple scene lifecycle](https://developer.apple.com/documentation/uikit/uiscenedelegate) and [sceneDidEnterBackground](https://developer.apple.com/documentation/uikit/uiscenedelegate/scenedidenterbackground(_:)).
+This reduces missing lifecycle hooks; it does not address newly created
+database files during an active foreground session or provide evidence of
+actual iCloud backup exclusion.

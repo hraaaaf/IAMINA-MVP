@@ -22,10 +22,7 @@ import UIKit
   }
 
   private func applyPatientVaultBackupExclusion() {
-    guard let documentsDirectory = FileManager.default.urls(
-      for: .documentDirectory, in: .userDomainMask
-    ).first else { return }
-    ClinicalVaultBackupExclusion.apply(to: documentsDirectory)
+    ClinicalVaultBackupExclusion.applyToDocumentsDirectory()
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
@@ -40,6 +37,13 @@ import UIKit
 enum ClinicalVaultBackupExclusion {
   private static let vaultPrefix = "amina_vault_v1_"
   private static let sqliteSuffixes = [".sqlite", ".sqlite-wal", ".sqlite-shm"]
+
+  static func applyToDocumentsDirectory() {
+    guard let documentsDirectory = FileManager.default.urls(
+      for: .documentDirectory, in: .userDomainMask
+    ).first else { return }
+    _ = apply(to: documentsDirectory)
+  }
 
   static func isPatientVaultSQLiteFile(_ url: URL) -> Bool {
     let name = url.lastPathComponent
