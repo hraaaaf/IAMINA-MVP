@@ -380,6 +380,55 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertEqual(output.medications[0].name, "metformin")
         self.assertIsNone(output.medications[0].dose)
 
+    def test_llm_generated_clinical_notes_are_not_patient_facts(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.99,
+                "medications": [{"name": "metformin", "dose": "500 mg"}],
+                "clinical_notes": "Augmenter metformine a 1000 mg",
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"},
+                },
+            },
+            "metformin 500 mg",
+        )
+        self.assertEqual(len(output.medications), 1)
+        self.assertEqual(output.medications[0].dose, "500 mg")
+        self.assertEqual(output.clinical_notes, "")
+        self.assertTrue(any("notes" in w.lower() for w in output.warnings))
+        self.assertFalse(any("1000" in w for w in output.warnings))
+
+    def test_even_verbatim_model_clinical_notes_wait_for_evidence_contract(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "medical_report",
+                "confidence": 0.95,
+                "clinical_notes": "Patient reports nausea",
+            },
+            "Patient reports nausea",
+        )
+        self.assertEqual(output.clinical_notes, "")
+        self.assertTrue(output.warnings)
+        self.assertFalse(output.is_usable)
+
+    def test_malformed_llm_clinical_notes_are_discarded_without_echo(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.95,
+                "clinical_notes": {"unsafe": "increase insulin dose"},
+                "medications": [{"name": "metformin"}],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                },
+            },
+            "metformin",
+        )
+        self.assertEqual(output.clinical_notes, "")
+        self.assertFalse(any("increase insulin" in w for w in output.warnings))
+
     def test_missing_source_evidence_drops_numeric_fact(self):
         output = self._ingest_docx(
             {"document_type": "lab_report", "confidence": 0.99,
