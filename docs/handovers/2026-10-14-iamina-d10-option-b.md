@@ -1,3 +1,24 @@
+## 15 octobre 2026 — D10 × D11 : preuves d’intégration synthétique 7/7 CI vertes
+
+**Goal** : tester ensemble les protections D10 Android/iOS/app-lock déjà présentes sur `main` et les changements actuels D11 qui interdisent l’injection de données fictives dans un vrai compte. **Vérification exécutée, pas une fusion D11 ni la livraison B.**
+
+**Source exacte testée** : [PR DRAFT de validation #1059](https://github.com/hraaaaf/IAMINA-MVP/pull/1059) HEAD `a0aea244214f6223006a187f5c5769d416b29eba` : base `main@73876eea9baca45806918d46258f813b45636fc9` + **11 fichiers copiés sans changement de blobs** depuis [D11 DRAFT #1021](https://github.com/hraaaaf/IAMINA-MVP/pull/1021) HEAD `60de80ec070157f912cb62c80a7ded1e9bde75a6`, plus test tripwire et workflow. Readback GitHub : backend `demo.py`, frontend `database.dart`, `flutter_bootstrap.js` = blobs D11 ; `AndroidManifest.xml`, `AppDelegate.swift` = blobs main D10. **La PR #1059 reste DRAFT / DO NOT MERGE**, de même que D11 #1021.
+
+**Résultats exact-HEAD, tous `COMPLETED/SUCCESS` (7/7) :**
+- [D10×D11 workflow #38719027973](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719027973) : **5 source tripwires OK**, **24 tests Flutter PASS** exécutés conjointement (app-lock D10, coffre sans démo D11, contrat bootstrap Web D11). La vérification statique ne prétend pas être une preuve physique.
+- [CI générale #38719027775](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719027775) : **SUCCESS**. Logs : **2 830 tests Django** réussis (5 skipped, 3 xfailed, 121 sous-tests) et **2 834 PostgreSQL** réussis (1 skipped, 3 xfailed, 121 sous-tests), plus analyse/test frontend et build PWA.
+- [Migration drift #38719027880](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719027880) : SUCCESS.
+- [Pilot P5-5 #38719027814](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719027814) : SUCCESS.
+- [PWA Chrome/persistance #38719028063](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719028063), [offline #38719027671](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719027671), [mise à jour/récupération #38719028031](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38719028031) : SUCCESS.
+
+**Ce qui est effectivement étayé** : protections du verrou et de l’egress préservées dans le code, refus D11 de `demo/seed` authentifié, scope `auditOnly` obligatoire, interdiction de `seedDemoData` dans un coffre patient, règles Android/iOS de sauvegarde existantes, contrat bootstrap web et tests de données/PWA synthétiques verts ensemble.
+
+**Ce qui N’EST PAS certifié** : chiffrement Web depuis IndexedDB, sécurité d’une **option B non implémentée**, iOS Simulator XCTest `Pods_Runner` ([#1057](https://github.com/hraaaaf/IAMINA-MVP/issues/1057)), restauration iCloud réelle/Android D2D physique, historique de données médicales éventuellement déjà synthétiques, login navigateur réel A→logout→B→A, autorisation clinique/réglementaire. `D11` reste une **PR DRAFT indépendante** et les déploiements Vercel existants sont un laboratoire synthétique, pas une preuve de production médicale. AUCUN nouveau Vercel ni donnée patient réel.
+
+**Décision d’exécution** : clore **seulement la validation CI synthétique combinée** comme réussie. Garder D10-B [#968](https://github.com/hraaaaf/IAMINA-MVP/issues/968), Web [#1054](https://github.com/hraaaaf/IAMINA-MVP/issues/1054), sécurité iOS [#1052](https://github.com/hraaaaf/IAMINA-MVP/issues/1052) et D11 DRAFT ouverts. **Next exact :** reprendre la protection du coffre Web et les attestations identité/egress sans utiliser l’option B comme `isUnlocked=true`; coordonner le futur merge D11 séparément, sur SHA rebasé et testé après approbations nécessaires. Progression P5 : **50 % historique**, aucune augmentation sans nouvelle roadmap validée.
+
+---
+
 ## 15 octobre 2026 — Alignement croisé D10 ↔ D11 (source GitHub et Vercel recontrôlées)
 
 **Décision :** D10-B (app-lock facultatif) doit respecter la priorité de **D11 : zéro données cliniques fictives dans les vrais comptes**. Aucune protection D10 contre les sauvegardes ne prouve à elle seule l'isolation des contenus ou l'absence de fixtures. Toute implémentation future D10 doit partir de `main` vérifié, inventorier les changements D11, et exécuter les tests d'intégration **D10 + D11**, pas seulement les tests D10 sur la branche courante.
