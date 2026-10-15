@@ -88,6 +88,41 @@ void main() {
     expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
   });
 
+  testWidgets('D18 same widget switches A to B to A without stale identity',
+      (tester) async {
+    final a = await _patientDb(734);
+    final b = await _patientDb(812);
+    addTearDown(a.close);
+    addTearDown(b.close);
+    await PatientProgressiveDemographicsStore(a).update(
+      updateBirthYear: true, birthYear: 1994,
+    );
+    await PatientProgressiveDemographicsStore(b).update(
+      updateBirthYear: true, birthYear: 2001,
+    );
+
+    Future<void> showVault(AppDatabase db) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(
+          child: D18ProfilePanel(db: db),
+        )),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    await showVault(a);
+    await tester.tap(find.byKey(const Key('d18-expand-profile')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byKey(const Key('d18-birth-year')))
+        .controller?.text, '1994');
+    await showVault(b);
+    expect(tester.widget<TextField>(find.byKey(const Key('d18-birth-year')))
+        .controller?.text, '2001');
+    await showVault(a);
+    expect(tester.widget<TextField>(find.byKey(const Key('d18-birth-year')))
+        .controller?.text, '1994');
+  });
+
   testWidgets('D18 no persisted patient profile refuses writes',
       (tester) async {
     final db = await _patientDb(913, hasProfile: false);
