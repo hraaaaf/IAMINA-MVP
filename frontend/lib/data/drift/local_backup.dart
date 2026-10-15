@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 
 import 'database.dart';
 import 'patient_treatment_declaration_store.dart';
+import 'patient_vault_scope.dart';
+import 'patient_weight_history_store.dart';
 
 /// Versioned local-first backup/restore for IAMINA's Drift-owned pilot data.
 ///
@@ -40,6 +42,16 @@ final class LocalBackup {
     envelope['treatmentDeclarations'] = [
       for (final row in declaredRows) Map<String, dynamic>.from(row.data),
     ];
+    // D18: make every explicit weight observation part of scoped backup.
+    // Never backfill or manufacture timestamps from legacy profile.weight.
+    final store = scope.databaseName ==
+            PatientVaultScope.auditOnly().databaseName
+        ? null
+        : PatientWeightHistoryStore(db);
+    envelope['weightHistoryFormatVersion'] = 1;
+    envelope['weightObservations'] = store == null
+        ? <Map<String, Object?>>[]
+        : await store.exportOwnedRows();
     return jsonEncode(envelope);
   }
 
@@ -142,14 +154,54 @@ final class LocalBackup {
       }
       _validatedTreatmentDeclarationRow(row);
     }
+
+    // Older scoped-v2 backups predate D18 and contain no weight observations.
+    // They may restore ONLY when no newer local weight data could be lost.
+    final hasWeights = root.containsKey('weightObservations');
+    if (hasWeights != root.containsKey('weightHistoryFormatVersion')) {
+      throw const FormatException('Incomplete D18 backup section');
+    }
+    if (hasWeights && root['weightHistoryFormatVersion'] != 1) {
+      throw const FormatException('Unsupported D18 backup format');
+    }
+    final weightRows = hasWeights
+        ? _rows(root, 'weightObservations')
+        : <Map<String, dynamic>>[];
+    if (scope.databaseName == PatientVaultScope.auditOnly().databaseName &&
+        weightRows.isNotEmpty) {
+      throw const FormatException('Audit vault cannot import patient weights');
+    }
+    for (final row in weightRows) {
+      if (profiles.isEmpty) {
+        throw const FormatException('Weight backup requires owned profile');
+      }
+      PatientWeightHistoryStore.validateBackupRow(row, owner);
+    }
+    final store = scope.databaseName ==
+            PatientVaultScope.auditOnly().databaseName
+        ? null
+        : PatientWeightHistoryStore(db);
+    if (store != null) {
+      final localRows = await store.exportOwnedRows();
+      if (!hasWeights && localRows.isNotEmpty) {
+        throw StateError(
+          'Legacy scoped backup cannot overwrite newer D18 weight history',
+        );
+      }
+    }
     root['formatVersion'] = formatVersion;
-    return _restoreRows(db, root, declarations: declarations);
+    return _restoreRows(
+      db, root, declarations: declarations,
+      weightRows: weightRows, restoreWeights: store != null,
+    );
   }
 
   static Future<void> _restoreRows(
     AppDatabase db,
     Map<String, dynamic> root, {
     List<Map<String, dynamic>> declarations = const [],
+    List<Map<String, dynamic>> weightRows = const [],
+    bool restoreWeights = false,
   }) async {
 
     if (root['formatVersion'] != formatVersion) {
@@ -204,6 +256,9 @@ final class LocalBackup {
 
     await db.transaction(() async {
       await db.customStatement('DELETE FROM patient_treatment_declarations_v1');
+      if (restoreWeights) {
+        await db.customStatement('DELETE FROM patient_weight_observations_v1');
+      }
       await db.delete(db.logEntries).go();
       await db.delete(db.patientProfiles).go();
       await db.delete(db.chatMessages).go();
@@ -239,6 +294,27 @@ final class LocalBackup {
           row['local_generation'],
         ]);
       }
+      for (final row in weightRows) {
+        await db.customStatement('''
+          INSERT INTO patient_weight_observations_v1
+            (user_id, client_uuid, value_hundredths, unit,
+             kilograms_hundredths, measured_at_utc, provenance)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', [
+          row['user_id'], row['client_uuid'], row['value_hundredths'],
+          row['unit'], row['kilograms_hundredths'], row['measured_at_utc'],
+          row['provenance'],
+        ]);
+      }
+      if (restoreWeights) {
+        final restored = await db.customSelect('''
+          SELECT COUNT(*) AS total FROM patient_weight_observations_v1
+        ''').getSingle();
+        if (restored.data['total'] != weightRows.length) {
+          throw StateError('D18 restored weight count mismatch');
+        }
+      }
+
       final newDeclarations = await db.customSelect(
         'SELECT user_id FROM patient_treatment_declarations_v1',
       ).get();
