@@ -1,0 +1,61 @@
+name: D10 iOS clinical vault backup exclusion
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/RunnerTests/RunnerTests.swift'
+      - '.github/workflows/d10-ios-vault-backup.yml'
+      - 'docs/security/2026-10-15-d10-b-ios-backup-exclusion.md'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/RunnerTests/RunnerTests.swift'
+      - '.github/workflows/d10-ios-vault-backup.yml'
+      - 'docs/security/2026-10-15-d10-b-ios-backup-exclusion.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-synthetic-backup:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Build simulator app without signing
+        working-directory: frontend
+        run: flutter build ios --simulator --debug --no-codesign --dart-define=ENABLE_FIREBASE_MIGRATION=false
+      - name: Locate available iPhone simulator
+        id: device
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available -j > /tmp/iamina-simulators.json
+          SIMULATOR_ID="$(python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/iamina-simulators.json'))
+          for devices in d['devices'].values():
+              for device in devices:
+                  if device.get('isAvailable', True) and 'iPhone' in device['name']:
+                      print(device['udid'])
+                      raise SystemExit
+          raise SystemExit('No iPhone simulator runtime available')
+          PY
+          )"
+          echo "id=$SIMULATOR_ID" >> "$GITHUB_OUTPUT"
+      - name: Run isolated synthetic iOS backup XCTest
+        working-directory: frontend/ios
+        run: |
+          xcodebuild test -workspace Runner.xcworkspace -scheme Runner -configuration Debug             -destination "platform=iOS Simulator,id=${{ steps.device.outputs.id }}"             CODE_SIGNING_ALLOWED=NO -only-testing:RunnerTests/RunnerTests
