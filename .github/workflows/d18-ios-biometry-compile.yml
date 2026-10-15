@@ -1,0 +1,60 @@
+name: D18 iOS Secure Enclave bridge compile (scope only)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-ios-biometry-compile.yml'
+      - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/Runner/Info.plist'
+      - 'frontend/lib/services/app_lock_authenticator_native.dart'
+      - 'frontend/lib/services/app_lock_authenticator_factory.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/test/features/profile/d18_native_app_lock_boundary_test.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d18-ios-compile:
+    name: Compile Secure Enclave native bridge without signing (NO physical biometric proof)
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Test targeted D18 auth-epoch rejection
+        run: flutter test --no-pub --reporter expanded test/features/profile/d18_native_app_lock_boundary_test.dart
+      - name: Compile iOS app with native Secure Enclave bridge (no signing)
+        run: flutter build ios --release --no-codesign --dart-define=ENABLE_FIREBASE_MIGRATION=false
+      - name: Check compiled application and privacy prompt
+        run: |
+          test -d build/ios/iphoneos/Runner.app
+          /usr/libexec/PlistBuddy -c 'Print :NSFaceIDUsageDescription' ios/Runner/Info.plist
+      - name: Record limits
+        if: always()
+        run: |
+          mkdir -p ../artifacts/d18-ios
+          cat > ../artifacts/d18-ios/PROVENANCE.txt <<'EOF'
+          D18-only native iOS Swift/Security/LocalAuthentication compile gate.
+          Build is unsigned and does NOT exercise Face ID / Touch ID hardware.
+          Not a proof of biometric enrollment, Secure Enclave attestation,
+          device-key invalidation or physical-device treatment safety.
+          No patient data, no deployed binary, no App Store distribution.
+          EOF
+      - name: Upload provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d18-ios-compile-provenance
+          path: artifacts/d18-ios/PROVENANCE.txt
+          retention-days: 14

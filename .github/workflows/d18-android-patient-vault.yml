@@ -5,6 +5,11 @@ on:
     paths:
       - '.github/workflows/d18-android-patient-vault.yml'
       - 'frontend/integration_test/d18_android_patient_profile_test.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/lib/services/app_lock_authenticator_native.dart'
+      - 'frontend/lib/services/app_lock_authenticator_factory.dart'
+      - 'frontend/android/app/src/main/kotlin/ma/iamina/app/MainActivity.kt'
+      - 'frontend/test/features/profile/d18_native_app_lock_boundary_test.dart'
       - 'frontend/lib/features/profile/d18_profile_panel.dart'
       - 'frontend/lib/features/profile/profile_screen.dart'
       - 'frontend/lib/data/drift/patient_weight_history_store.dart'
@@ -40,6 +45,9 @@ jobs:
       - name: Resolve dependencies
         working-directory: frontend
         run: flutter pub get
+      - name: D18 only - reject late biometric unlock after A-to-B switch
+        working-directory: frontend
+        run: flutter test --no-pub --reporter expanded test/features/profile/d18_native_app_lock_boundary_test.dart
       - name: KVM access
         shell: bash
         run: |
@@ -72,8 +80,10 @@ jobs:
           Android-local sandbox files. Synthetic patient A and B, A-B-A reopen,
           history and optional declarations, forged cross-owner backup rejection.
           ProfileScreen runs with a synthetic AppLock unlocked/locked provider.
-          ACTUAL native AppLock factory currently returns unavailable on Android;
-          D18_NATIVE_ACCESS_RELEASE_GATE=BLOCKED is a measured negative result.
+          ACTUAL native bridge is registered (raw platform method tested),
+          but CI emulator has no enrolled strong biometrics and MUST reject
+          enrollment. D18_NATIVE_BRIDGE=CONNECTED with unavailable capability
+          is correct for THIS emulator, not proof of physical biometric unlock.
           NOT real platform biometric enrollment and NOT real authentication.
           Physical device: NOT VERIFIED.
           Android backup encryption: NOT VERIFIED by this test.
