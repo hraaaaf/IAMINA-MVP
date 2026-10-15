@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 import '../core/theme/app_theme.dart';
 import '../data/drift/database.dart';
@@ -13,11 +14,14 @@ import 'app_lock_service.dart';
 import 'auth_service.dart';
 import 'consent_evidence_store.dart';
 import 'consent_service.dart';
+import 'd9_first_use_transport.dart';
 import 'locale_preference_service.dart';
 import 'modules_provider.dart';
 import 'offline_demo_audit_seed.dart';
 import 'patient_vault_session_controller.dart';
 import 'sync_service.dart';
+
+enum _D9FirstUseGate { notRequired, unresolved, checking, complete, newPatient, unavailable }
 
 /// Each subtree holds ONLY ONE physical patient vault and its own consent,
 /// profile stream, sync queue and router. No legacy 'amina' database is
@@ -31,11 +35,19 @@ class _VaultBindings {
   final AppRouterHolder router;
   final int authEpoch;
   bool syncStarted = false;
+  final D9FirstUseTransport? d9FirstUse;
+  final http.Client? d9Client;
+  _D9FirstUseGate d9Gate;
 
   _VaultBindings(this.db, this.scope, this.evidence, this.consent,
-      this.sync, this.router, this.authEpoch);
+      this.sync, this.router, this.authEpoch, {
+        required this.d9FirstUse,
+        required this.d9Client,
+        required this.d9Gate,
+      });
 
   void dispose() {
+    d9Client?.close();
     router.dispose();
     consent.dispose();
     sync.dispose();
@@ -70,6 +82,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   late final AppRouterHolder _guestRouter;
   _VaultBindings? _bindings;
   int _generation = 0;
+  int _d9LockNonce = 0;
 
   @override
   void initState() {
@@ -85,7 +98,65 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     unawaited(_bindCurrentVault());
   }
 
-  void _onLockChanged() => _maybeStartSync();
+  void _onLockChanged() {
+    // A lock/re-unlock during an awaited GET invalidates the old bearer
+    // response even if the patient owner and auth epoch stayed unchanged.
+    ++_d9LockNonce;
+    final current = _bindings;
+    if (!widget.appLock.isUnlocked) {
+      if (current != null && current.d9Gate == _D9FirstUseGate.checking) {
+        current.d9Gate = _D9FirstUseGate.unresolved;
+        if (mounted) setState(() {});
+      }
+      return;
+    }
+    _maybeStartSync();
+    unawaited(_verifyD9FirstUse());
+  }
+
+  Future<void> _verifyD9FirstUse() async {
+    final current = _bindings;
+    if (current == null ||
+        current.d9FirstUse == null ||
+        !widget.appLock.isUnlocked ||
+        (current.d9Gate != _D9FirstUseGate.unresolved &&
+            current.d9Gate != _D9FirstUseGate.unavailable)) {
+      return;
+    }
+    final generation = _generation;
+    final lockNonce = _d9LockNonce;
+    final epoch = AuthService.authEpoch;
+    final owner = current.scope.nativeDjangoUserId;
+    if (owner == null || widget.controller.activeDatabase != current.db) {
+      return;
+    }
+    current.d9Gate = _D9FirstUseGate.checking;
+    if (mounted) setState(() {});
+    final proof = await current.d9FirstUse!.fetch();
+    if (!mounted ||
+        generation != _generation ||
+        lockNonce != _d9LockNonce ||
+        epoch != AuthService.authEpoch ||
+        widget.controller.activeDatabase != current.db ||
+        _bindings != current ||
+        !widget.appLock.isUnlocked) {
+      return; // A -> B -> A, logout, lock and disposal invalidate the result.
+    }
+    if (proof == null) {
+      current.d9Gate = _D9FirstUseGate.unavailable;
+    } else if (proof.completed &&
+        current.consent.adoptVerifiedD9FirstUseProof(
+          proof, activeOwner: owner,
+        )) {
+      current.d9Gate = _D9FirstUseGate.complete;
+    } else if (!proof.completed && proof.ownerUserId == owner) {
+      current.d9Gate = _D9FirstUseGate.newPatient;
+    } else {
+      current.d9Gate = _D9FirstUseGate.unavailable;
+    }
+    setState(() {});
+    _maybeStartSync();
+  }
 
   void _maybeStartSync() {
     final current = _bindings;
@@ -93,7 +164,10 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         current.authEpoch != AuthService.authEpoch ||
         !widget.appLock.isUnlocked ||
         !widget.auth.hasRemoteApiCredential ||
-        current.scope.nativeDjangoUserId == null) {
+        current.scope.nativeDjangoUserId == null ||
+        current.d9Gate == _D9FirstUseGate.unresolved ||
+        current.d9Gate == _D9FirstUseGate.checking ||
+        current.d9Gate == _D9FirstUseGate.unavailable) {
       return;
     }
     if (current.syncStarted) {
@@ -151,6 +225,22 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       final consent = ConsentService(hasVerifiedEvidence: hasVerifiedEvidence)
         ..seedInitialProfile(profile)
         ..attachStream(db.watchProfileForLocalUserId(db.activeProfileRowId));
+      final needsD9Proof =
+          profile == null && scope.nativeDjangoUserId != null;
+      final d9Client = needsD9Proof ? http.Client() : null;
+      final d9FirstUse = d9Client == null ? null : D9FirstUseTransport(
+        baseUri: Uri.parse(widget.api.baseUrl),
+        client: d9Client,
+        readBearer: widget.auth.getIdToken,
+        hasNativeCredential: () =>
+            widget.auth.hasRemoteApiCredential &&
+            widget.auth.boundNativeAccountId == scope.nativeDjangoUserId,
+        appLockUnlocked: () => widget.appLock.isUnlocked,
+        activePatientOwner: () =>
+            widget.controller.activeScope?.nativeDjangoUserId,
+        authEpoch: () => AuthService.authEpoch,
+        vaultGeneration: () => _generation + _d9LockNonce,
+      );
       final sync = SyncService(
         db,
         widget.api,
@@ -168,6 +258,11 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       );
       final bundle = _VaultBindings(
         db, scope, evidence, consent, sync, router, epoch,
+        d9FirstUse: d9FirstUse,
+        d9Client: d9Client,
+        d9Gate: needsD9Proof
+            ? _D9FirstUseGate.unresolved
+            : _D9FirstUseGate.notRequired,
       );
       if (!mounted || generation != _generation ||
           widget.controller.activeDatabase != db ||
@@ -177,6 +272,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       }
       setState(() => _bindings = bundle);
       _maybeStartSync();
+      unawaited(_verifyD9FirstUse());
     } catch (_) {
       // Any inaccessible/migrating vault must stay fail-closed. No legacy
       // fallback or cross-account copy is ever attempted.
@@ -193,6 +289,61 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     _guestRouter.dispose();
     unawaited(_guestDatabase.close());
     super.dispose();
+  }
+
+  // D9: a remote first-use claim is not a clinical profile or AI consent.
+  // Keep patient-facing routes hidden until the current, unlocked native owner
+  // has an explicit answer. Unknown != first-use incomplete.
+  Widget _buildD9VerificationGate(_VaultBindings bundle) {
+    final waiting = bundle.d9Gate == _D9FirstUseGate.unresolved ||
+        bundle.d9Gate == _D9FirstUseGate.checking;
+    final lang = widget.locale.locale.languageCode;
+    final message = waiting
+        ? switch (lang) {
+            'fr' => 'Vérification sécurisée du compte…',
+            'ar' => 'جارٍ التحقق من الحساب بأمان…',
+            _ => 'Verifying your account securely…',
+          }
+        : switch (lang) {
+            'fr' => 'Connexion requise pour vérifier votre première utilisation.',
+            'ar' => 'يلزم الاتصال للتحقق من إكمال الإعداد الأولي.',
+            _ => 'Reconnect to verify your previous setup.',
+          };
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (waiting)
+                const CircularProgressIndicator()
+              else
+                const Icon(Icons.lock_outline, size: 40),
+              const SizedBox(height: 12),
+              Text(message, textAlign: TextAlign.center),
+              if (!waiting) ...[
+                TextButton(
+                  onPressed: () => unawaited(_verifyD9FirstUse()),
+                  child: Text(switch (lang) {
+                    'fr' => 'Réessayer',
+                    'ar' => 'إعادة المحاولة',
+                    _ => 'Retry',
+                  }),
+                ),
+                TextButton(
+                  onPressed: () => unawaited(widget.auth.signOut()),
+                  child: Text(switch (lang) {
+                    'fr' => 'Se déconnecter',
+                    'ar' => 'تسجيل الخروج',
+                    _ => 'Sign out',
+                  }),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAuditLockPreview() => MultiProvider(
@@ -222,6 +373,12 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     if (bundle != null &&
         widget.controller.activeDatabase == bundle.db &&
         bundle.authEpoch == AuthService.authEpoch) {
+      if (widget.appLock.isUnlocked &&
+          (bundle.d9Gate == _D9FirstUseGate.unresolved ||
+              bundle.d9Gate == _D9FirstUseGate.checking ||
+              bundle.d9Gate == _D9FirstUseGate.unavailable)) {
+        return _buildD9VerificationGate(bundle);
+      }
       return MultiProvider(
         key: ValueKey('d7-patient-vault-${bundle.scope.databaseName}'),
         providers: [
@@ -230,6 +387,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
           ChangeNotifierProvider<AppLockService>.value(value: widget.appLock),
           Provider<ApiClient>.value(value: widget.api),
           Provider<SyncService>.value(value: bundle.sync),
+          Provider<D9FirstUseTransport?>.value(value: bundle.d9FirstUse),
           Provider<ConsentEvidenceStore>.value(value: bundle.evidence),
           ChangeNotifierProvider<ConsentService>.value(value: bundle.consent),
           ChangeNotifierProvider<LocalePreferenceService>.value(
