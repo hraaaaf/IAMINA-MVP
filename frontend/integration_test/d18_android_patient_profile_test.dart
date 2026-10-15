@@ -17,6 +17,8 @@ import 'package:amina/services/api_client.dart';
 import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/app_lock_authenticator.dart';
 import 'package:amina/services/app_lock_authenticator_factory.dart';
+import 'package:amina/services/app_lock_authenticator_native.dart';
+import 'package:flutter/services.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/sync_service.dart';
@@ -146,16 +148,20 @@ Future<void> runNativeD18DiskIsolation() async {
 }
 
 Future<void> checkNativeD18AccessReleaseGate() async {
-  // Unlike the UI fixture, this uses the actual production Android factory.
-  // D18 cannot be claimed accessible on native while the factory returns
-  // 'unavailable'. Never use a fake unlock to waive this release gate.
-  final capability = await createPlatformAppLockAuthenticator().capability();
-  expect(capability, AppLockCapability.unavailable,
-      reason: 'CURRENT BLOCKER: native AppLock authenticator is a stub. '
-          'When a supported native authenticator is implemented, revise this '
-          'negative-path test and separately prove real enrollment/unlock.');
-  debugPrint('D18_NATIVE_ACCESS_RELEASE_GATE=BLOCKED '
-      'nativeStrongAuthenticator=${capability.name}');
+  // No biometric is enrolled on this disposable CI emulator. Verify the
+  // channel ITSELF exists, not merely Dart's fail-closed MissingPlugin fallback.
+  final wire = await const MethodChannel(
+    NativeAppLockAuthenticator.channelName).invokeMapMethod<String, dynamic>(
+      'capability');
+  expect(wire, isNotNull);
+  expect(wire!['capability'], 'unavailable');
+  final authenticator = createPlatformAppLockAuthenticator();
+  expect(await authenticator.capability(), AppLockCapability.unavailable);
+  await expectLater(authenticator.enroll(),
+      throwsA(isA<AppLockException>().having(
+        (e) => e.code, 'code', 'strong_auth_unavailable')));
+  debugPrint('D18_NATIVE_BRIDGE=CONNECTED '
+      'STRONG_BIOMETRY=UNAVAILABLE_UNENROLLED_CI_EMULATOR');
 }
 
 Future<void> checkRealNativeProfileScreen(WidgetTester tester) async {

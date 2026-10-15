@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'app_lock_authenticator.dart';
+import 'auth_epoch.dart';
 import 'app_lock_authenticator_factory.dart';
 import 'auth_service.dart';
 
@@ -20,6 +21,7 @@ class AppLockService extends ChangeNotifier {
   final DateTime Function() _now;
   final Duration gracePeriod;
 
+  int _operationGeneration = 0;
   bool _initialized = false;
   bool _configured = false;
   bool _required = false;
@@ -144,7 +146,12 @@ class AppLockService extends ChangeNotifier {
     if (_recoveryRequired) {
       throw const AppLockException('recovery_required');
     }
+    final authEpoch = AuthEpoch.value;
+    final generation = _operationGeneration;
     final capability = await _authenticator.capability();
+    if (generation != _operationGeneration || authEpoch != AuthEpoch.value) {
+      throw const AppLockException('auth_context_changed');
+    }
     if (capability == AppLockCapability.insecureContext) {
       throw const AppLockException('insecure_context');
     }
@@ -153,9 +160,15 @@ class AppLockService extends ChangeNotifier {
     }
 
     final credential = await _authenticator.enroll();
+    if (generation != _operationGeneration || authEpoch != AuthEpoch.value) {
+      throw const AppLockException('auth_context_changed');
+    }
     await _storage.write(key: _credentialKey, value: credential.encode());
     await _storage.write(key: _requiredKey, value: _requiredValue);
 
+    if (generation != _operationGeneration || authEpoch != AuthEpoch.value) {
+      throw const AppLockException('auth_context_changed');
+    }
     _credential = credential;
     _configured = true;
     _required = true;
@@ -176,16 +189,26 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('app_lock_not_configured');
     }
 
+    final authEpoch = AuthEpoch.value;
+    final generation = _operationGeneration;
     final assertion = await _authenticator.unlock(credential);
+    if (generation != _operationGeneration || authEpoch != AuthEpoch.value) {
+      throw const AppLockException('auth_context_changed');
+    }
     final updated = credential.copyWith(signCount: assertion.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
 
+    if (generation != _operationGeneration || authEpoch != AuthEpoch.value) {
+      throw const AppLockException('auth_context_changed');
+    }
     _credential = updated;
     _unlocked = true;
     notifyListeners();
   }
 
   void lock() {
+    // Also invalidate an in-flight biometric prompt while already locked.
+    _operationGeneration++;
     if (!_unlocked) return;
     _unlocked = false;
     notifyListeners();
