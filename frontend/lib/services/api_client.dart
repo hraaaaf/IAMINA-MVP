@@ -271,6 +271,25 @@ DateTime? verifiedServerTreatmentRevision(Map<String, dynamic> profile) {
   return DateTime.tryParse(raw)?.toUtc();
 }
 
+/// The SSE transport is intentionally POST-only: free-form medical messages
+/// may be present in a JSON body but must never enter URLs/access logs.
+http.Request buildChatStreamPostRequest(
+  Uri uri,
+  String message, {
+  int contextDays = 14,
+}) {
+  if (uri.hasQuery || uri.hasFragment) {
+    throw ArgumentError('SSE URL must not contain query or fragment');
+  }
+  return http.Request('POST', uri)
+    ..headers['Content-Type'] = 'application/json'
+    ..headers['Accept'] = 'text/event-stream'
+    ..body = jsonEncode({
+      'message': message,
+      'context_days': contextDays,
+    });
+}
+
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
@@ -487,11 +506,8 @@ class ApiClient {
     if (!canSyncClinicalData) return;
     final epoch = AuthEpoch.value;
     final token = await readForStableAuthEpoch(_authService.getIdToken);
-    final uri = Uri.parse(
-      '$baseUrl/api/v1/ai/chat/stream',
-    ).replace(queryParameters: {'message': message});
-
-    final request = http.Request('GET', uri);
+    final uri = Uri.parse('$baseUrl/api/v1/ai/chat/stream');
+    final request = buildChatStreamPostRequest(uri, message);
     if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }
