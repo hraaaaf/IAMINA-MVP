@@ -43,3 +43,21 @@ The third run proved Tesseract.js v7 still measures 1/8 under stricter source-ro
 
 ## Experimental WASM data-URL allowance — CI #38746309422
 The static Chromium run proved **PaddleOCR.js 4/5** French synthetic cases passed exact numeric, unit, label, and source-row checks, compared with Tesseract.js **1/8** across FR/AR/mixed. **Zero external HTTP requests were observed/blocked.** The job failed solely because the experimental Paddle page disallowed ONNX's `fetch(data:application/octet-stream;base64,...)` internal WASM fallback, producing two console CSP errors despite successful OCR output. The isolated `paddle.html` now additionally permits `connect-src data:` (local inlined WASM only) so runtime errors are not silently ignored. **Neither this nor its `unsafe-eval` CSP exception belongs in patient UI or production.**
+
+## Playwright WebKit Linux / synthetic HEIC preflight — October 15, 2026
+
+After Chromium CI [#38747064628](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38747064628) **SUCCESS** (13/13 policy metric tests; PaddleOCR.js 4/5 French vs Tesseract.js 1/8 FR/AR/mixed; 0 off-origin requests blocked), run a dedicated **WebKit Linux** compatibility preflight at 390×844 with touch events and an actual synthetic HEIC created by Pillow-HEIF. This is **not Safari on an iPhone**. An unsupported HEIC codec is reported as `localDecode:false`, never upgraded to an OCR success or used to bypass the existing fail-closed Pulper. Each OCR engine's WebKit compatibility is measured separately and any runtime failure is recorded, not treated as OCR accuracy.
+
+Reproduce after the existing install/fixtures/assets steps:
+
+```bash
+python -m pip install 'pillow-heif==1.8.1'
+npm run heic-fixture
+npx playwright install --with-deps chromium webkit
+npm run build
+npm run bench
+npm run webkit-preflight
+cat out/report-webkit.json
+```
+
+CI preflight success means **the probes ran without an attempted off-origin HTTP request**, even if HEIC is unsupported or an engine fails to initialize. Always inspect `engines[].status`, `heicCodec` and `qualificationPassed:false`. No production merge, CSP relaxation in IAMINA, HEIC fallback or patient uploads; actual iOS Safari and clinical/privacy qualification remain a human/device gate.

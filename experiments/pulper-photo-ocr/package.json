@@ -11,7 +11,9 @@
     "bench": "node scripts/run_browser_benchmark.mjs",
     "native-reference": "node scripts/run_native_reference.mjs",
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build"
+    "build": "vite build",
+    "heic-fixture": "python3 scripts/generate_heic_fixture.py",
+    "webkit-preflight": "node scripts/run_webkit_preflight.mjs"
   },
   "dependencies": {
     "@paddleocr/paddleocr-js": "0.4.2",
