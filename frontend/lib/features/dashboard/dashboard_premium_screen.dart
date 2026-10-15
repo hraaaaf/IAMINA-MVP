@@ -268,14 +268,16 @@ class _DashboardBody extends StatelessWidget {
                             service: companionService,
                           ),
                           const SizedBox(height: 18),
-                          const DashboardRemindersSummaryCard(),
-                          const SizedBox(height: 18),
                           DashboardResponsiveSections(
                             unit: unit,
                             low: low,
                             high: high,
                             companionService: companionService,
                           ),
+                          const SizedBox(height: 18),
+                          // Preserve the governed trends' above-the-fold position.
+                          // Reminders remain available below the clinical overview.
+                          const DashboardRemindersSummaryCard(),
                           const SizedBox(height: 22),
                           const _DataTools(),
                         ]),
