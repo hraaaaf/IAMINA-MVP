@@ -47,6 +47,14 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           const SizedBox(height: 14),
                         ],
                         _buildMedicalSection(l10n),
+                        if (context.read<AppDatabase>().patientVaultScope
+                                ?.nativeDjangoUserId != null) ...[
+                          const SizedBox(height: 14),
+                          D18ProfilePanel(
+                            key: ObjectKey(context.read<AppDatabase>()),
+                            db: context.read<AppDatabase>(),
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         _buildRamadanSection(l10n),
                         const SizedBox(height: 14),
