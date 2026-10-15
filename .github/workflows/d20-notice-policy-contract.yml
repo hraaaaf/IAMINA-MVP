@@ -1,0 +1,36 @@
+name: D20 — Opt-in notice gate contract
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-notice-policy-optin-20261015
+    paths:
+      - frontend/lib/features/profile/weight_notice_policy.dart
+      - frontend/test/features/profile/d20_weight_notice_policy_test.dart
+      - .github/workflows/d20-notice-policy-contract.yml
+      - docs/handovers/2026-10-15-iamina-d20-weight-notice-policy.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d20-notice-gate:
+    name: D20 pure notice decision gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze targeted Dart contracts
+        run: flutter analyze --no-fatal-infos lib/features/profile/weight_trend_snapshot.dart lib/features/profile/weight_notice_policy.dart test/features/profile/d20_weight_trend_snapshot_test.dart test/features/profile/d20_weight_notice_policy_test.dart
+      - name: D20-A and D20-B negative synthetic tests
+        run: flutter test --no-pub test/features/profile/d20_weight_trend_snapshot_test.dart test/features/profile/d20_weight_notice_policy_test.dart
