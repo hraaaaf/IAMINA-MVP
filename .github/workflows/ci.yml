@@ -246,6 +246,9 @@ jobs:
             fi
           done
 
+      - name: Synthetic PWA first-install and obsolete-shell eviction
+        run: node ../scripts/tests/test_sse_pwa_cache_contract.mjs
+
   pr-size:
     name: PR size (advisory)
     runs-on: ubuntu-latest

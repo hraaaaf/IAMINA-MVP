@@ -8,7 +8,7 @@ POST /api/v1/ai/chat                 — Contextual conversation with English Pi
 GET  /api/v1/ai/doctor-brief         — Compact medical summary for pre-consultation export
 POST /api/v1/ai/analyze-meal-image   — Gemini Vision meal recognition
 POST /api/v1/ai/analyze-glucometer-image — Gemini Vision glucometer OCR (web fallback)
-GET  /api/v1/ai/chat/stream          — SSE streaming chat
+POST /api/v1/ai/chat/stream          — SSE streaming chat
 
 Architecture (Analytical-First):
   1. SQL KPIs computed by sql_analytics.compute_kpis() — no Python arithmetic.
@@ -32,7 +32,7 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
-from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
+from core.ai_egress import IMAGE, TEXT, ai_egress_scope, patient_ai_egress_scope
 from core.contracts.capabilities import Capability
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
 from core.llm_gateway import get_gateway_llm
@@ -471,14 +471,32 @@ def analyze_meal_image(request, data: MealImageRequest):
 # ──────────────────────────────────────────────────────────────
 
 
-@router.get("/ai/chat/stream")
+@router.post("/ai/chat/stream")
 @patient_ai_egress_scope("companion_chat", TEXT)
-def chat_stream(request, message: str, context_days: int = 14):
-    """
-    GET /api/v1/ai/chat/stream?message=...
-    Returns Server-Sent Events — one `data:` line per token chunk.
-    Terminal event: `data: [DONE]`
-    """
+def chat_stream(request, data: ChatRequest):
+    """POST JSON SSE — patient messages must never enter URL query strings."""
+    from django.conf import settings
+    from ninja.errors import HttpError
+
+    # The generic Bearer middleware can mark an incoming request exempt before
+    # Ninja verifies the token. A browser cookie + spoofed Bearer still needs CSRF.
+    if request.COOKIES.get(settings.SESSION_COOKIE_NAME):
+        from amina.vercel_session_auth import check_iamina_csrf
+
+        previous_bypass = getattr(request, "_dont_enforce_csrf_checks", False)
+        request._dont_enforce_csrf_checks = False
+        try:
+            if check_iamina_csrf(request):
+                raise HttpError(403, "CSRF check Failed")
+        finally:
+            request._dont_enforce_csrf_checks = previous_bypass
+
+    message = data.message
+    context_days = data.context_days
+    # Bound the calendar look-back before timedelta/SQL, even for an
+    # authenticated caller. Unbounded Pydantic ints can overflow timedelta.
+    if not 1 <= context_days <= 365:
+        raise HttpError(422, "context_days must be between 1 and 365")
     from core.input_safety import (
         INSULIN_BLOCK,
         PRESCRIPTION_BLOCK,
@@ -494,16 +512,21 @@ def chat_stream(request, message: str, context_days: int = 14):
     )
 
     if decision.action == URGENT:
+        from core.emergency_response import compose_emergency_for_patient
+
+        emergency = compose_emergency_for_patient(
+            decision, patient=user, language=language, message=message
+        )
 
         def _urgent_event_generator():
-            emergency_msg = (
-                "⚠️ Alerte : Votre glycémie semble être dans une zone critique. "
-                "Veuillez suivre les protocoles d'urgence ou contacter votre médecin."
-            )
-            yield f"data: {json.dumps({'token': emergency_msg})}\n\n"
+            yield f"data: {json.dumps(emergency.as_stream_event(), ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_urgent_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _urgent_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
 
@@ -514,7 +537,11 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': refusal})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_insulin_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _insulin_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     # Fetch entries only for the urgency glucose check in the router
     since = timezone.now() - timedelta(days=context_days)
@@ -583,13 +610,27 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': 'Une erreur est survenue.'})}\n\n"
             yield "data: [DONE]\n\n"
 
+    def _scoped_event_generator():
+        # Django consumes the SSE body after the decorated view has returned.
+        # Re-establish the exact patient's purpose scope for each provider next(),
+        # reset before each outward yield, and preserve scope for stream cleanup.
+        stream = _event_generator()
+        try:
+            while True:
+                with ai_egress_scope(user.id, "companion_chat", TEXT):
+                    try:
+                        chunk = next(stream)
+                    except StopIteration:
+                        return
+                yield chunk
+        finally:
+            with ai_egress_scope(user.id, "companion_chat", TEXT):
+                stream.close()
+
     return StreamingHttpResponse(
-        _event_generator(),
+        _scoped_event_generator(),
         content_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )
 
 

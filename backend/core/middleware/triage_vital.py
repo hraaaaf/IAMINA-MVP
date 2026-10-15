@@ -259,6 +259,11 @@ class TriageVitalMiddleware:
     def _is_chat_endpoint(self, request) -> bool:
         from core.safety_registry import TRIAGE_REGISTRY
 
+        # POST SSE must reach authenticated Ninja/CSRF before emergency handling.
+        # The SSE view uses the canonical deterministic emergency composer.
+        if request.path.rstrip("/") == "/api/v1/ai/chat/stream":
+            return False
+
         return request.method == "POST" and any(
             request.path.startswith(path) for path in TRIAGE_REGISTRY._paths
         )
