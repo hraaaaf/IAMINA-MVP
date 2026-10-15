@@ -392,11 +392,20 @@ def _evidence_matches_value(
         current_value, bool,
     )
     if not numeric:
-        # Dates and medication strings must match the literal cited field.
-        return (
-            str(current_value).strip().casefold()
-            == raw_value.strip().casefold()
-        )
+        # Literal agreement alone is insufficient when a citation is embedded
+        # inside a longer medication token (500 mg in 1500 mg, or a drug suffix).
+        if str(current_value).strip().casefold() != raw_value.strip().casefold():
+            return False
+        if _MEDICATION_EVIDENCE_RE.fullmatch(path):
+            before = source_line[start - 1] if start else ""
+            end = start + len(raw_value)
+            after = source_line[end:end + 1]
+            adjacent = "._/+-%"
+            if (before and (before.isalnum() or before in adjacent)) or (
+                after and (after.isalnum() or after in adjacent)
+            ):
+                return False
+        return True
 
     match = _EVIDENCE_NUMBER_RE.fullmatch(raw_value)
     if match is None or not math.isfinite(float(current_value)):
@@ -494,9 +503,11 @@ def _discard_contradicted_fact(output: PulperOutput, path: str) -> None:
 
 
 def _enforce_model_evidence_coverage(output: PulperOutput) -> None:
-    """Fail closed on LLM facts without a verified source/value/field binding."""
-    if not output.parser_model:
-        return
+    """Fail closed on LLM facts without a verified source/value/field binding.
+
+    Called exclusively from _parse_with_llm: an absent provider label must
+    never turn off clinical provenance checks.
+    """
     discarded = False
     for field_name in _LAB_EVIDENCE_FIELDS - {"report_date"}:
         value = getattr(output.lab_values, field_name)
@@ -521,6 +532,15 @@ def _enforce_model_evidence_coverage(output: PulperOutput) -> None:
     ]
     if len(medications) != len(output.medications):
         discarded = True
+    # A verified drug name never vouches for independently generated dosage
+    # or administration details. Require field-level verified citations.
+    for medication in medications:
+        for field_name in ("dose", "frequency", "drug_type"):
+            value = getattr(medication, field_name)
+            evidence = medication.evidence.get(field_name)
+            if value is not None and not (evidence and evidence.verified):
+                setattr(medication, field_name, None)
+                discarded = True
     output.medications = medications
     if discarded:
         output.warnings.append(

@@ -95,6 +95,45 @@ class DocumentConfirmationScopeTest(TestCase):
         do_persist.assert_called_once_with(output, owner, batch_id)
         self.assertIsNone(fake_cache.get(_pending_key(owner.id, batch_id)))
 
+    def test_patient_preview_excludes_uncited_medication_fields(self):
+        from diabetes.services.documents.pulper import (
+            _enforce_model_evidence_coverage,
+        )
+        from diabetes.services.documents.schema import FieldEvidence, MedicationEntry
+
+        extracted = PulperOutput(
+            parser_model="synthetic",
+            confidence=0.95,
+            medications=[MedicationEntry(
+                name="metformin",
+                dose="1000 mg",
+                frequency="twice daily",
+                drug_type="oral",
+                evidence={"name": FieldEvidence(
+                    raw_value="metformin",
+                    source_ref="text:L0001",
+                    verified=True,
+                )},
+            )],
+        )
+        _enforce_model_evidence_coverage(extracted)
+        cache = _FakeCache()
+        with (
+            patch("diabetes.api.v1.documents.cache", cache),
+            patch("diabetes.api.v1.documents.ingest", return_value=extracted),
+        ):
+            status, preview = ingest_document.__wrapped__(
+                SimpleNamespace(auth=SimpleNamespace(id=101)),
+                _Upload(),
+                confirm=False,
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(len(preview.medications), 1)
+        self.assertEqual(preview.medications[0].name, "metformin")
+        self.assertIsNone(preview.medications[0].dose)
+        self.assertIsNone(preview.medications[0].frequency)
+        self.assertIsNone(preview.medications[0].drug_type)
+
     @patch("diabetes.api.v1.documents._do_persist")
     @patch("diabetes.api.v1.documents.ingest", return_value=PulperOutput())
     def test_immediate_confirmation_is_rejected_before_upload_or_persistence(self, _ingest, do_persist):

@@ -53,11 +53,13 @@ class FieldProvenanceContractTest(SimpleTestCase):
 
 
 class PulperTextProvenanceTest(SimpleTestCase):
-    def _ingest_docx(self, llm_payload: dict, raw_text: str):
+    def _ingest_docx(
+        self, llm_payload: dict, raw_text: str, *, provider="gemini-2.5-flash",
+    ):
         llm = SimpleNamespace(
             complete=lambda *_args, **_kwargs: SimpleNamespace(
                 content=json.dumps(llm_payload),
-                provider="gemini-2.5-flash",
+                provider=provider,
             )
         )
         with (
@@ -248,6 +250,135 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertNotIn("dose", output.medications[0].evidence)
         self.assertIsNone(output.medications[0].dose)
 
+
+    def test_medication_with_uncited_dose_frequency_and_type_is_sanitized(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.99,
+                "medications": [{
+                    "name": "metformin",
+                    "dose": "1000 mg",
+                    "frequency": "twice daily",
+                    "drug_type": "oral",
+                }],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                },
+            },
+            "metformin 500 mg",
+        )
+        self.assertEqual(len(output.medications), 1)
+        medication = output.medications[0]
+        self.assertTrue(medication.evidence["name"].verified)
+        self.assertEqual(medication.name, "metformin")
+        self.assertIsNone(medication.dose)
+        self.assertIsNone(medication.frequency)
+        self.assertIsNone(medication.drug_type)
+        self.assertTrue(output.warnings)
+
+    def test_medication_optional_fields_keep_explicit_verified_citations(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.95,
+                "medications": [{
+                    "name": "metformin",
+                    "dose": "500 mg",
+                    "frequency": "once daily",
+                    "drug_type": "oral",
+                }],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"},
+                    "medications[0].frequency": {
+                        "r": "L0001", "v": "once daily",
+                    },
+                    "medications[0].drug_type": {"r": "L0001", "v": "oral"},
+                },
+            },
+            "metformin 500 mg oral once daily",
+        )
+        self.assertEqual(len(output.medications), 1)
+        med = output.medications[0]
+        self.assertEqual(med.dose, "500 mg")
+        self.assertEqual(med.frequency, "once daily")
+        self.assertEqual(med.drug_type, "oral")
+        for field in ("name", "dose", "frequency", "drug_type"):
+            self.assertTrue(med.evidence[field].verified)
+
+    def test_medication_dose_citation_cannot_hide_inside_larger_quantity(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.99,
+                "medications": [{"name": "metformin", "dose": "500 mg"}],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"},
+                },
+            },
+            "metformin 1500 mg",
+        )
+        self.assertEqual(len(output.medications), 1)
+        self.assertIsNone(output.medications[0].dose)
+        self.assertNotIn("dose", output.medications[0].evidence)
+
+    def test_medication_name_citation_cannot_match_longer_drug_name(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.99,
+                "medications": [{"name": "metformin"}],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                },
+            },
+            "metforminXR 500 mg",
+        )
+        self.assertEqual(output.medications, [])
+
+    def test_medication_wrong_line_does_not_verify_frequency(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.99,
+                "medications": [{
+                    "name": "metformin",
+                    "dose": "500 mg",
+                    "frequency": "twice daily",
+                }],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"},
+                    "medications[0].frequency": {
+                        "r": "L0001", "v": "twice daily",
+                    },
+                },
+            },
+            "metformin 500 mg\nother medicine twice daily",
+        )
+        self.assertEqual(len(output.medications), 1)
+        self.assertEqual(output.medications[0].dose, "500 mg")
+        self.assertIsNone(output.medications[0].frequency)
+
+    def test_missing_provider_label_cannot_bypass_medication_provenance(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.95,
+                "medications": [{"name": "metformin", "dose": "1000 mg"}],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                },
+            },
+            "metformin 500 mg",
+            provider=None,
+        )
+        self.assertIsNone(output.parser_model)
+        self.assertEqual(len(output.medications), 1)
+        self.assertEqual(output.medications[0].name, "metformin")
+        self.assertIsNone(output.medications[0].dose)
 
     def test_missing_source_evidence_drops_numeric_fact(self):
         output = self._ingest_docx(
