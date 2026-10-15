@@ -16,6 +16,10 @@ from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 
+class PatientWeightIdempotencyConflict(ValueError):
+    """The same UUID cannot replace an earlier patient measurement."""
+
+
 class PatientWeightObservation(models.Model):
     """Immutable-by-service, owner-scoped patient-declared weight record."""
 
@@ -137,5 +141,5 @@ def append_patient_weight(
         or observation.measured_at != measured_at
         or observation.provenance != provenance
     ):
-        raise ValueError("Client UUID already belongs to another declaration")
+        raise PatientWeightIdempotencyConflict("Measurement UUID conflict")
     return observation, created
