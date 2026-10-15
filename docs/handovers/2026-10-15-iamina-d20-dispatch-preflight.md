@@ -21,3 +21,11 @@ Native OS permission/transport adapter with verified actual delivery reporting, 
 ## Independent preflight integrity hardening
 
 Reject the entire selected vault if a foreign owner has inserted even a *different* reservation row: checking only the candidate owner's row could mask physical-vault cross-contamination. One negative SQLite test injects owner 812 into the vault for owner 734 and requires a false preflight despite a matching owner 734 reservation. Technical proof pending new exact-head CI; still no sender or user data.
+
+## Exact-head test and security review outcome — 15 October 2026
+
+[GitHub Actions #38798293941](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38798293941) completed **SUCCESS**, HEAD `060f5044912b34524bed64c63c8490c34847ae02`, targeted Flutter analyzer **NO ISSUES**, **56/56 synthetic Flutter tests PASS**, including 11 D20-G cases: current opt-in and reservation, missing OS permission, revoked or newer consent, owner vault A/B, changed/future/stale reading, changed user-selected threshold, tampered durable reservation, and foreign-owner reservation inside same physical vault (explicit fail-closed). Earlier first candidate CI #38798067322 SUCCESS on `af06eeb` but lacked the final foreign-reservation test.
+
+**Proven limit:** no OS sender, no actual delivery/a11y/device certification and no atomicity across an eventual OS transport outside local SQLite. These tests do not certify medical/clinical notifications, patient production or D18. D20-G is only the last-mile **preflight component**, still unmerged DRAFT. Independent clinical/privacy review and native Android+iOS transport remain necessary before D20 full feature release. P5 historic 6/12 50% unchanged.
+
+**Documentation-only closeout**: the above exact-code-head green proof remains tied to `060f5044912b34524bed64c63c8490c34847ae02`. A subsequent documentation-only commit is not an additional runtime change; its own CI state must still be read before calling that new HEAD all-green.
