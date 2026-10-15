@@ -31,3 +31,9 @@ For insufficient rows: `Pas assez de pesées pour comparer.` Label `Évolution` 
 
 ## Next
 Capture BEFORE and inspect artifact -> implement widget without changing historical data paths -> run AFTER at same viewports -> compare raster, a11y and Flutter tests -> fix until stable -> record visual proof and reviewer status.
+
+## AFTER candidate (D20 read-only visual slice)
+
+Implemented `D20WeightTrendCard` after D18 weight history in the canonical `D18ProfilePanel` (itself included only for unlocked native patient vault in real `ProfileScreen`). Card uses sorted/validated local descriptive `LocalWeightTrendSnapshot`, explicit empty state for 0/1/untrusted facts, UTC source evidence, localized FR/EN/AR, neutral fixed-point signed kg, separate numeric LTR rendering in RTL, patient declaration provenance and no-medical-adjustment wording. No notification preference switch, OS permission, callback, LLM or network logic was introduced; D20-B/C/D remain separate draft gates.
+
+**Source BEFORE**: CI #38775995975 success exact HEAD `592f26f2c99399a2936814fe022717ae410fee07`, artifact `11994430142` `d20-profile-real-raster` (24 synthetic ProfileScreen PNGs). AFTER is a new commit and will independently run the same four viewport+two locale captures plus eight closeups, Flutter component tests, and a downloaded baseline pixel diff. Do not claim passed AFTER, artifact inspection or a visual score until its CI completes.

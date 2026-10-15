@@ -151,6 +151,13 @@ Future<void> _capture(WidgetTester tester, String lang, Size size) async {
   expect(tester.takeException(), isNull);
   await expectLater(find.byKey(const Key('d18-canonical-profile')),
       matchesGoldenFile('goldens/$prefix-history.png'));
+  await tester.ensureVisible(find.byKey(const Key('d20-weight-trend-card')));
+  await tester.pumpAndSettle();
+  expect(tester.takeException(), isNull);
+  await expectLater(find.byKey(const Key('d18-canonical-profile')),
+      matchesGoldenFile('goldens/d20-trend-' + lang + '-' +
+          size.width.toInt().toString() + 'x' +
+          size.height.toInt().toString() + '.png'));
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pump();
 }

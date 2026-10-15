@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../data/drift/patient_progressive_demographics_store.dart';
 import '../../data/drift/patient_weight_history_store.dart';
+import 'd20_weight_trend_card.dart';
 
 /// D18-C: optional local patient declarations. No automatic clinical sync.
 class D18ProfilePanel extends StatefulWidget {
@@ -371,6 +372,11 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                   ),
                 ),
             ],
+            const SizedBox(height: 16),
+            D20WeightTrendCard(
+              observations: _history,
+              asOfUtc: DateTime.now().toUtc(),
+            ),
           ],
           if (_notice != null)
             Padding(padding: const EdgeInsets.only(top: 12),
