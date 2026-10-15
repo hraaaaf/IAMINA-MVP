@@ -1,0 +1,44 @@
+name: UX95 live compact navigation 360x560
+
+on:
+  pull_request:
+    paths:
+      - 'tools/audit_prod_transversal.js'
+      - 'tools/ux95_prod_transversal_check.js'
+      - '.github/workflows/ux95-live-compact-transversal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compact:
+    name: Real review Chrome 360x560 — routes and navigation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IAMINA_PROD_URL: https://iamina-review.vercel.app
+      E2E_OUT: audit-prod-transversal-360
+      UX95_WIDTH: '360'
+      UX95_HEIGHT: '560'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Capture real compact user routes and nav
+        run: node tools/audit_prod_transversal.js
+      - name: Assert route reachability and keyboard/pointer destination
+        run: node tools/ux95_prod_transversal_check.js
+      - name: Upload exact browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-ux95-live-compact-360x560
+          path: audit-prod-transversal-360/*
+          if-no-files-found: warn
+          retention-days: 14
