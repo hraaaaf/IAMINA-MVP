@@ -1,0 +1,64 @@
+name: D20 — Real Profile visual baseline and comparison
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-profile-trend-view-20261015
+    paths:
+      - frontend/lib/features/profile/d18_profile_panel.dart
+      - frontend/lib/features/profile/d20_weight_trend_card.dart
+      - frontend/test/features/profile/d18_profile_integrated_capture_test.dart
+      - frontend/test/features/profile/d20_weight_trend_card_test.dart
+      - .github/workflows/d20-profile-visual.yml
+      - docs/assessments/2026-10-15-d20-weight-trend-ui-visual.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile-raster:
+    name: D20 REAL ProfileScreen FR AR 4 viewports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Capture real IAMINA ProfileScreen
+        run: flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens --reporter expanded test/features/profile/d18_profile_integrated_capture_test.dart
+      - name: Prove 24 PNGs at exact requested viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd test/features/profile/goldens
+          for locale in fr ar; do
+            for viewport in 390x844 430x932 768x1024 1280x900; do
+              for state in top open history; do
+                file="d18-real-profile-$locale-$viewport-$state.png"
+                test -s "$file"
+                test "$(stat -c%s "$file")" -gt 6000
+              done
+            done
+          done
+          test "$(find . -maxdepth 1 -name 'd18-real-profile-*.png' | wc -l)" -eq 24
+          sha256sum d18-real-profile-*.png > D20-SHA256SUMS.txt
+          echo "Synthetic 2-point patient history, actual IAMINA ProfileScreen. Audit fonts DejaVu. No real patient, AppLock simulated. This is only visual evidence." > D20-PROVENANCE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d20-profile-real-raster
+          path: |
+            frontend/test/features/profile/goldens/d18-real-profile-*.png
+            frontend/test/features/profile/goldens/D20-SHA256SUMS.txt
+            frontend/test/features/profile/goldens/D20-PROVENANCE.txt
+          retention-days: 14
+          if-no-files-found: warn
