@@ -102,6 +102,28 @@ void main() {
     expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
   });
 
+  testWidgets('D18 year edit preserves newer gender declaration',
+      (tester) async {
+    final db = await _patientDb(734);
+    addTearDown(db.close);
+    final store = PatientProgressiveDemographicsStore(db);
+    await store.update(
+      updateBirthYear: true, birthYear: 1988,
+      updateGenderIdentity: true, genderIdentity: 'woman',
+    );
+    await _mount(tester, db);
+    // Another local writer changes one field after the widget read.
+    // Saving the edited birth year must not replace its newer gender.
+    await store.update(
+      updateGenderIdentity: true, genderIdentity: 'non_binary',
+    );
+    await tester.enterText(find.byKey(const Key('d18-birth-year')), '1994');
+    await _tapVisible(tester, 'd18-save-demographics');
+    final updated = await store.read();
+    expect(updated?.birthYear, 1994);
+    expect(updated?.genderIdentity, 'non_binary');
+  });
+
   testWidgets('D18 same widget switches A to B to A without stale identity',
       (tester) async {
     final a = await _patientDb(734);

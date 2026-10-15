@@ -26,7 +26,7 @@
 
 ## Implementation candidate
 
-- `frontend/lib/features/profile/d18_profile_panel.dart` : composant Flutter local, explicite, pas de réseau ni modèle génératif. Horodatage choisi par date/heure locale convertie UTC ; provenance stockée `patient_declared`.
+- `frontend/lib/features/profile/d18_profile_panel.dart` : composant Flutter local, explicite, pas de réseau ni modèle génératif. Horodatage **explicitement confirmé** via les deux sélecteurs date et heure, sinon ajout bloqué ; date locale convertie UTC, provenance `patient_declared`. Aucun horodatage inventé à l'ouverture du formulaire.
 - `profile_screen.dart` + `profile_screen_presentation.dart` : section visible uniquement pour **coffre natif Django déverrouillé**, **pas sur Web** tant que #1054 (IndexedDB/chiffrement/contrôle du propriétaire) reste ouvert.
 - `frontend/test/features/profile/d18_profile_panel_test.dart` : scénarios défaut vide, année facultative, pesées multiples, erreurs de saisie, absence de profil local; **résultats CI à vérifier**.
 - Aucune conversion genre → paramètre biologique, aucune date de naissance inventée, aucune modification de traitement ou cible, aucun upload automatique.
@@ -48,3 +48,9 @@
 3. Capturer le vrai Profil BEFORE, produire le mockup visuel cible, puis AFTER mêmes viewports avec comparaison+tests RTL/accessibilité et score.
 4. Retarget PR #1066 vers D18-B #1064 **après** confirmation des SHAs et diff limité au lot UI ; reviews → Release Certifier → merge/postmerge uniquement si gates réellement franchis.
 5. D18-D vrais tests device/PWA + consentement ; handover Notion, retour roadmap. Aucun passage à 100 % sans preuve.
+
+## Revue adversariale corrective — 15/10/2026
+
+- Défaut corrigé : horodatage initial fixé à l'ouverture et réutilisé malgré une mesure réelle différente. Date et heure doivent désormais être confirmées avant chaque pesée ; champ réinitialisé après ajout. Test dédié.
+- Défaut corrigé : sauvegarde des deux champs démographiques même quand un seul était modifié (risque d'écraser une déclaration plus récente). Drapeaux de modification séparés ; test de mise à jour concurrente. Contrôles désactivés pendant sauvegarde.
+- Les captures navigateur Web ne certifient pas le widget D18 natif, volontairement interdit Web tant que #1054 n'est pas résolu. Visuels BEFORE/AFTER réels et revue indépendante sont encore ouverts. CI du nouveau HEAD à vérifier avant tout verdict.

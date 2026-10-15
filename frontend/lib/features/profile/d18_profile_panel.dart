@@ -23,7 +23,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   List<LocalWeightObservation> _history = const [];
   bool _loading = true;
   bool _busy = false;
-  bool _dirty = false;
+  bool _yearDirty = false;
+  bool _identityDirty = false;
   String? _notice;
   String? _pendingWeightUuid;
   int _loadEpoch = 0;
@@ -41,7 +42,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
     super.didUpdateWidget(oldWidget);
     if (!identical(widget.db, oldWidget.db)) {
       _year.clear(); _weight.clear(); _identity = null; _history = const [];
-      _loading = true; _busy = false; _dirty = false; _notice = null;
+      _loading = true; _busy = false;
+      _yearDirty = false; _identityDirty = false; _notice = null;
       _pendingWeightUuid = null;
       _measuredAt = null;
       _reload();
@@ -61,7 +63,9 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
       setState(() {
         _year.text = details?.birthYear?.toString() ?? '';
         _identity = details?.genderIdentity;
-        _history = history; _dirty = false; _loading = false; _notice = null;
+        _history = history;
+        _yearDirty = false; _identityDirty = false;
+        _loading = false; _notice = null;
       });
     } catch (_) {
       if (!mounted || epoch != _loadEpoch || !identical(db, widget.db)) return;
@@ -75,10 +79,11 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   }
 
   Future<void> _saveDetails() async {
-    if (_busy || _loading || !_dirty) return;
+    if (_busy || _loading || (!_yearDirty && !_identityDirty)) return;
     final raw = _year.text.trim();
     final birthYear = raw.isEmpty ? null : int.tryParse(raw);
-    if (raw.isNotEmpty && (!RegExp(r'^\d{4}$').hasMatch(raw) ||
+    if (_yearDirty && raw.isNotEmpty &&
+        (!RegExp(r'^\d{4}$').hasMatch(raw) ||
         birthYear == null || birthYear < 1900 ||
         birthYear > DateTime.now().year)) {
       setState(() => _notice = _t('Année non valide.', 'Invalid birth year.',
@@ -89,12 +94,14 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
     setState(() { _busy = true; _notice = null; });
     try {
       await PatientProgressiveDemographicsStore(db).update(
-        updateBirthYear: true, birthYear: birthYear,
-        updateGenderIdentity: true, genderIdentity: _identity,
+        updateBirthYear: _yearDirty,
+        birthYear: _yearDirty ? birthYear : null,
+        updateGenderIdentity: _identityDirty,
+        genderIdentity: _identityDirty ? _identity : null,
       );
       if (!mounted || !identical(db, widget.db)) return;
       setState(() {
-        _dirty = false;
+        _yearDirty = false; _identityDirty = false;
         _notice = _t('Informations enregistrées localement uniquement.',
             'Details saved locally only.', 'تم حفظ المعلومات محليًا فقط.');
       });
@@ -200,13 +207,14 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
             TextField(
               key: const Key('d18-birth-year'), controller: _year,
               keyboardType: TextInputType.number,
+              enabled: !_busy,
               decoration: InputDecoration(
                 labelText: _t('Année de naissance (facultative)',
                     'Birth year (optional)', 'سنة الميلاد (اختياري)'),
                 helperText: _t('Sans jour ni mois de naissance',
                     'Without day or month', 'دون يوم أو شهر الميلاد'),
               ),
-              onChanged: (_) => setState(() => _dirty = true),
+              onChanged: (_) => setState(() => _yearDirty = true),
             ),
             const SizedBox(height: 12),
             Align(
@@ -229,14 +237,15 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                     'Prefer not to say', 'أفضل عدم الإجابة'),
               ],
               onChanged: _busy ? null : (code) => setState(() {
-                _identity = code; _dirty = true;
+                _identity = code; _identityDirty = true;
               }),
             ),
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: FilledButton(
                 key: const Key('d18-save-demographics'),
-                onPressed: !_dirty || _busy ? null : _saveDetails,
+                onPressed: (_yearDirty || _identityDirty) && !_busy
+                    ? _saveDetails : null,
                 child: Text(_t('Enregistrer', 'Save', 'حفظ')),
               ),
             ),
@@ -253,6 +262,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
             TextField(
               key: const Key('d18-weight-value'), controller: _weight,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              enabled: !_busy,
               decoration: InputDecoration(
                 labelText: _t('Poids mesuré', 'Measured weight', 'الوزن المقاس'),
                 hintText: '72,50'),
