@@ -130,7 +130,10 @@ class AminaMobilePageHeader extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'Georgia',
+                      // The bundled Georgia subset has no Arabic glyphs.
+                      // In RTL Arabic, use the app's Arabic-capable fallback.
+                      fontFamily: Localizations.localeOf(context).languageCode == 'ar'
+                          ? null : 'Georgia',
                       color: AminaVisualLanguage.primaryText(context),
                       fontSize: 24,
                       height: 1.05,
