@@ -42,6 +42,14 @@ Future<void> _tapVisible(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _confirmMeasuredAt(WidgetTester tester) async {
+  await _tapVisible(tester, 'd18-measured-at');
+  await tester.tap(find.text('OK').last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('OK').last);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -60,6 +68,10 @@ void main() {
         1994);
 
     await tester.enterText(find.byKey(const Key('d18-weight-value')), '72,50');
+    // Patient must explicitly confirm date and time; never manufacture it.
+    expect(tester.widget<FilledButton>(find.byKey(const Key('d18-save-weight')))
+        .onPressed, isNull);
+    await _confirmMeasuredAt(tester);
     await _tapVisible(tester, 'd18-save-weight');
     final readings = await PatientWeightHistoryStore(db).recent();
     expect(readings, hasLength(1));
@@ -69,6 +81,7 @@ void main() {
     expect(find.text('72.50 kg'), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('d18-weight-value')), '70');
+    await _confirmMeasuredAt(tester);
     await _tapVisible(tester, 'd18-save-weight');
     final all = await PatientWeightHistoryStore(db).recent();
     expect(all, hasLength(2));
@@ -84,6 +97,7 @@ void main() {
     await _tapVisible(tester, 'd18-save-demographics');
     expect(await PatientProgressiveDemographicsStore(db).read(), isNull);
     await tester.enterText(find.byKey(const Key('d18-weight-value')), 'abc');
+    await _confirmMeasuredAt(tester);
     await _tapVisible(tester, 'd18-save-weight');
     expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
   });
@@ -155,6 +169,7 @@ void main() {
     addTearDown(db.close);
     await _mount(tester, db);
     await tester.enterText(find.byKey(const Key('d18-weight-value')), '70');
+    await _confirmMeasuredAt(tester);
     await _tapVisible(tester, 'd18-save-weight');
     expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
     expect(find.byKey(const Key('d18-local-status')), findsOneWidget);
