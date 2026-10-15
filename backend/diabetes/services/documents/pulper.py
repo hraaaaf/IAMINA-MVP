@@ -509,7 +509,7 @@ def _enforce_model_evidence_coverage(output: PulperOutput) -> None:
     never turn off clinical provenance checks.
     """
     discarded = False
-    for field_name in _LAB_EVIDENCE_FIELDS - {"report_date"}:
+    for field_name in _LAB_EVIDENCE_FIELDS:
         value = getattr(output.lab_values, field_name)
         evidence = output.lab_values.evidence.get(field_name)
         if value is not None and not (evidence and evidence.verified):
@@ -523,6 +523,18 @@ def _enforce_model_evidence_coverage(output: PulperOutput) -> None:
     ]
     if len(readings) != len(output.glucose_readings):
         discarded = True
+    # Source-confirming the glucose quantity does not source-confirm its time,
+    # meal context or original measurement representation. Only individually
+    # verified facts may reach preview and persistence.
+    for reading in readings:
+        for field_name in (
+            "timestamp", "context", "original_value", "original_unit",
+        ):
+            value = getattr(reading, field_name)
+            evidence = reading.evidence.get(field_name)
+            if value is not None and not (evidence and evidence.verified):
+                setattr(reading, field_name, None)
+                discarded = True
     output.glucose_readings = readings
     medications = [
         medication for medication in output.medications

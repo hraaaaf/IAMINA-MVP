@@ -429,6 +429,133 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertEqual(output.clinical_notes, "")
         self.assertFalse(any("increase insulin" in w for w in output.warnings))
 
+    def test_uncited_glucose_metadata_and_lab_date_are_discarded(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "glucose_log",
+                "confidence": 0.95,
+                "lab_values": {
+                    "hba1c_pct": 7.2,
+                    "report_date": "2026-08-20",
+                },
+                "glucose_readings": [{
+                    "value_mgdl": 126,
+                    "timestamp": "2026-08-20T08:00:00+01:00",
+                    "context": "post_meal",
+                    "original_value": 126,
+                    "original_unit": "mg/dL",
+                }],
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7.2%"},
+                    "glucose_readings[0].value_mgdl": {
+                        "r": "L0002", "v": "126",
+                    },
+                },
+            },
+            "HbA1c 7.2%\nGlucose 126 mg/dL",
+        )
+        self.assertEqual(output.lab_values.hba1c_pct, 7.2)
+        self.assertIsNone(output.lab_values.report_date)
+        self.assertEqual(len(output.glucose_readings), 1)
+        reading = output.glucose_readings[0]
+        self.assertEqual(reading.value_mgdl, 126)
+        self.assertTrue(reading.evidence["value_mgdl"].verified)
+        self.assertIsNone(reading.timestamp)
+        self.assertIsNone(reading.context)
+        self.assertIsNone(reading.original_value)
+        self.assertIsNone(reading.original_unit)
+        self.assertTrue(output.warnings)
+
+    def test_cited_glucose_timestamp_timezone_and_context_are_preserved(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "glucose_log",
+                "confidence": 0.95,
+                "glucose_readings": [{
+                    "value_mgdl": 126,
+                    "timestamp": "2026-08-20T08:00:00+01:00",
+                    "context": "fasting",
+                    "original_value": 126,
+                    "original_unit": "mg/dL",
+                }],
+                "evidence": {
+                    "glucose_readings[0].value_mgdl": {
+                        "r": "L0001", "v": "126",
+                    },
+                    "glucose_readings[0].timestamp": {
+                        "r": "L0001", "v": "2026-08-20T08:00:00+01:00",
+                    },
+                    "glucose_readings[0].context": {
+                        "r": "L0001", "v": "fasting",
+                    },
+                    "glucose_readings[0].original_value": {
+                        "r": "L0001", "v": "126",
+                    },
+                    "glucose_readings[0].original_unit": {
+                        "r": "L0001", "v": "mg/dL",
+                    },
+                },
+            },
+            "Glucose 126 mg/dL fasting at 2026-08-20T08:00:00+01:00",
+        )
+        self.assertEqual(len(output.glucose_readings), 1)
+        reading = output.glucose_readings[0]
+        self.assertEqual(reading.value_mgdl, 126)
+        self.assertEqual(reading.timestamp, "2026-08-20T08:00:00+01:00")
+        self.assertEqual(reading.context, "fasting")
+        self.assertEqual(reading.original_value, 126)
+        self.assertEqual(reading.original_unit, "mg/dL")
+        for field in (
+            "value_mgdl", "timestamp", "context", "original_value",
+            "original_unit",
+        ):
+            self.assertTrue(reading.evidence[field].verified)
+
+    def test_source_bound_lab_report_date_is_preserved(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.95,
+                "lab_values": {
+                    "hba1c_pct": 7.2,
+                    "report_date": "2026-08-20",
+                },
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0002", "v": "7.2%"},
+                    "lab_values.report_date": {
+                        "r": "L0001", "v": "2026-08-20",
+                    },
+                },
+            },
+            "Report date: 2026-08-20\nHbA1c: 7.2%",
+        )
+        self.assertEqual(output.lab_values.report_date, "2026-08-20")
+        self.assertTrue(output.lab_values.evidence["report_date"].verified)
+
+    def test_wrong_timestamp_evidence_is_discarded_but_glucose_kept(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "glucose_log",
+                "confidence": 0.95,
+                "glucose_readings": [{
+                    "value_mgdl": 126,
+                    "timestamp": "2026-08-21T08:00:00+01:00",
+                }],
+                "evidence": {
+                    "glucose_readings[0].value_mgdl": {
+                        "r": "L0001", "v": "126",
+                    },
+                    "glucose_readings[0].timestamp": {
+                        "r": "L0001", "v": "2026-08-20T08:00:00+01:00",
+                    },
+                },
+            },
+            "Glucose 126 mg/dL at 2026-08-20T08:00:00+01:00",
+        )
+        self.assertEqual(len(output.glucose_readings), 1)
+        self.assertIsNone(output.glucose_readings[0].timestamp)
+        self.assertNotIn("timestamp", output.glucose_readings[0].evidence)
+
     def test_missing_source_evidence_drops_numeric_fact(self):
         output = self._ingest_docx(
             {"document_type": "lab_report", "confidence": 0.99,
