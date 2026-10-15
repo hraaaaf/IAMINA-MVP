@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 const enabled = bool.fromEnvironment('D18_CAPTURE_UI');
+const captureConsent = bool.fromEnvironment('D20_CAPTURE_CONSENT');
 class _UnlockedFixture extends AppLockService {
   @override
   bool get isUnlocked => true;
@@ -158,6 +159,24 @@ Future<void> _capture(WidgetTester tester, String lang, Size size) async {
       matchesGoldenFile('goldens/d20-trend-' + lang + '-' +
           size.width.toInt().toString() + 'x' +
           size.height.toInt().toString() + '.png'));
+  if (captureConsent) {
+    expect(find.byKey(const Key('d20-consent-panel')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('d20-consent-panel')));
+    await tester.pumpAndSettle();
+    await expectLater(find.byKey(const Key('d18-canonical-profile')),
+      matchesGoldenFile('goldens/d20-consent-' + lang + '-' +
+          size.width.toInt().toString() + 'x' +
+          size.height.toInt().toString() + '-closed.png'));
+    await tester.tap(find.byKey(const Key('d20-consent-expand')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('d20-consent-save')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await expectLater(find.byKey(const Key('d18-canonical-profile')),
+      matchesGoldenFile('goldens/d20-consent-' + lang + '-' +
+          size.width.toInt().toString() + 'x' +
+          size.height.toInt().toString() + '-open.png'));
+  }
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pump();
 }
