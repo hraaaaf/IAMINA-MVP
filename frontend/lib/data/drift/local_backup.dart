@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import 'database.dart';
 import 'patient_treatment_declaration_store.dart';
+import 'patient_progressive_demographics_store.dart';
 import 'patient_vault_scope.dart';
 import 'patient_weight_history_store.dart';
 
@@ -52,6 +53,14 @@ final class LocalBackup {
     envelope['weightObservations'] = store == null
         ? <Map<String, Object?>>[]
         : await store.exportOwnedRows();
+    final demographics = scope.databaseName ==
+            PatientVaultScope.auditOnly().databaseName
+        ? null
+        : PatientProgressiveDemographicsStore(db);
+    envelope['demographicsFormatVersion'] = 1;
+    envelope['demographicDeclarations'] = demographics == null
+        ? <Map<String, Object?>>[]
+        : await demographics.exportOwnedRows();
     return jsonEncode(envelope);
   }
 
@@ -189,10 +198,47 @@ final class LocalBackup {
         );
       }
     }
+    // New optional demographics section has independent, explicit versioning.
+    final hasDemographics = root.containsKey('demographicDeclarations');
+    if (hasDemographics != root.containsKey('demographicsFormatVersion')) {
+      throw const FormatException('Incomplete D18 demographics backup');
+    }
+    if (hasDemographics && root['demographicsFormatVersion'] != 1) {
+      throw const FormatException('Unsupported D18 demographics format');
+    }
+    final demographicRows = hasDemographics
+        ? _rows(root, 'demographicDeclarations')
+        : <Map<String, dynamic>>[];
+    if (demographicRows.length > 1 ||
+        (scope.databaseName ==
+            PatientVaultScope.auditOnly().databaseName &&
+            demographicRows.isNotEmpty)) {
+      throw const FormatException('Invalid D18 demographics ownership');
+    }
+    for (final row in demographicRows) {
+      if (profiles.isEmpty) {
+        throw const FormatException('D18 demographics require owned profile');
+      }
+      PatientProgressiveDemographicsStore.validateBackupRow(row, owner);
+    }
+    final demographicStore = scope.databaseName ==
+            PatientVaultScope.auditOnly().databaseName
+        ? null
+        : PatientProgressiveDemographicsStore(db);
+    if (demographicStore != null) {
+      final existing = await demographicStore.exportOwnedRows();
+      if (!hasDemographics && existing.isNotEmpty) {
+        throw StateError(
+          'Legacy scoped backup cannot overwrite D18 demographics',
+        );
+      }
+    }
     root['formatVersion'] = formatVersion;
     return _restoreRows(
       db, root, declarations: declarations,
       weightRows: weightRows, restoreWeights: store != null,
+      demographicRows: demographicRows,
+      restoreDemographics: demographicStore != null,
     );
   }
 
@@ -202,6 +248,8 @@ final class LocalBackup {
     List<Map<String, dynamic>> declarations = const [],
     List<Map<String, dynamic>> weightRows = const [],
     bool restoreWeights = false,
+    List<Map<String, dynamic>> demographicRows = const [],
+    bool restoreDemographics = false,
   }) async {
 
     if (root['formatVersion'] != formatVersion) {
@@ -259,6 +307,9 @@ final class LocalBackup {
       if (restoreWeights) {
         await db.customStatement('DELETE FROM patient_weight_observations_v1');
       }
+      if (restoreDemographics) {
+        await db.customStatement('DELETE FROM patient_progressive_demographics_v1');
+      }
       await db.delete(db.logEntries).go();
       await db.delete(db.patientProfiles).go();
       await db.delete(db.chatMessages).go();
@@ -312,6 +363,24 @@ final class LocalBackup {
         ''').getSingle();
         if (restored.data['total'] != weightRows.length) {
           throw StateError('D18 restored weight count mismatch');
+        }
+      }
+      for (final row in demographicRows) {
+        await db.customStatement('''
+          INSERT INTO patient_progressive_demographics_v1
+            (user_id, birth_year, gender_identity, provenance, updated_at_utc)
+          VALUES (?, ?, ?, ?, ?)
+        ''', [
+          row['user_id'], row['birth_year'], row['gender_identity'],
+          row['provenance'], row['updated_at_utc'],
+        ]);
+      }
+      if (restoreDemographics) {
+        final count = await db.customSelect('''
+          SELECT COUNT(*) AS total FROM patient_progressive_demographics_v1
+        ''').getSingle();
+        if (count.data['total'] != demographicRows.length) {
+          throw StateError('D18 demographic restore count mismatch');
         }
       }
 
