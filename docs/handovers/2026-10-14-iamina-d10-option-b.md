@@ -1,3 +1,20 @@
+## 15 octobre 2026 — D10-B iOS sauvegardes locales : merge #1053, limites établies
+
+**Goal exact :** réduire l'inclusion accidentelle dans les sauvegardes iOS des fichiers SQLite d'un coffre patient, sans déplacer la base ni toucher au verrou d'accès. **Le choix B de verrou facultatif reste NON implémenté.**
+
+**Succès observé sur HEAD PR `73716e7fcb2b9060b6a5de369374c449102ad0c0` :** [D10 iOS native Swift #38716161853](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38716161853) **SUCCESS** : compilation de la fonction Foundation Swift présente dans `AppDelegate.swift`, correspondance du préfixe patient et des extensions DB/WAL/SHM, exclusion des fichiers sans rapport, idempotence et lecture de `isExcludedFromBackup` **sur macOS**. [CI générale #38716161822](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38716161822) **SUCCESS**. [Packaging iOS #38716161813](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38716161813) **SUCCESS** (build release sans signature). Les trois résultats concernent le même HEAD, sans données patient réelles.
+
+**Fusion constatée :** [PR #1053](https://github.com/hraaaaf/IAMINA-MVP/pull/1053) **MERGED** dans `main@5d3d81a7841257b497cf8e01f1380e2c33d1accf`. Relecture directe du fichier `AppDelegate.swift`, du `SceneDelegate.swift` et du [document explicatif](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-ios-backup-exclusion.md) sur le nouveau main. **CI post-merge** [D10 iOS #38717221683](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38717221683) et [CI #38717221667](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38717221667) : `IN_PROGRESS` au contrôle initial, à revérifier avant clôture de la preuve post-merge.
+
+**Limites de preuve et risques résiduels :**
+- Trois tentatives de construire et exécuter les **XCTest sur iOS Simulator** ont échoué *avant le lancement des tests* avec `Framework 'Pods_Runner' not found`. [Issue de diagnostic #1057](https://github.com/hraaaaf/IAMINA-MVP/issues/1057) **OPEN**. Ni le changement de configuration CocoaPods Debug ni Flutter 3.41.4 n'ont résolu. Le test macOS n'est **pas** un XCTest iOS.
+- `isExcludedFromBackup` reste une indication de non-sauvegarde susceptible d'être réinitialisée par modifications de fichiers. Les bases créées entre les callbacks peuvent temporairement ne pas recevoir la marque ; aucune restauration iCloud ou vérification sur appareil réel n'est prouvée. [Issue protection iOS #1052](https://github.com/hraaaaf/IAMINA-MVP/issues/1052) **OPEN**. Pas de preuve de protection `NSFileProtectionComplete` du DB/WAL/SHM.
+- [Web #1054](https://github.com/hraaaaf/IAMINA-MVP/issues/1054), [transfert Android→iOS #1048](https://github.com/hraaaaf/IAMINA-MVP/issues/1048), [D10 #968](https://github.com/hraaaaf/IAMINA-MVP/issues/968), [gate #1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013) **OPEN**. Pas de mise en production du verrou facultatif, ni Vercel, ni certification clinique/juridique.
+
+**Next exact :** contrôler les runs iOS post-merge puis rétablir le simulateur via preuve native des frameworks manquants, et engager la séparation du droit de coffre/synchro + chiffrement Web / identité forte avant d'implémenter l'option B. P5 **50 % historique**, sans recalcul.
+
+---
+
 ## 15 octobre 2026 — Android D10-B, correctif de sauvegarde fusionné après 3 CI vertes
 
 **Goal** : éviter que les données médicales locales soient sauvegardées automatiquement sur Android/transportées à un nouvel appareil sans protocole patient autorisé. **Le verrou facultatif B lui-même reste NON IMPLÉMENTÉ.**
