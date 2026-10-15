@@ -123,6 +123,32 @@ void main() {
         .controller?.text, '1994');
   });
 
+  for (final size in <Size>[
+    const Size(360, 560),
+    const Size(390, 844),
+    const Size(768, 1024),
+    const Size(1280, 900),
+  ]) {
+    testWidgets('D18 optional form remains usable at $size', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = size;
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+      final db = await _patientDb(734);
+      addTearDown(db.close);
+      await _mount(tester, db);
+
+      expect(find.byKey(const Key('d18-birth-year')), findsOneWidget);
+      expect(find.byKey(const Key('d18-gender-identity')), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const Key('d18-save-weight')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('d18-save-weight')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('D18 no persisted patient profile refuses writes',
       (tester) async {
     final db = await _patientDb(913, hasProfile: false);
