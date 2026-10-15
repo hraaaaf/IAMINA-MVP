@@ -1,0 +1,90 @@
+name: W01-B real browser Web-to-Django-to-PostgreSQL synthetic
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_w01b_cross_origin_pg_probe_main.dart'
+      - 'scripts/w01b_browser_api_pg_probe.py'
+      - '.github/workflows/w01b-web-api-pg-browser.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_w01b_cross_origin_pg_probe_main.dart'
+      - 'scripts/w01b_browser_api_pg_probe.py'
+      - '.github/workflows/w01b-web-api-pg-browser.yml'
+permissions:
+  contents: read
+concurrency:
+  group: w01b-browser-pg-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-api-pg:
+    name: Synthetic Chrome Flutter Web to Django to PG16
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_w01b
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_w01b"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-w01b-synthetic-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:7364
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w01b
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install synthetic backend and browser-test driver
+        run: |
+          python -m pip install -r backend/requirements.txt
+          python -m pip install websocket-client
+      - name: Create PostgreSQL schema without touching cloud
+        working-directory: backend
+        run: |
+          python manage.py migrate --noinput
+          python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Analyze/build synthetic Flutter Web probe without CDN
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_w01b_cross_origin_pg_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/ui_w01b_cross_origin_pg_probe_main.dart --dart-define=API_BASE_URL=http://127.0.0.1:8000
+      - name: Test real cross-origin Chromium GET through Django to PostgreSQL 16
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && exec python manage.py runserver 127.0.0.1:8000 --noreload > /tmp/w01b-api.log 2>&1) &
+          API_PID=$!
+          python -m http.server 7364 --bind 127.0.0.1 --directory frontend/build/web > /tmp/w01b-web.log 2>&1 &
+          WEB_PID=$!
+          cleanup() {
+            kill "$WEB_PID" "$API_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /tmp/w01b-health.json
+          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:7364/ > /dev/null
+          python scripts/w01b_browser_api_pg_probe.py
