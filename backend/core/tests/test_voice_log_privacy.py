@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from ai.api.v1.voice import voice_chat
+
 from core.input_safety import InputSafetyDecision, URGENT
 from media.voice import TranscriptionError
 
