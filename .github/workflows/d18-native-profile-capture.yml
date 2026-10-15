@@ -1,0 +1,65 @@
+name: D18 native Flutter profile raster evidence
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/profile/**'
+      - 'frontend/test/features/profile/d18_profile_capture_test.dart'
+      - '.github/workflows/d18-native-profile-capture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  d18-raster:
+    name: Widget raster FR-AR, 4 viewports, 3 states
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Confirm readable Arabic-capable font
+        run: test -s /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+      - name: Render Flutter raster, not physical devices
+        run: flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens --reporter expanded test/features/profile/d18_profile_capture_test.dart
+      - name: Validate 24 raster PNGs, record SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd test/features/profile/goldens
+          for locale in fr ar; do
+            for viewport in 360x560 390x844 768x1024 1280x900; do
+              for state in closed open-top open-bottom; do
+                file="d18-raster-$locale-$viewport-$state.png"
+                test -s "$file"
+                test "$(stat -c%s "$file")" -gt 6000
+              done
+            done
+          done
+          test "$(find . -maxdepth 1 -name 'd18-raster-*.png' | wc -l)" -eq 24
+          test "$(sha256sum d18-raster-*.png | awk '{print $1}' | sort -u | wc -l)" -ge 12
+          sha256sum d18-raster-*.png > SHA256SUMS.txt
+          cat > PROVENANCE.txt <<'EOF'
+          Synthetic isolated SQLite vault, Flutter widget-test raster with
+          DejaVu font. NOT physical Android/iOS, not security/privacy review,
+          not clinical validation, not native device A-to-B-to-A proof.
+          Collapsed/open are same-code states, NOT historical BEFORE renders.
+          EOF
+      - name: Upload D18 raster evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-d18-native-widget-raster-fr-ar
+          path: |
+            frontend/test/features/profile/goldens/d18-raster-*.png
+            frontend/test/features/profile/goldens/SHA256SUMS.txt
+            frontend/test/features/profile/goldens/PROVENANCE.txt
+          if-no-files-found: warn
+          retention-days: 14
