@@ -24,6 +24,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   bool _busy = false;
   bool _dirty = false;
   String? _notice;
+  String? _pendingWeightUuid;
+  int _loadEpoch = 0;
 
   String _t(String fr, String en, String ar) =>
       switch (Localizations.localeOf(context).languageCode) {
@@ -38,7 +40,9 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
     super.didUpdateWidget(oldWidget);
     if (!identical(widget.db, oldWidget.db)) {
       _year.clear(); _weight.clear(); _identity = null; _history = const [];
-      _loading = true; _dirty = false; _notice = null; _reload();
+      _loading = true; _busy = false; _dirty = false; _notice = null;
+      _pendingWeightUuid = null;
+      _reload();
     }
   }
 
@@ -46,17 +50,19 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   void dispose() { _year.dispose(); _weight.dispose(); super.dispose(); }
 
   Future<void> _reload() async {
+    final db = widget.db;
+    final epoch = ++_loadEpoch;
     try {
-      final details = await PatientProgressiveDemographicsStore(widget.db).read();
-      final history = await PatientWeightHistoryStore(widget.db).recent(limit: 20);
-      if (!mounted) return;
+      final details = await PatientProgressiveDemographicsStore(db).read();
+      final history = await PatientWeightHistoryStore(db).recent(limit: 20);
+      if (!mounted || epoch != _loadEpoch || !identical(db, widget.db)) return;
       setState(() {
         _year.text = details?.birthYear?.toString() ?? '';
         _identity = details?.genderIdentity;
         _history = history; _dirty = false; _loading = false; _notice = null;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || epoch != _loadEpoch || !identical(db, widget.db)) return;
       setState(() {
         _loading = false;
         _notice = _t('Coffre patient inaccessible ; aucune donnée modifiée.',
@@ -77,25 +83,26 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
           'سنة الميلاد غير صالحة.'));
       return;
     }
+    final db = widget.db;
     setState(() { _busy = true; _notice = null; });
     try {
-      await PatientProgressiveDemographicsStore(widget.db).update(
+      await PatientProgressiveDemographicsStore(db).update(
         updateBirthYear: true, birthYear: birthYear,
         updateGenderIdentity: true, genderIdentity: _identity,
       );
-      if (!mounted) return;
+      if (!mounted || !identical(db, widget.db)) return;
       setState(() {
         _dirty = false;
         _notice = _t('Informations enregistrées localement uniquement.',
             'Details saved locally only.', 'تم حفظ المعلومات محليًا فقط.');
       });
     } catch (_) {
-      if (mounted) setState(() => _notice = _t(
+      if (mounted && identical(db, widget.db)) setState(() => _notice = _t(
           'Enregistrement refusé. Vérifiez votre profil patient.',
           'Save refused. Check your patient profile.',
           'تم رفض الحفظ. تحقق من ملف المريض.'));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && identical(db, widget.db)) setState(() => _busy = false);
     }
   }
 
@@ -110,33 +117,41 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
     final time = await showTimePicker(
       context: context, initialTime: TimeOfDay.fromDateTime(_measuredAt));
     if (!mounted || time == null) return;
-    setState(() => _measuredAt = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute));
+    setState(() {
+      _measuredAt = DateTime(
+          date.year, date.month, date.day, time.hour, time.minute);
+      _pendingWeightUuid = null;
+    });
   }
 
   Future<void> _addWeight() async {
     if (_busy || _loading || _weight.text.trim().isEmpty) return;
+    final db = widget.db;
+    _pendingWeightUuid ??= const Uuid().v4();
+    final clientUuid = _pendingWeightUuid!;
     setState(() { _busy = true; _notice = null; });
     try {
-      await PatientWeightHistoryStore(widget.db).append(
-        clientUuid: const Uuid().v4(),
+      await PatientWeightHistoryStore(db).append(
+        clientUuid: clientUuid,
         value: _weight.text.trim().replaceAll(',', '.'),
         unit: _unit, measuredAtUtc: _measuredAt.toUtc(),
       );
-      final history = await PatientWeightHistoryStore(widget.db).recent(limit: 20);
-      if (!mounted) return;
+      if (!mounted || !identical(db, widget.db)) return;
+      final history = await PatientWeightHistoryStore(db).recent(limit: 20);
+      if (!mounted || !identical(db, widget.db)) return;
       setState(() {
+        _pendingWeightUuid = null;
         _history = history; _weight.clear(); _measuredAt = DateTime.now();
         _notice = _t('Pesée ajoutée ; historique conservé.',
             'Reading added; history preserved.', 'تمت إضافة القياس مع حفظ السجل.');
       });
     } catch (_) {
-      if (mounted) setState(() => _notice = _t(
+      if (mounted && identical(db, widget.db)) setState(() => _notice = _t(
           'Pesée refusée. Vérifiez la valeur, la date et votre profil.',
           'Reading refused. Check amount, date and profile.',
           'تم رفض القياس. تحقق من القيمة والتاريخ وملف المريض.'));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && identical(db, widget.db)) setState(() => _busy = false);
     }
   }
 
@@ -236,7 +251,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
               decoration: InputDecoration(
                 labelText: _t('Poids mesuré', 'Measured weight', 'الوزن المقاس'),
                 hintText: '72,50'),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => _pendingWeightUuid = null),
             ),
             DropdownButton<String>(
               key: const Key('d18-weight-unit'), value: _unit,
@@ -245,7 +260,10 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                 DropdownMenuItem(value: 'lb', child: Text('lb')),
               ],
               onChanged: _busy ? null : (unit) {
-                if (unit != null) setState(() => _unit = unit);
+                if (unit != null) setState(() {
+                  _unit = unit;
+                  _pendingWeightUuid = null;
+                });
               },
             ),
             Align(
