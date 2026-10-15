@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _uuidA = '123e4567-e89b-42d3-a456-426614174000';
 const _uuidB = '123e4567-e89b-42d3-a456-426614174001';
-const _uuidC = '123e4567-e89b-42d3-a456-426614174002';
 
 Future<AppDatabase> _vault(int id) async {
   final db = AppDatabase.testPatientVault(
