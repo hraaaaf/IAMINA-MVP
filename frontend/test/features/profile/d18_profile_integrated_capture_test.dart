@@ -77,6 +77,10 @@ Future<void> _capture(WidgetTester tester, String lang, Size size) async {
     updateBirthYear: true, birthYear: 1994,
     updateGenderIdentity: true, genderIdentity: 'prefer_not_to_say');
   await PatientWeightHistoryStore(db).append(
+    clientUuid: 'd18b0000-1234-4abc-8def-123456789abc',
+    value: '70.00', unit: 'kg',
+    measuredAtUtc: DateTime.utc(2026, 10, 11, 9, 20));
+  await PatientWeightHistoryStore(db).append(
     clientUuid: 'd18c0000-1234-4abc-8def-123456789abc',
     value: '72.50', unit: 'kg',
     measuredAtUtc: DateTime.utc(2026, 10, 14, 9, 20));
@@ -147,6 +151,13 @@ Future<void> _capture(WidgetTester tester, String lang, Size size) async {
   expect(tester.takeException(), isNull);
   await expectLater(find.byKey(const Key('d18-canonical-profile')),
       matchesGoldenFile('goldens/$prefix-history.png'));
+  await tester.ensureVisible(find.byKey(const Key('d20-weight-trend-card')));
+  await tester.pumpAndSettle();
+  expect(tester.takeException(), isNull);
+  await expectLater(find.byKey(const Key('d18-canonical-profile')),
+      matchesGoldenFile('goldens/d20-trend-' + lang + '-' +
+          size.width.toInt().toString() + 'x' +
+          size.height.toInt().toString() + '.png'));
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pump();
 }
@@ -158,7 +169,7 @@ void main() {
     if (!enabled) return;
     await _loadFonts(tester);
     for (final size in <Size>[
-      const Size(360, 560), const Size(390, 844),
+      const Size(390, 844), const Size(430, 932),
       const Size(768, 1024), const Size(1280, 900),
     ]) {
       for (final lang in ['fr', 'ar']) {

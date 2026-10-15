@@ -1,0 +1,110 @@
+name: D20 — Real Profile visual baseline and comparison
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-profile-trend-view-20261015
+    paths:
+      - frontend/lib/features/profile/d18_profile_panel.dart
+      - frontend/lib/features/profile/d20_weight_trend_card.dart
+      - frontend/test/features/profile/d18_profile_integrated_capture_test.dart
+      - frontend/test/features/profile/d20_weight_trend_card_test.dart
+      - .github/workflows/d20-profile-visual.yml
+      - docs/assessments/2026-10-15-d20-weight-trend-ui-visual.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  profile-raster:
+    name: D20 REAL ProfileScreen FR AR 4 viewports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Verify D20 card widget states and accessibility
+        run: flutter test --no-pub test/features/profile/d20_weight_trend_card_test.dart
+      - name: Capture real IAMINA ProfileScreen
+        run: flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens --reporter expanded test/features/profile/d18_profile_integrated_capture_test.dart
+      - name: Prove 24 PNGs at exact requested viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd test/features/profile/goldens
+          for locale in fr ar; do
+            for viewport in 390x844 430x932 768x1024 1280x900; do
+              for state in top open history; do
+                file="d18-real-profile-$locale-$viewport-$state.png"
+                test -s "$file"
+                test "$(stat -c%s "$file")" -gt 6000
+              done
+            done
+          done
+          test "$(find . -maxdepth 1 -name 'd18-real-profile-*.png' | wc -l)" -eq 24
+          for locale in fr ar; do
+            for viewport in 390x844 430x932 768x1024 1280x900; do
+              file="d20-trend-$locale-$viewport.png"
+              test -s "$file"
+              test "$(stat -c%s "$file")" -gt 6000
+            done
+          done
+          test "$(find . -maxdepth 1 -name 'd20-trend-*.png' | wc -l)" -eq 8
+          sha256sum d18-real-profile-*.png d20-trend-*.png > D20-SHA256SUMS.txt
+          echo "Synthetic 2-point patient history, actual IAMINA ProfileScreen. Audit fonts DejaVu. No real patient, AppLock simulated. This is only visual evidence." > D20-PROVENANCE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d20-profile-real-raster
+          path: |
+            frontend/test/features/profile/goldens/d18-real-profile-*.png
+            frontend/test/features/profile/goldens/d20-trend-*.png
+            frontend/test/features/profile/goldens/D20-SHA256SUMS.txt
+            frontend/test/features/profile/goldens/D20-PROVENANCE.txt
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Download verified BEFORE reference from same repo
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 38775995975
+          name: d20-profile-real-raster
+          path: /tmp/iamina-d20-before
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compare BEFORE and AFTER same viewports, emit pixel counts
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check Pillow==11.3.0
+          python3 - <<'PY'
+          from PIL import Image, ImageChops
+          from pathlib import Path
+          before = Path('/tmp/iamina-d20-before')
+          after = Path('test/features/profile/goldens')
+          rows = []
+          for locale in ('fr', 'ar'):
+              for viewport in ('390x844','430x932','768x1024','1280x900'):
+                  for state in ('top','open','history'):
+                      name = f'd18-real-profile-{locale}-{viewport}-{state}.png'
+                      a,b = Image.open(before/name).convert('RGB'), Image.open(after/name).convert('RGB')
+                      assert a.size == b.size, (name,a.size,b.size)
+                      diff = ImageChops.difference(a,b)
+                      changed = sum(1 for px in diff.getdata() if px != (0,0,0))
+                      rows.append((name,changed,changed/(a.width*a.height)))
+                      print(f'{name} changed={changed} px ({100*changed/(a.width*a.height):.3f}%)')
+                  trend=Image.open(after/f'd20-trend-{locale}-{viewport}.png')
+                  assert trend.width == int(viewport.split('x')[0])
+                  assert trend.height == int(viewport.split('x')[1])
+          assert len(rows)==24
+          print('Validated same viewports: 24 matched BEFORE/AFTER captures and 8 additional trend captures')
+          PY
