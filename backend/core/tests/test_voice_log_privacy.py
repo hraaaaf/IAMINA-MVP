@@ -6,7 +6,7 @@ external AI egress, changing patient consent, or bypassing live authorization.
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from core.input_safety import InputSafetyDecision, URGENT
+from core.input_safety import URGENT, InputSafetyDecision
 from core.middleware.triage_vital import TriageVitalMiddleware
 
 
