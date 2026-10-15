@@ -8,8 +8,8 @@
 ## Strategy / trade-off
 - Temporarily **suppress all LLM-origin `clinical_notes`** in `_map_json_to_output`, before patient preview/cache/database, and show a generic warning. This is deliberately conservative: even legitimate source observations are hidden until field-level source attribution and clinical meaning can be independently qualified.
 - Patient-authored structured logs and deterministic spreadsheet glucose extraction stay governed by their existing paths.
-- This is an implementation **CANDIDATE** on a separate follow-up branch and is **not yet tested/approved**.
-- This branch was created from Pulper medication child [#1022](https://github.com/hraaaaf/IAMINA-MVP/pull/1022); it must NOT be integrated until parent [#1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005) includes the certified #1019 patch and the new diff is confirmed to contain only this issue's changes.
+- This is an implementation **CANDIDATE** on separate PR [#1024](https://github.com/hraaaaf/IAMINA-MVP/pull/1024). Candidate test collection: three mocked LLM parser regressions and one patient preview→confirm→LabReport persistence check; success must be proven with exact-HEAD GitHub CI (not assumed). It remains NOT YET CLINICALLY APPROVED.
+- This branch was created from Pulper medication child [#1022](https://github.com/hraaaaf/IAMINA-MVP/pull/1022), then rebased by merging exact parent head. The parent [#1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005) includes #1019 on SHA `8b4271c814db5d8acfa1d7770bf1570c05f7b7ba`, with **5/5** postmerge GitHub workflows SUCCESS. Diff to parent rechecked: three implementation/test files plus this handover only. Child #1024 remains a separate DRAFT candidate; CI has NOT yet qualified this child.
 
 ## Release boundaries
 - No real patient data in tests, no prescribing/insulin recommendations, no unsafe model clinical authority.
