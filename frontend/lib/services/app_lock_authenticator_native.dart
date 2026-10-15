@@ -84,6 +84,25 @@ final class NativeAppLockAuthenticator implements AppLockAuthenticator {
     return AppLockAssertion(signCount: credential.signCount + 1);
   }
 
+  Future<Map<String, dynamic>> _invoke(
+    String method, [Map<String, Object>? arguments]) async {
+    try {
+      final reply = await _channel.invokeMapMethod<String, dynamic>(
+        method, arguments,
+      );
+      if (reply == null) {
+        throw const AppLockException('malformed_native_response');
+      }
+      return reply;
+    } on AppLockException {
+      rethrow;
+    } on PlatformException catch (error) {
+      throw AppLockException(error.code);
+    } on MissingPluginException {
+      throw const AppLockException('native_bridge_unavailable');
+    }
+  }
+
   static String _encodeCredential(Map<String, dynamic> reply) {
     final credential = <String, Object>{
       'version': AppLockCredential.currentVersion,
