@@ -30,7 +30,7 @@
 
 ## Real cutover gate: breaking GET clients
 
-**Human decision required before merge/release:** GET→POST with 405 for GET intentionally breaks older Flutter/PWA/mobile builds. Never silently reintroduce GET+message for compatibility. Inventory active client versions from authorized release metadata (no personal data); map minimum supported build and server build digest; verify web cache/service worker can pick up POST bundle; decide explicit upgrade notice and rollback procedure. A rollback MUST NOT re-enable a PHI-bearing GET endpoint in any real-patient runtime. Until proof exists, keep this PR DRAFT and do not deploy.
+**Owner-verified baseline (2026-10-12, issue #925): IAMINA has zero installed clients.** The historical GET endpoint is a source-level risk, not evidence of a production patient leak or an installed client population. Do **not** invent an existing fleet or an upgrade-notification campaign. The actual first-release gate is a clean synthetic app installation paired with a POST-capable frontend/backend build, cached-PWA/service-worker proof, 405 fail-closed GET, no PHI-bearing URL access logs, and documented rollback. A rollback MUST NOT re-enable GET+patient-message in any real-patient runtime. Confirm first-release contract acceptance before merge/release and keep this PR DRAFT. Owner evidence: https://github.com/hraaaaf/IAMINA-MVP/issues/925#issuecomment-6126173521.
 
 **Rollout policy:** this is dev/cert preparation only. If later approved, freeze matched frontend/backend SHA and deploy through a separate explicitly authorized release process with synthetic ingress URL-log checks, fail-closed old clients, monitoring with no raw content and documented rollback. Vercel deployment is specifically unauthorized for this task.
 
@@ -49,4 +49,4 @@
 
 ## Next exact
 
-Read exact-head CI, repair any failing test without weakening gates, reconfirm all touched diffs and rerun. Obtain separate reviewer + certifier and explicit client cutover acceptance before converting to mergeable; no automatic merge or deployment.
+Prior code-only SHA `496a685ba23047ce27742750af5476b8d0918144` passed CI #38717063878 (SQLite 2829; PostgreSQL 2833), drift #38717063843, local chat E2E #38717063862, pilot rehearsal #38717063770. This docs/hand-over update changes the branch HEAD and requires new scoped exact-head CI. Reconcile current `main`, prove POST SSE end-to-end and first-install compatibility, obtain separate security/clinical reviewer and release certifier, retain DRAFT; no merge or Vercel deploy.
