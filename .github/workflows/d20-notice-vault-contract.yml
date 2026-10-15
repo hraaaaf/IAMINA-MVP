@@ -1,0 +1,38 @@
+name: D20 — Patient vault notice consent
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-vault-optin-preferences-20261015
+    paths:
+      - frontend/lib/data/drift/patient_weight_notice_preferences_store.dart
+      - frontend/test/data/drift/d20_weight_notice_preferences_store_test.dart
+      - frontend/lib/features/profile/weight_notice_policy.dart
+      - frontend/lib/features/profile/weight_trend_snapshot.dart
+      - .github/workflows/d20-notice-vault-contract.yml
+      - docs/handovers/2026-10-15-iamina-d20-weight-notice-vault.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d20-notice-vault:
+    name: D20 consent defaults and vault isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze D20 source and tests
+        run: flutter analyze --no-fatal-infos lib/data/drift/patient_weight_notice_preferences_store.dart lib/features/profile/weight_notice_policy.dart lib/features/profile/weight_trend_snapshot.dart test/data/drift/d20_weight_notice_preferences_store_test.dart
+      - name: Run D20-A/B/C synthetic tests
+        run: flutter test --no-pub test/features/profile/d20_weight_trend_snapshot_test.dart test/features/profile/d20_weight_notice_policy_test.dart test/data/drift/d20_weight_notice_preferences_store_test.dart
