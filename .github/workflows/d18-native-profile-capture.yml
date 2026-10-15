@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'frontend/lib/features/profile/**'
+      - 'docs/handovers/2026-10-15-iamina-d18-c-profile-ui.md'
       - 'frontend/lib/core/widgets/mobile_page_header.dart'
       - 'frontend/test/features/profile/d18_profile_capture_test.dart'
       - 'frontend/test/features/profile/d18_profile_integrated_capture_test.dart'
