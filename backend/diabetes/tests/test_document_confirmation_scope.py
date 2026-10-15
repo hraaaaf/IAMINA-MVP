@@ -1,5 +1,11 @@
 from types import SimpleNamespace
 from unittest import TestCase
+
+from django.contrib.auth.models import User
+from django.test import TestCase as DjangoTestCase
+
+from diabetes.models import LabReport
+from diabetes.services.documents.schema import LabValues
 from unittest.mock import patch
 
 from diabetes.api.v1.documents import (
@@ -106,3 +112,67 @@ class DocumentConfirmationScopeTest(TestCase):
         _ingest.assert_not_called()
         do_persist.assert_not_called()
         self.assertEqual(fake_cache.values, {})
+
+class DocumentConfirmationDatabaseContractTest(DjangoTestCase):
+    @patch("diabetes.api.v1.documents.ingest")
+    def test_immediate_confirm_true_never_creates_report(self, mocked_ingest):
+        patient = User.objects.create_user(username="pulper-preview-required")
+        request = SimpleNamespace(auth=patient)
+        with patch("diabetes.api.v1.documents.cache", _FakeCache()):
+            status, _body = ingest_document.__wrapped__(
+                request, _Upload(), confirm=True,
+            )
+        self.assertEqual(status, 422)
+        mocked_ingest.assert_not_called()
+        self.assertFalse(LabReport.objects.filter(patient=patient).exists())
+
+    def test_preview_then_patient_bound_confirm_persists_once(self):
+        patient = User.objects.create_user(username="pulper-two-step")
+        other = User.objects.create_user(username="pulper-other")
+        cache = _FakeCache()
+        output = PulperOutput(
+            source_format="docx", document_type="lab_report",
+            confidence=0.91, lab_values=LabValues(hba1c_pct=7.2),
+        )
+        with (
+            patch("diabetes.api.v1.documents.cache", cache),
+            patch("diabetes.api.v1.documents.ingest", return_value=output),
+            patch("diabetes.api.v1.documents._read_upload_with_limit",
+                  return_value=(b"fake", None)),
+        ):
+            status, preview = ingest_document.__wrapped__(
+                SimpleNamespace(auth=patient), _Upload(), confirm=False,
+            )
+            self.assertEqual(status, 200)
+            self.assertFalse(LabReport.objects.filter(patient=patient).exists())
+            unauthorized = confirm_import(
+                SimpleNamespace(auth=other), preview.batch_id,
+            )
+            self.assertFalse(unauthorized.ok)
+            self.assertFalse(LabReport.objects.exists())
+            confirmed = confirm_import(
+                SimpleNamespace(auth=patient), preview.batch_id,
+            )
+            self.assertTrue(confirmed.ok, confirmed.errors)
+            self.assertEqual(
+                LabReport.objects.filter(patient=patient).count(), 1,
+            )
+            replay = confirm_import(
+                SimpleNamespace(auth=patient), preview.batch_id,
+            )
+            self.assertFalse(replay.ok)
+            self.assertEqual(LabReport.objects.count(), 1)
+
+    def test_invalid_extraction_cannot_persist_after_preview(self):
+        patient = User.objects.create_user(username="pulper-invalid-review")
+        cache = _FakeCache()
+        output = PulperOutput(
+            source_format="docx", confidence=0.1,
+            lab_values=LabValues(hba1c_pct=7.2),
+            errors=["Synthetic provider refusal"],
+        )
+        cache.set(_pending_key(patient.id, "invalid"), output)
+        with patch("diabetes.api.v1.documents.cache", cache):
+            result = confirm_import(SimpleNamespace(auth=patient), "invalid")
+        self.assertFalse(result.ok)
+        self.assertFalse(LabReport.objects.filter(patient=patient).exists())

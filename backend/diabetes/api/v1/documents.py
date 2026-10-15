@@ -272,6 +272,14 @@ def list_lab_reports(request: HttpRequest, limit: int = 20):
 # ── Helper ────────────────────────────────────────────────────────────────────
 
 def _do_persist(output, patient, batch_id: str) -> PulperConfirmResponse:
+    if output.errors or not output.is_usable:
+        return PulperConfirmResponse(
+            ok=False,
+            lab_report_id=None,
+            glucose_readings_saved=0,
+            glucose_duplicates=0,
+            errors=["Extraction non fiable : nouvel import et revue nécessaires."],
+        )
     store_result = persist(output, patient, batch_id)
     logger.info(
         "documents.confirm patient=%s batch=%s saved=%d dups=%d",

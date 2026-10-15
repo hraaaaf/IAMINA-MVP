@@ -201,6 +201,29 @@ class PulperTextProvenanceTest(SimpleTestCase):
             "metformin 500 mg",
         )
         self.assertNotIn("dose", output.medications[0].evidence)
+        self.assertIsNone(output.medications[0].dose)
+
+
+    def test_missing_source_evidence_drops_numeric_fact(self):
+        output = self._ingest_docx(
+            {"document_type": "lab_report", "confidence": 0.99,
+             "lab_values": {"hba1c_pct": 8.2}},
+            "HbA1c: 8.2 %",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertFalse(output.lab_values.evidence)
+
+    def test_mismatched_glucose_reading_cannot_reach_storage(self):
+        output = self._ingest_docx(
+            {"document_type": "glucose_log", "confidence": 0.99,
+             "glucose_readings": [{"value_mgdl": 200,
+                                   "timestamp": "2026-08-20T08:00:00+01:00"}],
+             "evidence": {
+                 "glucose_readings[0].value_mgdl": {"r": "L0001", "v": "126"}
+             }},
+            "Glucose: 126 mg/dL at 2026-08-20T08:00:00+01:00",
+        )
+        self.assertEqual(output.glucose_readings, [])
 
     def test_shield_rejection_also_removes_field_evidence(self):
         output = self._ingest_docx(

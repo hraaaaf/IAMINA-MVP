@@ -289,6 +289,7 @@ def _parse_with_llm(output: PulperOutput, raw_text: str) -> None:
             raise ValueError("pulper_extraction_object_required")
         _map_json_to_output(output, data)
         _attach_verified_evidence(output, data.get("evidence"), source_lines)
+        _enforce_model_evidence_coverage(output)
 
     except json.JSONDecodeError:
         logger.warning("pulper: LLM returned non-JSON")
@@ -353,7 +354,7 @@ def _attach_verified_evidence(
             # matches its cited measurement. Drop contradicted numeric facts
             # instead of allowing them to be persisted with false confidence.
             if current_value is not None:
-                _discard_unverified_numeric_fact(output, path)
+                _discard_contradicted_fact(output, path)
             rejected = True
             continue
 
@@ -448,19 +449,67 @@ def _evidence_matches_value(
     )
 
 
-def _discard_unverified_numeric_fact(output: PulperOutput, path: str) -> None:
-    """Never persist a contradicted model-generated numeric fact."""
+def _discard_contradicted_fact(output: PulperOutput, path: str) -> None:
+    """Remove inconsistent model-generated facts before review or storage."""
     if path.startswith("lab_values."):
         field_name = path.removeprefix("lab_values.")
-        if field_name in _LAB_EVIDENCE_FIELDS and field_name != "report_date":
+        if field_name in _LAB_EVIDENCE_FIELDS:
             setattr(output.lab_values, field_name, None)
-    elif path.startswith("glucose_readings[") and path.endswith(".value_mgdl"):
-        match = _GLUCOSE_EVIDENCE_RE.fullmatch(path)
-        if match:
-            index = int(match.group(1))
-            if index < len(output.glucose_readings):
-                # A reading with an unverified value must not reach storage.
-                output.glucose_readings[index].value_mgdl = -1.0
+        return
+    match = _GLUCOSE_EVIDENCE_RE.fullmatch(path)
+    if match:
+        index, field_name = int(match.group(1)), match.group(2)
+        if index < len(output.glucose_readings):
+            # Shield drops impossible -1 values; None prevents storing a
+            # reading with an unverified time or contextual assertion.
+            setattr(
+                output.glucose_readings[index], field_name,
+                -1.0 if field_name == "value_mgdl" else None,
+            )
+        return
+    match = _MEDICATION_EVIDENCE_RE.fullmatch(path)
+    if match:
+        index, field_name = int(match.group(1)), match.group(2)
+        if index < len(output.medications):
+            setattr(
+                output.medications[index], field_name,
+                "" if field_name == "name" else None,
+            )
+
+
+def _enforce_model_evidence_coverage(output: PulperOutput) -> None:
+    """Fail closed on LLM facts without a verified source/value/field binding."""
+    if not output.parser_model:
+        return
+    discarded = False
+    for field_name in _LAB_EVIDENCE_FIELDS - {"report_date"}:
+        value = getattr(output.lab_values, field_name)
+        evidence = output.lab_values.evidence.get(field_name)
+        if value is not None and not (evidence and evidence.verified):
+            setattr(output.lab_values, field_name, None)
+            discarded = True
+    readings = [
+        reading for reading in output.glucose_readings
+        if reading.evidence.get("value_mgdl")
+        and reading.evidence["value_mgdl"].verified
+        and reading.value_mgdl > 0
+    ]
+    if len(readings) != len(output.glucose_readings):
+        discarded = True
+    output.glucose_readings = readings
+    medications = [
+        medication for medication in output.medications
+        if medication.evidence.get("name")
+        and medication.evidence["name"].verified
+        and medication.name
+    ]
+    if len(medications) != len(output.medications):
+        discarded = True
+    output.medications = medications
+    if discarded:
+        output.warnings.append(
+            "Valeurs sans provenance cohérente retirées avant confirmation."
+        )
 
 
 def _evidence_target(
