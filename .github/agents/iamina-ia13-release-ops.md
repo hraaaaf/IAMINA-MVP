@@ -1,6 +1,8 @@
 ---
 name: iamina-ia13-release-ops
 description: "IAMINA Release PWA deployment and operations. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA13 — Release PWA deployment and operations
 

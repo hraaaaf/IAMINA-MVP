@@ -1,6 +1,8 @@
 ---
 name: iamina-ia14-regulatory-qms
 description: "IAMINA Regulatory quality and jurisdiction scoping. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA14 — Regulatory quality and jurisdiction scoping
 

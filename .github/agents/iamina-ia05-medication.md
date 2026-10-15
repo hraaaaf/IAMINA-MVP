@@ -1,6 +1,8 @@
 ---
 name: iamina-ia05-medication
 description: "IAMINA Medication and insulin safety. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA05 — Medication and insulin safety
 

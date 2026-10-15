@@ -1,6 +1,8 @@
 ---
 name: iamina-ia11-qa-verification
 description: "IAMINA Verification QA evidence and reliability. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA11 — Verification QA evidence and reliability
 

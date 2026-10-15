@@ -1,6 +1,8 @@
 ---
 name: iamina-ia10-companion-ai
 description: "IAMINA Generative AI companion governance and prompt safety. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA10 — Generative AI companion governance and prompt safety
 

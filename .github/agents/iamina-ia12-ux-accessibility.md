@@ -1,6 +1,8 @@
 ---
 name: iamina-ia12-ux-accessibility
 description: "IAMINA UX human factors and accessibility. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA12 — UX human factors and accessibility
 

@@ -1,6 +1,8 @@
 ---
 name: iamina-ia06-nutrition
 description: "IAMINA Food and nutrition intelligence. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA06 — Food and nutrition intelligence
 
