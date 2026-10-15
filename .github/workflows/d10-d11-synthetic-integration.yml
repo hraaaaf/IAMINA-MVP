@@ -1,0 +1,52 @@
+name: D10 D11 synthetic integration guard
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d10-d11-synthetic-integration.yml'
+      - 'scripts/tests/test_d10_d11_integrated_contract.py'
+      - 'backend/diabetes/api/v1/demo.py'
+      - 'frontend/lib/data/drift/**'
+      - 'frontend/lib/services/offline_demo_audit_seed.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/web/flutter_bootstrap.js'
+      - 'frontend/test/services/d11_*'
+      - 'frontend/test/services/app_lock_service_test.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-decision-dart:
+    name: D10+ D11 patient vault and lock test combination
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Source tripwires from combined repository tree
+        run: python3 -m unittest discover -s scripts/tests -p 'test_d10_d11_integrated_contract.py' -v
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Execute actual D10 negative paths alongside D11 zero-demo paths
+        working-directory: frontend
+        run: |
+          flutter test --reporter expanded \
+            test/services/app_lock_service_test.dart \
+            test/services/d11_no_demo_in_patient_vault_test.dart \
+            test/services/d11_web_review_bootstrap_contract_test.dart
+      - name: State proof limitations
+        run: |
+          echo "Actual selected Flutter tests and source tripwires on merged SOURCE SNAPSHOT" >> "$GITHUB_STEP_SUMMARY"
+          echo "NOT run: real iOS XCTest, iCloud backup, real A-to-B-to-A physical device, real patient pilot" >> "$GITHUB_STEP_SUMMARY"
+          echo "D11 original PR remains DRAFT. This integration PR must not be merged as a D11 shortcut." >> "$GITHUB_STEP_SUMMARY"
