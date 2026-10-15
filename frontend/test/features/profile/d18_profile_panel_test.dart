@@ -63,6 +63,8 @@ void main() {
     expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
 
     await tester.enterText(find.byKey(const Key('d18-birth-year')), '1994');
+    expect(tester.widget<TextButton>(find.byKey(const Key('d18-refresh')))
+        .onPressed, isNull);
     await _tapVisible(tester, 'd18-save-demographics');
     expect((await PatientProgressiveDemographicsStore(db).read())?.birthYear,
         1994);

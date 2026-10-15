@@ -328,7 +328,10 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
           if (!_loading)
             Align(alignment: AlignmentDirectional.centerEnd,
               child: TextButton(
-                key: const Key('d18-refresh'), onPressed: _busy ? null : _reload,
+                key: const Key('d18-refresh'),
+                // Explicit edits must not vanish under a casual refresh.
+                onPressed: _busy || _yearDirty || _identityDirty
+                    ? null : _reload,
                 child: Text(_t('Actualiser', 'Refresh', 'تحديث')),
               )),
         ],

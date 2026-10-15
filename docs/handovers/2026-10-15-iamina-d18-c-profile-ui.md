@@ -54,3 +54,5 @@
 - Défaut corrigé : horodatage initial fixé à l'ouverture et réutilisé malgré une mesure réelle différente. Date et heure doivent désormais être confirmées avant chaque pesée ; champ réinitialisé après ajout. Test dédié.
 - Défaut corrigé : sauvegarde des deux champs démographiques même quand un seul était modifié (risque d'écraser une déclaration plus récente). Drapeaux de modification séparés ; test de mise à jour concurrente. Contrôles désactivés pendant sauvegarde.
 - Les captures navigateur Web ne certifient pas le widget D18 natif, volontairement interdit Web tant que #1054 n'est pas résolu. Visuels BEFORE/AFTER réels et revue indépendante sont encore ouverts. CI du nouveau HEAD à vérifier avant tout verdict.
+
+- Correction UX complémentaire : bouton « Actualiser » désactivé lorsqu'une déclaration démographique reste modifiée mais non enregistrée ; évite l'effacement silencieux du brouillon. Régression Flutter ajoutée.
