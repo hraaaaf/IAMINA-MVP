@@ -60,9 +60,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
-          script: |
-            cd frontend
-            flutter test --no-pub --reporter expanded -d emulator-5554 integration_test/d18_android_patient_profile_test.dart
+          script: cd frontend && flutter test --no-pub --reporter expanded -d emulator-5554 integration_test/d18_android_patient_profile_test.dart
       - name: Record D18-only provenance
         if: always()
         shell: bash
