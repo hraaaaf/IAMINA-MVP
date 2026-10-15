@@ -1,5 +1,15 @@
 # IAMINA — Pulper P1 clinical data integrity fixes — 2026-10-15
 
+## 15 octobre 2026 — CLOSEOUT TECHNIQUE P1 SUR CODE MERGÉ `a18139aec53ae6a11eceeeb15d898debad31f75b`
+
+- PR enfant [#1015](https://github.com/hraaaaf/IAMINA-MVP/pull/1015) fusionnée uniquement dans la branche de la PR parent [#1005](https://github.com/hraaaaf/IAMINA-MVP/pull/1005), restée DRAFT et non fusionnée dans `main`.
+- **5/5 workflows terminés SUCCESS au SHA de code exact `a18139aec53ae6a11eceeeb15d898debad31f75b`** : [Pulper #38692936390](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936390), [CI générale #38692936595](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936595), [Protected Shadow #38692936522](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936522), [Django migration drift #38692936557](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936557), [portabilité #38692936420](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936420) incluant Windows, macOS et macOS-host.
+- **Rapport JSON téléchargé et inspecté** : [artefact #11952668344](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936390/artifacts/11952668344), `passed=true`, 18/18 vrais positifs critiques, FP=FN=0, provenance=18/18, 8/8 formats, 6/6 rejets fail-closed, 0 corruption critique, 0 fuite sentinelle, quatre appels Groq live sur documents synthétiques. Trois tests image sont des fixtures déterministes, **non** validation OCR vision réelle.
+- Deux corrections P1 vérifiées sur tests et code : accord strict valeur normalisée ↔ citation ↔ unité (avec refus IFCC HbA1c non gouverné) et aperçu obligatoire, `ingest?confirm=true` refusé avant effet (HTTP 422), confirmation différée patient-scoped non rejouable.
+- **Qualification technique du code uniquement**. Ce commit documentaire de closeout constitue un nouveau HEAD et doit être recontrôlé séparément; les cinq succès ci-dessus appartiennent à `a18139aec53ae6a11eceeeb15d898debad31f75b` et ne valent pas automatiquement certification du HEAD documentaire.
+- **HUMAN GATE OPEN** : clinician indépendant, sécurité, privacy/CNDP, DPA/transferts et autorisation egress Groq patient encore absents ([#320](https://github.com/hraaaaf/IAMINA-MVP/issues/320), [#1002](https://github.com/hraaaaf/IAMINA-MVP/issues/1002)). Aucun document patient réel, aucune fusion `main`, aucun déploiement Vercel. P5 global historique 50 %, non recalculé.
+
+
 ## Goal / Success / Proof
 - Goal: Keep **Groq** as governed Pulper text LLM while preventing false evidence verification and any upload+persist path that skips a patient-visible staged preview.
 - Success: contradictory numeric/units or missing model citations never reach a verified provenance map or clinical DB; `POST /documents/ingest?confirm=true` is rejected before reading document/AI/cache/DB; patient-scoped `/documents/confirm/{batch_id}` continues once only. Qualification corpus preserves critical precision/recall >= 99%, provenance/fail-closed 100%, zero corruption and no identity leaks. 5/5 exact-HEAD CI green required. **No claims of success until runs/artefacts inspected.**

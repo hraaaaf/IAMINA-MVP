@@ -1,3 +1,11 @@
+## 15 octobre 2026 — P1 PULPER : QUALIFICATION TECHNIQUE POST-INTÉGRATION SUR `a18139aec53ae6a11eceeeb15d898debad31f75b`
+
+Deux défauts P1 (provenance source↔valeur/unité et confirmation avant aperçu) corrigés via [#1015](https://github.com/hraaaaf/IAMINA-MVP/pull/1015), fusionnés UNIQUEMENT vers la branche de la PR #1005. 5/5 runs success sur `a18139aec53ae6a11eceeeb15d898debad31f75b`: [Pulper #38692936390](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936390), [CI #38692936595](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936595), [Protected Shadow #38692936522](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936522), [Django #38692936557](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936557), [portabilité #38692936420](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936420). Artefact [#11952668344](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38692936390/artifacts/11952668344) téléchargé et JSON inspecté : `passed=true`, 18/18 critiques, 6/6 rejets fail-closed, FP=FN=0, provenance 18/18, 0 corruption, 0 fuite sentinelle, 4 appels Groq sur données fictives et OCR image simulé. Ce commit de documentation crée un **nouveau HEAD** dont la CI exacte reste à lire; ne pas recycler les succès du SHA `a18139aec53ae6a11eceeeb15d898debad31f75b`.
+
+**Frontière** : PR #1005 reste DRAFT, aucun merge main ni déploiement Vercel, aucune utilisation sur documents patients réels. Approbations humaine clinique/sécurité/privacy/CNDP/Groq toujours en attente [#320](https://github.com/hraaaaf/IAMINA-MVP/issues/320) / [#1002](https://github.com/hraaaaf/IAMINA-MVP/issues/1002). P5 historique 50 %.
+
+---
+
 ## 14 octobre 2026 — AUDITS PAR DISCIPLINE EXÉCUTÉS (IA, NON SIGNÉS) — SHA `e3073670`
 
 **Précision d'indépendance :** trois pré-analyses distinctes clinique, CNDP/privacy et sécurité ont été réalisées dans le même système IA, et NE SONT PAS trois avis humains indépendants, ne signent ni ne certifient un logiciel médical ou un transfert réel de données patients. Aucun nouvel essai sur patient réel ni test d'intrusion n'a été exécuté.
