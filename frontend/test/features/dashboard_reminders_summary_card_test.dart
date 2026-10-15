@@ -9,27 +9,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-void main() {
-  // Drift streams publish their first async query result after subscription.
-  // pumpAndSettle alone may return before the stream emits when no frame is
-  // scheduled. Assert the exact text (never a fallback) after bounded pumps.
-  Future<void> expectCount(WidgetTester tester, String expected) async {
-    for (var i = 0; i < 30 && find.text(expected).evaluate().isEmpty; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-    expect(find.text(expected), findsOneWidget);
-  }
 
+class _OwnerReminderDatabase extends AppDatabase {
+  _OwnerReminderDatabase(this.count, this.title) : super(NativeDatabase.memory());
+
+  final int count;
+  final String title;
+
+  @override
+  Stream<List<ReminderData>> watchReminders() => Stream.value(
+    List<ReminderData>.generate(
+      count,
+      (i) => ReminderData(
+        id: i + 1,
+        title: title,
+        dueAt: DateTime(2026, 11, 12),
+        enabled: true,
+        createdAt: DateTime(2026, 10, 15),
+      ),
+    ),
+  );
+}
+
+void main() {
   testWidgets('decision #3 A→B→A database switch never shows previous owner', (tester) async {
-    final a = AppDatabase(NativeDatabase.memory());
-    final b = AppDatabase(NativeDatabase.memory());
+    // Controlled, independent vault streams isolate the widget's owner
+    // switching behavior from Drift's native asynchronous test scheduler.
+    // The other FR/EN/AR tests exercise actual Drift reads and writes.
+    final a = _OwnerReminderDatabase(1, 'A synthetic medical title');
+    final b = _OwnerReminderDatabase(2, 'B synthetic medical title');
     addTearDown(a.close);
     addTearDown(b.close);
     final selected = ValueNotifier<AppDatabase>(a);
     addTearDown(selected.dispose);
-    await a.addReminder(title: 'A private', dueAt: DateTime(2026, 11, 12));
-    await b.addReminder(title: 'B first', dueAt: DateTime(2026, 11, 12));
-    await b.addReminder(title: 'B second', dueAt: DateTime(2026, 11, 13));
 
     await tester.pumpWidget(ValueListenableBuilder<AppDatabase>(
       valueListenable: selected,
@@ -42,21 +54,23 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    await expectCount(tester, '1 rappel actif');
+    expect(find.text('1 rappel actif'), findsOneWidget);
+    expect(find.textContaining('synthetic medical title'), findsNothing);
 
     selected.value = b;
     await tester.pump();
     expect(find.text('1 rappel actif'), findsNothing,
-        reason: 'Never retain patient A count while B vault is loading.');
+        reason: 'Never show patient A count during switch to B.');
     await tester.pumpAndSettle();
-    await expectCount(tester, '2 rappels actifs');
+    expect(find.text('2 rappels actifs'), findsOneWidget);
+    expect(find.textContaining('synthetic medical title'), findsNothing);
 
     selected.value = a;
     await tester.pump();
     expect(find.text('2 rappels actifs'), findsNothing,
-        reason: 'Never retain patient B count while A vault is loading.');
+        reason: 'Never show patient B count during switch to A.');
     await tester.pumpAndSettle();
-    await expectCount(tester, '1 rappel actif');
+    expect(find.text('1 rappel actif'), findsOneWidget);
   });
 
   test('decision #3 keeps the clinical trend section ahead of reminders', () {

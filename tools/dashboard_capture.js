@@ -52,18 +52,29 @@ const minScreenshotBytes = 15000;
       const buffers = {};
       const screenshotBytes = {};
 
+      // Load once per viewport: repeated authentication when only scrolling
+      // triggered real HTTP 429 /auth/login failures in run #38800782973.
+      // Reuse this authenticated page and scroll the real Flutter viewport.
+      const dashboardReady = page.waitForResponse(
+        (r) => r.url().includes('/api/v1/companion/overview') &&
+          r.status() >= 200 && r.status() < 300,
+        { timeout: 45000 },
+      );
+      await page.goto('http://127.0.0.1:7358/?scroll=0', {
+        waitUntil: 'domcontentloaded', timeout: 120000,
+      });
+      await dashboardReady;
+      await page.locator('flutter-view').first().waitFor({
+        state: 'attached', timeout: 30000,
+      });
+      await page.mouse.move(Math.max(10, width - 48), Math.round(height * .60));
+      let previousOffset = 0;
       for (const [position, offset] of Object.entries(positions)) {
-        // Repeated app boot may render from cached/stored overview without a
-        // new HTTP response. Assert at least one real successful overview at
-        // the end, but never require a fresh request on every viewport scroll.
-        await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
-          waitUntil: 'domcontentloaded',
-          timeout: 120000,
-        });
-        await page.locator('flutter-view').first().waitFor({
-          state: 'attached', timeout: 30000,
-        });
-        await page.waitForTimeout(2000);
+        if (offset > previousOffset) {
+          await page.mouse.wheel(0, offset - previousOffset);
+        }
+        previousOffset = offset;
+        await page.waitForTimeout(1600);
         const screenshotPath = path.join(
           'dashboard-visual-cert',
           `${name}-${position}-${width}x${height}.png`,
@@ -75,13 +86,8 @@ const minScreenshotBytes = 15000;
 
       // D3: retain baseline top/mid/lower, plus a real lower-down Reminders view.
       const remindersOffset = Math.round(height * 2.35);
-      // Reaching this deep scroll does not require a *fresh* network call.
-      // The existing three views already asserted the authenticated overview.
-      // A cached overview must not make the fourth screenshot time out.
-      await page.goto(`http://127.0.0.1:7358/?scroll=${remindersOffset}`, {
-        waitUntil: 'domcontentloaded', timeout: 120000,
-      });
-      await page.locator('flutter-view').first().waitFor({state:'attached',timeout:30000});
+      // No fourth login: use the same authenticated Flutter session.
+      await page.mouse.wheel(0, remindersOffset - previousOffset);
       await page.waitForTimeout(2000);
       const remindersScreenshotPath = path.join(
         'dashboard-visual-cert', `${name}-reminders-${width}x${height}.png`,
