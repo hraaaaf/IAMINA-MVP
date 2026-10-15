@@ -24,3 +24,11 @@ launch handling in `AppDelegate`. Reference: [Apple scene lifecycle](https://dev
 This reduces missing lifecycle hooks; it does not address newly created
 database files during an active foreground session or provide evidence of
 actual iCloud backup exclusion.
+
+## 15 October 2026 — third simulator linker failure; alternate native-code gate
+
+[Run #38714977086](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38714977086) FAILED even after Flutter 3.41.4: `Framework 'Pods_Runner' not found` during simulator build. The original `RunnerTests.swift` XCTest tests were **NOT EXECUTED**. Previous attempts with CocoaPods Debug settings and Flutter upgrade did not resolve it, so additional repetitions of that exact simulator build are not useful.
+
+The D10 workflow now compiles the **literal `ClinicalVaultBackupExclusion` helper extracted from the shipping `AppDelegate.swift` source** on the macOS GitHub runner using Foundation and executes synthetic file name/scope/idempotency + macOS backup-attribute tests. The separate [Pilot iOS packaging workflow](https://github.com/hraaaaf/IAMINA-MVP/actions/workflows/pilot-ios-packaging.yml) builds the full iOS release app without signing; it is a distinct check and must be green on the final PR SHA. This validates the shipped helper code, but is **NOT an iOS Simulator XCTest run, iOS backup proof, or real iCloud restore**.
+
+The outstanding iOS Simulator linker problem and device-level iCloud checks remain open under [#1052](https://github.com/hraaaaf/IAMINA-MVP/issues/1052). Do not count the unexecuted `RunnerTests.swift` XCTest as passing. This alternate CI gate does not authorize optional app-lock B.
