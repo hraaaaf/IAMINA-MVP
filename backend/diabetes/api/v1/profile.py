@@ -9,8 +9,8 @@ DELETE /api/v1/profile/ai-media-consents/{purpose}/{modality}
 """
 from datetime import date, datetime
 from decimal import Decimal
-from uuid import UUID
 from typing import Literal, Optional
+from uuid import UUID
 
 from django.db import transaction
 from django.utils import timezone
