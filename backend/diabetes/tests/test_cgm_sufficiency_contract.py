@@ -171,6 +171,18 @@ class RealCgmSufficiencyContractTests(TestCase):
         self.assertEqual(second.received_readings, 2)
         self.assertEqual(first.received_readings + second.received_readings, 3)
 
+    def test_partial_cadence_window_rounds_up_expected_slots(self):
+        interval_end = self.end + dt.timedelta(minutes=7)
+        self._session(key="partial-slot", end=interval_end)
+        result = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=interval_end,
+        )
+        self.assertEqual(result.expected_readings, 14 * 24 * 4 + 1)
+        self.assertEqual(result.received_readings, 0)
+        self.assertFalse(result.verified)
+
     def test_naive_timezone_window_fails_closed(self):
         result = assess_cgm_window(
             patient_id=self.patient.id,
