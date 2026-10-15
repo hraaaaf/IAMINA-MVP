@@ -379,7 +379,7 @@ jobs:
               'expression': browser_sse_js,
               'awaitPromise': True,
               'returnByValue': True,
-          }).get('result', {})
+          })
           if 'exceptionDetails' in browser_sse:
               raise RuntimeError(f'Chrome POST SSE threw: {browser_sse["exceptionDetails"]}')
           sse = browser_sse.get('result', {}).get('value', {})
