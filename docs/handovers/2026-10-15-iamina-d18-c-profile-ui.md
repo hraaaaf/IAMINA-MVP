@@ -58,3 +58,8 @@
 - Correction UX complémentaire : bouton « Actualiser » désactivé lorsqu'une déclaration démographique reste modifiée mais non enregistrée ; évite l'effacement silencieux du brouillon. Régression Flutter ajoutée.
 
 - Traçabilité UI complémentaire : l'historique montre désormais une provenance lisible par pesée (« Déclaré par le patient » / EN / AR), et l'année maximale est comparée à l'année UTC comme dans le store. Test Flutter de provenance visible ajouté.
+
+## CI rouge corrigée — 15/10/2026
+
+- `d9fe9401` : [CI #38729845687](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38729845687) FAILED, Flutter **808 tests passed / 1 failed / 1 skipped** ; seul échec : test `D18 initial empty, explicit edit and dated append are local`, assertion `TextButton.onPressed == null` effectuée avant le `pump` après `enterText`. Les autres tests D18 (stores, A/B, sauvegardes, formats d'écran) ont passé. 
+- Correctif minimal de test : `await tester.pump()` après `enterText`, avant lecture de l'arbre. Aucune logique produit modifiée. Le HEAD suivant doit repasser CI exacte ; ancienne CI rouge reste explicitement conservée comme preuve.
