@@ -67,6 +67,35 @@ def test_session_cookie_plus_forged_bearer_cannot_bypass_csrf():
     forbidden.assert_not_called()
 
 
+@pytest.mark.django_db
+def test_valid_browser_session_with_csrf_receives_canonical_urgent_sse():
+    from django.conf import settings
+    from django.contrib.auth.models import User
+    from django.middleware.csrf import get_token
+    from django.test import Client, RequestFactory
+
+    user = User.objects.create_user(username="synthetic-sse-authorized")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(user)
+    csrf_token = get_token(RequestFactory().get("/"))
+    client.cookies[settings.CSRF_COOKIE_NAME] = csrf_token
+
+    with patch("companion.core.IAmina") as forbidden:
+        response = client.post(
+            "/api/v1/ai/chat/stream",
+            data=json.dumps({"message": "ma glycémie est à 32", "context_days": 14}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        assert response.status_code == 200
+        data = b"".join(response.streaming_content).decode()
+
+    assert '"is_emergency": true' in data
+    assert "data: [DONE]" in data
+    assert response["Cache-Control"] == "no-store"
+    forbidden.assert_not_called()
+
+
 def test_post_urgent_is_canonical_sse_after_auth_without_model():
     from ai.api.v1.ai import ChatRequest, chat_stream
     from core.input_safety import URGENT, InputSafetyDecision
