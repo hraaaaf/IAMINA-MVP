@@ -2,6 +2,16 @@
 
 This file is a **stable execution contract for coding agents**, not a session diary, branch tracker, or historical status log.
 
+## Active product delivery directive — WEB FIRST (2026-10-15)
+
+**User-approved, durable prioritization for all next D decisions:** focus IAMINA execution on the **web version (Flutter Web / PWA)**. Read the controlling `docs/ROADMAP.md` web-first directive before scoping any new D, handover, agent implementation, UI review or certification.
+
+- Scope and build the real **browser** workflow first, responsive on mobile, tablet and desktop; validate keyboard, focus, accessible controls, RTL, browser persistence/offline and truthful browser API support as relevant. For UI work retain BEFORE → Goal → mockup → AFTER same real-browser viewports → comparison → functional and accessibility evidence.
+- Do **not** prioritize new native-iOS/Android-only implementation or CI work unless the owner explicitly reactivates it or a verified non-deferrable clinical/safety/security/data-integrity/compliance dependency requires it. Preserve open native issues/PRs as **open or deferred, never silently closed or certified**.
+- Browser-specific restrictions remain enforceable: no insecure local clinical storage; no presumption that D10-B encrypted web vault, recovery, CGM bridges, OS notifications or biometrics already work. Block or adapt unsupported functionality, and test on real browsers.
+- This is a **surface priority**, not permission to replace Flutter, change backend/clinical authority, relax safety/privacy gates, deploy Vercel, enable real-patient use or change historical roadmap progress. Preserve existing release-review chain and obtain separate explicit deployment authorization.
+- Future decisions and agents must cite this cross-cutting priority, treat Web/PWA as the default acceptance target, and record any justified platform exception in its D/LOT evidence.
+
 ## Read first
 
 1. `docs/ROADMAP.md` — single forward backlog and gates.
