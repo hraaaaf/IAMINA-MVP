@@ -17,7 +17,7 @@ class ChromeShutdownTest(unittest.TestCase):
         process.poll.return_value = 0
         with patch("w01b_browser_api_pg_probe.os.killpg") as kill_group:
             _stop_chrome(process)
-        kill_group.assert_not_called()
+        kill_group.assert_called_once()
         process.wait.assert_not_called()
 
     def test_running_browser_terminates_dedicated_group(self):
@@ -38,7 +38,7 @@ class ChromeShutdownTest(unittest.TestCase):
             side_effect=ProcessLookupError(),
         ):
             _stop_chrome(process)
-        process.wait.assert_not_called()
+        process.wait.assert_called_once_with(timeout=5)
 
     def test_unresponsive_browser_group_is_force_stopped(self):
         process = Mock()
