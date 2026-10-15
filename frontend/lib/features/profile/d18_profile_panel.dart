@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/theme/amina_visual_language.dart';
+import '../../core/theme/app_theme.dart';
 
 import '../../data/drift/database.dart';
 import '../../data/drift/patient_progressive_demographics_store.dart';
@@ -182,18 +184,56 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       key: const Key('d18-profile-section'),
+      decoration: BoxDecoration(
+        color: AminaVisualLanguage.cardSurface(context),
+        borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
+        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+        boxShadow: AminaVisualLanguage.cardShadow(context),
+      ),
       clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        key: const Key('d18-expand-profile'),
-        leading: const Icon(Icons.monitor_weight_outlined),
-        title: Text(_t('Informations personnelles facultatives',
-            'Optional personal details', 'معلومات شخصية اختيارية')),
-        subtitle: Text(_t('Historique du poids et déclarations personnelles',
-            'Weight history and personal declarations',
-            'سجل الوزن والتصريحات الشخصية')),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: const Key('d18-expand-profile'),
+          maintainState: true,
+          tilePadding: const EdgeInsetsDirectional.fromSTEB(18, 10, 14, 10),
+          childrenPadding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 20),
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AminaVisualLanguage.actionGreen.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.monitor_weight_outlined,
+                color: AminaVisualLanguage.actionGreen, size: 21),
+          ),
+          title: Text(
+            _t('Informations personnelles facultatives',
+                'Optional personal details', 'معلومات شخصية اختيارية'),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AminaVisualLanguage.primaryText(context),
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              _t('Historique du poids et déclarations personnelles',
+                  'Weight history and personal declarations',
+                  'سجل الوزن والتصريحات الشخصية'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: AminaVisualLanguage.secondary(context),
+              ),
+            ),
+          ),
         children: [
           Text(_t(
             'Enregistré uniquement dans ce coffre patient. Ces champs ne modifient pas les traitements, cibles ou alertes.',
@@ -339,7 +379,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                 child: Text(_t('Actualiser', 'Refresh', 'تحديث')),
               )),
         ],
-      ),
-    );
+        ), // ExpansionTile
+      ), // Theme
+    ); // Container
   }
 }
