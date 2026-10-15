@@ -8,7 +8,7 @@ itself; public promotion remains a separate governed step.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import floor
+from math import ceil
 from typing import Protocol
 
 from django.db.models import Q
@@ -175,7 +175,7 @@ def assess_cgm_window(
         interval_seconds = int(session.expected_interval_minutes) * 60
         duration_seconds = (end - start).total_seconds()
         active_seconds += duration_seconds
-        expected_readings += floor(duration_seconds / interval_seconds) + 1
+        expected_readings += ceil(duration_seconds / interval_seconds)
 
         timestamps = list(
             CGMReadingRecord.objects.filter(
@@ -183,7 +183,7 @@ def assess_cgm_window(
                 session_id=session.id,
                 source=session.source,
                 recorded_at__gte=start,
-                recorded_at__lte=end,
+                recorded_at__lt=end,
             )
             .order_by("recorded_at")
             .values_list("recorded_at", flat=True)

@@ -92,6 +92,31 @@ class VerifiedCgmAgpTests(TestCase):
             "p75": 115.0, "p95": 119.0,
         }])
 
+    def test_adjacent_cgm_metric_and_agp_windows_do_not_share_end_reading(self):
+        boundary = self.start + dt.timedelta(days=7)
+        self._reading(value=110, when=self.start + dt.timedelta(hours=1), key="before-boundary")
+        self._reading(value=250, when=boundary, key="at-boundary")
+
+        previous_metrics = compute_verified_cgm_metrics(
+            patient_id=self.patient.id, window_start=self.start, window_end=boundary
+        )
+        following_metrics = compute_verified_cgm_metrics(
+            patient_id=self.patient.id, window_start=boundary, window_end=self.end
+        )
+        previous_agp = compute_verified_cgm_agp_profile(
+            patient_id=self.patient.id, window_start=self.start, window_end=boundary
+        )
+        following_agp = compute_verified_cgm_agp_profile(
+            patient_id=self.patient.id, window_start=boundary, window_end=self.end
+        )
+
+        self.assertEqual(previous_metrics.reading_count, 1)
+        self.assertEqual(following_metrics.reading_count, 1)
+        self.assertEqual(previous_metrics.tir_pct, 100.0)
+        self.assertEqual(following_metrics.tir_pct, 0.0)
+        self.assertEqual(previous_agp[0]["avg"], 110.0)
+        self.assertEqual(following_agp[0]["avg"], 250.0)
+
     def test_manual_only_without_linked_cgm_has_no_agp(self):
         LogEntry.objects.create(
             patient=self.patient, blood_sugar=350,

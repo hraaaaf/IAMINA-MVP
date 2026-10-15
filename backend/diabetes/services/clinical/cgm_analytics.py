@@ -40,7 +40,7 @@ def compute_verified_cgm_metrics(
             session__patient_id=patient_id,
             session__isnull=False,
             recorded_at__gte=window_start,
-            recorded_at__lte=window_end,
+            recorded_at__lt=window_end,
             source=F("session__source"),
         )
         .filter(recorded_at__gte=F("session__started_at"))
@@ -97,7 +97,7 @@ def compute_verified_cgm_agp_profile(*, patient_id: int, window_start, window_en
             session__patient_id=patient_id,
             session__isnull=False,
             recorded_at__gte=window_start,
-            recorded_at__lte=window_end,
+            recorded_at__lt=window_end,
             source=F("session__source"),
         )
         .filter(recorded_at__gte=F("session__started_at"))
