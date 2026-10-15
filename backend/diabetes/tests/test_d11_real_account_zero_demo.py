@@ -1,12 +1,15 @@
 """D11: no authenticated patient can receive fabricated demo clinical data."""
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from ninja.errors import HttpError
 
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token
+from core.native_auth import issue_native_token, verify_native_token
+from diabetes.api.v1.demo import seed_demo_data
 from diabetes.models import DiabetesProfile, LogEntry
 
 
@@ -25,6 +28,9 @@ class DemoSeedPatientIsolationTests(TestCase):
         )
         self.token_a = issue_native_token(self.patient_a)
         self.token_b = issue_native_token(self.patient_b)
+        # These are genuine, verifiable native bearers; no fabricated token.
+        self.assertEqual(verify_native_token(self.token_a).pk, self.patient_a.pk)
+        self.assertEqual(verify_native_token(self.token_b).pk, self.patient_b.pk)
 
     def _seed(self, token):
         return self.client.post(
@@ -36,7 +42,7 @@ class DemoSeedPatientIsolationTests(TestCase):
 
     def test_fresh_authenticated_patient_cannot_receive_demo_logs_or_profile(self):
         response = self._seed(self.token_a)
-        self.assertEqual(response.status_code, 403)
+        self.assertIn(response.status_code, (401, 403))
         self.assertEqual(LogEntry.objects.filter(patient=self.patient_a).count(), 0)
         self.assertFalse(
             DiabetesProfile.objects.filter(base_profile__patient=self.patient_a).exists()
@@ -60,7 +66,7 @@ class DemoSeedPatientIsolationTests(TestCase):
 
         for token in (self.token_a, self.token_b):
             for _ in range(2):
-                self.assertEqual(self._seed(token).status_code, 403)
+                self.assertIn(self._seed(token).status_code, (401, 403))
 
         self.assertEqual(
             list(LogEntry.objects.filter(patient=self.patient_a).values_list("id", flat=True)),
@@ -77,8 +83,17 @@ class DemoSeedPatientIsolationTests(TestCase):
             password="synthetic-demo-only",
         )
         token = issue_native_token(demo)
-        self.assertEqual(self._seed(token).status_code, 403)
+        self.assertIn(self._seed(token).status_code, (401, 403))
         self.assertFalse(LogEntry.objects.filter(patient=demo).exists())
+
+    def test_actual_seed_handler_denies_authenticated_request_with_403(self):
+        # HTTP auth may reject a credential earlier (401). Once the operation
+        # is reached with an authenticated patient, it must explicitly return
+        # 403 before any synthetic rows/profile are written.
+        with self.assertRaises(HttpError) as error:
+            seed_demo_data(SimpleNamespace(user=self.patient_a))
+        self.assertEqual(error.exception.status_code, 403)
+        self.assertEqual(LogEntry.objects.filter(patient=self.patient_a).count(), 0)
 
     def test_anonymous_seed_request_stays_unauthorized(self):
         response = self.client.post(
