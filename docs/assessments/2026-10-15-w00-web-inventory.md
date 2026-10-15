@@ -188,5 +188,9 @@ Autre écart : `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` est un contrat existant no
 - [x] Source Web, Backend, API CGM, auth WebAuthn, consent/local-first, Vercel et CI comparés en lecture.
 - [x] D3 exact HEAD rouge consigné.
 - [x] Collision D30/D31 corrigée en séparant numéro de décision et codes A-WEB.
-- [ ] Revue documentaire indépendante et CI sur le **HEAD final de la PR W00**, merge puis CI postmerge ; miroir Notion du résultat.
+- [x] Relecture documentaire structurée (second passage de cohérence, **pas revue indépendante externe**) : 29 D ordonnées, 86 PR uniques, quatre TD, 15 W, seulement `docs/` changés.
+- [x] [PR #1089](https://github.com/hraaaaf/IAMINA-MVP/pull/1089) fusionnée par squash sur `main@fb91c1d1dde1221e6feddd659b65b952dd5defc4`, HEAD source `de9b86d304c9984bc41a6f21f5672de22c170d16` verrouillé à la fusion.
+- [x] CI pré-fusion [#38808853894](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38808853894) **SUCCESS** ; CI post-fusion [#38812930799](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38812930799) **SUCCESS** sur SHA `fb91c1d1d`. Portée **docs-only** ; tests applicatifs backend/frontend sautés, ne prouvent pas l'état navigateur.
+- [x] Miroir Notion mis à jour avec état pré-fusion et fusion ; bascule finale de statut à `CLOSED — DOCUMENTARY W00` après preuve closeout.
+**Statut W00 : CLOSED pour l'inventaire/source et les dépendances, sans aucune certification de fonctionnalité Web, de PR D1–D29 ou de production.** Le registre des 86 PR est une **photographie temporelle**, pas le compteur permanent des PR après la fusion.
 **Next exact :** ouvrir W01 : ADR de topologie 2 projets Vercel + Neon, PWA/offline/secret storage, contrat API, modèle d'identité/consentement ; puis W02. Aucun déploiement Vercel autorisé.
