@@ -62,6 +62,8 @@ class PatientProfileSchema(Schema):
     unit_preference: str
     preferred_language: str = "ar-MA"
     gender: Optional[str] = None
+    gender_identity: Optional[str] = None
+    birth_year: Optional[int] = None
     date_of_birth: Optional[date] = None
     weight: Optional[float] = None
     height: Optional[float] = None
