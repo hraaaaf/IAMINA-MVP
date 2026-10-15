@@ -51,7 +51,7 @@ def test_groq_strict_reply_envelope_preserves_verified_source_provenance():
     )
     assert result.errors == []
     assert result.parser_model == "openai/gpt-oss-120b"
-    assert result.prompt_version == "pulper-parse-v5-groq-envelope"
+    assert result.prompt_version == "pulper-parse-v6-fasting-evidence"
     assert result.lab_values.hba1c_pct == 7.2
     evidence = result.lab_values.evidence["hba1c_pct"]
     assert evidence.verified is True
@@ -61,6 +61,43 @@ def test_groq_strict_reply_envelope_preserves_verified_source_provenance():
     assert request["response_format"]["json_schema"]["schema"]["required"] == ["reply"]
     assert request["extra_body"] == {"include_reasoning": False}
     assert "reasoning_format" not in str(request)
+
+
+def test_groq_strict_reply_fasting_glucose_grounded_and_no_timestamp():
+    extraction = {
+        "document_type": "lab_report",
+        "confidence": 0.99,
+        "lab_values": {"fasting_glucose_mgdl": 126},
+        "evidence": {
+            "lab_values.fasting_glucose_mgdl": {"r": "L0001", "v": "126"},
+        },
+    }
+    result, request = _parse_with_mock_sdk(
+        json.dumps({"reply": json.dumps(extraction)}),
+        "Fasting glucose: 126 mg/dL",
+    )
+    assert result.errors == []
+    assert result.lab_values.fasting_glucose_mgdl == 126
+    assert result.lab_values.evidence["fasting_glucose_mgdl"].verified
+    assert result.glucose_readings == []
+    assert request["response_format"]["json_schema"]["strict"] is True
+
+
+def test_groq_fasting_glucose_exemplar_cannot_insert_unsourced_value():
+    extraction = {
+        "document_type": "lab_report",
+        "confidence": 0.99,
+        "lab_values": {"fasting_glucose_mgdl": 126},
+        "evidence": {
+            "lab_values.fasting_glucose_mgdl": {"r": "L0001", "v": "126"},
+        },
+    }
+    result, _ = _parse_with_mock_sdk(
+        json.dumps({"reply": json.dumps(extraction)}),
+        "An unrelated HbA1c report with no glucose number",
+    )
+    assert result.lab_values.fasting_glucose_mgdl is None
+    assert not result.lab_values.evidence.get("fasting_glucose_mgdl")
 
 
 @pytest.mark.parametrize(
