@@ -25,7 +25,7 @@ Success: exact-head synthetic canary regressions are green on SQLite and Postgre
 - Independent *functional* synthetic local chat browser E2E [#38710632604](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38710632604) SUCCESS with provider network flag disabled; this is not an independent human/agent review.
 - Exact main postmerge CI [#38711294833](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38711294833) SUCCESS, migration #38711294857 SUCCESS.
 
-## C. Voice/STT/triage diagnostic logs — SOURCE MERGED, POSTMERGE GATE PENDING
+## C. Voice/STT/triage diagnostic logs — CLOSED
 
 - Finding on `3affe8bcc61c6ef111986fb740f05fbdc3acb08a`:
   - `backend/ai/api/v1/voice.py:139-140,157-163` logged raw STT error, voice emergency transcript[:120] and user ID.
@@ -35,7 +35,7 @@ Success: exact-head synthetic canary regressions are green on SQLite and Postgre
 - Changed only controlled logging of these paths: static emergency event, deterministic classification `kind`, or exception class. Triage/response, patient scope and provider egress remain unchanged. Synthetic canary tests cover emergency voice, STT failure, deterministic middleware and provider exception logs.
 - Candidate head `848d49864d46ece9f133482968602064817037f6`: [CI #38710958682](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38710958682) SUCCESS, SQLite **2819 passed/5 skipped/3 xfailed**, PostgreSQL **2823 passed/1 skipped/3 xfailed**, 121 subtests each, Flutter job successful, Ruff, Bandit and anti-LLM/egress passed. Migration drift #38710958764 SUCCESS.
 - Source readback at merged SHA confirmed redaction of all three named handlers.
-- Exact-main [CI #38712421453](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38712421453) **IN_PROGRESS at report creation**. Migration drift #38712421438 SUCCESS. **Do not close #1040 or call technical lot complete until this run succeeds**.
+- Exact-main [CI #38712421453](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38712421453) **COMPLETED SUCCESS** on merge SHA `775a15a3c8c6156981583a773f4df766811a68b4`; migration drift #38712421438 SUCCESS. [Issue #1040](https://github.com/hraaaaf/IAMINA-MVP/issues/1040) **CLOSED** after verification, with issue closeout comment #6188862972.
 
 ## Adversarial and scope limitations
 
@@ -52,4 +52,4 @@ Success: exact-head synthetic canary regressions are green on SQLite and Postgre
 
 ## Next exact
 
-Check the completed conclusion and jobs for #38712421453 on `775a15a3c8c6156981583a773f4df766811a68b4`; if green, close #1040, replace this pending state by precise PASS evidence, then review/merge this docs-only verification record and inspect its exact-main CI. If red, fix on an isolated branch, rerun and do not falsely close.
+All three privacy-logging fixes are merged with source SHA/readback, exact-head candidate tests and exact-main postmerge CI completed successfully. Final remaining work for this documentation lot: inspect exact-head docs PR CI, merge only its canonical evidence, verify postmerge main and Notion. Open audit/governance/human gates remain separate (#1029, #1038, #925, D31).
