@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import re
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed
@@ -42,6 +43,16 @@ _SCHEMA_VERSION = "pulper-output-v2"
 _EXTRACTOR_VERSION = "2"
 _PARSE_PROMPT_VERSION = "pulper-parse-v5-groq-envelope"
 _LINE_REF_RE = re.compile(r"^L(\d{4})$")
+_EVIDENCE_NUMBER_RE = re.compile(
+    r"^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:%|mg\s*/\s*d[lL]|mmol\s*/\s*(?:mol|[lL])|[uµμ]mol\s*/\s*[lL])?\s*$",
+    re.IGNORECASE,
+)
+_SOURCE_NUMBER_RE = re.compile(r"(?<![\d.,A-Za-z])\d+(?:[.,]\d+)?(?![\d.,A-Za-z])")
+_SOURCE_UNIT_RE = re.compile(
+    r"mmol\s*/\s*mol|mmol\s*/\s*l|mg\s*/\s*dl|[uµμ]mol\s*/\s*l|%",
+    re.IGNORECASE,
+)
+
 _GLUCOSE_EVIDENCE_RE = re.compile(
     r"^glucose_readings\[(\d+)]\."
     r"(value_mgdl|timestamp|context|original_value|original_unit)$"
@@ -335,7 +346,14 @@ def _attach_verified_evidence(
             continue
 
         evidence_map, field_name, current_value = target
-        if current_value is None:
+        if current_value is None or not _evidence_matches_value(
+            path, raw_value, source_line, current_value,
+        ):
+            # A cited substring is not proof that the extracted medical value
+            # matches its cited measurement. Drop contradicted numeric facts
+            # instead of allowing them to be persisted with false confidence.
+            if current_value is not None:
+                _discard_unverified_numeric_fact(output, path)
             rejected = True
             continue
 
@@ -350,6 +368,99 @@ def _attach_verified_evidence(
             "Certaines références de provenance IA ont été rejetées car elles "
             "ne correspondaient pas au texte source."
         )
+
+
+
+def _evidence_matches_value(
+    path: str, raw_value: str, source_line: str, current_value: object,
+) -> bool:
+    """Conservative, deterministic agreement between citation and normalized field.
+
+    Unknown/mixed units are unverified, never guessed by an LLM. A cited
+    substring alone cannot establish a normalized medical measurement.
+    """
+    start = source_line.find(raw_value)
+    if start < 0:
+        return False
+
+    numeric = isinstance(current_value, (int, float)) and not isinstance(
+        current_value, bool,
+    )
+    if not numeric:
+        # Dates and medication strings must match the literal cited field.
+        return (
+            str(current_value).strip().casefold()
+            == raw_value.strip().casefold()
+        )
+
+    match = _EVIDENCE_NUMBER_RE.fullmatch(raw_value)
+    if match is None or not math.isfinite(float(current_value)):
+        return False
+
+    # Multiple values on the same cited line are ambiguous without a verified
+    # per-value semantic parser. Do not silently select the wrong result.
+    if len(_SOURCE_NUMBER_RE.findall(source_line)) != 1:
+        return False
+    raw_number = float(match.group(1).replace(",", "."))
+
+    # Units immediately following the cited value take priority. A unit
+    # preceding the number is accepted only if no following unit exists.
+    following = source_line[start + len(raw_value):start + len(raw_value) + 22]
+    before = source_line[max(0, start - 36):start]
+    unit_match = _SOURCE_UNIT_RE.search(raw_value)
+    if unit_match is None:
+        unit_match = _SOURCE_UNIT_RE.match(following.lstrip())
+    if unit_match is None:
+        candidates = list(_SOURCE_UNIT_RE.finditer(before))
+        unit_match = candidates[-1] if candidates else None
+    unit = (
+        unit_match.group(0).lower().replace(" ", "")
+        .replace("μ", "µ").replace("u", "µ")
+        if unit_match else ""
+    )
+
+    if path.endswith("hba1c_pct"):
+        # IFCC mmol/mol is NOT an NGSP percentage. Until clinically qualified
+        # conversion is implemented, refuse to assert provenance for IFCC.
+        if unit not in ("", "%"):
+            return False
+        expected = raw_number
+    elif path.endswith("fasting_glucose_mgdl") or path.endswith(".value_mgdl"):
+        if unit == "mmol/l":
+            expected = raw_number * 18.018
+        elif unit == "mg/dl":
+            expected = raw_number
+        else:
+            # Units are essential to the safety of glucose normalization.
+            return False
+    else:
+        if unit == "mmol/l" or unit == "mmol/mol":
+            return False
+        # No implicit conversion for cholesterol, creatinine or other fields.
+        if unit == "%" and not path.endswith("hba1c_pct"):
+            return False
+        expected = raw_number
+
+    # Conversion from mmol/L may be rounded to the nearest mg/dL in documents.
+    tolerance = 0.5 if unit == "mmol/l" else 0.0001
+    return math.isclose(
+        float(current_value), expected, rel_tol=0.0, abs_tol=tolerance,
+    )
+
+
+def _discard_unverified_numeric_fact(output: PulperOutput, path: str) -> None:
+    """Never persist a contradicted model-generated numeric fact."""
+    if path.startswith("lab_values."):
+        field_name = path.removeprefix("lab_values.")
+        if field_name in _LAB_EVIDENCE_FIELDS and field_name != "report_date":
+            setattr(output.lab_values, field_name, None)
+    elif path.startswith("glucose_readings[") and path.endswith(".value_mgdl"):
+        match = _GLUCOSE_EVIDENCE_RE.fullmatch(path)
+        if match:
+            index = int(match.group(1))
+            if index < len(output.glucose_readings):
+                # A reading with an unverified value must not reach storage.
+                output.glucose_readings[index].value_mgdl = -1.0
 
 
 def _evidence_target(

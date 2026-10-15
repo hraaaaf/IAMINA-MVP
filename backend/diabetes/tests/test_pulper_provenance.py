@@ -126,6 +126,82 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertTrue(any("provenance" in item.lower() for item in output.warnings))
         self.assertNotIn("9.9%", "\n".join(output.warnings))
 
+
+    def test_cited_value_must_match_normalized_hba1c(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.99,
+                "lab_values": {"hba1c_pct": 9.2},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7.2"}
+                },
+            },
+            "HbA1c: 7.2 %",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertNotIn("hba1c_pct", output.lab_values.evidence)
+        self.assertTrue(output.warnings)
+
+    def test_ifcc_hba1c_is_not_silently_mislabelled_ngsp_percent(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.9,
+                "lab_values": {"hba1c_pct": 53.0},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "53"}
+                },
+            },
+            "HbA1c: 53 mmol/mol",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+
+    def test_glucose_mmol_l_is_verified_only_after_correct_conversion(self):
+        base = {
+            "document_type": "lab_report",
+            "confidence": 0.9,
+            "lab_values": {"fasting_glucose_mgdl": 126.0},
+            "evidence": {
+                "lab_values.fasting_glucose_mgdl": {"r": "L0001", "v": "7.0"}
+            },
+        }
+        good = self._ingest_docx(base, "Fasting glucose: 7.0 mmol/L")
+        self.assertEqual(good.lab_values.fasting_glucose_mgdl, 126)
+        self.assertTrue(good.lab_values.evidence["fasting_glucose_mgdl"].verified)
+        base["lab_values"]["fasting_glucose_mgdl"] = 7.0
+        bad = self._ingest_docx(base, "Fasting glucose: 7.0 mmol/L")
+        self.assertIsNone(bad.lab_values.fasting_glucose_mgdl)
+
+    def test_ambiguous_multiple_values_cannot_be_source_verified(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.9,
+                "lab_values": {"hba1c_pct": 7.2},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7.2"}
+                },
+            },
+            "HbA1c: 7.2 % or 8.1 % (review required)",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertNotIn("hba1c_pct", output.lab_values.evidence)
+
+    def test_wrong_medication_dose_is_not_verified(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.9,
+                "medications": [{"name": "metformin", "dose": "1000 mg"}],
+                "evidence": {
+                    "medications[0].dose": {"r": "L0001", "v": "500 mg"}
+                },
+            },
+            "metformin 500 mg",
+        )
+        self.assertNotIn("dose", output.medications[0].evidence)
+
     def test_shield_rejection_also_removes_field_evidence(self):
         output = self._ingest_docx(
             {
