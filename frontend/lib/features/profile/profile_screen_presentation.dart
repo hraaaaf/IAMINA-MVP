@@ -47,7 +47,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           const SizedBox(height: 14),
                         ],
                         _buildMedicalSection(l10n),
-                        if (context.read<AppDatabase>().patientVaultScope
+                        if (!kIsWeb &&
+                            context.watch<AppLockService>().isUnlocked &&
+                            context.read<AppDatabase>().patientVaultScope
                                 ?.nativeDjangoUserId != null) ...[
                           const SizedBox(height: 14),
                           D18ProfilePanel(
