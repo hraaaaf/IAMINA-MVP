@@ -86,6 +86,35 @@ class DemoSeedPatientIsolationTests(TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
+    def test_native_registration_exposes_zero_fabricated_clinical_records(self):
+        response = self.client.post(
+            "/api/v1/auth/register",
+            data={
+                "email": "d11-new-signup@example.test",
+                "password": "Distinct-Strong-Passphrase-2026!",
+                "first_name": "Synthetic",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        bearer = response.json()["access_token"]
+        user = User.objects.get(email="d11-new-signup@example.test")
+
+        self.assertEqual(LogEntry.objects.filter(patient=user).count(), 0)
+        self.assertFalse(
+            DiabetesProfile.objects.filter(base_profile__patient=user).exists()
+        )
+        self.assertIsNone(BasePatientProfile.objects.get(patient=user).date_of_birth)
+
+        medical_history = self.client.get(
+            "/api/v1/logs",
+            HTTP_AUTHORIZATION=f"Bearer {bearer}",
+        )
+        self.assertEqual(medical_history.status_code, 200)
+        self.assertEqual(medical_history.json()["total"], 0)
+        self.assertEqual(self._seed(bearer).status_code, 403)
+        self.assertEqual(LogEntry.objects.filter(patient=user).count(), 0)
+
     def test_read_only_demo_scenarios_are_still_available(self):
         response = self.client.get("/api/v1/demo/scenarios")
         self.assertEqual(response.status_code, 200)
