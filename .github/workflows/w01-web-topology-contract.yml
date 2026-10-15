@@ -77,7 +77,8 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements.txt
       - name: Verify actual PostgreSQL driver, not SQLite
-        run: python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'; print('W01: PostgreSQL backend connected')"
+        run: |
+          python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'; print('W01 PostgreSQL backend connected')"
       - name: Apply synthetic PostgreSQL schema migrations
         run: python manage.py migrate --noinput
       - name: Exercise authenticated Django HTTP route with synthetic patient isolation
