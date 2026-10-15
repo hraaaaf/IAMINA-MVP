@@ -15,6 +15,8 @@ import 'package:amina/features/profile/profile_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/app_lock_service.dart';
+import 'package:amina/services/app_lock_authenticator.dart';
+import 'package:amina/services/app_lock_authenticator_factory.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/sync_service.dart';
@@ -143,6 +145,19 @@ Future<void> runNativeD18DiskIsolation() async {
   }
 }
 
+Future<void> checkNativeD18AccessReleaseGate() async {
+  // Unlike the UI fixture, this uses the actual production Android factory.
+  // D18 cannot be claimed accessible on native while the factory returns
+  // 'unavailable'. Never use a fake unlock to waive this release gate.
+  final capability = await createPlatformAppLockAuthenticator().capability();
+  expect(capability, AppLockCapability.unavailable,
+      reason: 'CURRENT BLOCKER: native AppLock authenticator is a stub. '
+          'When a supported native authenticator is implemented, revise this '
+          'negative-path test and separately prove real enrollment/unlock.');
+  debugPrint('D18_NATIVE_ACCESS_RELEASE_GATE=BLOCKED '
+      'nativeStrongAuthenticator=${capability.name}');
+}
+
 Future<void> checkRealNativeProfileScreen(WidgetTester tester) async {
   final db = await openPatient(idA);
   final auth = AuthService();
@@ -197,6 +212,7 @@ void main() {
   testWidgets('D18 Android disk A B A and actual ProfileScreen native gate',
       (tester) async {
     await runNativeD18DiskIsolation();
+    await checkNativeD18AccessReleaseGate();
     await checkRealNativeProfileScreen(tester);
     expect(tester.takeException(), isNull);
   });

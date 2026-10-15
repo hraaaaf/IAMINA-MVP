@@ -71,7 +71,9 @@ jobs:
           AppDatabase.forPatientVault => real on-device SQLite and separate
           Android-local sandbox files. Synthetic patient A and B, A-B-A reopen,
           history and optional declarations, forged cross-owner backup rejection.
-          ProfileScreen runs with a synthetic AppLock unlocked/locked provider,
+          ProfileScreen runs with a synthetic AppLock unlocked/locked provider.
+          ACTUAL native AppLock factory currently returns unavailable on Android;
+          D18_NATIVE_ACCESS_RELEASE_GATE=BLOCKED is a measured negative result.
           NOT real platform biometric enrollment and NOT real authentication.
           Physical device: NOT VERIFIED.
           Android backup encryption: NOT VERIFIED by this test.
