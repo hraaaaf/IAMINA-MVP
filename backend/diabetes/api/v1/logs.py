@@ -171,7 +171,14 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
             except IntegrityError:
                 errors.append(f"Error syncing {entry_data.client_uuid}: data conflict")
             except Exception as exc:
-                errors.append(f"Error syncing {entry_data.client_uuid}: {str(exc)}")
+                # Never return internal exception text (potential secrets/PHI) to a patient.
+                logger.warning(
+                    "Unexpected journal batch sync failure, error_type=%s",
+                    type(exc).__name__,
+                )
+                errors.append(
+                    f"Error syncing {entry_data.client_uuid}: internal sync failure"
+                )
 
         if mutated_existing_source:
             # A full-snapshot edit may remove or replace evidence that was already

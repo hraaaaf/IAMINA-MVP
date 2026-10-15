@@ -219,6 +219,38 @@ class BatchSyncTests(TestCase):
         self.assertTrue(len(data["errors"]) > 0)
 
 
+    def test_batch_unexpected_error_is_redacted_and_later_entry_persists(self):
+        """Synthetic internal exception must never appear in an API response."""
+        original_create = LogEntry.objects.create
+
+        def fail_first_only(*args, **kwargs):
+            if kwargs.get("blood_sugar") == 111:
+                raise RuntimeError("SYNTHETIC_PRIVATE_DETAIL")
+            return original_create(*args, **kwargs)
+
+        payload = [
+            {"blood_sugar": 111, "client_uuid": "44444444-4444-4444-4444-444444444444"},
+            {"blood_sugar": 120, "client_uuid": "55555555-5555-5555-5555-555555555555"},
+        ]
+        with patch(
+            "diabetes.api.v1.logs.LogEntry.objects.create",
+            side_effect=fail_first_only,
+        ):
+            resp = self.client.post(
+                "/api/v1/logs/batch",
+                data=payload,
+                content_type="application/json",
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("SYNTHETIC_PRIVATE_DETAIL", resp.content.decode())
+        data = loads(resp.content)
+        self.assertEqual(len(data["errors"]), 1)
+        self.assertIn("internal sync failure", data["errors"][0])
+        self.assertEqual(len(data["synced_ids"]), 1)
+        self.assertEqual(LogEntry.objects.filter(patient=self.user).count(), 1)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. Profile API
 # ─────────────────────────────────────────────────────────────────────────────
