@@ -22,7 +22,7 @@ class TestCouncilEvidence(unittest.TestCase):
                 self.assertTrue(result["profile_valid"], role)
                 self.assertIsNone(result["agent_session_id"])
                 self.assertEqual(result["outcome"], "EVIDENCE_DISCOVERY_ONLY_NOT_CERTIFIED")
-                self.assertEqual(len(result["observations"]), 2)
+                self.assertEqual(len(result["observations"]), len(module.ROLES[role]))
                 self.assertTrue((out / f"{role}.json").is_file())
 
     def test_no_fake_pass_for_missing_or_unsupported_content(self):
