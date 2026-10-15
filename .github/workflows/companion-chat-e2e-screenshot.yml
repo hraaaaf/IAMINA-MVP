@@ -339,6 +339,49 @@ jobs:
           time.sleep(10)
           screenshot('chat-empty-390x844.png')
 
+          # A genuinely empty Chrome profile proves the first PWA registration
+          # and current-release shell cache, not just an isolated SW mock.
+          pwa_probe_js = """
+          (async () => {
+            if (!('serviceWorker' in navigator)) {
+              return { error: 'serviceWorker API missing' };
+            }
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            const registration = registrations.find(
+              item => item.scope === location.origin + '/'
+            );
+            if (!registration) return { error: 'no IAMINA scope registration' };
+            const ready = await Promise.race([
+              navigator.serviceWorker.ready.then(() => true),
+              new Promise(resolve => setTimeout(() => resolve(false), 7000))
+            ]);
+            const activeScript = registration.active?.scriptURL || '';
+            const release = activeScript
+              ? new URL(activeScript).searchParams.get('release') : null;
+            const names = await caches.keys();
+            return {
+              ready, release, activeScript, names,
+              currentCache: release && names.includes('iamina-app-shell-' + release),
+              noStaleShell: names.every(
+                name => !name.startsWith('iamina-app-shell-') ||
+                  name === 'iamina-app-shell-' + release
+              )
+            };
+          })()
+          """
+          pwa_probe = call('Runtime.evaluate', {
+              'expression': pwa_probe_js,
+              'awaitPromise': True,
+              'returnByValue': True,
+          })
+          if 'exceptionDetails' in pwa_probe:
+              raise RuntimeError('Synthetic Chrome first PWA install threw')
+          pwa = pwa_probe.get('result', {}).get('value', {})
+          if not (pwa.get('ready') and pwa.get('release') and
+                  pwa.get('currentCache') and pwa.get('noStaleShell')):
+              raise RuntimeError(f'Synthetic Chrome first PWA install failed: {pwa}')
+          print('Synthetic clean Chrome PWA install: active release shell, no stale caches.')
+
           # Exercise real Chrome fetch → local proxy → Django SSE, not just
           # static Dart request-construction tests or the regular /ai/chat UI.
           browser_sse_js = """
