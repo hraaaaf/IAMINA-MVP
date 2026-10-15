@@ -17,7 +17,7 @@ import 'package:amina/services/api_client.dart';
 import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/app_lock_authenticator.dart';
 import 'package:amina/services/app_lock_authenticator_factory.dart';
-import 'package:amina/services/app_lock_authenticator_native.dart';
+import 'package:amina/services/app_lock_authenticator_native.dart' show NativeAppLockAuthenticator;
 import 'package:flutter/services.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/consent_service.dart';
