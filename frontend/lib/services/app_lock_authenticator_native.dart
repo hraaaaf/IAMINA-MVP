@@ -88,3 +88,6 @@ final class NativeAppLockAuthenticator implements AppLockAuthenticator {
   }
 
 }
+
+AppLockAuthenticator createPlatformAppLockAuthenticator() =>
+    const NativeAppLockAuthenticator();
