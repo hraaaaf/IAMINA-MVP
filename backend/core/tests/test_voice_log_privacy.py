@@ -9,6 +9,7 @@ from unittest.mock import patch
 from ai.api.v1.voice import voice_chat
 
 from core.input_safety import InputSafetyDecision, URGENT
+from core.middleware.triage_vital import TriageVitalMiddleware
 from media.voice import TranscriptionError
 
 
@@ -67,3 +68,19 @@ def test_stt_failure_retains_safe_reply_without_exception_or_user_in_logs():
     assert "TranscriptionError" in str(logged_event.call_args)
     assert canary not in str(logged_event.call_args)
     assert "user=" not in str(logged_event.call_args)
+
+
+def test_text_triage_middleware_logs_only_controlled_reason():
+    canary = "synthetic_sensitive_patient_emergency_message"
+    request, _ = _fake_voice_request()
+    request.path = "/api/v1/ai/chat/synthetic_sensitive_path"
+    middleware = TriageVitalMiddleware(lambda _request: None)
+
+    with patch("core.middleware.triage_vital.logger.critical") as logged_event:
+        middleware._log_emergency(request, canary, kind="glycemic_emergency")
+
+    logged_event.assert_called_once()
+    assert "glycemic_emergency" in str(logged_event.call_args)
+    assert canary not in str(logged_event.call_args)
+    assert "73" not in str(logged_event.call_args)
+    assert request.path not in str(logged_event.call_args)

@@ -1,6 +1,13 @@
+from unittest.mock import patch
+
 import pytest
 
-from media.voice import MAX_AUDIO_BYTES, transcribe
+from media.voice import (
+    MAX_AUDIO_BYTES,
+    GeminiSTTBackend,
+    TranscriptionError,
+    transcribe,
+)
 
 
 class FakeSTTBackend:
@@ -79,3 +86,27 @@ def test_validation_blocks_oversize_audio_before_backend_invocation():
         transcribe(b"x" * (MAX_AUDIO_BYTES + 1), "audio/mp4", backend=backend)
 
     assert backend.calls == []
+
+
+def test_gemini_unexpected_provider_error_never_logs_sensitive_details():
+    canary = "synthetic_private_provider_error_including_patient_data"
+    with (
+        patch.dict("os.environ", {"GEMINI_API_KEY": "synthetic-test-key"}),
+        patch("google.genai.Client"),
+        patch(
+            "media.voice.execute_external_provider_call",
+            side_effect=RuntimeError(canary),
+        ),
+        patch("media.voice.logger.error") as logged_event,
+    ):
+        with pytest.raises(TranscriptionError, match="could not be completed safely"):
+            GeminiSTTBackend().transcribe(
+                b"synthetic-audio",
+                "audio/mp4",
+                language="fr",
+                language_hint="French",
+            )
+
+    logged_event.assert_called_once()
+    assert "RuntimeError" in str(logged_event.call_args)
+    assert canary not in str(logged_event.call_args)
