@@ -30,9 +30,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.0'
+          flutter-version: '3.41.4'
           channel: stable
           cache: true
+      # Flutter 3.41.4 includes the simulator CocoaPods architecture fix
+      # documented at flutter/flutter#182748; pinned 3.41.0 reproduced
+      # Framework 'Pods_Runner' not found twice before XCTest could start.
+      - name: Confirm Flutter toolchain
+        run: flutter --version
       - name: Resolve Flutter packages
         working-directory: frontend
         run: flutter pub get
