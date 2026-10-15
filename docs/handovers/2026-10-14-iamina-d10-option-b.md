@@ -1,3 +1,17 @@
+## 15 octobre 2026 — Réexécution D10-B sur HEAD actuel, code + standards primaires
+
+**Goal** : appliquer concrètement le prompt d'expert sécurité/confidentialité sur le code final plutôt que reproduire un texte générique.
+
+**Preuve source :** `main@58f0dc940449e0cdace099df5350be79e34d53b4`, 15 fichiers vérifiés directement en GitHub. [Rapport exact-head avec matrices et preuves de lignes](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-exact-head-security-privacy-execution.md), rapproché du [prompt pour évaluateurs externes](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-independent-audit-prompt.md). Sources primaires OWASP MASVS/MASTG, Apple, Android, MDN et CNDP vérifiées.
+
+**Verdict technique de l'IA : `CHANGES_REQUIRED / NO-GO` sur Web, Android, iOS pour activer maintenant l'opt-out avec données médicales réelles.** Source `AppDatabase.forPatientVault` sans preuve d'une clé SQLCipher, Android manifest sans politique explicite backup, iOS protection DB non démontrée, stub d'authentification natif `unsupported_platform`, préférence B non implémentée, autorisations réseau liées au verrou, sauvegardes JSON à qualifier. **Aucune fuite effective ni non-conformité juridique avérée n'est prétendue.** Éléments favorables revalidés : `AppLockService` fail-closed et `ApiClient.canSyncClinicalData=false` par défaut.
+
+**Limites :** cette nouvelle passe a été effectuée par ChatGPT et non par deux évaluateurs humains externes. Pas de test instrumenté de la variante B inexistante, pas de build natif ou pentest, pas de sign-off. **Human gate de sécurité/privacy #1013 reste OPEN**. La décision produit B est maintenue, l'option n'est ni implémentée ni mise en production.
+
+**Next exact :** transmettre prompt+rapport à deux spécialistes qualifiés différents, valider protections iOS/Android/Web par attestations signées et tests, puis implémenter un opt-out par owner/appareil sur plateformes autorisées avec non-régression CI et BEFORE→mockup→AFTER UI. D31 physique distincte ; P5 historique 50 %.
+
+---
+
 ## 15 octobre 2026 — D10-B : prompt d'audit externe + pré-audit contradictoire réalisés
 
 **Goal** : permettre à deux évaluateurs indépendants (sécurité et confidentialité) de juger l'app-lock facultatif B, sur preuves exactes iOS/Android/Web, sans confondre arbitrage produit et certification.
