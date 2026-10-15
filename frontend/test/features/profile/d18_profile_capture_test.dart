@@ -99,6 +99,19 @@ void main() {
       loader.addFont(Future<ByteData>.value(
           ByteData.sublistView(Uint8List.fromList(bytes))));
       await loader.load();
+      // Flutter widget tests do not load MaterialIcons by default.
+      // Without this SDK asset, Icons render as empty square glyphs.
+      final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+      if (flutterRoot == null || flutterRoot.isEmpty) {
+        throw StateError('FLUTTER_ROOT required for material icon raster');
+      }
+      final iconBytes = await File(
+        '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+      ).readAsBytes();
+      final icons = FontLoader('MaterialIcons');
+      icons.addFont(Future<ByteData>.value(
+          ByteData.sublistView(Uint8List.fromList(iconBytes))));
+      await icons.load();
     });
     for (final size in <Size>[
       const Size(360, 560), const Size(390, 844),
