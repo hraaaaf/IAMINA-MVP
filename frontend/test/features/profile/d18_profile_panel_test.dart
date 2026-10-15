@@ -128,6 +128,40 @@ void main() {
     expect(updated?.genderIdentity, 'non_binary');
   });
 
+  testWidgets('D18 optional fields can be cleared without touching clinical targets',
+      (tester) async {
+    final db = await _patientDb(734);
+    addTearDown(db.close);
+    final store = PatientProgressiveDemographicsStore(db);
+    await store.update(
+      updateBirthYear: true, birthYear: 1994,
+      updateGenderIdentity: true, genderIdentity: 'woman',
+    );
+    final before = await db.getProfileForLocalUserId(db.activeProfileRowId);
+    await _mount(tester, db);
+    expect(tester.widget<TextField>(find.byKey(const Key('d18-birth-year')))
+        .controller?.text, '1994');
+    await tester.enterText(find.byKey(const Key('d18-birth-year')), '');
+    await tester.pump();
+    // Choose the explicit "not provided" option: no gender is inferred.
+    final identity = tester.widget<DropdownButton<String?>>(
+      find.byKey(const Key('d18-gender-identity')));
+    identity.onChanged?.call(null);
+    await tester.pump();
+    await _tapVisible(tester, 'd18-save-demographics');
+
+    final cleared = await store.read();
+    expect(cleared?.birthYear, isNull);
+    expect(cleared?.genderIdentity, isNull);
+    final after = await db.getProfileForLocalUserId(db.activeProfileRowId);
+    // D18 declaration changes must not alter clinical configuration.
+    expect(after?.diabetesType, before?.diabetesType);
+    expect(after?.treatment, before?.treatment);
+    expect(after?.targetRangeLow, before?.targetRangeLow);
+    expect(after?.targetRangeHigh, before?.targetRangeHigh);
+    expect(after?.unitPreference, before?.unitPreference);
+  });
+
   testWidgets('D18 same widget switches A to B to A without stale identity',
       (tester) async {
     final a = await _patientDb(734);
