@@ -50,11 +50,25 @@ jobs:
         working-directory: frontend
         run: flutter analyze integration_test/pilot_critical_journeys_test.dart --no-fatal-infos
 
+      # Reuse the KVM/emulator configuration proven on the two-Android D7/D9
+      # workflow. The previous TD-008 run spent ~467s booting Android before
+      # adb failed with "Broken pipe (32)" (run 38654612593).
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+
       - name: Run integration baseline on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
+          target: google_apis
           arch: x86_64
-          profile: pixel_2
+          profile: pixel_5
+          ram-size: 1536M
+          heap-size: 256M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
           disable-animations: true
           script: cd frontend && flutter test integration_test/pilot_critical_journeys_test.dart -d emulator-5554 --no-pub
