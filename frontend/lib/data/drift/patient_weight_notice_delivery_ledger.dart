@@ -103,6 +103,11 @@ final class PatientWeightNoticeDeliveryLedger {
         readings, asOfUtc: nowUtc,
       );
       if (trend == null || trend.ownerId != _owner) return null;
+      // Consent is prospective: an old measurement must not create a
+      // newly eligible notice simply because the patient turns the switch ON.
+      if (trend.latestAtUtc.isBefore(preference.consentedAtUtc!)) {
+        return null;
+      }
 
       final recent = await db.customSelect('''
         SELECT latest_evidence_id, reserved_at_utc

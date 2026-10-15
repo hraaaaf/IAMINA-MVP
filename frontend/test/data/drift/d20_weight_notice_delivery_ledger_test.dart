@@ -33,7 +33,7 @@ Future<void> _history(AppDatabase db) async {
   );
   await history.append(
     clientUuid: _uuidB, value: '71.50', unit: 'kg',
-    measuredAtUtc: DateTime.utc(2026, 10, 6),
+    measuredAtUtc: DateTime.utc(2026, 10, 8),
   );
 }
 
@@ -92,8 +92,28 @@ void main() {
     expect(reservation.latestEvidenceId, _uuidB);
     expect(reservation.baselineEvidenceId, _uuidA);
     expect(reservation.deltaKgHundredths, 150);
-    expect(reservation.latestAtUtc, DateTime.utc(2026, 10, 6));
+    expect(reservation.latestAtUtc, DateTime.utc(2026, 10, 8));
     expect(await ledger.reservationCount(), 1);
+  });
+
+  test('D20-D consent does not retroactively reserve pre-consent readings',
+      () async {
+    final db = await _vault(734);
+    addTearDown(db.close);
+    await PatientWeightHistoryStore(db).append(
+      clientUuid: _uuidA, value: '70', unit: 'kg',
+      measuredAtUtc: DateTime.utc(2026, 10, 1),
+    );
+    await PatientWeightHistoryStore(db).append(
+      clientUuid: _uuidB, value: '71.50', unit: 'kg',
+      measuredAtUtc: DateTime.utc(2026, 10, 6),
+    );
+    await _consent(db); // Consented on 6 October at 12:00 UTC.
+    final ledger = PatientWeightNoticeDeliveryLedger(db);
+    expect(await ledger.reserveIfEligible(
+      osNotificationPermission: true, nowUtc: DateTime.utc(2026, 10, 15),
+    ), isNull);
+    expect(await ledger.reservationCount(), 0);
   });
 
   test('D20-D dedup survives a new ledger instance in same vault', () async {
