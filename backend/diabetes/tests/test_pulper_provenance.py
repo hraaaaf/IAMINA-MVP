@@ -188,6 +188,50 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertIsNone(output.lab_values.hba1c_pct)
         self.assertNotIn("hba1c_pct", output.lab_values.evidence)
 
+
+    def test_citation_cannot_target_digits_inside_another_number(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "lab_report",
+                "confidence": 0.99,
+                "lab_values": {"hba1c_pct": 7.0},
+                "evidence": {
+                    "lab_values.hba1c_pct": {"r": "L0001", "v": "7"}
+                },
+            },
+            "HbA1c: 17.2 %",
+        )
+        self.assertIsNone(output.lab_values.hba1c_pct)
+        self.assertFalse(output.lab_values.evidence)
+
+    def test_glucose_with_timestamp_on_same_line_can_keep_numeric_evidence(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "glucose_log",
+                "confidence": 0.9,
+                "glucose_readings": [{"value_mgdl": 126}],
+                "evidence": {
+                    "glucose_readings[0].value_mgdl": {
+                        "r": "L0001", "v": "126"
+                    }
+                },
+            },
+            "Glucose: 126 mg/dL at 2026-08-20T08:00:00+01:00",
+        )
+        self.assertEqual(len(output.glucose_readings), 1)
+        self.assertTrue(output.glucose_readings[0].evidence["value_mgdl"].verified)
+
+    def test_unknown_glucose_unit_is_not_silently_assumed_mgdl(self):
+        output = self._ingest_docx(
+            {"document_type": "lab_report", "confidence": 0.99,
+             "lab_values": {"fasting_glucose_mgdl": 126},
+             "evidence": {
+                 "lab_values.fasting_glucose_mgdl": {"r": "L0001", "v": "126"}
+             }},
+            "Fasting glucose 126 (unit not provided)",
+        )
+        self.assertIsNone(output.lab_values.fasting_glucose_mgdl)
+
     def test_wrong_medication_dose_is_not_verified(self):
         output = self._ingest_docx(
             {

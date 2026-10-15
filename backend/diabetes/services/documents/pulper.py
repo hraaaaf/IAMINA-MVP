@@ -48,6 +48,10 @@ _EVIDENCE_NUMBER_RE = re.compile(
     re.IGNORECASE,
 )
 _SOURCE_NUMBER_RE = re.compile(r"(?<![\d.,A-Za-z])\d+(?:[.,]\d+)?(?![\d.,A-Za-z])")
+_SOURCE_TIMESTAMP_RE = re.compile(
+    r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?\b",
+)
+
 _SOURCE_UNIT_RE = re.compile(
     r"mmol\s*/\s*mol|mmol\s*/\s*l|mg\s*/\s*dl|[uµμ]mol\s*/\s*l|%",
     re.IGNORECASE,
@@ -398,11 +402,23 @@ def _evidence_matches_value(
     if match is None or not math.isfinite(float(current_value)):
         return False
 
-    # Multiple values on the same cited line are ambiguous without a verified
-    # per-value semantic parser. Do not silently select the wrong result.
-    if len(_SOURCE_NUMBER_RE.findall(source_line)) != 1:
+    # Ignore a date/time annotation when counting possible measurement values,
+    # while preserving offsets to bind the citation to a WHOLE numeric token.
+    source_without_time = _SOURCE_TIMESTAMP_RE.sub(
+        lambda item: " " * len(item.group(0)), source_line,
+    )
+    tokens = list(_SOURCE_NUMBER_RE.finditer(source_without_time))
+    # Multiple measurements on one line require a separate clinical parser.
+    if len(tokens) != 1:
         return False
     raw_number = float(match.group(1).replace(",", "."))
+    token = tokens[0]
+    if (
+        token.start() != start + match.start(1)
+        or token.end() != start + match.end(1)
+    ):
+        # A citation "7" embedded in "17.2" is not valid evidence for 7.
+        return False
 
     # Units immediately following the cited value take priority. A unit
     # preceding the number is accepted only if no following unit exists.
@@ -423,7 +439,7 @@ def _evidence_matches_value(
     if path.endswith("hba1c_pct"):
         # IFCC mmol/mol is NOT an NGSP percentage. Until clinically qualified
         # conversion is implemented, refuse to assert provenance for IFCC.
-        if unit not in ("", "%"):
+        if unit != "%":
             return False
         expected = raw_number
     elif path.endswith("fasting_glucose_mgdl") or path.endswith(".value_mgdl"):
@@ -435,10 +451,10 @@ def _evidence_matches_value(
             # Units are essential to the safety of glucose normalization.
             return False
     else:
-        if unit == "mmol/l" or unit == "mmol/mol":
-            return False
-        # No implicit conversion for cholesterol, creatinine or other fields.
-        if unit == "%" and not path.endswith("hba1c_pct"):
+        # Critical lab units are never inferred when absent. IFCC conversions
+        # and unsupported clinical unit changes require explicit human review.
+        expected_unit = "µmol/l" if path.endswith("creatinine_umol") else "mg/dl"
+        if unit != expected_unit:
             return False
         expected = raw_number
 
