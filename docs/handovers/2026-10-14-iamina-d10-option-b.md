@@ -1,3 +1,17 @@
+## 15 octobre 2026 — D10-B : prompt d'audit externe + pré-audit contradictoire réalisés
+
+**Goal** : permettre à deux évaluateurs indépendants (sécurité et confidentialité) de juger l'app-lock facultatif B, sur preuves exactes iOS/Android/Web, sans confondre arbitrage produit et certification.
+
+**Prompts et résultats** :
+- [Prompt pour évaluateurs humains indépendants](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-independent-audit-prompt.md) : protocole reproductible, menaces, standards OWASP/Apple/Android/MDN/CNDP, preuves attendues, signatures individuelles et critères PASS/CHANGES_REQUIRED.
+- [Pré-audit contradictoire exécuté](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-preaudit-security-privacy.md) : lecture source figée sur `main@de2afee9f5b8fe11fa806c361f246eae6854bbd0`. Deux passes thématiques par **une même IA**, donc **pas deux avis indépendants**. Verdict technique `CHANGES_REQUIRED / NO-GO` pour l'activation B en l'état sur iOS, Android et Web. Aucune fuite réelle ni infraction réglementaire déduite sans preuve.
+- **Preuves de Git/CI** : [PR documentaire #1017](https://github.com/hraaaaf/IAMINA-MVP/pull/1017) MERGED au commit `5a9e58be4eb38bca60ce1dc642e772310aa4b2a8` ; `main` lu au même SHA, les deux fichiers et leur verdict vérifiés, [CI prémerge #38693983087](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38693983087) SUCCESS ; [CI postmerge #38694135904](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38694135904) SUCCESS.
+- **Constats critiques** : chiffrement du coffre médical non prouvé ; règles Android backup absentes du manifeste source ; niveau de protection des fichiers iOS non qualifié ; authentificateur natif non implémenté (`unsupported_platform`) ; identité locale non équivalente à une preuve forte ; accès local et egress clinique couplés à `isUnlocked` ; sauvegarde JSON à qualifier. **Ces constats sont des conditions de release et des incertitudes**, pas une fuite confirmée.
+- **Human gate réel** : [issue sécurité/privacy #1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013) OPEN et **aucune signature externe recueillie**. B = décision produit retenue, **fonctionnalité non implémentée**, aucun bypass, ni déploiement avec données réelles.
+- **Next exact** : désigner deux spécialistes distincts, leur transmettre le prompt et fournir accès lecture / artifacts expurgés ; recueillir deux avis signés par plateforme avec risques résiduels et correctifs. Ensuite seulement branches d'implémentation B, tests T01–T10, BEFORE→mockup→AFTER, CI, merge, postmerge. D31 physique reste séparée [#1006](https://github.com/hraaaaf/IAMINA-MVP/issues/1006). P5 historique : 50 %.
+
+---
+
 ## 15 octobre 2026 — POST-MERGE FINAL : tests D10-B VERTS, GATE HUMAN OPEN
 
 - **État vérifié GitHub, main HEAD :** `a38285ab72d2cebbcc0f9738096adfc459547932`, [PR #1010](https://github.com/hraaaaf/IAMINA-MVP/pull/1010) / [#1012](https://github.com/hraaaaf/IAMINA-MVP/pull/1012) / [#1014](https://github.com/hraaaaf/IAMINA-MVP/pull/1014) **MERGED**.
