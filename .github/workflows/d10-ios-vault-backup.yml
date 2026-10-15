@@ -1,0 +1,47 @@
+name: D10 iOS clinical vault backup exclusion
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/Runner/SceneDelegate.swift'
+      - 'frontend/ios/RunnerTests/RunnerTests.swift'
+      - 'scripts/tests/test_d10_ios_backup_native.py'
+      - '.github/workflows/d10-ios-vault-backup.yml'
+      - 'docs/security/2026-10-15-d10-b-ios-backup-exclusion.md'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/ios/Runner/AppDelegate.swift'
+      - 'frontend/ios/Runner/SceneDelegate.swift'
+      - 'frontend/ios/RunnerTests/RunnerTests.swift'
+      - 'scripts/tests/test_d10_ios_backup_native.py'
+      - '.github/workflows/d10-ios-vault-backup.yml'
+      - 'docs/security/2026-10-15-d10-b-ios-backup-exclusion.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-backup-helper:
+    name: macOS Foundation actual Swift helper tests (not Simulator)
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native Swift helper and backup resource flag with synthetic files
+        run: python3 scripts/tests/test_d10_ios_backup_native.py
+      - name: Confirm iOS source references and Xcode project syntax
+        run: |
+          set -euo pipefail
+          plutil -lint frontend/ios/Runner/Info.plist
+          plutil -lint frontend/ios/Runner.xcodeproj/project.pbxproj
+          grep -q 'UIApplicationSceneManifest' frontend/ios/Runner/Info.plist
+          grep -q 'applyToDocumentsDirectory' frontend/ios/Runner/SceneDelegate.swift
+      - name: Evidence scope — simulator still requires separate repair
+        run: |
+          echo "Actual app Swift helper: Foundation compiled/tested on macOS" >> "$GITHUB_STEP_SUMMARY"
+          echo "iOS release compile: separate Pilot iOS packaging workflow" >> "$GITHUB_STEP_SUMMARY"
+          echo "NOT EXECUTED: iOS Simulator XCTest (Pods_Runner linker blocker), iCloud backup/restore or physical device" >> "$GITHUB_STEP_SUMMARY"
