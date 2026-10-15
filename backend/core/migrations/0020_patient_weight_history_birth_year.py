@@ -23,6 +23,23 @@ class Migration(migrations.Migration):
                 help_text="Patient-declared year only; no exact birth date is inferred.",
             ),
         ),
+        migrations.AddField(
+            model_name="basepatientprofile",
+            name="gender_identity",
+            field=models.CharField(
+                max_length=24,
+                null=True,
+                blank=True,
+                choices=[
+                    ("woman", "Woman"),
+                    ("man", "Man"),
+                    ("non_binary", "Non-binary"),
+                    ("another_identity", "Another identity"),
+                    ("prefer_not_to_say", "Prefer not to say"),
+                ],
+                help_text="Optional self-declared identity, distinct from clinical biology.",
+            ),
+        ),
         migrations.CreateModel(
             name="PatientWeightObservation",
             fields=[
