@@ -1,0 +1,102 @@
+name: V1-16 companion selection real Chrome BEFORE AFTER
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/companion/companion_conversation_screen.dart'
+      - 'frontend/test/features/chat/companion_copy_selection_test.dart'
+      - 'tools/v1_16_companion_selection_browser.cjs'
+      - '.github/workflows/v1-16-companion-selection-proof.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-selection-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+      - name: Verify exact head and baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=1 origin main
+          git cat-file -e origin/main:frontend/lib/features/companion/companion_conversation_screen.dart
+          node --check tools/v1_16_companion_selection_browser.cjs
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Test selection across FR EN AR and viewports
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/features/companion/companion_conversation_screen.dart
+          flutter test --no-pub test/features/chat/companion_copy_selection_test.dart
+      - name: Build exact baseline BEFORE and candidate AFTER
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE=lib/features/companion/companion_conversation_screen.dart
+          cp "$SOURCE" /tmp/v1_16_candidate.dart
+          git show origin/main:frontend/lib/features/companion/companion_conversation_screen.dart > "$SOURCE"
+          flutter build web --release -t lib/ui_companion_chat_e2e_main.dart
+          mkdir -p ../v1-16-selection-proof/before-web
+          cp -a build/web/. ../v1-16-selection-proof/before-web/
+          cp /tmp/v1_16_candidate.dart "$SOURCE"
+          flutter build web --release -t lib/ui_companion_chat_e2e_main.dart
+          mkdir -p ../v1-16-selection-proof/after-web
+          cp -a build/web/. ../v1-16-selection-proof/after-web/
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Capture actual synthetic reply at three matching viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7358 --bind 127.0.0.1 --directory v1-16-selection-proof/before-web > /tmp/v1_16_before.log 2>&1 &
+          PID_BEFORE=$!
+          python3 -m http.server 7359 --bind 127.0.0.1 --directory v1-16-selection-proof/after-web > /tmp/v1_16_after.log 2>&1 &
+          PID_AFTER=$!
+          trap 'kill "$PID_BEFORE" "$PID_AFTER" 2>/dev/null || true' EXIT
+          curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:7358/ -o /dev/null
+          curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:7359/ -o /dev/null
+          node tools/v1_16_companion_selection_browser.cjs
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image
+          root=Path('v1-16-selection-proof')
+          result=json.loads((root/'result.json').read_text())
+          assert result['success'] and len(result['viewports']) == 6
+          for vp in ((390,844),(768,1024),(1280,900)):
+              imgs=[]
+              for stage in ('before','after'):
+                  p=root/f'{stage}-{vp[0]}x{vp[1]}.png'
+                  with Image.open(p) as im:
+                      assert im.size == vp, (p,im.size)
+                  evidence=json.loads((root/f'{stage}-{vp[0]}x{vp[1]}.json').read_text())
+                  assert evidence['replyObserved'] and not evidence['errors']
+          print('BEFORE/AFTER exact viewport screenshot evidence: 3/3')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v1-16-real-chrome-selection-before-after
+          path: |
+            v1-16-selection-proof/*.png
+            v1-16-selection-proof/*.json
+            v1-16-selection-proof/failure.txt
+          retention-days: 21
+          if-no-files-found: warn

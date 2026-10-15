@@ -1060,7 +1060,8 @@ class _MessageBubble extends StatelessWidget {
             : Border.all(color: AminaVisualLanguage.controlBorder(context)),
         boxShadow: isUser ? null : AminaVisualLanguage.cardShadowLight,
       ),
-      child: Text(
+      // User-initiated native selection/copy only; never copy automatically.
+      child: SelectableText(
         message.text,
         style: TextStyle(
           height: 1.42,
