@@ -344,8 +344,10 @@ def _recover_single_explicit_lab_line(
     """
     if output.errors:
         return
-    model_labs = data.get("lab_values") or {}
-    model_evidence = data.get("evidence") or {}
+    # Missing optional maps are allowed; explicitly malformed maps are not.
+    # In particular, []/None must not be mistaken for an absent citation map.
+    model_labs = data.get("lab_values", {})
+    model_evidence = data.get("evidence", {})
     if not isinstance(model_labs, dict) or not isinstance(model_evidence, dict):
         return
     for field_name, pattern in _EXPLICIT_LAB_PATTERNS.items():

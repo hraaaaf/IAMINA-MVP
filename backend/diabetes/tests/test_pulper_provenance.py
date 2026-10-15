@@ -606,6 +606,19 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertIsNone(output.lab_values.hba1c_pct)
         self.assertFalse(output.lab_values.evidence)
 
+    def test_recovery_rejects_malformed_evidence_map(self):
+        for invalid_evidence in ([], None, "bad-evidence"):
+            output = self._ingest_docx(
+                {
+                    "document_type": "lab_report",
+                    "confidence": 0.95,
+                    "evidence": invalid_evidence,
+                },
+                "HbA1c: 7.2 %",
+            )
+            self.assertIsNone(output.lab_values.hba1c_pct)
+            self.assertFalse(output.lab_values.evidence)
+
     def test_recovery_cannot_override_malformed_provider_reply(self):
         output = self._ingest_docx(
             {"reply": "not valid JSON"},
