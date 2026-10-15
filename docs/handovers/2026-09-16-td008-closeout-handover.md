@@ -1,3 +1,13 @@
+## 15 octobre 2026 — Régression runner postmerge D7/D9 puis reprise vérifiée
+
+- **Incident de CI distinct du lot TD-008 historiquement clos :** [postmerge D7/D9 run #38654612593](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38654612593) FAILED, émulateur Android 15 ~467 secondes au boot puis `adb Broken pipe (32)`, **sans résultat de test Flutter produit**. Cela ne remet pas à lui seul en cause les preuves TD-008 antérieures.
+- **Correction bornée** : [PR #1010](https://github.com/hraaaaf/IAMINA-MVP/pull/1010), seul fichier workflow `.github/workflows/td008-device-integration.yml` modifié (KVM, Pixel 5, Google APIs, 1536 Mo, options sans snapshot). Reprend la configuration de la CI double émulateur D7/D9 déjà vérifiée. Aucun runtime ou donnée clinique modifiés.
+- **Preuves prémerge exact SHA `1875a6a9af8f695800997e6499c6d31d45c8387a` :** [run Android #38656735672](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38656735672) **COMPLETED SUCCESS**, étape d'intégration Android confirmée SUCCESS ; CI #38656735687 SUCCESS.
+- **Merge** [PR #1010](https://github.com/hraaaaf/IAMINA-MVP/pull/1010) au commit `7cdda5a3284306d0dd15ae54f05c0420583413a9`, main relue à ce SHA avant merge suivant D10 test-only. Postmerge [TD-008 #38657927043](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657927043) **initialement IN_PROGRESS** et CI #38657927045 **SUCCESS** ; prochain contrôle de conclusion indispensable.
+- **Next exact :** si run postmerge vert, noter certification runner sur SHA ; si rouge, examiner étape et différencier panne infrastructure/régression réelle avant tout closeout. Cette correction n'atteste pas des 2 téléphones physiques D31 [#1006](https://github.com/hraaaaf/IAMINA-MVP/issues/1006).
+
+---
+
 # HANDOVER — IAMINA / TD-008 closed → TD-012 next
 
 Date: 2026-09-16
