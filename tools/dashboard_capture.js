@@ -77,16 +77,14 @@ const minScreenshotBytes = 15000;
 
       // D3: retain baseline top/mid/lower, plus a real lower-down Reminders view.
       const remindersOffset = Math.round(height * 2.35);
-      const remindersReady = page.waitForResponse(
-        (r) => r.url().includes('/api/v1/companion/overview') &&
-          r.status() >= 200 && r.status() < 300,
-        { timeout: 45000 },
-      );
+      // Reaching this deep scroll does not require a *fresh* network call.
+      // The existing three views already asserted the authenticated overview.
+      // A cached overview must not make the fourth screenshot time out.
       await page.goto(`http://127.0.0.1:7358/?scroll=${remindersOffset}`, {
         waitUntil: 'domcontentloaded', timeout: 120000,
       });
-      await remindersReady;
-      await page.waitForTimeout(1600);
+      await page.locator('flutter-view').first().waitFor({state:'attached',timeout:30000});
+      await page.waitForTimeout(2000);
       const remindersScreenshotPath = path.join(
         'dashboard-visual-cert', `${name}-reminders-${width}x${height}.png`,
       );
