@@ -1,0 +1,117 @@
+name: D10 iOS Simulator Pods_Runner diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d10-ios-linker-diagnostic.yml'
+      - 'docs/security/2026-10-15-d10-ios-pods-linker-diagnostic.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-linker-evidence:
+    name: Evidence-only simulator compile (NOT XCTest)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm Xcode version
+        run: xcodebuild -version
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Single verbose simulator compile, selected linker settings and redacted diagnosis
+        shell: bash
+        run: |
+          set +e
+          (cd frontend && flutter -v build ios --simulator --debug --no-codesign --dart-define=ENABLE_FIREBASE_MIGRATION=false) > "$RUNNER_TEMP/d10-ios-verbose-build.log" 2>&1
+          build_status=$?
+          set -e
+          xcodebuild -workspace frontend/ios/Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -showBuildSettings -json > "$RUNNER_TEMP/d10-ios-settings.json" 2>/dev/null || true
+          export D10_BUILD_STATUS="$build_status"
+          # Extra evidence: distinguish a missing CocoaPods aggregate target,
+          # an unbuilt aggregate product, and a stale linker search path.
+          xcodebuild -project frontend/ios/Pods/Pods.xcodeproj -list > "$RUNNER_TEMP/d10-pods-targets.txt" 2>&1 || true
+          python3 - <<'PY'
+          import json, os, pathlib, re
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          log = (temp / "d10-ios-verbose-build.log").read_text(errors="replace")
+          status = int(os.environ["D10_BUILD_STATUS"])
+          settings_file = temp / "d10-ios-settings.json"
+          try:
+              raw = json.loads(settings_file.read_text()) if settings_file.exists() else []
+          except (ValueError, OSError):
+              raw = []
+          safe_keys = ("TARGET_NAME", "PRODUCT_NAME", "ARCHS", "EXCLUDED_ARCHS", "FRAMEWORK_SEARCH_PATHS",
+                       "PODS_ROOT", "PODS_CONFIGURATION_BUILD_DIR", "OTHER_LDFLAGS", "SDKROOT")
+          targets = []
+          for entry in raw[:12]:
+              settings = entry.get("buildSettings", {})
+              targets.append({"target": entry.get("target"), "values": {
+                  key: str(settings.get(key, ""))[:600] for key in safe_keys
+              }})
+          lines = []
+          for line in log.splitlines():
+              if re.search(r"Pods_Runner|Framework .+ not found|Linker command failed|Error \(Xcode\)|Ld .+Runner", line, re.I):
+                  line = re.sub(r"https?://\S+", "[URL_REDACTED]", line)
+                  line = re.sub(r"(?i)(token|password|secret|key)=\S+", r"\1=[REDACTED]", line)
+                  lines.append(line.strip()[:700])
+          classification = ("SIMULATOR_BUILT_NOT_XCTEST" if status == 0 else
+                            "PODS_RUNNER_MISSING" if re.search(r"Pods_Runner.{0,60}not found", log, re.I)
+                            else "OTHER_BUILD_FAILURE")
+          report = {
+              "issue": 1057,
+              "simulator_build_exit_code": status,
+              "classification": classification,
+              "pods_debug_xcconfig_exists": pathlib.Path("frontend/ios/Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig").is_file(),
+              "pods_project_exists": pathlib.Path("frontend/ios/Pods/Pods.xcodeproj").exists(),
+              "workspace_exists": pathlib.Path("frontend/ios/Runner.xcworkspace").exists(),
+              "selected_build_settings": targets,
+              "filtered_linker_evidence": lines[-35:],
+              "limits": ["No XCTest", "No iCloud restore", "No clinical release approval"]
+          }
+          # No patient material: build products, Xcode link flags and CocoaPods target names only.
+          build_settings = (raw[0].get("buildSettings", {}) if raw else {})
+          def scrub(value):
+              value = re.sub(r"https?://\S+", "[URL_REDACTED]", str(value))
+              return re.sub(r"(?i)(token|password|secret|key)=\S+", r"\1=[REDACTED]", value)
+          cfg = pathlib.Path("frontend/ios/Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig")
+          cfg_lines = cfg.read_text(errors="replace").splitlines() if cfg.is_file() else []
+          pod_list = (temp / "d10-pods-targets.txt").read_text(errors="replace") if (temp / "d10-pods-targets.txt").exists() else ""
+          product_root = pathlib.Path.home() / "Library/Developer/Xcode/DerivedData"
+          product_paths = [str(p) for p in product_root.glob("Runner-*/Build/Products/Debug-iphonesimulator/**/Pods_Runner.framework")]
+          refs = [scrub(log[max(0, m.start()-120):min(len(log), m.end()+160)]) for m in list(re.finditer(r"Pods_Runner", log, re.I))[-20:]]
+          report["target_and_product_probe"] = {
+              "pods_runner_target_declared": bool(re.search(r"(?m)^\s*Pods-Runner\s*$", pod_list)),
+              "pods_target_list_excerpt": scrub(pod_list[:3500]),
+              "pods_runner_framework_products": product_paths[:10],
+              "actual_runner_other_ldflags": scrub(build_settings.get("OTHER_LDFLAGS", ""))[:12000],
+              "actual_runner_framework_search_paths": scrub(build_settings.get("FRAMEWORK_SEARCH_PATHS", ""))[:12000],
+              "generated_pods_debug_link_config": [scrub(x)[:12000] for x in cfg_lines if x.startswith(("OTHER_LDFLAGS", "FRAMEWORK_SEARCH_PATHS"))],
+              "pods_runner_verbose_log_context": refs
+          }
+          path = temp / "d10-ios-linker-diagnostic.json"
+          path.write_text(json.dumps(report, indent=2) + "\n")
+          print("DIAGNOSIS", classification, "BUILD_EXIT", status)
+          print("PODS_FILES", report["pods_debug_xcconfig_exists"], report["pods_project_exists"], report["workspace_exists"])
+          for line in lines[-9:]:
+              print("LINK", line)
+          print("ARTIFACT", path)
+          PY
+          test -s "$RUNNER_TEMP/d10-ios-linker-diagnostic.json"
+          echo "Diagnostic artifact uploaded. A green diagnostic job is not a green iOS Simulator test." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d10-ios-linker-diagnostic
+          path: ${{ runner.temp }}/d10-ios-linker-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,129 @@
+name: D10 iOS Xcode 16.4 real Simulator XCTest
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d10-ios-xcode16-simulator-xctest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-xctest:
+    name: iOS 18 Simulator build and RunnerTests (real XCTest)
+    runs-on: macos-15
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 16.4 explicitly
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+          xcodebuild -showsdks
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Diagnostic-only CocoaPods integration workaround (NOT production)
+        working-directory: frontend/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CocoaPods injects Pods_Runner.framework and Pods_RunnerTests.framework
+          # into the host targets, but neither is present as a compiled product.
+          # Remove ONLY these phantom aggregate links after each CocoaPods integration.
+          # This Podfile mutation is isolated to the CI workspace and not committed.
+          cat >> Podfile <<'RUBY'
+
+          post_integrate do |_installer|
+            require 'xcodeproj'
+            project = Xcodeproj::Project.open(File.join(__dir__, 'Runner.xcodeproj'))
+            removed = []
+            %w[Runner RunnerTests].each do |name|
+              target = project.targets.find { |t| t.name == name }
+              raise "Missing Xcode target #{name}" unless target
+              bad = "Pods_#{name}.framework"
+              target.frameworks_build_phase.files.each do |entry|
+                next unless entry.file_ref && entry.file_ref.path.to_s == bad
+                entry.remove_from_project
+                removed << bad
+              end
+            end
+            raise "No generated phantom aggregate framework links found" if removed.empty?
+            project.save
+            puts "CI_ONLY_REMOVED_PHANTOM_FRAMEWORK_LINKS #{removed.join(',')}"
+          end
+          RUBY
+          pod install
+          ruby - <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('Runner.xcodeproj')
+          %w[Runner RunnerTests].each do |name|
+            target = project.targets.find { |t| t.name == name }
+            bad = "Pods_#{name}.framework"
+            raise "CocoaPods link still present: #{bad}" if target.frameworks_build_phase.files.any? { |f| f.file_ref && f.file_ref.path.to_s == bad }
+          end
+          puts 'CI_ONLY_LINK_REFERENCE_REMOVAL_VERIFIED'
+          RUBY
+      - name: Select available iOS 18 iPhone Simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          simulator_id="$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys
+          data=json.load(sys.stdin)
+          for runtime, devices in sorted(data["devices"].items(),reverse=True):
+              if "iOS-18-" not in runtime:
+                  continue
+              for device in devices:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      sys.exit(0)
+          sys.exit("No available iOS 18 iPhone Simulator")
+          ')"
+          echo "IOS_SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
+          echo "Selected iOS 18 Simulator $simulator_id"
+      - name: Build actual iOS Simulator application
+        working-directory: frontend
+        run: flutter build ios --simulator --debug --no-codesign --dart-define=ENABLE_FIREBASE_MIGRATION=false
+      - name: Execute native RunnerTests XCTest on Simulator
+        working-directory: frontend/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl boot "$IOS_SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$IOS_SIMULATOR_ID" -b
+          xcodebuild test \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+            -parallel-testing-enabled NO \
+            -only-testing:RunnerTests/RunnerTests \
+            -resultBundlePath "$RUNNER_TEMP/d10-runner-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+          xcrun xcresulttool get test-results summary \
+            --path "$RUNNER_TEMP/d10-runner-tests.xcresult" \
+            --format json > "$RUNNER_TEMP/d10-runner-tests-summary.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          report = json.loads((pathlib.Path(os.environ["RUNNER_TEMP"]) / "d10-runner-tests-summary.json").read_text())
+          count = report.get("totalTestCount", 0)
+          passed = report.get("passedTests", 0)
+          print("XCTEST_ACTUAL_EXECUTION", "total=", count, "passed=", passed)
+          if not isinstance(count, int) or count < 3 or passed != count:
+              raise SystemExit("XCTest was not fully executed successfully")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d10-ios-xcode16-xctest-summary
+          path: ${{ runner.temp }}/d10-runner-tests-summary.json
+          if-no-files-found: ignore
+          retention-days: 7
