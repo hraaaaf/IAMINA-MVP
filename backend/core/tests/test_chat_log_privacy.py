@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 
 def _request():
-    return SimpleNamespace(user=SimpleNamespace(id=73))
+    return SimpleNamespace(user=SimpleNamespace(id=73), COOKIES={})
 
 
 def test_regular_chat_exception_is_not_copied_into_logs():
