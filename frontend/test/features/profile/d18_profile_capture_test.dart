@@ -91,12 +91,15 @@ void main() {
   testWidgets('D18 readable FR/AR raster at four viewports',
       (tester) async {
     if (!_enabled) return;
-    final bytes = await File(
-      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf').readAsBytes();
-    final loader = FontLoader('D18AuditDejaVu');
-    loader.addFont(Future<ByteData>.value(
-        ByteData.sublistView(Uint8List.fromList(bytes))));
-    await loader.load();
+    // File I/O must escape WidgetTester's FakeAsync clock to avoid hangs.
+    await tester.runAsync(() async {
+      final bytes = await File(
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf').readAsBytes();
+      final loader = FontLoader('D18AuditDejaVu');
+      loader.addFont(Future<ByteData>.value(
+          ByteData.sublistView(Uint8List.fromList(bytes))));
+      await loader.load();
+    });
     for (final size in <Size>[
       const Size(360, 560), const Size(390, 844),
       const Size(768, 1024), const Size(1280, 900),
