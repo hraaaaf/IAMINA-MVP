@@ -1,3 +1,21 @@
+## 15 octobre 2026 — Android D10-B, correctif de sauvegarde fusionné après 3 CI vertes
+
+**Goal** : éviter que les données médicales locales soient sauvegardées automatiquement sur Android/transportées à un nouvel appareil sans protocole patient autorisé. **Le verrou facultatif B lui-même reste NON IMPLÉMENTÉ.**
+
+**Preuve prémerge SHA `09e48db9961936775fe16987c3db35d2ecda7dfa`** :
+- [PR #1046](https://github.com/hraaaaf/IAMINA-MVP/pull/1046) : 6 fichiers uniquement (AndroidManifest `allowBackup=false`, 2 XML Android 11/12+ excluant cloud et D2D, 3 tests XML et GitHub Actions compile/debug merged manifest, doc sécurité), sans autre code patient.
+- [D10 Android #38709641432](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38709641432) **SUCCESS** avec `Source XML and negative-path policy tests`, `Compile Android debug APK` et `Validate merged APK manifest policy` toutes SUCCESS.
+- [CI générale #38709641394](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38709641394) **SUCCESS** ; [packaging mobile #38709641442](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38709641442) **SUCCESS**.
+- **Merge** : [#1046](https://github.com/hraaaaf/IAMINA-MVP/pull/1046) `MERGED` au commit `2e16be596c07b61de877250be1c836beca861579`. `main`, manifeste et [doc de protection Android](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-android-backup-hardening.md) relus sur ce SHA.
+
+**Postmerge sur `2e16be59`** : [D10 Android #38710694402](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38710694402) et [CI #38710694368](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38710694368) étaient `IN_PROGRESS` au premier contrôle ; enregistrer leur conclusion avant de déclarer la CI postmerge close.
+
+**Limites techniques** : exclusion déclarative et manifeste Android debug compilé ne prouvent **pas** une sauvegarde/restore sur véritable appareil/OEM. Désactiver la sauvegarde réduit les possibilités de restauration sur nouveau téléphone. La [documentation Android Auto Backup](https://developer.android.com/identity/data/autobackup) distingue cloud, D2D et transfert Android 16 QPR2 vers iOS : ce troisième mode n'a **pas** été qualifié faute de `Apple Team ID` vérifié et de test matériel ; [issue #1048](https://github.com/hraaaaf/IAMINA-MVP/issues/1048) **OPEN**. Ne pas prétendre tous les modes de transfert certifiés.
+
+**D10-B statut** : préférence utilisateur B actée, implémentation réelle NON LIVRÉE ; stockage iOS/Web, identité propriétaire forte et droit de synchroniser séparé non attestés. [Issue D10 #968](https://github.com/hraaaaf/IAMINA-MVP/issues/968) et [gate #1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013) OPEN. Aucune donnée patient réelle ni aucun déploiement Vercel. **Next exact** : vérifier CI postmerge puis qualifier les protections iOS/Web, développer un opt-out cryptographiquement sûr sur plateformes approuvables, tester avant activation. P5 historique : 50 %.
+
+---
+
 ## 15 octobre 2026 — Réexécution D10-B sur HEAD actuel, code + standards primaires
 
 **Goal** : appliquer concrètement le prompt d'expert sécurité/confidentialité sur le code final plutôt que reproduire un texte générique.
