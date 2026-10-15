@@ -83,11 +83,13 @@ def _stop_chrome(process: subprocess.Popen) -> None:
     write the ephemeral browser profile. This cleanup must never turn a genuine
     successful browser assertion into an infrastructure failure.
     """
-    if process.poll() is not None:
-        return
+    # Chrome parent can exit before its renderer children. Always signal the
+    # isolated process group, even when Popen.poll() reports parent exit.
     try:
         os.killpg(process.pid, signal.SIGTERM)
     except ProcessLookupError:
+        pass
+    if process.poll() is not None:
         return
     try:
         process.wait(timeout=5)
