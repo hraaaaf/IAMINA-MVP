@@ -134,6 +134,9 @@ class AminaMobilePageHeader extends StatelessWidget {
                       // In RTL Arabic, use the app's Arabic-capable fallback.
                       fontFamily: Localizations.localeOf(context).languageCode == 'ar'
                           ? null : 'Georgia',
+                      // The IAMINA Georgia subset does not cover every page
+                      // title. Preserve serif where available, never show tofu.
+                      fontFamilyFallback: const ['Inter', 'Roboto'],
                       color: AminaVisualLanguage.primaryText(context),
                       fontSize: 24,
                       height: 1.05,
