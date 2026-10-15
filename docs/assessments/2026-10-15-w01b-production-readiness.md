@@ -1,0 +1,31 @@
+# IAMINA W01-B — Readiness production Web (snapshot 2026-10-15)
+
+> **STATUT : NO-GO — ne pas déployer en production patient.** L'utilisateur a donné le feu vert **conditionnel à tous les contrôles verts** ; cela ne vaut ni certification clinique ni autorisation d'envoyer des données patients vers les services distants. Le prochain jalon n'est pas une promotion Vercel : c'est la fermeture mesurable des gates W01-B, W02 et W14.
+>
+> Périmètre examiné : `main@f45a77c4ffb408e6d00cb6fa84c39cbd449e03ee`, [ADR-W01-01](../adr/ADR-W01-01-web-two-vercel-neon.md), [local-first canonique](../LOCAL_FIRST_RUNTIME_BOUNDARY.md), [roadmap W01/W02/W14](../ROADMAP.md). Ce fichier est un **snapshot de métadonnées non secrètes** : revalider l'état distant et le SHA avant un vrai déploiement.
+
+## État concret
+
+| Gate | État constaté | Preuve / Next exact |
+|---|---|---|
+| GitHub main / W01-A CI | **PASS scope W01-A** | #1091/#1092 fusionnées ; CI pré/post W01 synthétique et build Flutter PWA vertes. Ne certifie pas Web réel connecté |
+| Deux projets Vercel | **PARTIEL** | `iamina-review` `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI` et `iamina-certified` `prj_Pn9FnyconF3h2w9gOU74iV98kJoU` existent. Root Directory effective de chacun non exposée par lecture du connecteur ; vérifier sans changer la configuration |
+| Cohérence des artefacts cible prod | **FAIL / PAS PROUVÉ** | Derniers déploiements Vercel `target=production` observés : frontend `60de80ec070157f912cb62c80a7ded1e9bde75a6` ; backend `9d24cff11fc422fe0c6235757dbf317eebe32912` ; aucun n'est le SHA `main@f45a77c4ffb4`. Les noms « production » dans Vercel ne constituent pas la certification du runtime patient |
+| Source URL API Flutter | **PARTIEL** | `frontend/vercel_build.sh` lie review → `https://iamina-certified.vercel.app` et compile `IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true`. À arbitrer dans W02 ; ne pas utiliser le build de review comme distribution patient sans qualification |
+| Runtime Vercel Django | **PARTIEL / TEST W01-B** | `wsgi.py` charge `amina.vercel_settings` si `VERCEL=1`; PostgreSQL obligatoire, `DEBUG=False`, `CONN_MAX_AGE=0` ; tests de boot/négatifs [`test_w01b_vercel_runtime_preflight.py`](../../backend/amina/test_w01b_vercel_runtime_preflight.py) à valider en CI exact HEAD. Ceci ne prouve ni le TLS/RTT/connexion Neon cloud ni les transactions |
+| Environnements Django réel | **BLOQUÉ** | Variables backend `DEBUG=False`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` présentes ; `DATABASE_URL` sensible déclarée en prod **et** en preview, sans preuve des destinations ni séparation. Aucune clé `IAMINA_ENV` montrée par inventaire Vercel : `VERCEL_ENV=production` seul n'active pas `is_vercel_production()`. Ne pas lire/imprimer les URL SQL |
+| Neon IAMINA | **BLOQUÉ** | Projet `square-sun-82359137`, région `aws-eu-central-1` : une branche par défaut `production`, **`protected=false`** au contrôle ; pas de dev/preview interne observée. Projet synthétique distinct `iamina-925-empty-pg-test-20261015` existe, mais aucun raccordement Vercel prouvé. Ne jamais appliquer de migration d'essai sur `production` |
+| API réelle → Neon + restore | **NON VÉRIFIÉ** | Test synthétique CI PostgreSQL16 HTTP PASS dans W01-A, **pas** un test Vercel réel. Prouver la connexion à une DB de test isolée, pooler/direct, migrations/rollback/backup restore avant l'activation prod |
+| E2E navigateur Web | **NON VÉRIFIÉ** | Vérifier un même candidat Flutter→Django→PG via Chrome à 390×844 / 768×1024 / 1280×900, CORS/CSRF, A→B→A, offline, 401, panne API, sans données patients |
+| Coffre clinique IndexedDB | **BLOQUÉ W02** | Base locale patient-scoped Drift et app-lock WebAuthn constatés ; l'isolation du coffre et le **chiffrement au repos / clés / récupération** ne sont pas encore certifiés pour données de santé |
+| Clinique / légalité / privacy / release | **BLOQUÉ W14** | Revue clinique, menaces, données personnelles et sous-traitants, conformité CNDP/transferts et décisions humaines patients/pilote à compléter ; W14 reste `NOT_RELEASE_AUTHORIZED` |
+
+## Séquence exécutable — aucun déploiement préemptif
+
+1. Valider les tests W01-B de boot serverless avec négatifs (nouvelle CI exacte) puis fermer le PR technique si tous les jobs sont verts.
+2. Lire les paramètres Vercel manquants avec accès autorisé (Root Directory, Git Production Branch) et obtenir la séparation *prouvée* des bases : preview != prod, branche de test sans patients, branche prod protégée.
+3. Définir la chaîne d'artefacts front/back commit compatible, origin CORS exact et IAMINA_ENV de production avec SMTP/recovery, mais **ne pas activer** tant que W02/W14 ne sont pas autorisés.
+4. Certifier navigateur/serveur sur données de test et rejouer migrations, sauvegarde/restauration, authentification et coffre patient isolé.
+5. Réaliser gates W02 puis W14. **Seulement lorsque tous PASS sur les SHA candidats**, utiliser l'autorisation Vercel conditionnelle du propriétaire : stage `--prod --skip-domain`, test same-build, promote contrôlé, smoke production et rollback. Autorisation **patients réels distincte**.
+
+**Règle de décision :** CI technique verte ≠ release GO. Tant qu'un gate est BLOQUÉ/NON VÉRIFIÉ, déploiement production patient **NON**.
