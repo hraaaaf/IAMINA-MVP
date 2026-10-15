@@ -17,7 +17,7 @@ flutter pub get
 # backend project itself and local/demo builds keep their existing behavior.
 # API_BASE_URL is the backend origin only: Flutter services append /api/v1.
 IAMINA_REVIEW_VERCEL_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
-IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
+IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified-b4lvm3tsw-achraf-benmoussa-s-projects.vercel.app"
 
 # Fail closed on Vercel if this Flutter build is ever invoked by another
 # project. This prevents the certified backend project from accidentally
