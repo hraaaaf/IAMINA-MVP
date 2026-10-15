@@ -1,3 +1,14 @@
+## 15 octobre 2026 — POST-MERGE FINAL : tests D10-B VERTS, GATE HUMAN OPEN
+
+- **État vérifié GitHub, main HEAD :** `a38285ab72d2cebbcc0f9738096adfc459547932`, [PR #1010](https://github.com/hraaaaf/IAMINA-MVP/pull/1010) / [#1012](https://github.com/hraaaaf/IAMINA-MVP/pull/1012) / [#1014](https://github.com/hraaaaf/IAMINA-MVP/pull/1014) **MERGED**.
+- **Avant merge des tests D10** HEAD `a7811eb4` : [TD-014 #38657348652](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657348652) SUCCESS, [CI #38657348657](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657348657) SUCCESS, [P5-5 #38657348727](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657348727) SUCCESS.
+- **Après merge D10** HEAD `b9588bf9` : [P5-5 #38657961163](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657961163) SUCCESS ; CI #38657961166 **CANCELLED** (ne jamais la compter verte), remplacée pour le code identique par CI finale [#38658178252](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38658178252) **SUCCESS sur main exact `a38285ab`** après merge du dossier documentaire.
+- **TD-008 réparée** : [run Android postmerge #38657927043](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38657927043) **COMPLETED SUCCESS** sur `7cdda5a3`, en plus de CI #38657927045 SUCCESS. Plus aucun run en cours dans ce sous-lot identifié.
+- **D10-B = choix utilisateur acté, NON livrée :** les PR code précédentes ne contiennent que des tests de non-contournement, pas de désactivation du verrou dans l'app. L'expert sécurité et le responsable privacy n'ont pas donné d'avis indépendants : [gate #1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013) OPEN. Absence de preuve suffisante du chiffrement/protection du stockage médical local (notamment web IndexedDB). **Human gate véritable avant tout opt-out réel ou déploiement B.**
+- **Next exact :** obtenir évaluations indépendantes sécurité/privacy par plateforme et preuves du stockage/OS puis reprendre l'implémentation B sécurisée ; garder tests physiques D7/D9 dans D31 [#1006](https://github.com/hraaaaf/IAMINA-MVP/issues/1006). P5 historique = 50 %, aucun nouveau pourcentage inventé.
+
+---
+
 ## 15 octobre 2026 — D10-B baseline défensive fusionnée ; gate humaine maintenue
 
 - **Code source main certifié fusionné, pas produit B activé :** [PR #1012](https://github.com/hraaaaf/IAMINA-MVP/pull/1012) **MERGED** commit `b9588bf9fb37fc1d6dc922f91b4039a380f839a9`, HEAD `main` vérifié au même SHA immédiatement après fusion. Un seul fichier de **tests** `frontend/test/services/app_lock_service_test.dart` modifié ; aucun accès clinique, consentement, route, stockage, UI ou lock service runtime modifié.
