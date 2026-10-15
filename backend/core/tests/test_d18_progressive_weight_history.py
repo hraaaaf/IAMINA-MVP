@@ -8,8 +8,9 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from core.models import BasePatientProfile, PatientWeightObservation
+from core.models.patient import BasePatientProfile
 from core.models.patient_weight import (
+    PatientWeightObservation,
     append_patient_weight,
     normalized_weight,
     validated_birth_year,
@@ -70,6 +71,8 @@ class D18PatientWeightHistoryTests(TestCase):
             PatientWeightObservation.objects.filter(patient=self.b).exists()
         )
         # Do not forge a "current weight" from a historical record.
+        # Creating a Django User alone does not manufacture a base profile.
+        BasePatientProfile.objects.create(patient=self.a)
         self.assertIsNone(BasePatientProfile.objects.get(patient=self.a).weight)
 
     def test_idempotent_same_patient_uuid_and_conflict_fail_closed(self):
