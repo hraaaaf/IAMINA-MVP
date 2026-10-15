@@ -41,6 +41,9 @@ Future<void> _loadFonts(WidgetTester tester) async {
     const fallback = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
     await load('Inter', fallback);
     await load('Inter Tight', fallback);
+    // Material buttons may request Roboto even when app body uses Inter.
+    // WidgetTester's default Ahem font would draw block placeholders.
+    await load('Roboto', fallback);
     final root = Platform.environment['FLUTTER_ROOT'];
     if (root == null || root.isEmpty) throw StateError('FLUTTER_ROOT missing');
     await load('MaterialIcons',
