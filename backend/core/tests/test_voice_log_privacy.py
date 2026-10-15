@@ -6,10 +6,9 @@ external AI egress, changing patient consent, or bypassing live authorization.
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from ai.api.v1.voice import voice_chat
 from core.input_safety import InputSafetyDecision, URGENT
 from media.voice import TranscriptionError
-
-from ai.api.v1.voice import voice_chat
 
 
 def _fake_voice_request():
