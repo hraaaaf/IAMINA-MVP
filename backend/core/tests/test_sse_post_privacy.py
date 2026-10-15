@@ -215,3 +215,70 @@ def test_without_consent_provider_cannot_enter_even_inside_deferred_scope():
     assert "Une erreur est survenue." in body
     assert "data: [DONE]" in body
     assert ai_egress._CURRENT_EGRESS.get() is None
+
+@pytest.mark.django_db
+def test_http_post_session_normal_sse_disconnect_scopes_provider_cleanup():
+    """Use the real HTTP route, then disconnect after one SSE frame."""
+    from django.conf import settings
+    from django.contrib.auth.models import User
+    from django.middleware.csrf import get_token
+    from django.test import Client, RequestFactory
+
+    from core.ai_egress import _CURRENT_EGRESS
+
+    observed = []
+
+    class FakeCompanion:
+        def __init__(self, patient, language):
+            self.patient = patient
+            self.deep = MagicMock()
+
+        def stream_chat(self, message, context_days=14):
+            try:
+                scope = _CURRENT_EGRESS.get()
+                observed.append(("enter", scope.patient_id, scope.purpose))
+                yield "First sentence. Second sentence."
+                yield "NOT_TO_BE_RENDERED"
+            finally:
+                scope = _CURRENT_EGRESS.get()
+                observed.append(("close", scope.patient_id if scope else None))
+
+    user = User.objects.create_user(username="synthetic-sse-http-disconnect")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(user)
+    csrf_token = get_token(RequestFactory().get("/"))
+    client.cookies[settings.CSRF_COOKIE_NAME] = csrf_token
+    canary = "synthetic_private_sse_body_only"
+
+    with (
+        patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
+        patch("ai.api.v1.ai.LogEntry.objects.filter", return_value=_fake_entries()),
+        patch("ai.api.v1.ai.track"),
+        patch("companion.core.IAmina", FakeCompanion),
+        patch("companion.router.route"),
+        patch("companion.advice_filter.contains_medical_advice", return_value=False),
+    ):
+        response = client.post(
+            "/api/v1/ai/chat/stream",
+            data=json.dumps({"message": canary, "context_days": 14}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        assert response.status_code == 200
+        assert response.streaming
+        assert response["Cache-Control"] == "no-store"
+        assert canary not in response.wsgi_request.get_full_path()
+        assert observed == []
+        assert _CURRENT_EGRESS.get() is None
+
+        first_event = next(iter(response.streaming_content)).decode()
+        assert "data: " in first_event
+        assert "First sentence." in first_event
+        assert "NOT_TO_BE_RENDERED" not in first_event
+        assert _CURRENT_EGRESS.get() is None
+
+        response.close()
+        assert ("enter", user.id, "companion_chat") in observed
+        assert ("close", user.id) in observed
+        assert _CURRENT_EGRESS.get() is None
+
