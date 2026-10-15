@@ -11,6 +11,8 @@ on:
       - 'scripts/check_web_topology_contract.py'
       - 'scripts/tests/test_w01_web_topology_contract.py'
       - 'docs/adr/ADR-W01-01-web-two-vercel-neon.md'
+      - 'backend/amina/test_w01b_vercel_runtime_preflight.py'
+      - 'docs/assessments/2026-10-15-w01b-production-readiness.md'
       - '.github/workflows/w01-web-topology-contract.yml'
   push:
     branches: [main]
@@ -23,6 +25,8 @@ on:
       - 'scripts/check_web_topology_contract.py'
       - 'scripts/tests/test_w01_web_topology_contract.py'
       - 'docs/adr/ADR-W01-01-web-two-vercel-neon.md'
+      - 'backend/amina/test_w01b_vercel_runtime_preflight.py'
+      - 'docs/assessments/2026-10-15-w01b-production-readiness.md'
       - '.github/workflows/w01-web-topology-contract.yml'
 permissions:
   contents: read
@@ -83,3 +87,5 @@ jobs:
         run: python manage.py migrate --noinput
       - name: Exercise authenticated Django HTTP route with synthetic patient isolation
         run: python -m pytest -q diabetes/tests/test_api.py::APILogsTestCase::test_logs_isolation
+      - name: Enforce Vercel serverless PostgreSQL and patient production fail-closed boot gates
+        run: python -m pytest -q amina/test_w01b_vercel_runtime_preflight.py
