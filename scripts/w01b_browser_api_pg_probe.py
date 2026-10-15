@@ -130,7 +130,7 @@ def main() -> int:
                 pages = _get_pages(time.monotonic() + 30)
                 page = next(page for page in pages if page.get("type") == "page")
                 title = _confirm_title(page, time.monotonic() + 90)
-                print(json.dumps({
+                proof = {
                     "result": "PASS",
                     "evidence_type": "CI-only synthetic real browser",
                     "browser_origin": "http://127.0.0.1:7364",
@@ -138,10 +138,12 @@ def main() -> int:
                     "postgresql": "16, local GitHub Actions service",
                     "title": title,
                     "limits": "No Vercel/Neon cloud, no patient data, no auth or production CORS certification",
-                }, indent=2))
-                return 0
+                }
             finally:
                 _stop_chrome(process)
+    # Emit PASS only after browser assertion AND teardown/context exit succeed.
+    print(json.dumps(proof, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
