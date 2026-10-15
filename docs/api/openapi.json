@@ -3415,7 +3415,7 @@
                 "type": "number"
               },
               {
-                    "type": "string"
+                "type": "string"
               }
             ],
             "title": "Value"
