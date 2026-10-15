@@ -380,7 +380,7 @@ jobs:
           if not (pwa.get('ready') and pwa.get('release') and
                   pwa.get('currentCache') and pwa.get('noStaleShell')):
               raise RuntimeError(f'Synthetic Chrome first PWA install failed: {pwa}')
-          print('Synthetic clean Chrome PWA install: active release shell, no stale caches.')
+          print('Synthetic Chrome first SW registration: current shell cached, no stale caches.')
 
           # Exercise real Chrome fetch → local proxy → Django SSE, not just
           # static Dart request-construction tests or the regular /ai/chat UI.
