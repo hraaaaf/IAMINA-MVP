@@ -1,6 +1,8 @@
 ---
 name: iamina-ia04-cgm-metrics
 description: "IAMINA Glucose and CGM metrics. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA04 — Glucose and CGM metrics
 

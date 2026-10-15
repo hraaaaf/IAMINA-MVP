@@ -1,6 +1,8 @@
 ---
 name: iamina-ia09-data-offline
 description: "IAMINA Data integrity offline sync database and migrations. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA09 — Data integrity offline sync database and migrations
 

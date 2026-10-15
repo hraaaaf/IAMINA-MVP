@@ -1,6 +1,8 @@
 ---
 name: iamina-ia07-mena-language
 description: "IAMINA MENA multilingual clinical linguistic safety. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA07 — MENA multilingual clinical linguistic safety
 

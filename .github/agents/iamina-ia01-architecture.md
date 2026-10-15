@@ -1,6 +1,8 @@
 ---
 name: iamina-ia01-architecture
 description: "IAMINA System and software architecture. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA01 — System and software architecture
 

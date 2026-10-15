@@ -1,6 +1,8 @@
 ---
 name: iamina-ia03-diabetes-clinical
 description: "IAMINA Diabetes clinical domain and evidence. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA03 — Diabetes clinical domain and evidence
 

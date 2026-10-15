@@ -1,6 +1,8 @@
 ---
 name: iamina-ia02-clinical-safety
 description: "IAMINA Clinical safety and risk engineering. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA02 — Clinical safety and risk engineering
 

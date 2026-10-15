@@ -1,6 +1,8 @@
 ---
 name: iamina-ia08-security-privacy
 description: "IAMINA Security privacy consent and external egress. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA08 — Security privacy consent and external egress
 

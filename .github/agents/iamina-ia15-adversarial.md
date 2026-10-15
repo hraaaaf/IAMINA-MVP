@@ -1,6 +1,8 @@
 ---
 name: iamina-ia15-adversarial
 description: "IAMINA Independent adversarial reviewer and contradictions. Review the entire applicable product surface with evidence only."
+tools: ["read", "search", "web"]
+include-custom-instructions: true
 ---
 # IAMINA IA15 — Independent adversarial reviewer and contradictions
 

@@ -1,6 +1,8 @@
 ---
 name: iamina-council-coordinator
 description: "Orchestrate a full-application fifteen-specialist IAMINA evidence audit with independent AI sub-agent contexts and a release-evidence matrix."
+tools: ["read", "search", "web", "agent"]
+include-custom-instructions: true
 ---
 # IAMINA full-app council coordinator
 
