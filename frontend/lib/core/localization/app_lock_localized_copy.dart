@@ -1,4 +1,5 @@
 import 'package:amina/l10n/app_localizations.dart';
+import 'package:flutter/foundation.dart';
 
 extension AppLockLocalizedCopy on AppLocalizations {
   String get _appLockLanguageCode => localeName.split(RegExp('[-_]')).first;
@@ -39,11 +40,25 @@ extension AppLockLocalizedCopy on AppLocalizations {
         ar: 'يعمل فتح القفل محلياً حتى عندما يكون IAmina دون اتصال.',
       );
 
-  String get appLockDeviceSecurity => _appLockPick(
-        en: 'Your device can use Face ID, fingerprint, Windows Hello or its screen-lock PIN. IAmina never receives biometric data.',
-        fr: 'Votre appareil peut utiliser Face ID, une empreinte, Windows Hello ou son code de verrouillage. IAmina ne reçoit jamais vos données biométriques.',
-        ar: 'يمكن لجهازك استخدام بصمة الوجه أو الإصبع أو Windows Hello أو رمز قفل الشاشة. لا يتلقى IAmina بياناتك البيومترية أبداً.',
+  String get appLockDeviceSecurity {
+    // WebAuthn can use an OS-managed screen credential, but the native D18
+    // cryptographic bridge explicitly requires BIOMETRIC_STRONG /
+    // biometryCurrentSet and offers NO PIN-only fallback.
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS)) {
+      return _appLockPick(
+        en: 'On mobile, strong Face ID or fingerprint authentication protects this space. No PIN-only fallback. IAmina never receives biometric data.',
+        fr: 'Sur mobile, Face ID ou une empreinte biométrique forte protège cet espace. Aucun recours au seul code PIN. IAmina ne reçoit jamais vos données biométriques.',
+        ar: 'على الهاتف، تحمي بصمة الوجه أو الإصبع القوية هذه المساحة. لا يوجد بديل باستخدام رمز PIN وحده. لا تتلقى IAmina بياناتك البيومترية.',
       );
+    }
+    return _appLockPick(
+      en: 'Your device can use Face ID, fingerprint, Windows Hello or its screen-lock PIN. IAmina never receives biometric data.',
+      fr: 'Votre appareil peut utiliser Face ID, une empreinte, Windows Hello ou son code de verrouillage. IAmina ne reçoit jamais vos données biométriques.',
+      ar: 'يمكن لجهازك استخدام بصمة الوجه أو الإصبع أو Windows Hello أو رمز قفل الشاشة. لا يتلقى IAmina بياناتك البيومترية أبداً.',
+    );
+  }
 
   String get appLockActivate => _appLockPick(
         en: 'Enable secure lock',
