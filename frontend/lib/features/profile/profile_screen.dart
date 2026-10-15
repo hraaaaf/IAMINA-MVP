@@ -17,6 +17,7 @@ import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 import '../../services/sync_service.dart';
+import 'd18_profile_panel.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
