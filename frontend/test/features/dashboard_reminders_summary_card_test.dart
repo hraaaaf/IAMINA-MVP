@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_reminders_summary_card.dart';
 import 'package:drift/native.dart';
@@ -8,6 +10,22 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  test('decision #3 keeps the clinical trend section ahead of reminders', () {
+    final source = File('lib/features/dashboard/dashboard_premium_screen.dart')
+        .readAsStringSync();
+    final start = source.indexOf('SliverChildListDelegate([');
+    final end = source.indexOf('const _DataTools()', start);
+    expect(start, greaterThanOrEqualTo(0));
+    expect(end, greaterThan(start));
+    final sliver = source.substring(start, end);
+    final today = sliver.indexOf('DashboardTodaySection(');
+    final trends = sliver.indexOf('DashboardResponsiveSections(');
+    final reminders = sliver.indexOf('const DashboardRemindersSummaryCard()');
+    expect(today, greaterThanOrEqualTo(0));
+    expect(trends, greaterThan(today));
+    expect(reminders, greaterThan(trends));
+  });
+
   for (final locale in const [Locale('fr'), Locale('en'), Locale('ar')]) {
     testWidgets('decision #3 local-first count and privacy ${locale.languageCode}',
         (tester) async {
