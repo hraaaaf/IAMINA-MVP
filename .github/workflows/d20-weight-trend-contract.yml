@@ -1,0 +1,36 @@
+name: D20 — Weight trend pure contract
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-weight-trend-descriptive-20261015
+    paths:
+      - frontend/lib/features/profile/weight_trend_snapshot.dart
+      - frontend/test/features/profile/d20_weight_trend_snapshot_test.dart
+      - .github/workflows/d20-weight-trend-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d20-pure-weight:
+    name: D20 read-only weight oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Analyze targeted files
+        run: flutter analyze --no-fatal-infos lib/features/profile/weight_trend_snapshot.dart test/features/profile/d20_weight_trend_snapshot_test.dart
+      - name: Synthetic D20 boundary tests
+        run: flutter test --no-pub test/features/profile/d20_weight_trend_snapshot_test.dart
