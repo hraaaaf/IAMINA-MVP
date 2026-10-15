@@ -282,3 +282,34 @@ def test_http_post_session_normal_sse_disconnect_scopes_provider_cleanup():
         assert ("close", user.id) in observed
         assert _CURRENT_EGRESS.get() is None
 
+
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("context_days", [0, -1, 366, 10**20])
+def test_http_post_sse_rejects_out_of_range_lookback_before_any_provider(context_days):
+    """Malicious but authenticated input must fail closed, not overflow timedelta."""
+    from django.conf import settings
+    from django.contrib.auth.models import User
+    from django.middleware.csrf import get_token
+    from django.test import Client, RequestFactory
+
+    user = User.objects.create_user(username=f"synthetic-sse-range-{context_days}")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(user)
+    csrf_token = get_token(RequestFactory().get("/"))
+    client.cookies[settings.CSRF_COOKIE_NAME] = csrf_token
+
+    with (
+        patch("companion.core.IAmina") as forbidden,
+        patch("ai.api.v1.ai.track") as analytics,
+    ):
+        response = client.post(
+            "/api/v1/ai/chat/stream",
+            data=json.dumps({"message": "synthetic range test", "context_days": context_days}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+    assert response.status_code == 422
+    forbidden.assert_not_called()
+    analytics.assert_not_called()

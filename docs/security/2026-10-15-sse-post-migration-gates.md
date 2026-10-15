@@ -50,3 +50,7 @@
 ## Next exact
 
 Prior code-only SHA `496a685ba23047ce27742750af5476b8d0918144` passed CI #38717063878 (SQLite 2829; PostgreSQL 2833), drift #38717063843, local chat E2E #38717063862, pilot rehearsal #38717063770. This docs/hand-over update changes the branch HEAD and requires new scoped exact-head CI. Reconcile current `main`, prove POST SSE end-to-end and first-install compatibility, obtain separate security/clinical reviewer and release certifier, retain DRAFT; no merge or Vercel deploy.
+
+## 2026-10-15 — pending adversarial range guard (one-session security pass)
+
+A security code re-read found that `ChatRequest.context_days` is an unrestricted integer: the SSE handler passes it into `timedelta(days=...)` before opening its lazy stream. A huge authenticated value can raise `OverflowError` and return a server error; negative and zero values are semantically invalid as a clinical look-back. Candidate guard rejects values outside **1–365 days with HTTP 422** before telemetry/DB/LLM on the SSE route, with four real-session + CSRF HTTP tests in `test_sse_post_privacy.py`. This is a same-executor finding/remediation, **not** independent security review. Exact new-HEAD CI is required before changing this status from PENDING to VERIFIED. No changes to shared `/ai/chat` contract or deployed services.

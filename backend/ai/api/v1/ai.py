@@ -493,6 +493,10 @@ def chat_stream(request, data: ChatRequest):
 
     message = data.message
     context_days = data.context_days
+    # Bound the calendar look-back before timedelta/SQL, even for an
+    # authenticated caller. Unbounded Pydantic ints can overflow timedelta.
+    if not 1 <= context_days <= 365:
+        raise HttpError(422, "context_days must be between 1 and 365")
     from core.input_safety import (
         INSULIN_BLOCK,
         PRESCRIPTION_BLOCK,
