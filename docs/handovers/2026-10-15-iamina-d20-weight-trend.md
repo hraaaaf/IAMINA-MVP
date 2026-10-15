@@ -19,3 +19,10 @@ Actual Dart tests on the exact candidate branch must pass; code inspection must 
 
 ## Next exact
 Run Flutter targeted tests in connected CI or local authorized Flutter runtime for D20-A, confirm new branch exact HEAD. Then D20-B consent prefs + source-to-trigger proof and visual comparison. If no runtime, mark technical gate pending and keep PR draft, do not fabricate test evidence.
+
+
+## D20-A — technical code-head CI successful, 15 October 2026
+
+Run https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38772766061 completed SUCCESS, exact product-code SHA b30289d7f2ef822bb0ca59936aaf1db169d46f55. Flutter 3.41 targeted analyzer: no issues; 7/7 synthetic Dart unit tests PASS (missingness, owner isolation, date bounds, provenance UUID, kg/lb conversion, no medical threshold or notification). No UI changed. This final documentation commit changes no app runtime logic, and its own focused CI will be recorded separately.
+
+Full D20 is NOT delivered. D20-B/C require explicit user opt-in, user-defined criteria, rate-limit/dedup, same-vault preference persistence, notification vs reminder separation, actual rendering/multi-locale/a11y BEFORE-AFTER proof and D18 release dependencies. D19 patient review remains open. P5 historical 6/12 50% unchanged.

@@ -8,6 +8,7 @@ on:
       - frontend/lib/features/profile/weight_trend_snapshot.dart
       - frontend/test/features/profile/d20_weight_trend_snapshot_test.dart
       - .github/workflows/d20-weight-trend-contract.yml
+      - docs/handovers/2026-10-15-iamina-d20-weight-trend.md
   workflow_dispatch:
 
 permissions:
