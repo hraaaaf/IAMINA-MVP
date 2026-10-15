@@ -44,7 +44,7 @@ class GovernedCgmPromotionTests(TestCase):
         )
 
     def _insert_complete_hourly_window(self):
-        expected = 14 * 24 + 1
+        expected = 14 * 24 + 1  # Deliberately insert an extra session-end row.
         rows = []
         for index in range(expected):
             if index % 10 == 0:
@@ -90,7 +90,7 @@ class GovernedCgmPromotionTests(TestCase):
         self.assertEqual(projection["cv_pct"], metrics.cv_pct)
         self.assertNotEqual(projection["tir_pct"], self._raw_kpis().tir_pct)
         self.assertNotEqual(projection["tar_pct"], self._raw_kpis().tar_pct)
-        self.assertEqual(projection["cgm_metric_reading_count"], 337)
+        self.assertEqual(projection["cgm_metric_reading_count"], 14 * 24)
 
     def test_verified_cgm_metrics_match_independent_numeric_oracle(self):
         self._insert_complete_hourly_window()
@@ -106,14 +106,18 @@ class GovernedCgmPromotionTests(TestCase):
         )
 
         self.assertTrue(window.verified)
-        self.assertEqual(metrics.reading_count, 337)
-        self.assertEqual(metrics.tir_pct, 69.7)
+        self.assertEqual(window.expected_readings, 14 * 24)
+        self.assertEqual(window.received_readings, 14 * 24)
+        self.assertEqual(metrics.reading_count, 14 * 24)
+        self.assertEqual(metrics.tir_pct, 69.6)
         self.assertEqual(metrics.tar_pct, 20.2)
         self.assertEqual(metrics.tbr_pct, 10.1)
         self.assertEqual(metrics.cv_pct, 39.3)
-        self.assertEqual(
-            round(metrics.tir_pct + metrics.tar_pct + metrics.tbr_pct, 1),
+        # Independently rounded 0.1%-precision fractions can sum to 99.9%.
+        self.assertAlmostEqual(
+            metrics.tir_pct + metrics.tar_pct + metrics.tbr_pct,
             100.0,
+            delta=0.11,
         )
 
     def test_cgm_target_boundaries_are_inclusive(self):

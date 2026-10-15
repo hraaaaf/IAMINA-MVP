@@ -22,3 +22,9 @@ Verify exact SHA workflows; if no jobs triggered, diagnose GitHub Actions event 
 **Independent code review finding:** after the first half-open report-window change, the CGM metrics and AGP still had `recorded_at <= session.ended_at`, but eligibility considered sensor sessions as `[started_at,ended_at)`. This could count a session-end reading in CGM metrics but not coverage. Candidate switches both analytics queries to `recorded_at < session.ended_at` and adds two Django DB regression tests for CGM count, TIR, AGP and eligibility. Existing thresholds unchanged.
 
 **Status:** candidate only until exact new HEAD CI SQLite+PostgreSQL fully passes; clinician/privacy/RTL and CAL-01…12 gates open, no merge/Vercel.
+
+## 15 October 2026 — D19 CI #38768317677 failure and targeted recovery candidate
+
+- The workflow at source SHA `eb1dfe2fe4db72a5b13f861e205b891fdfa7f8d4` ran backend SQLite: 2814 passed, 2 failed, 5 skipped, 3 xfailed. Two legacy CAL CGM oracle tests expected 337 readings including exactly `window_end`; the current half-open contract excludes that row (336). Correct independent 336-sample oracle is TIR=69.6%, TAR=20.2%, TBR=10.1%, CV=39.3%, percentages sum 99.9% at independent one-decimal rounding; numerical invariant now allows 0.11 percentage points rounding residue. Clinical cutpoints unchanged.
+- Same run PostgreSQL job #116537343431 failed before test startup: external public ECR image `postgres:16-alpine` rejected all three pulls (toomanyrequests / data limit). New CI-only proposal runs on pinned Ubuntu 24.04 with pre-installed PostgreSQL 16, starts service, explicitly sets CI-only password/DB, verifies version and TCP auth, runs unchanged migrations and full PG test suite. Reference GitHub runner image specification: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md.
+- Status: code candidate pending exact new SHA CI; no D19 clinical, security or release certification; no merge and no Vercel.
