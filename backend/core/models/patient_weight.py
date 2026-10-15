@@ -141,5 +141,5 @@ def append_patient_weight(
         or observation.measured_at != measured_at
         or observation.provenance != provenance
     ):
-        raise PatientWeightIdempotencyConflict("Measurement UUID conflict")
+        raise PatientWeightIdempotencyConflict("Client UUID already belongs to another declaration")
     return observation, created
