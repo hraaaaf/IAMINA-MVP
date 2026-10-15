@@ -101,6 +101,22 @@ def test_synthetic_image_parser_is_deterministic_and_other_text_stays_live():
     assert delegate.calls == 1
 
 
+def test_source_rule_recovery_is_marked_distinct_from_groq_parser():
+    from diabetes.services.documents.pulper import (
+        _recover_single_explicit_lab_line,
+    )
+
+    output = PulperOutput()
+    _recover_single_explicit_lab_line(
+        output,
+        {"document_type": "lab_report", "confidence": 0.95},
+        {"L0001": "Fasting glucose: 126 mg/dL"},
+    )
+    assert output.lab_values.fasting_glucose_mgdl == 126
+    assert output.lab_values.evidence["fasting_glucose_mgdl"].verified
+    assert any("règle déterministe" in w for w in output.warnings)
+
+
 def test_score_facts_counts_wrong_values_as_fp_and_fn():
     score = score_facts(
         {"lab_values.hba1c_pct": 7.2, "lab_values.fasting_glucose_mgdl": 126.0},
