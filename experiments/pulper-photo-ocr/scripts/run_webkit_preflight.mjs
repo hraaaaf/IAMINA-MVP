@@ -50,7 +50,7 @@ try {
         message:String(error.message||'').slice(0,300)
       }));
       page.on('console',message=>{
-        if(message.type()==='error'&&!/^Estimating resolution as \\d+$/.test(message.text()))
+        if(message.type()==='error'&&!/^Estimating resolution as \d+$/.test(message.text()))
           outcome.errors.push({stage:'console',errorClass:'ConsoleError',
             message:String(message.text()).slice(0,300)});
       });
@@ -129,7 +129,7 @@ try {
   // A successful preflight only means the compatibility probes ran, even if
   // the recorded HEIC codec or OCR engine is unsupported. Never imply clinical pass.
   report.qualificationPassed=false;
-  await writeFile('out/report-webkit.json',JSON.stringify(report,null,2)+'\\n');
+  await writeFile('out/report-webkit.json',JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({probeCompleted:report.probeCompleted,
     measured:report.measuredCases,passed:report.passedCases,
     heicLocalDecode:report.heicCodec?.localDecode??false,
