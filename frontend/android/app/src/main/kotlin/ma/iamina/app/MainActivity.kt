@@ -99,8 +99,8 @@ class MainActivity : FlutterActivity() {
                     reply.error("strong_auth_unavailable", null, null)
                 } else if (alias == null || !keyHandlePattern.matches(alias) ||
                     expected.isNullOrEmpty() ||
-                    args["origin"] != "https://native.iamina.invalid" ||
-                    args["rpId"] != "ma.iamina.app") {
+                    args?.get("origin") != "https://native.iamina.invalid" ||
+                    args?.get("rpId") != "ma.iamina.app") {
                     reply.error("invalid_native_credential", null, null)
                 } else {
                     signChallenge(alias, expected, false, reply)
