@@ -250,3 +250,4 @@ class _ConsentState extends State<D20WeightNoticeConsentPanel> {
       ],
     ),
   );
+}
