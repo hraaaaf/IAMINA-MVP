@@ -717,6 +717,36 @@ class PulperSpreadsheetProvenanceTest(SimpleTestCase):
 
 
 class PulperProvenancePersistenceTest(TestCase):
+    def test_unsourced_llm_timestamp_cannot_persist_glucose_event(self):
+        from diabetes.models import LogEntry
+        from diabetes.services.documents.pulper import _enforce_model_evidence_coverage
+
+        patient = User.objects.create_user(username="pulper-unverified-time")
+        output = PulperOutput(
+            source_format="docx",
+            document_type="glucose_log",
+            confidence=0.95,
+            glucose_readings=[GlucoseReading(
+                value_mgdl=126,
+                timestamp="2026-08-20T08:00:00+01:00",
+                context="post_meal",
+                evidence={"value_mgdl": FieldEvidence(
+                    raw_value="126",
+                    source_ref="text:L0001",
+                    verified=True,
+                )},
+            )],
+        )
+        _enforce_model_evidence_coverage(output)
+        self.assertEqual(len(output.glucose_readings), 1)
+        self.assertIsNone(output.glucose_readings[0].timestamp)
+        self.assertIsNone(output.glucose_readings[0].context)
+
+        result = persist(output, patient, "no-source-time")
+        self.assertEqual(result.glucose_readings_saved, 0)
+        self.assertTrue(any("timestamp" in err for err in result.errors))
+        self.assertFalse(LogEntry.objects.filter(patient=patient).exists())
+
     def test_provenance_survives_persistence_without_copying_full_raw_text(self):
         payload = (
             "timestamp,glucose\n"
