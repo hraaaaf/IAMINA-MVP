@@ -3,6 +3,8 @@
 <plist version="1.0">
 <dict>
 	<!-- Phase 11-B: OCR glucometer reader — camera + photo library access -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>IAMINA utilise Face ID pour protéger l’accès à votre profil patient local et aux informations facultatives de santé.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>IAmina utilise la caméra pour lire votre glycémie directement depuis votre lecteur de glycémie.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

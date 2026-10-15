@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 import '../../services/sync_service.dart';
+import 'd18_profile_panel.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
@@ -81,6 +83,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // a separately governed clinical-sync capability is explicitly enabled.
   bool get _canResolveRemoteTreatmentConflict =>
       context.read<ApiClient?>()?.canSyncClinicalData ?? false;
+
+  // Keep vault resolution and AppLock/provider orchestration out of the
+  // presentation-only Profile part, and fail closed on unsupported Web.
+  AppDatabase? _unlockedNativeD18Vault() {
+    if (kIsWeb || context.watch<AppLockService?>()?.isUnlocked != true) {
+      return null;
+    }
+    final db = context.read<AppDatabase>();
+    return db.patientVaultScope?.nativeDjangoUserId == null ? null : db;
+  }
 
   void _setPresentationState(VoidCallback fn) => setState(fn);
 
