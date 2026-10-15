@@ -8,7 +8,8 @@
 ## Implementation candidate
 - `_enforce_model_evidence_coverage` strips `MedicationEntry.dose`, `frequency` and `drug_type` unless **that exact field** has verified source evidence; a verified name does not confer evidence on other model-generated attributes.
 - `_evidence_matches_value` rejects medication citations occurring only inside longer words or numeric tokens.
-- Five focused new provenance tests (missing independent citations, valid positive path, embedded dose, embedded drug name, wrong-line frequency) and one API preview rejection test.
+- Because this guard runs only from the LLM parser, an absent provider label must never disable it; a targeted negative test is included.
+- Six focused provenance tests (missing independent citations, valid positive path, embedded dose, embedded drug name, wrong-line frequency, absent provider label) and one API preview rejection test.
 - **Status at authored commit**: implementation candidate; exact-HEAD CI has NOT YET BEEN OBSERVED. Do not mark completed merely because this file is committed.
 
 ## Release boundary
