@@ -162,6 +162,45 @@ void main() {
     expect(after?.unitPreference, before?.unitPreference);
   });
 
+  testWidgets('D18 drops an in-flight measurement date on A to B switch',
+      (tester) async {
+    final a = await _patientDb(734);
+    final b = await _patientDb(812);
+    addTearDown(a.close);
+    addTearDown(b.close);
+
+    await _mount(tester, a);
+    await tester.enterText(find.byKey(const Key('d18-weight-value')), '71.20');
+    await tester.ensureVisible(find.byKey(const Key('d18-measured-at')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('d18-measured-at')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    // The dialog still belongs to A but its panel is rebound to B.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: SingleChildScrollView(
+        child: D18ProfilePanel(db: b),
+      )),
+    ));
+    await tester.pumpAndSettle();
+    if (find.byType(DatePickerDialog).evaluate().isNotEmpty) {
+      await tester.tap(find.text('OK').last);
+      await tester.pumpAndSettle();
+    }
+    // Never continue into B's time picker with a date picked by A.
+    expect(find.byType(TimePickerDialog), findsNothing);
+    final value = tester.widget<TextField>(
+      find.byKey(const Key('d18-weight-value')));
+    expect(value.controller?.text, isEmpty);
+    await tester.ensureVisible(find.byKey(const Key('d18-save-weight')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(
+      find.byKey(const Key('d18-save-weight'))).onPressed, isNull);
+    expect(await PatientWeightHistoryStore(b).recent(), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('D18 same widget switches A to B to A without stale identity',
       (tester) async {
     final a = await _patientDb(734);
