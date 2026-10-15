@@ -1149,7 +1149,7 @@
             "in": "query",
             "name": "target_low",
             "schema": {
-              "default": 70,
+              "default": 70.0,
               "title": "Target Low",
               "type": "number"
             },
@@ -1159,7 +1159,7 @@
             "in": "query",
             "name": "target_high",
             "schema": {
-              "default": 180,
+              "default": 180.0,
               "title": "Target High",
               "type": "number"
             },
@@ -2960,8 +2960,8 @@
           "grams": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0,
-                "maximum": 3000,
+                "exclusiveMinimum": 0.0,
+                "maximum": 3000.0,
                 "type": "number"
               },
               {
@@ -3046,8 +3046,8 @@
             "title": "Meal Episode Id"
           },
           "blood_sugar": {
-            "maximum": 600,
-            "minimum": 30,
+            "maximum": 600.0,
+            "minimum": 30.0,
             "title": "Blood Sugar",
             "type": "number"
           },
@@ -3077,7 +3077,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -3212,8 +3212,8 @@
           "blood_sugar": {
             "anyOf": [
               {
-                "maximum": 600,
-                "minimum": 30,
+                "maximum": 600.0,
+                "minimum": 30.0,
                 "type": "number"
               },
               {
@@ -3268,7 +3268,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -3361,7 +3361,6 @@
             "type": "string"
           },
           "value": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Value",
             "type": "string"
           },
@@ -3370,7 +3369,6 @@
             "type": "string"
           },
           "weight_kg": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           },
@@ -3404,6 +3402,7 @@
       },
       "PatientWeightWriteSchema": {
         "additionalProperties": false,
+        "description": "One explicitly dated patient declaration; never inferred from profile.",
         "properties": {
           "client_uuid": {
             "format": "uuid",
