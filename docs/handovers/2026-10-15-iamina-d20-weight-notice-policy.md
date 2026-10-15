@@ -13,3 +13,10 @@ D20-A+B synthetic Flutter tests, analyzer on exact SHA; prove that OFF prevents 
 
 ## Next
 Validate CI on exact SHA; then integrate owned local preferences + actual notification permission and durable dedup. UI must satisfy BEFORE/mockup/AFTER same viewports and accessibility; full D20 remains OPEN.
+
+
+## 2026-10-15 — D20-B scoped CI success on exact code SHA
+
+[GitHub workflow #38773741640](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38773741640) completed SUCCESS for code SHA `550130c346284cc1972a065a182c14d3871eb7d7`. Targeted analyzer **No issues found**; **14/14 synthetic Dart tests PASS**, covering D20-A 7 source/missingness cases + D20-B 7 explicit-opt-in, missing criteria, magnitude/period, staleness, local cooldown and evidence dedup. Initial candidate CI [#38773502870](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38773502870) failed only for an invalid `const` constructor reading runtime properties, fixed in `550130c` and verified by run #38773741640. No clinical threshold or product notification behavior.
+
+Release status unchanged: **D20-C pending** owner-vault preferences and actual OS permission/durable deliveries; UI BEFORE/mockup/AFTER + FR/EN/AR/Darija/RTL, D18 native and privacy gates. Both D20 PRs stay DRAFT and unmerged, D19 human clinical gate pending; no additional Vercel deploy. P5 historical 6/12 = 50% unchanged.
