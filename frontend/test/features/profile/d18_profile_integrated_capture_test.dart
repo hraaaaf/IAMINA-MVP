@@ -44,6 +44,9 @@ Future<void> _loadFonts(WidgetTester tester) async {
     // Material buttons may request Roboto even when app body uses Inter.
     // WidgetTester's default Ahem font would draw block placeholders.
     await load('Roboto', fallback);
+    // The Flutter test harness uses Ahem for some inherited Material labels.
+    // Override that audit-only family with readable, Arabic-capable glyphs.
+    await load('Ahem', fallback);
     // The current IAMINA header explicitly uses the bundled Georgia family.
     // Load the real product asset so French headings are not Ahem blocks.
     await load('Georgia', 'assets/fonts/IAMINASerif-Bold-subset.ttf');
