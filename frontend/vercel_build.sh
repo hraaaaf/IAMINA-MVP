@@ -16,6 +16,23 @@ flutter pub get
 # Django backend. Bind only that frontend project to the live backend so the
 # backend project itself and local/demo builds keep their existing behavior.
 # API_BASE_URL is the backend origin only: Flutter services append /api/v1.
+# #925 isolated test adapter, on this PREVIEW-ONLY branch only.
+# Never select an IAMINA live backend; do not allow a production deployment.
+IAMINA_925_ISOLATED_VERCEL_PROJECT_ID="prj_qtzjKURkeZXAjI6UdE7u6IqecqLB"
+if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_925_ISOLATED_VERCEL_PROJECT_ID" ]; then
+  if [ "${VERCEL_ENV:-}" != "preview" ]; then
+    echo "ERROR: #925 isolated Flutter build is preview-only" >&2
+    exit 64
+  fi
+  API_BASE_URL="https://iamina-925-django-empty-pg-20261015-7lsddl41h.vercel.app"
+  IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+  echo "IAMINA #925 isolated synthetic-only preview frontend; empty database backend"
+  flutter build web --release \
+    --dart-define=API_BASE_URL="$API_BASE_URL" \
+    --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+  exit 0
+fi
+
 IAMINA_REVIEW_VERCEL_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
 IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
 
