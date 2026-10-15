@@ -6,8 +6,6 @@ external AI egress, changing patient consent, or bypassing live authorization.
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from ai.api.v1.voice import voice_chat
-
 from core.input_safety import InputSafetyDecision, URGENT
 from core.middleware.triage_vital import TriageVitalMiddleware
 from media.voice import TranscriptionError
@@ -20,6 +18,13 @@ def _fake_voice_request():
         read=lambda: b"synthetic-audio-never-sent",
     )
     return request, audio
+
+
+def _invoke_voice(request, audio):
+    # Import locally: the ai app module is not a core test dependency group.
+    from ai.api.v1.voice import voice_chat
+
+    return voice_chat.__wrapped__(request, audio)
 
 
 def test_emergency_voice_reply_preserved_without_transcript_in_logs():
@@ -38,7 +43,7 @@ def test_emergency_voice_reply_preserved_without_transcript_in_logs():
         ),
         patch("ai.api.v1.voice.logger.critical") as logged_event,
     ):
-        response = voice_chat.__wrapped__(request, audio)
+        response = _invoke_voice(request, audio)
 
     assert response["is_emergency"] is True
     assert response["transcript"] == canary
@@ -60,7 +65,7 @@ def test_stt_failure_retains_safe_reply_without_exception_or_user_in_logs():
         ),
         patch("ai.api.v1.voice.logger.warning") as logged_event,
     ):
-        response = voice_chat.__wrapped__(request, audio)
+        response = _invoke_voice(request, audio)
 
     assert response["is_emergency"] is False
     assert response["reply"]
