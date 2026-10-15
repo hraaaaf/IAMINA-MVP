@@ -7,6 +7,7 @@ import '../../data/drift/database.dart';
 import '../../data/drift/patient_progressive_demographics_store.dart';
 import '../../data/drift/patient_weight_history_store.dart';
 import 'd20_weight_trend_card.dart';
+import 'd20_weight_notice_consent_panel.dart';
 
 /// D18-C: optional local patient declarations. No automatic clinical sync.
 class D18ProfilePanel extends StatefulWidget {
@@ -377,6 +378,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
               observations: _history,
               asOfUtc: DateTime.now().toUtc(),
             ),
+            const SizedBox(height: 12),
+            D20WeightNoticeConsentPanel(db: widget.db),
           ],
           if (_notice != null)
             Padding(padding: const EdgeInsets.only(top: 12),

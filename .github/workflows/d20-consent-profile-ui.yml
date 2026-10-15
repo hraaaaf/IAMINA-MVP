@@ -1,0 +1,116 @@
+name: D20-F Consent Profile UI
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-consent-profile-controls-20261015
+    paths:
+      - frontend/lib/features/profile/d20_weight_notice_consent_panel.dart
+      - frontend/lib/features/profile/d18_profile_panel.dart
+      - frontend/test/features/profile/d20_weight_notice_consent_panel_test.dart
+      - frontend/test/features/profile/d18_profile_integrated_capture_test.dart
+      - .github/workflows/d20-consent-profile-ui.yml
+      - docs/assessments/2026-10-15-d20-consent-ui-before-after.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consent-contract:
+    name: Explicit opt-in, vault A-B-A, locale, 33 upstream tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Scoped analyzer
+        run: flutter analyze --no-fatal-infos lib/features/profile/d20_weight_notice_consent_panel.dart lib/features/profile/d18_profile_panel.dart test/features/profile/d20_weight_notice_consent_panel_test.dart
+      - name: Run D20 A-F & D18 regression
+        run: >
+          flutter test --no-pub
+          test/features/profile/d20_weight_notice_consent_panel_test.dart
+          test/features/profile/d20_weight_trend_card_test.dart
+          test/features/profile/d20_weight_trend_snapshot_test.dart
+          test/features/profile/d20_weight_notice_policy_test.dart
+          test/data/drift/d20_weight_notice_preferences_store_test.dart
+          test/data/drift/d20_weight_notice_delivery_ledger_test.dart
+          test/features/profile/d18_profile_panel_test.dart
+
+  canonical-visual:
+    name: D20-F real ProfileScreen BEFORE / AFTER FR AR
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b43c1c114d9a254f0258f9a2098e60373659bde1
+          path: before
+      - uses: actions/checkout@v4
+        with:
+          path: after
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: BEFORE: real D20-E profile, 4 widths
+        working-directory: before/frontend
+        run: |
+          flutter pub get
+          flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens test/features/profile/d18_profile_integrated_capture_test.dart
+      - name: AFTER: real ProfileScreen plus consent states
+        working-directory: after/frontend
+        run: |
+          flutter pub get
+          flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --dart-define=D20_CAPTURE_CONSENT=true --update-goldens test/features/profile/d18_profile_integrated_capture_test.dart
+      - name: Verify paired images and pixel changes
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check Pillow==11.3.0
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image,ImageChops
+          before=Path('before/frontend/test/features/profile/goldens')
+          after=Path('after/frontend/test/features/profile/goldens')
+          rows=[]
+          for locale in ('fr','ar'):
+            for viewport in ('390x844','430x932','768x1024','1280x900'):
+              for state in ('top','open','history'):
+                name=f'd18-real-profile-{locale}-{viewport}-{state}.png'
+                a,b=before/name,after/name
+                assert a.is_file() and b.is_file() and a.stat().st_size>6000 and b.stat().st_size>6000
+                ia,ib=Image.open(a).convert('RGB'),Image.open(b).convert('RGB')
+                assert ia.size==ib.size
+                changed=sum(px!=(0,0,0) for px in ImageChops.difference(ia,ib).getdata())
+                rows.append((name,changed,100*changed/(ia.width*ia.height)))
+              for state in ('closed','open'):
+                name=f'd20-consent-{locale}-{viewport}-{state}.png'
+                f=after/name
+                assert f.is_file() and f.stat().st_size>6000,f
+          assert len(rows)==24
+          with open('d20-f-paired-raster.txt','w') as out:
+            out.write('24 matched real ProfileScreen BEFORE/AFTER images and 16 new consent images. Synthetic patient, AppLock simulated; no native or clinical certification.\n')
+            for name,changed,pct in rows:
+              out.write(f'{name}: {changed} pixels changed ({pct:.3f}%)\n')
+          print('Verified 24 paired real ProfileScreen images + 16 new consent states')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iamina-d20-f-consent-before-after
+          path: |
+            before/frontend/test/features/profile/goldens/d18-real-profile-*.png
+            after/frontend/test/features/profile/goldens/d18-real-profile-*.png
+            after/frontend/test/features/profile/goldens/d20-consent-*.png
+            d20-f-paired-raster.txt
+          if-no-files-found: warn
+          retention-days: 14
