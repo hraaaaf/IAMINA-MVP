@@ -1,3 +1,39 @@
+## 15 octobre 2026 — Alignement croisé D10 ↔ D11 (source GitHub et Vercel recontrôlées)
+
+**Décision :** D10-B (app-lock facultatif) doit respecter la priorité de **D11 : zéro données cliniques fictives dans les vrais comptes**. Aucune protection D10 contre les sauvegardes ne prouve à elle seule l'isolation des contenus ou l'absence de fixtures. Toute implémentation future D10 doit partir de `main` vérifié, inventorier les changements D11, et exécuter les tests d'intégration **D10 + D11**, pas seulement les tests D10 sur la branche courante.
+
+**D11 état réel au 15/10** : [PR #1021](https://github.com/hraaaaf/IAMINA-MVP/pull/1021) **DRAFT / NON MERGED** (`fix/v1-d11-real-account-zero-demo-20261015@9d24cff11fc422fe0c6235757dbf317eebe32912`), **six workflows SUCCESS sur le même SHA** ([CI](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38712874779), migration, P5-5, trois PWA). Le code D11 vérifié refuse `POST /api/v1/demo/seed` pour les patients, restreint les fixtures Drift à `PatientVaultScope.auditOnly()`, bloque `AppDatabase.seedDemoData()` dans les coffres natifs/device-local. Le correctif ne prouve pas l'absence de fixtures historiques ; aucune purge automatique autorisée. [Handover D11](https://github.com/hraaaaf/IAMINA-MVP/blob/fix/v1-d11-real-account-zero-demo-20261015/docs/handovers/2026-10-15-iamina-d11-zero-demo.md).
+
+**Déploiements D11 vérifiés directement** (distincts du main et **réservés à un laboratoire de simulation**, bien que le *target Vercel* s'appelle `production`) : `iamina-certified` backend [dpl_9tPKqRpMiyEMhCtQ99Jc5QV2ew77](https://vercel.com/achraf-benmoussa-s-projects/iamina-certified/9tPKqRpMiyEMhCtQ99Jc5QV2ew77) **READY**, `iamina-review` frontend [dpl_CXHuHYhDaNSTkRyct1k4GndgUYR3](https://vercel.com/achraf-benmoussa-s-projects/iamina-review/CXHuHYhDaNSTkRyct1k4GndgUYR3) **READY**, même commit D11 `9d24cff1`, alias présents. **Cela ne constitue ni un merge de D11, ni une permission de patient réel, ni une preuve du parcours utilisateur A→B→A. Aucun nouveau déploiement D10 autorisé.**
+
+**Matrice de non-régression D10↔D11 avant implémentation de B :**
+1. Connexion réelle A, nouvelle inscription B et device-local : zéro glycémi(e)/repas/traitement fictif ; `demo/seed` authentifié **403**, anonyme **401**, aucun write ; les huit scénarios publics de démonstration restent réservés à la simulation.
+2. Audit-only accepte uniquement des données synthétiques dans son **coffre isolé** ; faux drapeau d'audit ou faux opt-out sur un patient ne permet pas `seedDemoData`.
+3. A→déconnexion→B→A, hors ligne puis recharge navigateur, ne doit ni transmettre, ni afficher, ni synchroniser le coffre de l'autre propriétaire ; conservation et récupération des vrais journaux existants.
+4. L'option B **ne doit jamais produire artificiellement `appLock.isUnlocked=true`** pour obtenir transport réseau ; consentement, `AuthEpoch`, `canSyncClinicalData`, propriétaire vérifié et egress restent des contrôles séparés.
+5. Tests Flutter + Django/PostgreSQL + PWA/Android/iOS sur SHA d'intégration **avec D11 intégré réellement**. Les six CI vertes sur branche D11 ne valent pas CI de `main` ni proof D10+B. Pas de merge/rebase automatique de la PR D11 restée DRAFT ; ne pas modifier ses 9 fichiers de domaine à travers un correctif D10.
+
+**Ordre exact :** finaliser la preuve post-merge de sauvegarde iOS D10 → préserver les invariants D11 sur toutes les nouvelles PR → attendre l'intégration autorisée de D11 ou intégrer explicitement les deux branches dans une revue synthétique sans déclarer production-ready → sécurité du stockage/identité Web et iOS → option B + tests croisés. **D11 DRAFT et D10 OPEN** ; P5 reste à **50 % historique**, non recalculé. Aucun déploiement Vercel de D10.
+
+---
+
+## 15 octobre 2026 — D10-B iOS sauvegardes locales : merge #1053, limites établies
+
+**Goal exact :** réduire l'inclusion accidentelle dans les sauvegardes iOS des fichiers SQLite d'un coffre patient, sans déplacer la base ni toucher au verrou d'accès. **Le choix B de verrou facultatif reste NON implémenté.**
+
+**Succès observé sur HEAD PR `73716e7fcb2b9060b6a5de369374c449102ad0c0` :** [D10 iOS native Swift #38716161853](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38716161853) **SUCCESS** : compilation de la fonction Foundation Swift présente dans `AppDelegate.swift`, correspondance du préfixe patient et des extensions DB/WAL/SHM, exclusion des fichiers sans rapport, idempotence et lecture de `isExcludedFromBackup` **sur macOS**. [CI générale #38716161822](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38716161822) **SUCCESS**. [Packaging iOS #38716161813](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38716161813) **SUCCESS** (build release sans signature). Les trois résultats concernent le même HEAD, sans données patient réelles.
+
+**Fusion constatée :** [PR #1053](https://github.com/hraaaaf/IAMINA-MVP/pull/1053) **MERGED** dans `main@5d3d81a7841257b497cf8e01f1380e2c33d1accf`. Relecture directe du fichier `AppDelegate.swift`, du `SceneDelegate.swift` et du [document explicatif](https://github.com/hraaaaf/IAMINA-MVP/blob/main/docs/security/2026-10-15-d10-b-ios-backup-exclusion.md) sur le nouveau main. **CI post-merge** [D10 iOS #38717221683](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38717221683) et [CI #38717221667](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38717221667) : `IN_PROGRESS` au contrôle initial, à revérifier avant clôture de la preuve post-merge.
+
+**Limites de preuve et risques résiduels :**
+- Trois tentatives de construire et exécuter les **XCTest sur iOS Simulator** ont échoué *avant le lancement des tests* avec `Framework 'Pods_Runner' not found`. [Issue de diagnostic #1057](https://github.com/hraaaaf/IAMINA-MVP/issues/1057) **OPEN**. Ni le changement de configuration CocoaPods Debug ni Flutter 3.41.4 n'ont résolu. Le test macOS n'est **pas** un XCTest iOS.
+- `isExcludedFromBackup` reste une indication de non-sauvegarde susceptible d'être réinitialisée par modifications de fichiers. Les bases créées entre les callbacks peuvent temporairement ne pas recevoir la marque ; aucune restauration iCloud ou vérification sur appareil réel n'est prouvée. [Issue protection iOS #1052](https://github.com/hraaaaf/IAMINA-MVP/issues/1052) **OPEN**. Pas de preuve de protection `NSFileProtectionComplete` du DB/WAL/SHM.
+- [Web #1054](https://github.com/hraaaaf/IAMINA-MVP/issues/1054), [transfert Android→iOS #1048](https://github.com/hraaaaf/IAMINA-MVP/issues/1048), [D10 #968](https://github.com/hraaaaf/IAMINA-MVP/issues/968), [gate #1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013) **OPEN**. Pas de mise en production du verrou facultatif, ni Vercel, ni certification clinique/juridique.
+
+**Next exact :** contrôler les runs iOS post-merge puis rétablir le simulateur via preuve native des frameworks manquants, et engager la séparation du droit de coffre/synchro + chiffrement Web / identité forte avant d'implémenter l'option B. P5 **50 % historique**, sans recalcul.
+
+---
+
 ## 15 octobre 2026 — Android D10-B, correctif de sauvegarde fusionné après 3 CI vertes
 
 **Goal** : éviter que les données médicales locales soient sauvegardées automatiquement sur Android/transportées à un nouvel appareil sans protocole patient autorisé. **Le verrou facultatif B lui-même reste NON IMPLÉMENTÉ.**
