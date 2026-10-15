@@ -1,0 +1,26 @@
+{
+  "name": "iamina-pulper-photo-ocr-spike",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Synthetic-only, same-origin browser OCR comparison. Not a medical importer.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "fixtures": "python3 scripts/generate_fixtures.py --output public/fixtures",
+    "assets": "node scripts/bootstrap_assets.mjs",
+    "bench": "node scripts/run_browser_benchmark.mjs",
+    "native-reference": "node scripts/run_native_reference.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "heic-fixture": "python3 scripts/generate_heic_fixture.py",
+    "webkit-preflight": "node scripts/run_webkit_preflight.mjs"
+  },
+  "dependencies": {
+    "@paddleocr/paddleocr-js": "0.4.2",
+    "tesseract.js": "7.0.0"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "vite": "6.4.1"
+  }
+}
