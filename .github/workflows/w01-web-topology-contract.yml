@@ -36,3 +36,49 @@ jobs:
         run: python scripts/check_web_topology_contract.py
       - name: W01 adverse-regression tests
         run: python -m unittest discover -s scripts/tests -p test_w01_web_topology_contract.py -v
+
+  w01-postgres-http-smoke:
+    name: W01 synthetic Django HTTP to PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_w01_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_w01_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-w01-synthetic-no-patients
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w01_ci
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Verify actual PostgreSQL driver, not SQLite
+        run: python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'; print('W01: PostgreSQL backend connected')"
+      - name: Apply synthetic PostgreSQL schema migrations
+        run: python manage.py migrate --noinput
+      - name: Exercise authenticated Django HTTP route with synthetic patient isolation
+        run: python -m pytest -q diabetes/tests/test_api.py::APILogsTestCase::test_logs_isolation
