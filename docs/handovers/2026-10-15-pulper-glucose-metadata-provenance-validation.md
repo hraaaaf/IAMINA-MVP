@@ -22,3 +22,9 @@
 - Recovery creates **separately verified, source-line-bound** `FieldEvidence`, a generic review-required warning, and a separately reported `source_rule_recovered_fields` metric and per-case `source_rule_recovered` flag in the synthetic corpus report. This is a **transparent deterministic parser safety net**, NOT Groq accuracy; no fallback is hidden and numeric/clinical guardrails are unchanged.
 - New negative/positive tests include injection contamination, fasting line, duplicates/target line/wrong unit, contradicted LLM fact, malformed envelope; no real-patient egress.
 - **NOT YET CI VALIDATED** at commit creation. Existing strict 99% critical precision/recall and 100% provenance/fail-closed thresholds remain. If a 400 is returned by provider, ingestion remains fail-closed; reliability issue #1045 remains open.
+
+## Final one-run qualification gate, code finalized
+- Explicitly malformed `evidence` maps such as `[]`, `null`, or a string now fail closed: only ABSENT maps may default to `{}`. Negative tests cover this.
+- A new Django database test enforces no `LogEntry` persistence of a glucose event with LLM-invented timestamp or meal context even if the numeric value is source-verified.
+- The benchmark emits `source_rule_recovered_fields` and a per-case `source_rule_recovered` boolean to distinguish an exact independent source-literal recovery from Groq model extraction; existing thresholds remain untouched.
+- **FINAL CODE READY FOR FIRST CONTROLLED BENCHMARK; NOT YET SUCCESS**. HEAD of this doc-trigger commit must pass exact-head Pulper/CI/Protected Shadow/Django/Companion/portability before integration. No real patient, no main merge or Vercel.
