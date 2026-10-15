@@ -56,6 +56,9 @@ void main() {
         await seedOfflineDemoAuditData(
           db, auditAllowed: true, offlineDemo: true,
         );
+        // Even a future caller bypassing the audit helper cannot overwrite
+        // an actual medical vault with generated demo measurements.
+        await expectLater(db.seedDemoData(), throwsStateError);
         expect(await db.countLogs(), 0, reason: scope.databaseName);
         expect(
           await db.getProfileForLocalUserId(db.activeProfileRowId),
