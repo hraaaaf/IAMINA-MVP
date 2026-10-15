@@ -1,0 +1,45 @@
+name: D20 — Dispatch preflight (no OS sender)
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-dispatch-preflight-20261015
+    paths:
+      - frontend/lib/data/drift/patient_weight_notice_dispatch_preflight.dart
+      - frontend/test/data/drift/d20_weight_notice_dispatch_preflight_test.dart
+      - .github/workflows/d20-dispatch-preflight-contract.yml
+      - docs/handovers/2026-10-15-iamina-d20-dispatch-preflight.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d20-preflight:
+    name: D20 local dispatch preflight and all upstream contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Analyze changed preflight and tests
+        run: flutter analyze --no-fatal-infos lib/data/drift/patient_weight_notice_dispatch_preflight.dart test/data/drift/d20_weight_notice_dispatch_preflight_test.dart
+      - name: Run D20 A-G isolated synthetic contracts
+        run: >
+          flutter test --no-pub
+          test/features/profile/d20_weight_trend_snapshot_test.dart
+          test/features/profile/d20_weight_notice_policy_test.dart
+          test/data/drift/d20_weight_notice_preferences_store_test.dart
+          test/data/drift/d20_weight_notice_delivery_ledger_test.dart
+          test/features/profile/d20_weight_trend_card_test.dart
+          test/features/profile/d20_weight_notice_consent_panel_test.dart
+          test/data/drift/d20_weight_notice_dispatch_preflight_test.dart
