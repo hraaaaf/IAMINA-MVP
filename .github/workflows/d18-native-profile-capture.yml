@@ -7,6 +7,7 @@ on:
       - 'frontend/lib/core/widgets/mobile_page_header.dart'
       - 'frontend/test/features/profile/d18_profile_capture_test.dart'
       - 'frontend/test/features/profile/d18_profile_integrated_capture_test.dart'
+      - 'frontend/test/features/profile/d18_profile_panel_test.dart'
       - '.github/workflows/d18-native-profile-capture.yml'
   workflow_dispatch:
 permissions:
