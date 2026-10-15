@@ -29,7 +29,17 @@ fi
 
 # The review project has one canonical backend origin. Always override any
 # stale project-level API_BASE_URL when Vercel exposes the expected project ID.
-if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
+if [ "${VERCEL_GIT_COMMIT_REF:-}" = "preview/d11-linked-lab-vercel-20261015" ]; then
+  # D11 lab: bind to the immutable backend *preview*, never the default
+  # backend alias. Never activate this override on a different Vercel project.
+  if [ "${VERCEL_PROJECT_ID:-}" != "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
+    echo "ERROR: D11 lab requires IAMINA review Vercel project" >&2
+    exit 64
+  fi
+  API_BASE_URL="https://iamina-certified-5lsubckms-achraf-benmoussa-s-projects.vercel.app"
+  IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+  echo "D11 synthetic preview: connected to backend preview only"
+elif [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
   API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
   IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
 fi
