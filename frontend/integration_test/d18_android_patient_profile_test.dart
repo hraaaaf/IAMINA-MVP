@@ -1,4 +1,4 @@
-// D18-only ANDROID emulator integration. Runs as an installed Android test APK.
+// D18 Android + iOS simulator integration; installed native app, synthetic test patients.
 // Uses actual drift_flutter on-device, disk-backed patient vaults. All synthetic.
 // The AppLock here is deliberately simulated; it proves UI gating, NOT platform
 // biometric strength, physical device hardware or encryption.
@@ -161,7 +161,7 @@ Future<void> checkNativeD18AccessReleaseGate() async {
       throwsA(isA<AppLockException>().having(
         (e) => e.code, 'code', 'strong_auth_unavailable')));
   debugPrint('D18_NATIVE_BRIDGE=CONNECTED '
-      'STRONG_BIOMETRY=UNAVAILABLE_UNENROLLED_CI_EMULATOR');
+      'STRONG_BIOMETRY=UNAVAILABLE_UNENROLLED_SIMULATOR');
 }
 
 Future<void> checkRealNativeProfileScreen(WidgetTester tester) async {
@@ -215,7 +215,7 @@ Future<void> checkRealNativeProfileScreen(WidgetTester tester) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  testWidgets('D18 Android disk A B A and actual ProfileScreen native gate',
+  testWidgets('D18 native disk A B A and actual ProfileScreen gate',
       (tester) async {
     await runNativeD18DiskIsolation();
     await checkNativeD18AccessReleaseGate();

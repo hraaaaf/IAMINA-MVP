@@ -10,6 +10,7 @@ on:
       - 'frontend/lib/services/app_lock_authenticator_factory.dart'
       - 'frontend/lib/services/app_lock_service.dart'
       - 'frontend/test/features/profile/d18_native_app_lock_boundary_test.dart'
+      - 'frontend/integration_test/d18_android_patient_profile_test.dart'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +20,7 @@ jobs:
   d18-ios-compile:
     name: Compile Secure Enclave native bridge without signing (NO physical biometric proof)
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 65
     defaults:
       run:
         working-directory: frontend
@@ -36,6 +37,30 @@ jobs:
         run: flutter test --no-pub --reporter expanded test/features/profile/d18_native_app_lock_boundary_test.dart
       - name: Compile iOS app with native Secure Enclave bridge (no signing)
         run: flutter build ios --release --no-codesign --dart-define=ENABLE_FIREBASE_MIGRATION=false
+      - name: Select and boot a genuine iOS simulator on macOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > "$RUNNER_TEMP/d18-simulator-udid"
+          import json, subprocess
+          payload = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "--json"]))
+          phones = [device for devices in payload["devices"].values()
+                    for device in devices
+                    if device["name"].startswith("iPhone") and device.get("isAvailable", True)]
+          if not phones:
+              raise SystemExit("NO_IOS_SIMULATOR_AVAILABLE: cannot install iOS on Ubuntu")
+          print(phones[0]["udid"])
+          PY
+          simulator="$(cat "$RUNNER_TEMP/d18-simulator-udid")"
+          echo "D18_IOS_SIMULATOR_ID=$simulator" >> "$GITHUB_ENV"
+          echo "D18_IOS_SIMULATOR_UDID=$simulator"
+          xcrun simctl boot "$simulator" || true
+          xcrun simctl bootstatus "$simulator" -b
+      - name: Install Flutter app and exercise D18 A-B-A on iOS simulator
+        env:
+          CI: "true"
+        run: flutter test --no-pub --reporter expanded -d "$D18_IOS_SIMULATOR_ID" integration_test/d18_android_patient_profile_test.dart
       - name: Check compiled application and privacy prompt
         run: |
           test -d build/ios/iphoneos/Runner.app
@@ -45,8 +70,10 @@ jobs:
         run: |
           mkdir -p ../artifacts/d18-ios
           cat > ../artifacts/d18-ios/PROVENANCE.txt <<'EOF'
-          D18-only native iOS Swift/Security/LocalAuthentication compile gate.
-          Build is unsigned and does NOT exercise Face ID / Touch ID hardware.
+          D18-only native iOS Swift/Security/LocalAuthentication compile
+          plus installed iPhone simulator D18 A-B-A and ProfileScreen gate.
+          Native app is built and D18 integration is run on an actual iOS Simulator.
+          The simulator cannot prove Face ID / Touch ID hardware or Secure Enclave signing.
           Not a proof of biometric enrollment, Secure Enclave attestation,
           device-key invalidation or physical-device treatment safety.
           No patient data, no deployed binary, no App Store distribution.
