@@ -723,6 +723,76 @@
         ]
       }
     },
+    "/api/v1/profile/first-use": {
+      "get": {
+        "operationId": "diabetes_api_v1_profile_get_d9_first_use_completion",
+        "summary": "Get D9 First Use Completion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/D9FirstUseCompletionState"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return only this authenticated owner's explicit first-use proof.",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "diabetes_api_v1_profile_record_d9_first_use_completion",
+        "summary": "Record D9 First Use Completion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/D9FirstUseCompletionState"
+                }
+              }
+            }
+          }
+        },
+        "description": "Idempotent explicit completion, not a clinical or AI consent write.\n\nThe signed-in patient must already have a base profile. Neither an empty\nclinical extension shell nor the mere presence of a bearer sets completion.",
+        "tags": [
+          "profile"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/D9FirstUseCompletionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/profile": {
       "get": {
         "operationId": "diabetes_api_v1_profile_get_profile",
@@ -3252,6 +3322,64 @@
           "message"
         ],
         "title": "Error",
+        "type": "object"
+      },
+      "D9FirstUseCompletionState": {
+        "properties": {
+          "version": {
+            "const": 1,
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "owner_user_id": {
+            "title": "Owner User Id",
+            "type": "integer"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "required": [
+          "owner_user_id",
+          "completed",
+          "completed_at"
+        ],
+        "title": "D9FirstUseCompletionState",
+        "type": "object"
+      },
+      "D9FirstUseCompletionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "confirmed"
+        ],
+        "title": "D9FirstUseCompletionCommand",
         "type": "object"
       },
       "PatientProfileSchema": {
