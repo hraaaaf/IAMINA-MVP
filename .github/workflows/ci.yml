@@ -146,23 +146,9 @@ jobs:
     name: Backend — PostgreSQL source-of-truth
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    # GitHub's Ubuntu 24.04 runner provides PostgreSQL 16 without a Docker pull.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
-
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_DB: iamina_ci
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d iamina_ci"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     env:
       DJANGO_SETTINGS_MODULE: amina.settings
@@ -180,6 +166,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start built-in PostgreSQL 16 without Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+          sudo -u postgres createdb --owner=postgres iamina_ci
+          server_version="$(sudo -u postgres psql -Atqc 'SHOW server_version_num')"
+          if [ "${server_version:0:2}" != "16" ]; then
+            echo "::error::Unexpected PostgreSQL version: $server_version"
+            exit 1
+          fi
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d iamina_ci -Atqc 'SELECT 1' | grep -qx 1
 
       - uses: actions/setup-python@v5
         with:

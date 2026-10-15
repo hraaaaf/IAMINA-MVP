@@ -40,11 +40,11 @@ def compute_verified_cgm_metrics(
             session__patient_id=patient_id,
             session__isnull=False,
             recorded_at__gte=window_start,
-            recorded_at__lte=window_end,
+            recorded_at__lt=window_end,
             source=F("session__source"),
         )
         .filter(recorded_at__gte=F("session__started_at"))
-        .filter(Q(session__ended_at__isnull=True) | Q(recorded_at__lte=F("session__ended_at")))
+        .filter(Q(session__ended_at__isnull=True) | Q(recorded_at__lt=F("session__ended_at")))
         .order_by("recorded_at", "id")
         .values_list("recorded_at", "glucose_mg_dl")
     )
@@ -97,11 +97,11 @@ def compute_verified_cgm_agp_profile(*, patient_id: int, window_start, window_en
             session__patient_id=patient_id,
             session__isnull=False,
             recorded_at__gte=window_start,
-            recorded_at__lte=window_end,
+            recorded_at__lt=window_end,
             source=F("session__source"),
         )
         .filter(recorded_at__gte=F("session__started_at"))
-        .filter(Q(session__ended_at__isnull=True) | Q(recorded_at__lte=F("session__ended_at")))
+        .filter(Q(session__ended_at__isnull=True) | Q(recorded_at__lt=F("session__ended_at")))
         .order_by("recorded_at", "id")
         .values_list("recorded_at", "glucose_mg_dl", "session__timezone_name")
     )

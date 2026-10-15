@@ -56,7 +56,7 @@ class RealCgmSufficiencyContractTests(TestCase):
 
     def _expected_full_window(self):
         seconds = int((self.end - self.start).total_seconds())
-        return seconds // (self.interval_minutes * 60) + 1
+        return seconds // (self.interval_minutes * 60)
 
     def test_fourteen_day_window_at_or_above_seventy_percent_is_verified(self):
         session = self._session(key="sensor-a")
@@ -111,8 +111,8 @@ class RealCgmSufficiencyContractTests(TestCase):
 
         first_seconds = int((midpoint - self.start).total_seconds())
         second_seconds = int((self.end - midpoint).total_seconds())
-        first_expected = first_seconds // (self.interval_minutes * 60) + 1
-        second_expected = second_seconds // (self.interval_minutes * 60) + 1
+        first_expected = first_seconds // (self.interval_minutes * 60)
+        second_expected = second_seconds // (self.interval_minutes * 60)
         self._readings(first, start=self.start, count=first_expected)
         self._readings(second, start=midpoint, count=second_expected)
 
@@ -142,6 +142,63 @@ class RealCgmSufficiencyContractTests(TestCase):
 
         self.assertFalse(result.verified)
         self.assertEqual(result.reason, "overlapping_sensor_sessions")
+
+    def test_adjacent_windows_count_boundary_reading_exactly_once(self):
+        next_end = self.end + dt.timedelta(days=14)
+        session = self._session(key="sensor-boundary", end=next_end)
+        for index, recorded_at in enumerate((
+            self.start,
+            self.end,
+            self.end + dt.timedelta(minutes=self.interval_minutes),
+        )):
+            CGMReadingRecord.objects.create(
+                patient=self.patient, session=session, source=session.source,
+                recorded_at=recorded_at, glucose_mg_dl=110,
+                dedupe_key=f"boundary-{index}",
+            )
+
+        first = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.start, window_end=self.end,
+        )
+        second = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.end, window_end=next_end,
+        )
+        self.assertEqual(first.expected_readings, 14 * 24 * 4)
+        self.assertEqual(second.expected_readings, 14 * 24 * 4)
+        self.assertEqual(first.received_readings, 1)
+        self.assertEqual(second.received_readings, 2)
+        self.assertEqual(first.received_readings + second.received_readings, 3)
+
+    def test_partial_cadence_window_rounds_up_expected_slots(self):
+        interval_end = self.end + dt.timedelta(minutes=7)
+        self._session(key="partial-slot", end=interval_end)
+        result = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=interval_end,
+        )
+        self.assertEqual(result.expected_readings, 14 * 24 * 4 + 1)
+        self.assertEqual(result.received_readings, 0)
+        self.assertFalse(result.verified)
+
+    def test_sensor_end_reading_does_not_inflate_coverage_after_session(self):
+        session = self._session(key="end-boundary")
+        for index, recorded_at in enumerate((self.start, self.end)):
+            CGMReadingRecord.objects.create(
+                patient=self.patient, session=session, source=session.source,
+                recorded_at=recorded_at, glucose_mg_dl=110,
+                dedupe_key=f"end-test-{index}",
+            )
+
+        result = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end + dt.timedelta(days=1),
+        )
+        self.assertEqual(result.expected_readings, 14 * 24 * 4)
+        self.assertEqual(result.received_readings, 1)
 
     def test_naive_timezone_window_fails_closed(self):
         result = assess_cgm_window(
