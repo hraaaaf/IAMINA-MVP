@@ -10,6 +10,16 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  // Drift streams publish their first async query result after subscription.
+  // pumpAndSettle alone may return before the stream emits when no frame is
+  // scheduled. Assert the exact text (never a fallback) after bounded pumps.
+  Future<void> expectCount(WidgetTester tester, String expected) async {
+    for (var i = 0; i < 30 && find.text(expected).evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.text(expected), findsOneWidget);
+  }
+
   testWidgets('decision #3 A→B→A database switch never shows previous owner', (tester) async {
     final a = AppDatabase(NativeDatabase.memory());
     final b = AppDatabase(NativeDatabase.memory());
@@ -32,21 +42,21 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('1 rappel actif'), findsOneWidget);
+    await expectCount(tester, '1 rappel actif');
 
     selected.value = b;
     await tester.pump();
     expect(find.text('1 rappel actif'), findsNothing,
         reason: 'Never retain patient A count while B vault is loading.');
     await tester.pumpAndSettle();
-    expect(find.text('2 rappels actifs'), findsOneWidget);
+    await expectCount(tester, '2 rappels actifs');
 
     selected.value = a;
     await tester.pump();
     expect(find.text('2 rappels actifs'), findsNothing,
         reason: 'Never retain patient B count while A vault is loading.');
     await tester.pumpAndSettle();
-    expect(find.text('1 rappel actif'), findsOneWidget);
+    await expectCount(tester, '1 rappel actif');
   });
 
   test('decision #3 keeps the clinical trend section ahead of reminders', () {
