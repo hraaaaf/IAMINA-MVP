@@ -27,7 +27,7 @@ final class LocalWeightNoticeCandidate {
   final String baselineEvidenceId;
   final String latestEvidenceId;
 
-  const LocalWeightNoticeCandidate._(LocalWeightTrendSnapshot trend)
+  LocalWeightNoticeCandidate._(LocalWeightTrendSnapshot trend)
       : ownerId = trend.ownerId,
         deltaKgHundredths = trend.deltaKgHundredths,
         baselineAtUtc = trend.baselineAtUtc,
