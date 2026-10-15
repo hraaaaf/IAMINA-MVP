@@ -63,3 +63,8 @@
 
 - `d9fe9401` : [CI #38729845687](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38729845687) FAILED, Flutter **808 tests passed / 1 failed / 1 skipped** ; seul échec : test `D18 initial empty, explicit edit and dated append are local`, assertion `TextButton.onPressed == null` effectuée avant le `pump` après `enterText`. Les autres tests D18 (stores, A/B, sauvegardes, formats d'écran) ont passé. 
 - Correctif minimal de test : `await tester.pump()` après `enterText`, avant lecture de l'arbre. Aucune logique produit modifiée. Le HEAD suivant doit repasser CI exacte ; ancienne CI rouge reste explicitement conservée comme preuve.
+
+## CI proof trigger — 2026-10-15
+
+- Parent D18-B is the intended permanent PR base. The repository `.github/workflows/ci.yml` triggers full CI only for pull requests targeting `main` or `dev`; therefore #1066 was temporarily retargeted to `main` **for CI only**. Never merge under this base.
+- Previous `d9fe9401` frontend full CI [#38729845687](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38729845687) failed 1/810 tests because a widget assertion lacked `tester.pump()` after `enterText`. The application code remained unchanged. The latest test fix requires its own full CI result; this documentation-only commit deliberately triggers an exact new PR synchronize event. Restore the D18-B base after full CI verdict.
