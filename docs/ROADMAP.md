@@ -8,9 +8,9 @@
 >
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`. No current release candidate is frozen or authorized for deployment or real-patient processing. Engineering, UX, reliability, security and synthetic/non-patient work may continue. P5-6A/#318 and P5-6B/#320 are retained as mandatory **pre-real-patient gates**, not as the current engineering critical path.
 
-## Product V1 — 29 approved decisions (2026-10-09)
+## Product V1 — 29 initial decisions (2026-10-09) + D30 additional privacy-first direction (2026-10-13)
 
-> **Status:** product decisions **29/29 approved**; the V1 implementation lots below are **PLANNED, not automatically built, tested or clinically certified**. This forward product workstream supplements — and **does not erase or renumber** — the retained P5 pilot-readiness/release workstream, its \`6/12\` historical atomic completion baseline, or the mandatory pre-real-patient P5-6A/P5-6B gates.
+> **Status:** product decisions **29/29 initially approved**, plus **D30 approved as a separate product direction** on 2026-10-13 (30 total); the V1 implementation lots below are **PLANNED, not automatically built, tested or clinically certified**. This forward product workstream supplements — and **does not erase or renumber** — the retained P5 pilot-readiness/release workstream, its \`6/12\` historical atomic completion baseline, or the mandatory pre-real-patient P5-6A/P5-6B gates.
 >
 > **Decisions source:** [IAMINA — 29-discussion register](https://app.notion.com/p/3f377c663362812dbe78cead75e71922). **Linked Notion canonical roadmap:** [01 — ROADMAP CANONIQUE](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b). The original source #28.1 means **intelligence/analytics BEFORE the chatbot**; our workshop subnumber #28.1 refers separately to **LLM isolation**. Do not interchange them.
 >
@@ -28,15 +28,21 @@ A generative LLM may **only** generate non-patient generic wording or an opaque-
 | --- | --- | --- | --- |
 | 01 | **V1-01 — Full calculation and clinical-authority audit** | P0 | Enumerate every clinical, statistical, conversion, report and nutrition calculation and UI consumer; classify normative vs descriptive and fail closed on missing evidence. **#19 #11 #22** |
 | 02 | **V1-02 — Intelligence Engine / governed patient context** | P0 | Reuse Clinical Twin, observations, evidence registry, longitudinal and multi-source contracts; one versioned patient-scoped fact/insight envelope with source, eligibility, uncertainty and authority, consumable by all three surfaces. **#28 original source-first intent #7 #18** |
-| 03 | **V1-03 — Strict model/AI privacy boundary** | P0 | Enumerate all LLM egress paths, replace/disable patient-context prompts, enforce generic/opaque allowlisted payloads and negative egress tests, preserve effective global AI opt-out. **#28 workshop 28.1 #24 #26** |
-| 04 | **V1-04 — True first-use and progressive profile** | P0 | Country/unit before targets, editable multi-treatment and unknown-type profile, no real-account demo records, existing-account continuity, secure recovery/app-lock, first-measure value, opt-in feedback; reuse previous merged first-use work. **#5 #7 #8 #9 #10 #11 #18 #22 #29** |
+| 03 | **V1-03 — Strict model/AI privacy boundary** | P0 | Enumerate all LLM egress paths, replace/disable patient-context prompts, enforce generic/opaque allowlisted payloads and negative egress tests, preserve effective global AI opt-out. **#28 workshop 28.1 #24 #26**, D30 optional-sync data-egress/privacy boundary |
+| 04 | **V1-04 — True first-use and progressive profile** | P0 | Country/unit before targets, editable multi-treatment and unknown-type profile, no real-account demo records, existing-account continuity, secure recovery/app-lock, first-measure value, opt-in feedback; reuse previous merged first-use work. **#5 #7 #8 #9 #10 #11 #18 #22 #29 #30** (D30 local-only default, optional pseudonymous auth, backup/recovery; NOT implemented) |
 | 05 | **V1-05 — Guided IAmina conversation** | P0 | Deterministic question graph from opening, 2–4 options, reversible narrowing, repeat/back/free text locally routed, bounded responses, one main message, FR/AR/darija and RTL, non-floating chat mini-avatar. Home-only floating avatar. **#28 workshop 28.2/28.4/28.5 #6 #16 #27** |
 | 06 | **V1-06 — Native-feeling CGM Integration Hub** | P1 | Manufacturer/model selection and allowed authorization, read-only connector orchestration behind IAMINA; authorized official APIs first, isolated audited adapters where lawful, legacy Nightscout compatibility, import fallback, real freshness/availability and revocation. No patient-run Nightscout requirement and no claim of universal CGM support. **#1 #25** |
 | 07 | **V1-07 — Reliable intelligent capture** | P1 | Premium and precise glucose slider, unsaved-change guard, expandable secondary entry details; one editable meal draft from voice, text, form or assistive photo suggestions, natural portions, explicit human confirmation. **#12 #13 #14 #15 #17** |
 | 08 | **V1-08 — Insights, reminders, notifications and deterministic reports** | P1 | Notification bell distinct from reminders, 2–3 upcoming reminders on home, one consented meaningful nonurgent insight per initial 24 h, chat/bell event-ID deduplication, opt-in weight trend, deterministic FR/AR PDF and CSV/XLSX exports. **#2 #3 #4 #20 #28 workshop 28.3** |
 | 09 | **V1-09 — Premium UX, settings and accessibility** | P1 | Global and AI preference hierarchy, effective AI off without losing measurements, separate privacy/account actions and logout, Ramadan feature flag disabled, text copy/selection, home avatar target and reduced motion. **#16 #21 #23 #24 #26 #27** |
 | 10 | **V1-10 — Predictive ML research in shadow** | P2 | Predefine scientifically meaningful target/horizon and population; ethical, isolated study data, temporal/external/prospective validation, calibration, bias and subgroups; no patient-facing predictions or effects on clinical advice or notifications. **#28 workshop 28.6** |
-| 11 | **V1-11 — Whole-product certification and pilot safety gate** | Release gate | Cross-feature true first-use to first measurement/insight/chat, CGM and exports; clinical validation, egress/patient isolation, security/accessibility and exact-head CI/post-merge. P5-6A/P5-6B pre-real-patient/legal/data-residency/processor prerequisites remain mandatory. No Vercel deploy without explicit approval. **All 29** |
+| 11 | **V1-11 — Whole-product certification and pilot safety gate** | Release gate | Cross-feature true first-use to first measurement/insight/chat, CGM and exports; clinical validation, egress/patient isolation, security/accessibility and exact-head CI/post-merge. P5-6A/P5-6B pre-real-patient/legal/data-residency/processor prerequisites remain mandatory. No Vercel deploy without explicit approval. **All original 29 + D30** |
+
+### D30 — privacy-first optional identity/recovery (design launched; NOT implemented)
+
+**D30 product goal (approved 2026-10-13):** IAMINA must allow local-only use without obligatory name, email, phone or remote account. Optional future remote sync uses separately authenticated pseudonymous principal; an app-lock/passkey is not automatically a remote account or recoverable vault encryption key. **No automatic patient data egress, no zero-knowledge/E2EE promise before an independently audited key custody and recovery protocol.**
+
+**First execution lot:** [D30-0 ADR-0009 proposed](docs/adr/ADR-0009-privacy-first-onboarding-proposal.md) — threat model, data-flow matrix, recovery semantics, negative acceptance plan. This is a docs-only design candidate, not architecture approval or implementation certification. Subsequent D30-1 tests of local-only/no-egress, D30-2 security-reviewed recovery protocol, D30-3 optional auth/sync slice, and D30-4 UX/clinical/privacy/certification gates remain **OPEN**. D30 works through **V1-04 + V1-03 + V1-11**, not a new V1-12. Reconcile D7 draft PR #986, D9 existing-account continuity and D10 app-lock before binding any new principal to a medical vault. Real-patient P5-6A/P5-6B gates stay mandatory. No merge or Vercel deployment implied.
 
 ### Critical path, parallelism and evidence
 
@@ -48,7 +54,7 @@ A generative LLM may **only** generate non-patient generic wording or an opaque-
 6. **Never present an unverified CGM feed as real-time safety monitoring, a descriptive trend as causal/predictive medical advice, a demo record as real patient data, or an unreviewed narrator as clinical authority.** Emergency safety routing is independent from the 24-hour nonurgent attention budget and global AI toggle.
 7. Deployment to Vercel remains human-approved separately. The historical P5 pilot release gate requires explicit release re-freeze and competent professional/legal authorization before identifiable real-patient processing. Historical progress figures are not transferable to V1-01…V1-11. **No V1 implementation completion percentage is claimed yet.**
 
-### Traceability — all original 29 issue numbers
+### Traceability — original 29 decisions plus additional D30
 
 | Original remarks | Assigned implementation lots |
 | --- | --- |
@@ -60,6 +66,7 @@ A generative LLM may **only** generate non-patient generic wording or an opaque-
 | #12 #13 #14 #15 #17 | V1-07 |
 | #21 #23 #24 #26 | V1-03 / V1-09 |
 | #28 | V1-02 / V1-03 / V1-05 / V1-08 / V1-10 |
+| #30 (additional, 2026-10-13) | V1-04 first-use/auth/recovery, V1-03 egress/privacy, V1-11 release gates; [proposed ADR](docs/adr/ADR-0009-privacy-first-onboarding-proposal.md) |
 
 **Next exact:** establish the V1-01 full-calculation audit manifest on current main; check source→derivation→patient output, mark evidence gaps, author tests with no unsupported clinical promotion; then run exact-head checks and proceed with the first vertical proving slice. Keep P5 release gates untouched.
 
