@@ -75,6 +75,27 @@ const minScreenshotBytes = 15000;
         screenshotBytes[position] = buffer.length;
       }
 
+      // D3: retain baseline top/mid/lower, plus a real lower-down Reminders view.
+      const remindersOffset = Math.round(height * 2.35);
+      const remindersReady = page.waitForResponse(
+        (r) => r.url().includes('/api/v1/companion/overview') &&
+          r.status() >= 200 && r.status() < 300,
+        { timeout: 45000 },
+      );
+      await page.goto(`http://127.0.0.1:7358/?scroll=${remindersOffset}`, {
+        waitUntil: 'domcontentloaded', timeout: 120000,
+      });
+      await remindersReady;
+      await page.waitForTimeout(1600);
+      const remindersScreenshotPath = path.join(
+        'dashboard-visual-cert', `${name}-reminders-${width}x${height}.png`,
+      );
+      const remindersBuffer = await page.screenshot({ path: remindersScreenshotPath });
+      screenshotBytes.reminders = remindersBuffer.length;
+      if (name === 'mobile' && remindersBuffer.equals(buffers.lower)) {
+        throw new Error('mobile: Reminders capture duplicates existing lower view');
+      }
+
       const byteDuplicateCaptures = {
         topMid: buffers.top.equals(buffers.mid),
         midLower: buffers.mid.equals(buffers.lower),
@@ -85,7 +106,7 @@ const minScreenshotBytes = 15000;
         errors,
         consoleErrors,
         api,
-        requestedScrollOffsets: positions,
+        requestedScrollOffsets: { ...positions, reminders: remindersOffset },
         screenshotBytes,
         byteDuplicateCaptures,
       };
