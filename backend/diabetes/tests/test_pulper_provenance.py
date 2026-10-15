@@ -53,11 +53,13 @@ class FieldProvenanceContractTest(SimpleTestCase):
 
 
 class PulperTextProvenanceTest(SimpleTestCase):
-    def _ingest_docx(self, llm_payload: dict, raw_text: str):
+    def _ingest_docx(
+        self, llm_payload: dict, raw_text: str, *, provider="gemini-2.5-flash",
+    ):
         llm = SimpleNamespace(
             complete=lambda *_args, **_kwargs: SimpleNamespace(
                 content=json.dumps(llm_payload),
-                provider="gemini-2.5-flash",
+                provider=provider,
             )
         )
         with (
@@ -359,6 +361,24 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertEqual(len(output.medications), 1)
         self.assertEqual(output.medications[0].dose, "500 mg")
         self.assertIsNone(output.medications[0].frequency)
+
+    def test_missing_provider_label_cannot_bypass_medication_provenance(self):
+        output = self._ingest_docx(
+            {
+                "document_type": "prescription",
+                "confidence": 0.95,
+                "medications": [{"name": "metformin", "dose": "1000 mg"}],
+                "evidence": {
+                    "medications[0].name": {"r": "L0001", "v": "metformin"},
+                },
+            },
+            "metformin 500 mg",
+            provider=None,
+        )
+        self.assertIsNone(output.parser_model)
+        self.assertEqual(len(output.medications), 1)
+        self.assertEqual(output.medications[0].name, "metformin")
+        self.assertIsNone(output.medications[0].dose)
 
     def test_missing_source_evidence_drops_numeric_fact(self):
         output = self._ingest_docx(
