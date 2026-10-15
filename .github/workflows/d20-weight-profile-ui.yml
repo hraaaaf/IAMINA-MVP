@@ -1,0 +1,124 @@
+name: D20 — Weight profile UI scoped verification
+
+on:
+  push:
+    branches:
+      - feat/v1-d20-weight-trend-profile-ui-20261015
+    paths:
+      - frontend/lib/features/profile/d20_weight_trend_summary.dart
+      - frontend/lib/features/profile/d18_profile_panel.dart
+      - frontend/test/features/profile/d20_weight_trend_summary_test.dart
+      - .github/workflows/d20-weight-profile-ui.yml
+      - docs/assessments/2026-10-15-d20-ui-gate.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d20-ui-qa:
+    name: D20 descriptive widget UX and regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze only scoped D20 and mounted D18 UI
+        run: flutter analyze --no-fatal-infos lib/features/profile/d20_weight_trend_summary.dart lib/features/profile/d18_profile_panel.dart test/features/profile/d20_weight_trend_summary_test.dart
+      - name: Test widgets, D18 regression, D20 A-D pure contracts
+        run: >
+          flutter test --no-pub
+          test/features/profile/d20_weight_trend_summary_test.dart
+          test/features/profile/d18_profile_panel_test.dart
+          test/features/profile/d20_weight_trend_snapshot_test.dart
+          test/features/profile/d20_weight_notice_policy_test.dart
+          test/data/drift/d20_weight_notice_preferences_store_test.dart
+          test/data/drift/d20_weight_notice_delivery_ledger_test.dart
+
+  d20-before-after:
+    name: D20 BEFORE and AFTER actual D18 profile rasters
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 93b0da480f07770063af33ed2f486b0c7c921949
+          path: before
+      - uses: actions/checkout@v4
+        with:
+          path: after
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Render BEFORE exact D20-D parent at matching widths
+        working-directory: before/frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('test/features/profile/d18_profile_capture_test.dart')
+          s=p.read_text()
+          a='const Size(360, 560), const Size(390, 844),'
+          assert s.count(a)==1
+          p.write_text(s.replace(a, a+' const Size(430, 900),'))
+          PY
+          flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens test/features/profile/d18_profile_capture_test.dart
+      - name: Render AFTER D20-E same locales widths and scroll states
+        working-directory: after/frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('test/features/profile/d18_profile_capture_test.dart')
+          s=p.read_text()
+          a='const Size(360, 560), const Size(390, 844),'
+          assert s.count(a)==1
+          p.write_text(s.replace(a, a+' const Size(430, 900),'))
+          PY
+          flutter test --no-pub --dart-define=D18_CAPTURE_UI=true --update-goldens test/features/profile/d18_profile_capture_test.dart
+      - name: Verify paired PNGs and compute exact pixel differences
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct, hashlib
+          b=Path('before/frontend/test/features/profile/goldens')
+          a=Path('after/frontend/test/features/profile/goldens')
+          report=[]
+          for locale in ['fr','ar']:
+            for width in ['390x844','430x900','768x1024','1280x900']:
+              for state in ['closed','open-top','open-bottom']:
+                name=f'd18-raster-{locale}-{width}-{state}.png'
+                before,after=b/name,a/name
+                for f in [before,after]:
+                  assert f.is_file() and f.stat().st_size>6000, f
+                  assert f.read_bytes()[:8]==b'\x89PNG\r\n\x1a\n',f
+                report.append((name,hashlib.sha256(before.read_bytes()).hexdigest(),hashlib.sha256(after.read_bytes()).hexdigest()))
+          changed=sum(x[1]!=x[2] for x in report)
+          text='\n'.join(f'{name} before={bhash} after={ahash}' for name,bhash,ahash in report)
+          Path('d20-visual-sha256-manifest.txt').write_text(f'Paired 24 snapshots. SHA changed={changed}/24\n'+text+'\nUnchanged does not establish visual equivalence; manual UX review pending.\n')
+          print(f'Paired 24 before/after PNGs; {changed} have different SHA256.')
+          PY
+      - name: Upload visual evidence for independent review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-d20-before-after-profile-fr-ar
+          path: |
+            before/frontend/test/features/profile/goldens/d18-raster-*.png
+            after/frontend/test/features/profile/goldens/d18-raster-*.png
+            d20-visual-sha256-manifest.txt
+          retention-days: 14
+          if-no-files-found: warn
