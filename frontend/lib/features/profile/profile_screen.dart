@@ -84,6 +84,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool get _canResolveRemoteTreatmentConflict =>
       context.read<ApiClient?>()?.canSyncClinicalData ?? false;
 
+  // Keep vault resolution and AppLock/provider orchestration out of the
+  // presentation-only Profile part, and fail closed on unsupported Web.
+  AppDatabase? _unlockedNativeD18Vault() {
+    if (kIsWeb || context.watch<AppLockService?>()?.isUnlocked != true) {
+      return null;
+    }
+    final db = context.read<AppDatabase>();
+    return db.patientVaultScope?.nativeDjangoUserId == null ? null : db;
+  }
+
   void _setPresentationState(VoidCallback fn) => setState(fn);
 
   @override
