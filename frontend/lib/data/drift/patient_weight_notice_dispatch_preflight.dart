@@ -54,6 +54,14 @@ final class PatientWeightNoticeDispatchPreflight {
         return false;
       }
 
+      // A physically selected patient vault must never contain another
+      // owner's reserved notices, even if our requested reservation matches.
+      final foreign = await db.customSelect('''
+        SELECT user_id FROM patient_weight_notice_reservations_v1
+        WHERE user_id <> ? LIMIT 1
+      ''', variables: [Variable<int>(owner)]).get();
+      if (foreign.isNotEmpty) return false;
+
       final consent = await PatientWeightNoticePreferencesStore(db).read();
       final consentTime = consent.consentedAtUtc;
       if (!consent.enabled || consentTime == null ||

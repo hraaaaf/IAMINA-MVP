@@ -197,6 +197,27 @@ void main() {
     ), false);
   });
 
+  test('D20-G foreign reservation row blocks even own valid candidate',
+      () async {
+    final db = await _vault(734);
+    addTearDown(db.close);
+    await _seed(db);
+    final reservation = await _reserve(db);
+    await db.customStatement('''
+      INSERT INTO patient_weight_notice_reservations_v1
+        (user_id, latest_evidence_id, baseline_evidence_id,
+         delta_kg_hundredths, baseline_at_utc, latest_at_utc, reserved_at_utc)
+      VALUES
+        (812, 'foreign-id', 'foreign-baseline', 100,
+         '2026-10-01T09:00:00.000Z', '2026-10-07T09:00:00.000Z',
+         '2026-10-08T00:00:00.000Z')
+    ''');
+    expect(await PatientWeightNoticeDispatchPreflight(db).check(
+      reservation: reservation, osNotificationPermission: true,
+      nowUtc: DateTime.utc(2026, 10, 8, 12),
+    ), false);
+  });
+
   test('D20-G invalid clocks and audit/legacy vaults reject preflight',
       () async {
     final db = await _vault(734);
