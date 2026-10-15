@@ -27,6 +27,13 @@ jobs:
           cache: true
       - name: Get dependencies
         run: flutter pub get
+      - name: D18 only - local vault, demographics, dated weights, backup, UI
+        run: |
+          flutter test --no-pub --reporter expanded \
+            test/data/drift/d18_progressive_demographics_store_test.dart \
+            test/data/drift/d18_weight_backup_boundary_test.dart \
+            test/data/drift/patient_weight_history_store_test.dart \
+            test/features/profile/d18_profile_panel_test.dart
       - name: Confirm readable Arabic-capable font
         run: test -s /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
       - name: Render existing D18 isolated raster AND canonical IAMINA ProfileScreen
