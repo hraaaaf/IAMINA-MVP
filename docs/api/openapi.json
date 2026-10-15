@@ -3415,8 +3415,7 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                "type": "string"
+                    "type": "string"
               }
             ],
             "title": "Value"
@@ -6238,12 +6237,12 @@
             "type": "integer"
           },
           "target_low": {
-            "default": 70,
+            "default": 70.0,
             "title": "Target Low",
             "type": "number"
           },
           "target_high": {
-            "default": 180,
+            "default": 180.0,
             "title": "Target High",
             "type": "number"
           }
