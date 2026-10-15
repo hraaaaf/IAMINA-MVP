@@ -218,6 +218,66 @@ class BatchSyncTests(TestCase):
         data = loads(resp.content)
         self.assertTrue(len(data["errors"]) > 0)
 
+    def test_batch_unexpected_error_never_discloses_exception_details(self):
+        # The payload and exception canary are synthetic, never patient data.
+        client_uuid = "44444444-4444-4444-4444-444444444444"
+        sensitive_canary = "synthetic_sensitive_canary_database_secret"
+        with patch(
+            "diabetes.api.v1.logs.LogEntry.objects.create",
+            side_effect=RuntimeError(sensitive_canary),
+        ):
+            resp = self.client.post(
+                "/api/v1/logs/batch",
+                data=[{"blood_sugar": 120, "client_uuid": client_uuid}],
+                content_type="application/json",
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        result = loads(resp.content)
+        self.assertEqual(result["synced_ids"], [])
+        self.assertEqual(len(result["errors"]), 1)
+        self.assertIn(client_uuid, result["errors"][0])
+        self.assertIn("internal error", result["errors"][0])
+        self.assertNotIn(sensitive_canary, resp.content.decode())
+        self.assertEqual(LogEntry.objects.filter(patient=self.user).count(), 0)
+
+
+    def test_batch_unexpected_failure_does_not_block_next_valid_row(self):
+        failed_uuid = "55555555-5555-5555-5555-555555555555"
+        accepted_uuid = "66666666-6666-6666-6666-666666666666"
+        canary = "synthetic_private_exception_details"
+        original_create = LogEntry.objects.create
+
+        def create_or_fail(*args, **kwargs):
+            if str(kwargs.get("client_uuid")) == failed_uuid:
+                raise RuntimeError(canary)
+            return original_create(*args, **kwargs)
+
+        with (
+            patch("diabetes.api.v1.logs.LogEntry.objects.create", side_effect=create_or_fail),
+            patch("diabetes.api.v1.logs.logger.error") as logged_error,
+        ):
+            response = self.client.post(
+                "/api/v1/logs/batch",
+                data=[
+                    {"blood_sugar": 120, "client_uuid": failed_uuid},
+                    {"blood_sugar": 130, "client_uuid": accepted_uuid},
+                ],
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        receipt = loads(response.content)
+        self.assertEqual([str(value) for value in receipt["synced_ids"]], [accepted_uuid])
+        self.assertEqual(len(receipt["errors"]), 1)
+        self.assertIn(failed_uuid, receipt["errors"][0])
+        self.assertIn("internal error", receipt["errors"][0])
+        self.assertNotIn(canary, response.content.decode())
+        self.assertNotIn(canary, str(logged_error.call_args))
+        logged_error.assert_called_once()
+        self.assertEqual(LogEntry.objects.filter(patient=self.user).count(), 1)
+        self.assertTrue(LogEntry.objects.filter(client_uuid=accepted_uuid).exists())
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. Profile API
