@@ -30,3 +30,10 @@ Unsupported today: HEIC iPhone image decoding, scanned PDF OCR, Arabic PaddleOCR
 Existing native, *non-browser* evidence in repository: `scripts/run_local_ocr_smoke.py`, `scripts/run_tesseract_arabic_robustness.py` (C23), `scripts/run_paddleocr_local_benchmark.py` (C12), `scripts/run_paddleocr_hardening_benchmark.py` (C15). The smoke records `HbA1c` misread as `HbAlc`. None certify this spike or Safari.
 
 **Status:** Initial CI #38737928952 failed before any OCR with a browser CSP `EvalError`. The follow-up benchmark isolates engines via lazy PaddleOCR import, emits bounded browser failure details and limits each engine to 180 seconds. No production deploy or merge. Track P0 #1067.
+
+## CI browser evidence and strict scoring
+
+- Run [#38744267632](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38744267632): Tesseract.js v7 executed 1/8 synthetic cases under initial token/label checks (FR 1/5, AR 0/2, mixed 0/1), no external requests. PaddleOCR.js failed at runtime because its dependency uses `new Function` and strict CSP forbids `unsafe-eval`.
+- This revised spike binds exact numbers and units to their **original synthetic source rows**; unordered token multisets alone can falsely pass swapped glucose/HbA1c values. It deliberately rejects ambiguity and is still **not** a clinical provenance certification.
+- `paddle.html` permits `unsafe-eval` exclusively in this synthetic test harness so we can measure **candidate accuracy**. The real IAMINA page retains strict CSP. PaddleOCR.js remains **not production CSP compatible** until an audited alternative removes the requirement. Do not copy this test exception into the application or load patient files here.
+- Browser warnings such as Tesseract `Estimating resolution as N` are informational and no longer incorrectly counted as runtime errors.

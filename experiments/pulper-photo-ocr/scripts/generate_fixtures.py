@@ -48,7 +48,7 @@ def generate(directory):
         extension="jpg" if case["format"]=="JPEG" else "png"
         filename=f"{case['id']}.{extension}"
         image.save(directory/filename,format=case["format"],quality=55 if extension=="jpg" else None)
-        manifest.append({key:value for key,value in case.items() if key in ("id","language","expectedNumbers","expectedUnits","expectedLabels")} | {"filename":filename})
+        manifest.append({key:value for key,value in case.items() if key in ("id","language","expectedNumbers","expectedUnits","expectedLabels")} | {"expectedLines":case["lines"],"filename":filename})
     (directory/"cases.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return len(manifest)
 

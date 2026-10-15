@@ -24,6 +24,20 @@ export function compareSetsExact(expected,actual) {
   return a.size===b.size && [...a].every(([key,count])=>b.get(key)===count);
 }
 
+// This strict synthetic benchmark refuses a right set of numbers on wrong rows.
+// Exact clinical field/source provenance requires a separate human qualification.
+export function sourceRowsExact(expectedLines, extracted) {
+  if (!Array.isArray(expectedLines) || expectedLines.length === 0) return false;
+  const row = value => normalizeDigits(String(value).normalize('NFC'))
+    .toLocaleLowerCase('und').replace(/\s+/gu, '').replace(/(\d),(\d)/gu, '$1.$2');
+  const expected = expectedLines.map(row);
+  const actual = String(extracted || '').split(/\r?\n/).map(row).filter(Boolean);
+  const count = values => values.reduce((map,value) =>
+    map.set(value,(map.get(value)||0)+1),new Map());
+  const observed = count(actual);
+  return [...count(expected)].every(([value,n]) => (observed.get(value)||0) >= n);
+}
+
 export function scoreTranscription(info,extracted) {
   const actualNumbers=numericTokens(extracted),actualUnits=unitTokens(extracted);
   const labels=info.expectedLabels||[];
@@ -31,9 +45,10 @@ export function scoreTranscription(info,extracted) {
   const labelsExact=labels.every(label=>s.includes(label.normalize('NFC').toLocaleLowerCase('und')));
   const numericExact=compareSetsExact(info.expectedNumbers,actualNumbers);
   const unitsExact=compareSetsExact(info.expectedUnits,actualUnits);
+  const rowBindingsExact=sourceRowsExact(info.expectedLines,extracted);
   return {
-    caseId:info.id,numericExact,unitsExact,labelsExact,
-    safeForReview:numericExact&&unitsExact&&labelsExact,
+    caseId:info.id,numericExact,unitsExact,labelsExact,rowBindingsExact,
+    safeForReview:numericExact&&unitsExact&&labelsExact&&rowBindingsExact,
     expectedNumericCount:info.expectedNumbers.length,extractedNumericCount:actualNumbers.length,
     expectedUnitCount:info.expectedUnits.length,extractedUnitCount:actualUnits.length,
     expectedLabelCount:labels.length

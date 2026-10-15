@@ -18,6 +18,7 @@ let browser;
 const report={benchmark:'iamina-pulper-photo-ocr-browser-poc-v1',
   syntheticOnly:true,patientData:false,backendCalls:false,modelAssetsSameOrigin:true,
   browser:'chromium',iPhoneSafariQualified:false,clinicalQualified:false,
+  paddleExperimentalUnsafeEval:true,paddleProductionCspCompatible:false,
   results:[],blockedRequests:0,errors:[]};
 try{
   await server.listen();
@@ -38,13 +39,13 @@ try{
       message:String(error.message||'').slice(0,350)
     }));
     page.on('console',message=>{
-      if(message.type()==='error')report.errors.push({
+      if(message.type()==='error' && !/^Estimating resolution as \d+$/.test(message.text()))report.errors.push({
         ...profile,stage:'browser_console',errorClass:'ConsoleError',
         message:String(message.text()).slice(0,350)
       });
     });
     try {
-      await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'load',timeout:45000});
+      await page.goto('http://127.0.0.1:'+port+(profile.engine==='paddle'?'/paddle.html':'/'),{waitUntil:'load',timeout:45000});
       await page.waitForFunction(()=>window.__iaminaOcrProbeLoaded===true,null,{timeout:45000});
       stage='engine';
       const items=cases.filter(x=>x.language===profile.language);
