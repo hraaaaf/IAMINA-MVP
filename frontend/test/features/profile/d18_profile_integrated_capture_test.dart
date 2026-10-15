@@ -44,6 +44,9 @@ Future<void> _loadFonts(WidgetTester tester) async {
     // Material buttons may request Roboto even when app body uses Inter.
     // WidgetTester's default Ahem font would draw block placeholders.
     await load('Roboto', fallback);
+    // The current IAMINA header explicitly uses the bundled Georgia family.
+    // Load the real product asset so French headings are not Ahem blocks.
+    await load('Georgia', 'assets/fonts/IAMINASerif-Bold-subset.ttf');
     final root = Platform.environment['FLUTTER_ROOT'];
     if (root == null || root.isEmpty) throw StateError('FLUTTER_ROOT missing');
     await load('MaterialIcons',
