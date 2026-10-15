@@ -720,6 +720,11 @@ class PulperProvenancePersistenceTest(TestCase):
     def test_unsourced_llm_timestamp_cannot_persist_glucose_event(self):
         from diabetes.models import LogEntry
         from diabetes.services.documents.pulper import _enforce_model_evidence_coverage
+        from diabetes.services.documents.schema import (
+            FieldEvidence,
+            GlucoseReading,
+            PulperOutput,
+        )
 
         patient = User.objects.create_user(username="pulper-unverified-time")
         output = PulperOutput(
