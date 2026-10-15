@@ -18,7 +18,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   final _weight = TextEditingController();
   String? _identity;
   String _unit = 'kg';
-  DateTime _measuredAt = DateTime.now();
+  // A timestamp is a patient-declared fact: never manufacture it on open.
+  DateTime? _measuredAt;
   List<LocalWeightObservation> _history = const [];
   bool _loading = true;
   bool _busy = false;
@@ -42,6 +43,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
       _year.clear(); _weight.clear(); _identity = null; _history = const [];
       _loading = true; _busy = false; _dirty = false; _notice = null;
       _pendingWeightUuid = null;
+      _measuredAt = null;
       _reload();
     }
   }
@@ -110,12 +112,14 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
-      initialDate: _measuredAt.isAfter(now) ? now : _measuredAt,
+      initialDate: _measuredAt != null && _measuredAt!.isBefore(now)
+          ? _measuredAt! : now,
       firstDate: DateTime(1900), lastDate: now,
     );
     if (!mounted || date == null) return;
     final time = await showTimePicker(
-      context: context, initialTime: TimeOfDay.fromDateTime(_measuredAt));
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_measuredAt ?? now));
     if (!mounted || time == null) return;
     setState(() {
       _measuredAt = DateTime(
@@ -125,7 +129,8 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   }
 
   Future<void> _addWeight() async {
-    if (_busy || _loading || _weight.text.trim().isEmpty) return;
+    if (_busy || _loading || _weight.text.trim().isEmpty ||
+        _measuredAt == null) return;
     final db = widget.db;
     _pendingWeightUuid ??= const Uuid().v4();
     final clientUuid = _pendingWeightUuid!;
@@ -134,14 +139,14 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
       await PatientWeightHistoryStore(db).append(
         clientUuid: clientUuid,
         value: _weight.text.trim().replaceAll(',', '.'),
-        unit: _unit, measuredAtUtc: _measuredAt.toUtc(),
+        unit: _unit, measuredAtUtc: _measuredAt!.toUtc(),
       );
       if (!mounted || !identical(db, widget.db)) return;
       final history = await PatientWeightHistoryStore(db).recent(limit: 20);
       if (!mounted || !identical(db, widget.db)) return;
       setState(() {
         _pendingWeightUuid = null;
-        _history = history; _weight.clear(); _measuredAt = DateTime.now();
+        _history = history; _weight.clear(); _measuredAt = null;
         _notice = _t('Pesée ajoutée ; historique conservé.',
             'Reading added; history preserved.', 'تمت إضافة القياس مع حفظ السجل.');
       });
@@ -272,13 +277,18 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                 key: const Key('d18-measured-at'),
                 onPressed: _busy ? null : _selectTime,
                 icon: const Icon(Icons.event_outlined),
-                label: Text(_date(_measuredAt)),
+                label: Text(_measuredAt == null
+                    ? _t('Choisir la date et l’heure de la pesée',
+                        'Choose the reading date and time',
+                        'اختر تاريخ ووقت قياس الوزن')
+                    : _date(_measuredAt!)),
               ),
             ),
             SizedBox(width: double.infinity,
               child: FilledButton(
                 key: const Key('d18-save-weight'),
-                onPressed: _busy || _weight.text.trim().isEmpty
+                onPressed: _busy || _loading || _measuredAt == null ||
+                        _weight.text.trim().isEmpty
                     ? null : _addWeight,
                 child: Text(_t('Ajouter cette pesée',
                     'Add this reading', 'إضافة هذا القياس')),
