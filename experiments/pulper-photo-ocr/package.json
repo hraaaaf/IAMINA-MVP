@@ -10,7 +10,8 @@
     "assets": "node scripts/bootstrap_assets.mjs",
     "bench": "node scripts/run_browser_benchmark.mjs",
     "native-reference": "node scripts/run_native_reference.mjs",
-    "dev": "vite --host 127.0.0.1"
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build"
   },
   "dependencies": {
     "@paddleocr/paddleocr-js": "0.4.2",

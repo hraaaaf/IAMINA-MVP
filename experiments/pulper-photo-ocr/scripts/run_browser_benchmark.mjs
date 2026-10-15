@@ -1,6 +1,6 @@
 /** Real browser execution: any cross-origin HTTP request is aborted. */
 import {readFile,mkdir,writeFile,stat} from 'node:fs/promises';
-import {createServer} from 'vite';
+import {preview} from 'vite';
 import {chromium} from 'playwright';
 
 const cases=JSON.parse(await readFile('public/fixtures/cases.json','utf8'));
@@ -13,7 +13,9 @@ const profiles=[
 for(const path of ['public/assets/worker.min.js','public/assets/tessdata/fra.traineddata.gz','public/assets/tessdata/eng.traineddata.gz','public/assets/tessdata/ara.traineddata.gz',
 'public/assets/paddle/PP-OCRv6_small_det_onnx_infer.tar','public/assets/paddle/PP-OCRv6_small_rec_onnx_infer.tar'])await stat(path);
 
-const server=await createServer({server:{host:'127.0.0.1',port:0},clearScreen:false});
+// Serve compiled static assets: Vite dev middleware rejects dynamic ONNX .mjs
+// imports from public/ when the WebAssembly loader appends ?import.
+const server=await preview({preview:{host:'127.0.0.1',port:0,strictPort:false},clearScreen:false});
 let browser;
 const report={benchmark:'iamina-pulper-photo-ocr-browser-poc-v1',
   syntheticOnly:true,patientData:false,backendCalls:false,modelAssetsSameOrigin:true,
@@ -21,7 +23,6 @@ const report={benchmark:'iamina-pulper-photo-ocr-browser-poc-v1',
   paddleExperimentalUnsafeEval:true,paddleProductionCspCompatible:false,
   results:[],blockedRequests:0,errors:[]};
 try{
-  await server.listen();
   const port=server.httpServer.address().port;
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext({serviceWorkers:'block'});
@@ -68,7 +69,7 @@ try{
   await context.close();
 }finally{
   if(browser)await browser.close();
-  await server.close();
+  await new Promise((resolve,reject)=>server.httpServer.close(error=>error?reject(error):resolve()));
   await mkdir('out',{recursive:true});
   report.measuredCases=report.results.reduce((n,x)=>n+x.results.length,0);
   report.passedCases=report.results.reduce((n,x)=>n+x.results.filter(y=>y.safeForReview).length,0);
