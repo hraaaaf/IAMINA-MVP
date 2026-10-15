@@ -1751,7 +1751,7 @@
             }
           }
         },
-        "description": "Stage 1 (confirm=False): Extract and validate.  Returns preview.\nStage 2 (confirm=True):  Persist from a previously staged batch_id\n                         passed as query param ?batch_id=<uuid>.",
+        "description": "Extract and validate a new document and return preview only.\nPersistence is only possible via /documents/confirm/{batch_id}.",
         "tags": [
           "documents"
         ],
