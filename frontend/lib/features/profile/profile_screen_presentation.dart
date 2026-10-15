@@ -17,6 +17,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildPresentation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
+    final d18Vault = _unlockedNativeD18Vault();
     return Scaffold(
       appBar: isMobile
           ? null
@@ -47,14 +48,11 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           const SizedBox(height: 14),
                         ],
                         _buildMedicalSection(l10n),
-                        if (!kIsWeb &&
-                            context.watch<AppLockService?>()?.isUnlocked == true &&
-                            context.read<AppDatabase>().patientVaultScope
-                                ?.nativeDjangoUserId != null) ...[
+                        if (d18Vault != null) ...[
                           const SizedBox(height: 14),
                           D18ProfilePanel(
-                            key: ObjectKey(context.read<AppDatabase>()),
-                            db: context.read<AppDatabase>(),
+                            key: ObjectKey(d18Vault),
+                            db: d18Vault,
                           ),
                         ],
                         const SizedBox(height: 14),
