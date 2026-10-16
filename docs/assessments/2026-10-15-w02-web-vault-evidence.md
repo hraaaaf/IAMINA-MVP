@@ -10,11 +10,11 @@ Date : 2026-10-15. Statut **GATE HUMAIN / NON CERTIFIÉ**. Lecture source de `ma
 4. **App-lock :** `frontend/lib/services/app_lock_authenticator_web.dart` délègue au JS `frontend/web/iamina_app_lock.js`, qui vérifie des assertions WebAuthn, empreintes et signatures. **Vérifier une assertion WebAuthn ne prouve pas le chiffrement de SQLite/IndexedDB.** Les deux gates doivent être distincts.
 5. **Frontière produit :** `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` exige une autonomie patient locale et interdit de traiter la stack Vercel/Neon de certification comme runtime patient. `docs/ROADMAP.md` W02 et W14 demandent explicitement un arbitrage santé/clé/récupération et une certification avant toute distribution patient.
 
-## Nouveau contrôle Chromium W02 — en attente de preuve CI
+## Contrôle Chromium W02 — VALIDÉ uniquement pour deux coffres physiques synthétiques
 
 La branche W02 ajoute le point d'entrée **uniquement CI** [`ui_w02_synthetic_vault_scope_probe_main.dart`](../../frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart) et [workflow Chrome](../../.github/workflows/w02-web-vault-a-b-a-browser.yml). Le test proposé ouvre *deux véritables bases Drift SQLite/IndexedDB* sous deux UUIDv4 synthétiques différents et tente : semer A, ouvrir B (A absent), semer B, rouvrir A (B absent), rouvrir B (A absent), revenir à A puis forcer le reload navigateur.
 
-**Ce test n'est pas la bascule authentifiée A→logout→B→A.** Il ne couvre ni les providers applicatifs, AuthEpoch/session controller, XSS, fuite par un onglet déjà ouvert, chiffrement au repos, sauvegarde ni clés/récupération. Ne compter **aucune** preuve Chrome tant que la CI ne l'a pas réellement démontrée sur le HEAD exact. Aucun accès Vercel/Neon, aucun patient réel.
+**Ce test n'est pas la bascule authentifiée A→logout→B→A.** Il ne couvre ni les providers applicatifs, AuthEpoch/session controller, XSS, fuite par un onglet déjà ouvert, chiffrement au repos, sauvegarde ni clés/récupération. [PR #1101](https://github.com/hraaaaf/IAMINA-MVP/pull/1101) **fusionnée** sur `main@748873165a259c338a6e41ac2c856fb6bcd8d58e`. Sur PR head `3f6a6156d68cbc6c7bdf23b1fa50015e9b4e865f`, [Chrome #38881112827](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881112827) et [CI Flutter #38881112838](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881112838) SUCCESS ; sur exact merge SHA, [Chrome #38881573308](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881573308) et [CI Flutter #38881573304](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881573304) SUCCESS. Aucun accès Vercel/Neon, aucun patient réel. **Ce résultat ne certifie pas un changement de compte authentifié ou le chiffrement.**
 
 ## Contrôle behavioral de session — à valider en CI
 
