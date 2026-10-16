@@ -16,6 +16,12 @@ La branche W02 ajoute le point d'entrée **uniquement CI** [`ui_w02_synthetic_va
 
 **Résultat observé :** [PR #1101](https://github.com/hraaaaf/IAMINA-MVP/pull/1101) fusionnée sur `main@748873165a259c338a6e41ac2c856fb6bcd8d58e`. CI Chrome [prémerge #38881112827](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881112827) et [postmerge #38881573308](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881573308) **SUCCESS** ; logs postmerge contiennent JSON `result=PASS`, `CI-only real Chrome / SQLite wasm / IndexedDB`, séquence `A seed → B seed (no A) → A verify (no B) → B verify (no A) → A reload`, tous fixtures synthétiques. CI générale [prémerge #38881112838](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881112838) SUCCESS ; [postmerge #38881573304](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38881573304) **SUCCESS** sur `main@748873165a259c338a6e41ac2c856fb6bcd8d58e`.\n\n**Ce test n'est pas la bascule authentifiée A→logout→B→A.** Il ne couvre ni les providers applicatifs, AuthEpoch/session controller, XSS, fuite par un onglet déjà ouvert, chiffrement au repos, sauvegarde ni clés/récupération. Ne compter **aucune** preuve Chrome tant que la CI ne l'a pas réellement démontrée sur le HEAD exact. Aucun accès Vercel/Neon, aucun patient réel.
 
+## Nouvelle régression d'authentification distante (ciblée, à valider en CI)
+
+Le test [`auth_stale_remote_response_test.dart`](../../frontend/test/services/auth_stale_remote_response_test.dart) reproduit deux courses **sans serveur ni données patient** : (1) une réponse HTTP de login A qui n'arrive qu'**après la déconnexion locale** ne doit jamais réactiver A ; (2) deux réponses de login A/B dans le désordre ne doivent jamais remplacer l'identité B par A. `AuthService` introduit un compteur d'essais ; toute réponse reçue après déconnexion/entrée en audit/nouvel essai doit être rejetée avant l'acceptation du token.
+
+**Limite importante :** le test porte sur des réponses HTTP encore en vol, **avant la persistance du nouveau bearer**. Il ne certifie pas les courses entre écritures asynchrones du secure storage et signOut, ni la destruction des providers, le navigateur réel, les clés et le chiffrement. Aucun release GO patient ne peut être déduit d'une CI verte. Statut : **CI en attente**.
+
 ## Gate observable W02 (non passé)
 
 - **A→logout→B→A** : aucun écran, provider, cache, requête en vol, service worker ou historique A accessible à B, y compris reload/hard reload et comptes neufs.
