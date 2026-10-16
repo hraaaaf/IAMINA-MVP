@@ -25,6 +25,8 @@
 
 [Inspection des paramètres Vercel 16/10/2026](2026-10-16-w01-hosted-readonly-smoke.md#inspection-vercel-connectée-du-16102026-g1g3-lecture-seule) : GitHub link des deux projets OUI, Root Directory/branche production NON EXPOSÉES, `IAMINA_ENV` non déclarée, aucun déploiement/Neon modifié.
 
+**Nouveau test en cours, W01-G6 local seulement :** sur la base PostgreSQL 16 *restaurée et jetable*, Django migre réellement le schéma `diabetes 0035 → 0033 → 0035`. Avant retour arrière, refus si la sandbox contient une seule ligne de profil/journal ; preuves exigées : cinq colonnes de la migration 0034 retirées puis recréées, source intacte et canari fictif conservé. CI sur SHA PR à confirmer. Aucun accès à Neon. 
+
 **Ne pas substituer** un test navigateur de deux coffres locaux (W02) à un test Vercel→Neon réel (W01).
 
 ## Chemin critique / blocages humains réels
