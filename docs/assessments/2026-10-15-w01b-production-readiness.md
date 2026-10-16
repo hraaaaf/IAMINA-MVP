@@ -4,7 +4,11 @@
 >
 > Périmètre examiné : `main@f45a77c4ffb408e6d00cb6fa84c39cbd449e03ee`, [ADR-W01-01](../adr/ADR-W01-01-web-two-vercel-neon.md), [local-first canonique](../LOCAL_FIRST_RUNTIME_BOUNDARY.md), [roadmap W01/W02/W14](../ROADMAP.md). Ce fichier est un **snapshot de métadonnées non secrètes** : revalider l'état distant et le SHA avant un vrai déploiement.
 
-**Mise à jour du 16/10/2026 :** [inventaire Vercel/Neon lu directement](2026-10-16-w01b-live-cloud-readonly-evidence.md) ; projet Neon test distinct `noisy-truth-00115950`, branche `synthetic-only`, répond en PostgreSQL 16 à un `SELECT` sans effet de bord. **Limite :** aucun test Django hébergé → Neon et aucun contrôle des bases preview/prod par fingerprint. Machine-readable [snapshot non secret](w01b-2026-10-16-sanitized-cloud-inventory.json), état **NO-GO** surveillé en CI. Aucun changement de configuration distant.\n\n## État concret
+**Mise à jour du 16/10/2026 :** [inventaire Vercel/Neon lu directement](2026-10-16-w01b-live-cloud-readonly-evidence.md) ; projet Neon test distinct `noisy-truth-00115950`, branche `synthetic-only`, répond en PostgreSQL 16 à un `SELECT` sans effet de bord. **Limite :** aucun test Django hébergé → Neon et aucun contrôle des bases preview/prod par fingerprint. Machine-readable [snapshot non secret](w01b-2026-10-16-sanitized-cloud-inventory.json), état **NO-GO** surveillé en CI. Aucun changement de configuration distant.\n\n## Ordre strict décidé le 16/10/2026
+
+**W01 DOIT être clôturé avant de reprendre W02.** Les [sept gates techniques W01-G1…G7](2026-10-16-w01-before-w02-gates.md) constituent désormais le seul critère de clôture W01. Le vrai compte patient, le chiffrement et W14 **ne sont pas des critères de clôture W01** mais restent obligatoires avant toute production patient. La [PR #1104](https://github.com/hraaaaf/IAMINA-MVP/pull/1104) est fermée sans fusion ; son correctif W02 reste en branche, non actif. Les résultats antérieurs W02 sont archivés, sans avancement nouveau avant W01 CLOSED.
+
+## État concret
 
 | Gate | État constaté | Preuve / Next exact |
 |---|---|---|
