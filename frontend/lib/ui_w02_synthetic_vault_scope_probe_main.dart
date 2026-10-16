@@ -23,12 +23,13 @@ Future<void> main() async {
       throw StateError('invalid synthetic W02 phase');
     }
     final scope = PatientVaultScope.deviceLocal(isA ? _scopeA : _scopeB);
-    db = AppDatabase.forPatientVault(scope);
-    await db.customSelect('SELECT 1').getSingle();
+    final vault = AppDatabase.forPatientVault(scope);
+    db = vault;
+    await vault.customSelect('SELECT 1').getSingle();
 
     Future<void> ensureAbsent(String uuid) async {
-      final wrong = await (db!.select(
-        db.logEntries,
+      final wrong = await (vault.select(
+        vault.logEntries,
       )..where((entry) => entry.clientUuid.equals(uuid))).getSingleOrNull();
       if (wrong != null) {
         throw StateError('cross vault fixture unexpectedly visible');
@@ -36,8 +37,8 @@ Future<void> main() async {
     }
 
     Future<void> ensurePresent(String uuid, double value) async {
-      final owned = await (db!.select(
-        db.logEntries,
+      final owned = await (vault.select(
+        vault.logEntries,
       )..where((entry) => entry.clientUuid.equals(uuid))).getSingleOrNull();
       if (owned == null || owned.bloodSugar != value) {
         throw StateError('owned vault fixture missing or changed');
@@ -48,10 +49,10 @@ Future<void> main() async {
       final uuid = isA ? _fixtureA : _fixtureB;
       final foreign = isA ? _fixtureB : _fixtureA;
       await ensureAbsent(foreign);
-      await (db.delete(
-        db.logEntries,
+      await (vault.delete(
+        vault.logEntries,
       )..where((entry) => entry.clientUuid.equals(uuid))).go();
-      await db.into(db.logEntries).insert(
+      await vault.into(vault.logEntries).insert(
         LogEntriesCompanion.insert(
           createdAt: DateTime.utc(2026, 10, 16, 8),
           bloodSugar: isA ? 111.0 : 222.0,
@@ -65,7 +66,7 @@ Future<void> main() async {
       await ensurePresent(isA ? _fixtureA : _fixtureB, isA ? 111.0 : 222.0);
     }
 
-    await db.close();
+    await vault.close();
     html.document.title = 'IAMINA_W02_${phase.toUpperCase()}_PASS';
   } catch (error) {
     if (db != null) {
