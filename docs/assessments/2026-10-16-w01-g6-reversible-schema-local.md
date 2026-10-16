@@ -12,7 +12,7 @@
 - [Django drift #38932909073](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38932909073) **SUCCESS** et [CI générale #38932909231](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38932909231) **SUCCESS**.
 - Le premier run [#38932548258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38932548258) a échoué parce que le script cherchait le nom conventionnel `diabetes_diabetesprofile` ; le modèle utilise explicitement `db_table='diabetes_patientprofile'`. Correction vérifiée sur la CI verte finale, sans masquer la défaillance initiale.
 - Les conditions bloquent l'usage hors GitHub CI, hors URL PostgreSQL locale exacte, si DB restore déjà existante, si des lignes de profil/journal apparaissent, ou si la source/schéma/canari diffère.
-- **Postmerge** [W01 #38933438458](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438458), [migration #38933438330](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438330), [générale #38933438326](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438326) : conclusions à confirmer sur SHA fusionné.
+- **Postmerge** [W01 #38933438458](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438458), [migration #38933438330](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438330), [générale #38933438326](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438326)  : **tous SUCCESS** sur `main@d533b68d55d6e0804f3820e7736802b64bc8b638`, vérifiés individuellement.
 
 ## Frontière cloud actuelle
 
