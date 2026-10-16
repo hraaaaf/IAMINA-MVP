@@ -6,12 +6,14 @@ on:
     paths:
       - 'frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart'
       - 'scripts/w02_web_local_vault_browser_probe.py'
+      - 'scripts/tests/test_w02_web_vault_probe_contract.py'
       - '.github/workflows/w02-web-vault-a-b-a-browser.yml'
   push:
     branches: [main]
     paths:
       - 'frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart'
       - 'scripts/w02_web_local_vault_browser_probe.py'
+      - 'scripts/tests/test_w02_web_vault_probe_contract.py'
       - '.github/workflows/w02-web-vault-a-b-a-browser.yml'
 permissions:
   contents: read
@@ -25,6 +27,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: W02 no-cloud browser harness contract tests
+        run: python -m unittest discover -s scripts/tests -p test_w02_web_vault_probe_contract.py -v
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
