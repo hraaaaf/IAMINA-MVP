@@ -25,9 +25,9 @@ Les deux déploiements Vercel précédemment observés `target=production` (`iam
 
 **Preuve indépendante G6 (en GitHub CI local uniquement)** : [PR #1106](https://github.com/hraaaaf/IAMINA-MVP/pull/1106) intégrée sur `main@19ad69aed3223027b0f13fe59854d834825bcd73`. [W01 CI #38926248888](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38926248888) et [migrations #38926248493](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38926248493) **SUCCESS** prémerge ; [générale #38926248728](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38926248728) **SUCCESS**. Le log W01 contient explicitement `PASS W01-G6 disposable PG16` : dump Django migré, restauration en base jetable distincte, marqueur synthétique, transaction rollback, `manage.py migrate --check`. Les CI postmerge [générale #38926794793](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38926794793), [W01 #38926794725](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38926794725) et [migrations #38926794826](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38926794826) sont **toutes SUCCESS** sur `main@19ad69aed3223027b0f13fe59854d834825bcd73`.
 
-**À ne pas certifier :** restauration sur Neon distant, downgrade d'une migration, backup de production, vrai Web→Django→Neon preview, identité patient, W02, W14 ou autorisation de déploiement.
+**À ne pas certifier :** restauration/rollback d'une migration **sur Neon distant** (le test local PG16 `0035→0033→0035` existe par ailleurs), backup de production, vrai Web→Django→Neon preview, identité patient, W02, W14 ou autorisation de déploiement.
 
-**Next W01 :** G1 Root Directory et branches Git effectives dans dashboard Vercel ; G2/G3 séparation et protection Neon/env ; G4/G5 essais distants uniquement sur ressources synthétiques autorisées ; G6 restauration/rollback Neon sandbox ; G7 closeout exact SHA.
+**Next W01 (état enrichi par la section UI ci-dessous) :** G1 préparer la correction Root Web `./` → `frontend/` après lecture UI ; G2/G3 démontrer isolation/protection Neon et mappings d'environnement ; G4/G5 essais distants uniquement sur ressources synthétiques autorisées ; G6 restauration/rollback Neon sandbox ; G7 closeout exact SHA.
 
 ## Inspection Vercel UI authentifiée — 16 octobre 2026, W01-G1/G3
 

@@ -23,15 +23,15 @@
 
 [Preuve HTTP distante non intrusive](2026-10-16-w01-hosted-readonly-smoke.md) : `iamina-review.vercel.app/` 200, `iamina-certified.vercel.app/api/v1/health` 200 (`db=ok`) mais preview API indépendante à chemin santé attendu 404 ; aucune identité Neon validée. **G4/G5 restent NON PROUVÉS.**
 
-[Inspection des paramètres Vercel 16/10/2026](2026-10-16-w01-hosted-readonly-smoke.md#inspection-vercel-connectée-du-16102026-g1g3-lecture-seule) : GitHub link des deux projets OUI, Root Directory/branche production NON EXPOSÉES, `IAMINA_ENV` non déclarée, aucun déploiement/Neon modifié.
+[Inspection authentifiée des paramètres Vercel 16/10/2026](2026-10-16-w01-hosted-readonly-smoke.md#inspection-vercel-ui-authentifiée--16-octobre-2026-w01-g1g3) : liaison GitHub des deux projets OUI ; Root Web = `./` (**non conforme à `frontend/`**), Root API = `backend` conforme ; Production Branch Tracking = `main` pour les deux, artefacts stables sur anciens SHAs distincts ; `IAMINA_ENV` non déclarée. Aucun déploiement/Neon modifié lors de l'audit.
 
-**Nouveau test en cours, W01-G6 local seulement :** sur la base PostgreSQL 16 *restaurée et jetable*, Django migre réellement le schéma `diabetes 0035 → 0033 → 0035`. Avant retour arrière, refus si la sandbox contient une seule ligne de profil/journal ; preuves exigées : cinq colonnes de la migration 0034 retirées puis recréées, source intacte et canari fictif conservé. CI sur SHA PR à confirmer. Aucun accès à Neon. 
+**W01-G6 local exécuté et prouvé :** sur la base PostgreSQL 16 *restaurée et jetable*, Django a effectué le cycle `diabetes 0035 → 0033 → 0035` ; garde refusant le rollback en présence de profils/journaux, cinq colonnes supprimées puis recréées, source et canari synthétique conservés. [CI sur SHA exact #38932909084](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38932909084) **SUCCESS**, [postmerge #38933438458](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38933438458) **SUCCESS**. **Le rollback/restauration sur Neon distant reste NON TESTÉ** ; aucun SQL d'écriture Neon lors de ce test. 
 
 **Ne pas substituer** un test navigateur de deux coffres locaux (W02) à un test Vercel→Neon réel (W01).
 
 ## Chemin critique / blocages humains réels
 
-1. **Lecture W01-G1 et G3 :** inspecter paramètres Vercel `Root Directory`, branche Git de prod et correspondance des environnements, sans changer de secret ni déployer. L'API connectée n'expose pas la Root Directory effective ; une capture dashboard ou un accès compatible est indispensable.
+1. **Écart W01-G1 et G3 observé :** UI Vercel authentifiée : Web Root Directory `./` au lieu de `frontend/` ; API root `backend` conforme ; Branch Tracking production `main` aux deux projets. **Préparer** une correction Root Web contrôlée (source `vercel.json` vs `frontend/vercel.json`) et la vérification des mappings env, sans changer de secret ni déployer avant autorisation distincte.
 2. **Isolement W01-G2 :** définir/configurer des ressources **sans données patient** preview/dev ; protection de la branche IAMINA production et paramètres réseau à arbitrer avec le propriétaire, aucune modification prod spontanée.
 3. **Accès déploiement W01-G4/G5 :** un déploiement Vercel de test **nécessite une autorisation explicite** ; aucune autorisation donnée ici ne vaut permission de stage.
 4. **Exécuter G4-G6** sur sandbox synthétique isolée → corriger → tests → preuves exactes.
