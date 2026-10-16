@@ -16,6 +16,10 @@ La branche W02 ajoute le point d'entrée **uniquement CI** [`ui_w02_synthetic_va
 
 **Ce test n'est pas la bascule authentifiée A→logout→B→A.** Il ne couvre ni les providers applicatifs, AuthEpoch/session controller, XSS, fuite par un onglet déjà ouvert, chiffrement au repos, sauvegarde ni clés/récupération. Ne compter **aucune** preuve Chrome tant que la CI ne l'a pas réellement démontrée sur le HEAD exact. Aucun accès Vercel/Neon, aucun patient réel.
 
+## Contrôle behavioral de session — à valider en CI
+
+Le test Flutter `frontend/test/w02_patient_vault_session_failclosed_test.dart` vérifie avec **SQLite en mémoire synthétique** le composant `PatientVaultSessionController` : retrait public immédiat de la base A avant publication de B, retour B→A, ancienne résolution A tardive rejetée par génération, compte sans scope = coffre nul, et erreur de résolution = échec fermé. Aucun bearer réel, patient, navigateur, clé de chiffrement ou Vercel/Neon. Cette preuve est **complémentaire** au navigateur physique local W02, pas une certification du flux UI/app complet ni du coffre cryptographique.
+
 ## Gate observable W02 (non passé)
 
 - **A→logout→B→A** : aucun écran, provider, cache, requête en vol, service worker ou historique A accessible à B, y compris reload/hard reload et comptes neufs.
