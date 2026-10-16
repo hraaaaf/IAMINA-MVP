@@ -4,7 +4,7 @@
 >
 > Périmètre examiné : `main@f45a77c4ffb408e6d00cb6fa84c39cbd449e03ee`, [ADR-W01-01](../adr/ADR-W01-01-web-two-vercel-neon.md), [local-first canonique](../LOCAL_FIRST_RUNTIME_BOUNDARY.md), [roadmap W01/W02/W14](../ROADMAP.md). Ce fichier est un **snapshot de métadonnées non secrètes** : revalider l'état distant et le SHA avant un vrai déploiement.
 
-## État concret
+**Mise à jour du 16/10/2026 :** [inventaire Vercel/Neon lu directement](2026-10-16-w01b-live-cloud-readonly-evidence.md) ; projet Neon test distinct `noisy-truth-00115950`, branche `synthetic-only`, répond en PostgreSQL 16 à un `SELECT` sans effet de bord. **Limite :** aucun test Django hébergé → Neon et aucun contrôle des bases preview/prod par fingerprint. Machine-readable [snapshot non secret](w01b-2026-10-16-sanitized-cloud-inventory.json), état **NO-GO** surveillé en CI. Aucun changement de configuration distant.\n\n## État concret
 
 | Gate | État constaté | Preuve / Next exact |
 |---|---|---|

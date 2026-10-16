@@ -13,6 +13,9 @@ on:
       - 'docs/adr/ADR-W01-01-web-two-vercel-neon.md'
       - 'backend/amina/test_w01b_vercel_runtime_preflight.py'
       - 'backend/amina/test_w01b_web_cors_policy.py'
+      - 'scripts/check_w01b_cloud_release_evidence.py'
+      - 'scripts/tests/test_w01b_cloud_release_evidence.py'
+      - 'docs/assessments/w01b-2026-10-16-sanitized-cloud-inventory.json'
       - 'docs/assessments/2026-10-15-w01b-production-readiness.md'
       - '.github/workflows/w01-web-topology-contract.yml'
   push:
@@ -28,6 +31,9 @@ on:
       - 'docs/adr/ADR-W01-01-web-two-vercel-neon.md'
       - 'backend/amina/test_w01b_vercel_runtime_preflight.py'
       - 'backend/amina/test_w01b_web_cors_policy.py'
+      - 'scripts/check_w01b_cloud_release_evidence.py'
+      - 'scripts/tests/test_w01b_cloud_release_evidence.py'
+      - 'docs/assessments/w01b-2026-10-16-sanitized-cloud-inventory.json'
       - 'docs/assessments/2026-10-15-w01b-production-readiness.md'
       - '.github/workflows/w01-web-topology-contract.yml'
 permissions:
@@ -42,6 +48,10 @@ jobs:
         run: python scripts/check_web_topology_contract.py
       - name: W01 adverse-regression tests
         run: python -m unittest discover -s scripts/tests -p test_w01_web_topology_contract.py -v
+      - name: Keep sanitized cloud inventory fail-closed without production action
+        run: python scripts/check_w01b_cloud_release_evidence.py --assert-no-go
+      - name: W01-B cloud evidence adversarial regressions
+        run: python -m unittest discover -s scripts/tests -p test_w01b_cloud_release_evidence.py -v
 
   w01-postgres-http-smoke:
     name: W01 synthetic Django HTTP to PostgreSQL
