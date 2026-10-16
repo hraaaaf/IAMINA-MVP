@@ -91,6 +91,15 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
+  // Increment on a new remote attempt or explicit local identity transition.
+  // A delayed HTTP response must never reopen a superseded patient's vault.
+  int _authAttemptSequence = 0;
+
+  void _requireCurrentAuthAttempt(int attempt) {
+    if (attempt != _authAttemptSequence) {
+      throw StateError('Superseded authentication response');
+    }
+  }
 
   AuthService({
     FirebaseAuth? auth,
@@ -248,6 +257,7 @@ class AuthService extends ChangeNotifier {
   /// Enrol this installation for local-first use without contacting a server.
   /// This provides device-local continuity, not strong user authentication.
   Future<void> enrollLocalDevice() async {
+    ++_authAttemptSequence;
     if (!_initialized) {
       throw StateError('Local enrollment requires initialized authentication');
     }
@@ -261,6 +271,7 @@ class AuthService extends ChangeNotifier {
   }
 
   void enterAuditSession() {
+    ++_authAttemptSequence;
     if (!_initialized) {
       throw StateError('Audit session requires initialized authentication');
     }
@@ -276,6 +287,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> refreshToken() async {
+    ++_authAttemptSequence;
     if (_auditSession) return null;
     if (_nativeToken != null) {
       _nativeToken = null;
@@ -292,11 +304,13 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signInWithEmail(String email, String password) async {
+    final attempt = ++_authAttemptSequence;
     final normalized = email.trim().toLowerCase();
     final nativeResponse = await _postJson(
       '/api/v1/auth/login',
       {'email': normalized, 'password': password},
     );
+    _requireCurrentAuthAttempt(attempt);
     if (nativeResponse.statusCode >= 200 && nativeResponse.statusCode < 300) {
       await _acceptAuthResponse(nativeResponse);
       return;
@@ -307,6 +321,7 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       final firebaseToken = await credential.user?.getIdToken(true);
+      _requireCurrentAuthAttempt(attempt);
       if (firebaseToken == null || firebaseToken.isEmpty) {
         throw StateError('Firebase migration credential unavailable');
       }
@@ -314,6 +329,7 @@ class AuthService extends ChangeNotifier {
         '/api/v1/auth/firebase',
         {'id_token': firebaseToken},
       );
+      _requireCurrentAuthAttempt(attempt);
       if (exchange.statusCode >= 200 && exchange.statusCode < 300) {
         await _acceptAuthResponse(exchange);
         return;
@@ -323,6 +339,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> registerWithEmail(String email, String password) async {
+    final attempt = ++_authAttemptSequence;
     if (!kRemoteAccountEnrollmentEnabled) {
       throw StateError('Remote account enrollment is disabled');
     }
@@ -330,6 +347,7 @@ class AuthService extends ChangeNotifier {
       '/api/v1/auth/register',
       {'email': email.trim().toLowerCase(), 'password': password},
     );
+    _requireCurrentAuthAttempt(attempt);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw registrationFailureForStatus(response.statusCode);
     }
@@ -337,6 +355,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    ++_authAttemptSequence;
     _auditSession = false;
     final token = _nativeToken;
 
