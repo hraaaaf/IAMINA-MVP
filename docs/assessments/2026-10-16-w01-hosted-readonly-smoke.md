@@ -53,3 +53,19 @@ Les deux déploiements Vercel précédemment observés `target=production` (`iam
 - **Origine distincte :** Neon IAMINA historique `square-sun-82359137`, branche `br-fragrant-frost-b1lbdfzs` (`production`, **`protected=false`**). Les bases non modèles identifiées sur ce projet sont `neondb` et `postgres`. Les projets/branches/DB diffèrent de la sandbox ; **le contenu réel de `DATABASE_URL` de Vercel production/preview n'a pas été déchiffré ni identifié**, donc non-interférence runtime non certifiée.
 
 **Verdict G2 : PARTIEL.** La **vacuité applicative des tables publiques à l'instant du contrôle est prouvée**, pas l'isolement de bout en bout, les permissions, la protection de production ni la compatibilité restauration/rollback distant. **G6 distant toujours OPEN**. Aucune connexion Web→API→Neon testée ; aucune modification Neon ni déploiement Vercel.
+
+## W01-G1 — Correction Root Directory Vercel autorisée (16/10/2026)
+
+**But contractuel :** `iamina-review` construit Flutter Web dans `frontend/`, distinct de `iamina-certified` qui conserve `backend/`. **Succès observable de l'action ciblée :** champ de configuration Root Directory à `frontend` dans l'interface authentifiée, sans déploiement Vercel nouveau sur les deux projets. **Ce critère de configuration ≠ gate G1 entièrement certifié.**
+
+**Avant :** Vercel projet frontend `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI` Root Directory vide (résolu `./`) ; API `prj_Pn9FnyconF3h2w9gOU74iV98kJoU` Root `backend`. Contrats source sur `main@01348829c9dce488a3c188f69242fb49e6401a0c` : `frontend/vercel.json` commande `bash vercel_build.sh`, output `build/web`, `git.deploymentEnabled=false` ; le root `vercel.json` différait seulement par `cd frontend` et `frontend/build/web`. Les listings de déploiements ont été relevés avant mutation.
+
+**Action (autorisation explicite du propriétaire « Go » après demande « changer uniquement la Root Directory de `./` à `frontend/`, sans déploiement ») :** `Vercel update_project`, Team `team_NNhXPDOIfjGNBcn253btpyk0`, projet `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI`, **unique propriété modifiée `rootDirectory: "frontend"`**. Le connecteur a répondu avec le bon ID/nom mais omet `rootDirectory` dans son schéma de lecture, donc cette réponse **seule** ne sert pas de validation.
+
+**Après (preuve indépendante de la réponse API, même vue authentifiée) :**
+- UI [Build and Deployment — iamina-review](https://vercel.com/achraf-benmoussa-s-projects/iamina-review/settings/build-and-deployment) : champ `Root Directory` avec **`value="frontend"`**.
+- UI [Build and Deployment — iamina-certified](https://vercel.com/achraf-benmoussa-s-projects/iamina-certified/settings/build-and-deployment) : champ `Root Directory` avec **`value="backend"`**, inchangé.
+- Second listing Vercel `list_deployments` Web/API après PATCH : **mêmes IDs, timestamps et SHAs que juste avant** ; aucun nouveau déploiement provoqué. Web reste associé au déploiement production `dpl_8eqWcB1cTJudwE9Rw581WenUsy1K` sur `60de80ec...` ; API au `dpl_9tPKqRpMiyEMhCtQ99Jc5QV2ew77` sur `9d24cff1...`. Ce contrôle ne remplace pas un test comportemental hébergé.
+- Aucun changement repo exécutable, backend, secret, Neon ou domaine. **Aucun déploiement lancé**.
+
+**Verdict : configuration Root conforme (G1 sous-critère PASS) ; W01-G1 global PARTIEL** jusqu'à build/déploiement candidate autorisé et validation auto-deploy, affichage, API ; W01 NO-GO, W02 GELÉ. **Next :** G2 isolation et preuve de correspondance des environnements (sans secret divulgué), G3 IAMINA_ENV/SMTP, puis autorisation séparée avant toute preview Vercel et E2E G4/G5, restore G6.
