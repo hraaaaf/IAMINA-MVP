@@ -9,6 +9,12 @@
 - PR W02 [#1104](https://github.com/hraaaaf/IAMINA-MVP/pull/1104) **fermée sans fusion**, branche préservée `test/w02-auth-stale-login-response-20261016`. Les travaux historiques #1097/#1101/#1102 déjà intégrés ne sont pas annulés ni présentés comme une clôture W02. Pas de nouvelle PR, correctif, benchmark ou fusion W02 entre-temps.
 - **W14 et autorisation de release patient sont des gates ultérieurs**, et **ne conditionnent pas la clôture technique de W01**. Sinon W01 ne pourrait jamais précéder W02. Le mot « W01 fermé » ne signifie **jamais** « production patient autorisée ».
 
+## Closeout documentaire W01-G1/G2/G3 — 16 octobre 2026 (PR #1111)
+
+**Preuve de livraison documentaire uniquement :** [PR #1111](https://github.com/hraaaaf/IAMINA-MVP/pull/1111) fusionnée (squash) vers `main@0e8c3813b592d4ad5a066f31af85e666e1733dab` ; [CI prémerge #38967405572](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38967405572) COMPLETED/SUCCESS sur `db03fb4e41f3d3b4286577cf9908cd8fd397de28` (3 jobs documentaires PASS, 3 jobs runtime SKIPPED) ; [CI postmerge #38967596094](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38967596094) COMPLETED/SUCCESS sur SHA de merge exact (scope et secrets PASS, PR-size et tests runtime SKIPPED). Code exécutable inchangé. Revue COMMENT d'auto-audit sur GitHub, **non indépendante**, aucune approbation tierce.
+
+**G1** Web root `./` au lieu de `frontend/` ; **G2** Neon sandbox PG16 39 tables hors métadonnées Django vides mais protection IAMINA prod et DSN runtime inconnues ; **G3** `IAMINA_ENV` absente et prérequis SMTP non démontrés ; **G4/G5/G6 distant/G7** toujours ouverts. **W01 global NO-GO / W02 GELÉ**. Aucune modification Vercel/Neon réalisée ; tout déploiement Vercel futur requiert une autorisation explicite distincte.
+
 ## Gate W01 : critères de clôture exacts
 
 | ID | Résultat observable requis | Preuve acceptable | État au 16/10/2026 |
