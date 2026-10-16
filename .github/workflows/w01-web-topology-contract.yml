@@ -17,6 +17,8 @@ on:
       - 'scripts/tests/test_w01b_cloud_release_evidence.py'
       - 'docs/assessments/w01b-2026-10-16-sanitized-cloud-inventory.json'
       - 'docs/assessments/2026-10-15-w01b-production-readiness.md'
+      - 'backend/scripts/w01_pg16_backup_restore_ci.sh'
+      - 'scripts/tests/test_w01_pg16_restore_guard.py'
       - '.github/workflows/w01-web-topology-contract.yml'
   push:
     branches: [main]
@@ -35,6 +37,8 @@ on:
       - 'scripts/tests/test_w01b_cloud_release_evidence.py'
       - 'docs/assessments/w01b-2026-10-16-sanitized-cloud-inventory.json'
       - 'docs/assessments/2026-10-15-w01b-production-readiness.md'
+      - 'backend/scripts/w01_pg16_backup_restore_ci.sh'
+      - 'scripts/tests/test_w01_pg16_restore_guard.py'
       - '.github/workflows/w01-web-topology-contract.yml'
 permissions:
   contents: read
@@ -103,3 +107,7 @@ jobs:
         run: python -m pytest -q amina/test_w01b_vercel_runtime_preflight.py
       - name: Verify Web CORS credential/origin/preflight fail-closed policy
         run: python -m pytest -q amina/test_w01b_web_cors_policy.py
+      - name: Validate local-only PG16 restore probe guard
+        run: python -m unittest discover -s ../scripts/tests -p test_w01_pg16_restore_guard.py -v
+      - name: W01-G6 localhost PostgreSQL16 backup, restore and rollback
+        run: bash scripts/w01_pg16_backup_restore_ci.sh
