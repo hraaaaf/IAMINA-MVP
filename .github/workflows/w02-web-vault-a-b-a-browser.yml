@@ -1,0 +1,50 @@
+name: W02 synthetic Web vault A-B-A real Chrome
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart'
+      - 'scripts/w02_web_local_vault_browser_probe.py'
+      - '.github/workflows/w02-web-vault-a-b-a-browser.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart'
+      - 'scripts/w02_web_local_vault_browser_probe.py'
+      - '.github/workflows/w02-web-vault-a-b-a-browser.yml'
+permissions:
+  contents: read
+concurrency:
+  group: w02-vault-chrome-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  chrome-vault:
+    name: Real Chrome physical scoped SQLite/IndexedDB A-B-A
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build CI-only Web physical vault probe
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_w02_synthetic_vault_scope_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
+      - name: Chrome A-B-A synthetic IndexedDB isolation and browser reload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install websocket-client
+          python -m http.server 7368 --bind 127.0.0.1 --directory frontend/build/web > /tmp/w02-vault-web.log 2>&1 &
+          WEB_PID=$!
+          cleanup() { kill "$WEB_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          curl --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 1 http://127.0.0.1:7368/ > /dev/null
+          python scripts/w02_web_local_vault_browser_probe.py
