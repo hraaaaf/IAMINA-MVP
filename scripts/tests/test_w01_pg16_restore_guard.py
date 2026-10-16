@@ -33,7 +33,7 @@ class W01G6Guard(unittest.TestCase):
         self.assertIn('$(column_count "$source_db")" == 5', SOURCE)
 
     def test_reverse_fails_closed_when_any_synthetic_clinical_rows_exist(self):
-        self.assertIn('SELECT (SELECT count(*) FROM public.diabetes_diabetesprofile)', SOURCE)
+        self.assertIn('SELECT (SELECT count(*) FROM public.diabetes_patientprofile)', SOURCE)
         self.assertIn('public.diabetes_logentry', SOURCE)
         self.assertIn('"$clinical_rows" == 0', SOURCE)
         self.assertIn('refusing migration rollback with clinical rows', SOURCE)
