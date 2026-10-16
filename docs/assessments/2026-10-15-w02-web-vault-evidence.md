@@ -10,6 +10,12 @@ Date : 2026-10-15. Statut **GATE HUMAIN / NON CERTIFIÉ**. Lecture source de `ma
 4. **App-lock :** `frontend/lib/services/app_lock_authenticator_web.dart` délègue au JS `frontend/web/iamina_app_lock.js`, qui vérifie des assertions WebAuthn, empreintes et signatures. **Vérifier une assertion WebAuthn ne prouve pas le chiffrement de SQLite/IndexedDB.** Les deux gates doivent être distincts.
 5. **Frontière produit :** `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` exige une autonomie patient locale et interdit de traiter la stack Vercel/Neon de certification comme runtime patient. `docs/ROADMAP.md` W02 et W14 demandent explicitement un arbitrage santé/clé/récupération et une certification avant toute distribution patient.
 
+## Nouveau contrôle Chromium W02 — en attente de preuve CI
+
+La branche W02 ajoute le point d'entrée **uniquement CI** [`ui_w02_synthetic_vault_scope_probe_main.dart`](../../frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart) et [workflow Chrome](../../.github/workflows/w02-web-vault-a-b-a-browser.yml). Le test proposé ouvre *deux véritables bases Drift SQLite/IndexedDB* sous deux UUIDv4 synthétiques différents et tente : semer A, ouvrir B (A absent), semer B, rouvrir A (B absent), rouvrir B (A absent), revenir à A puis forcer le reload navigateur.
+
+**Ce test n'est pas la bascule authentifiée A→logout→B→A.** Il ne couvre ni les providers applicatifs, AuthEpoch/session controller, XSS, fuite par un onglet déjà ouvert, chiffrement au repos, sauvegarde ni clés/récupération. Ne compter **aucune** preuve Chrome tant que la CI ne l'a pas réellement démontrée sur le HEAD exact. Aucun accès Vercel/Neon, aucun patient réel.
+
 ## Gate observable W02 (non passé)
 
 - **A→logout→B→A** : aucun écran, provider, cache, requête en vol, service worker ou historique A accessible à B, y compris reload/hard reload et comptes neufs.
