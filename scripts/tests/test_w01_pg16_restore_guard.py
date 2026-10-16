@@ -23,6 +23,21 @@ class W01G6Guard(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, SOURCE)
 
+    def test_reversible_django_0034_schema_migration_on_sandbox_only(self):
+        self.assertIn('sandbox_url="postgresql://postgres:postgres@127.0.0.1:5432/$restore_db"', SOURCE)
+        self.assertIn('migrate diabetes 0033_logentry_meal_episode_id --noinput', SOURCE)
+        self.assertIn('migrate diabetes --noinput', SOURCE)
+        self.assertIn('Django migration 0034 DOWN to 0033 and UP to 0035', SOURCE)
+        self.assertIn('$(column_count "$restore_db")" == 0', SOURCE)
+        self.assertIn('$(column_count "$restore_db")" == 5', SOURCE)
+        self.assertIn('$(column_count "$source_db")" == 5', SOURCE)
+
+    def test_reverse_fails_closed_when_any_synthetic_clinical_rows_exist(self):
+        self.assertIn('SELECT (SELECT count(*) FROM public.diabetes_diabetesprofile)', SOURCE)
+        self.assertIn('public.diabetes_logentry', SOURCE)
+        self.assertIn('"$clinical_rows" == 0', SOURCE)
+        self.assertIn('refusing migration rollback with clinical rows', SOURCE)
+
     def test_no_external_database(self):
         for fragment in ('neon.tech', 'vercel.app', 'square-sun-82359137'):
             self.assertNotIn(fragment, SOURCE)
