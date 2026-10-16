@@ -117,7 +117,7 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     assert kwargs["max_completion_tokens"] == 384
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
-    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
+    assert kwargs["extra_body"] == {"include_reasoning": False}
     assert kwargs["response_format"] == {
         "type": "json_schema",
         "json_schema": {
@@ -167,3 +167,26 @@ def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id,
     assert "reasoning_effort" not in kwargs
     assert "response_format" not in kwargs
     assert "extra_body" not in kwargs
+
+def test_synthetic_qualification_logs_only_status_and_exception_type(monkeypatch, caplog):
+    from llm.errors import LLMProviderInternalFailure
+
+    monkeypatch.setenv("PULPER_SYNTHETIC_QUALIFICATION", "1")
+    error = SyntheticHTTPError(400)
+    error.args = ("SECRET_PATIENT_PROMPT_DO_NOT_LOG",)
+    provider, _client = _synthetic_provider(error)
+    with pytest.raises(LLMProviderInternalFailure):
+        provider.complete("SECRET_SYSTEM_DO_NOT_LOG", "SECRET_DOCUMENT_DO_NOT_LOG")
+    assert "pulper_benchmark_transport status=400 exception_type=SyntheticHTTPError" in caplog.text
+    for forbidden in ("SECRET_PATIENT_PROMPT_DO_NOT_LOG", "SECRET_SYSTEM_DO_NOT_LOG", "SECRET_DOCUMENT_DO_NOT_LOG"):
+        assert forbidden not in caplog.text
+
+
+def test_synthetic_qualification_diagnostics_cannot_leak_outside_gate(monkeypatch, caplog):
+    from llm.errors import LLMProviderInternalFailure
+
+    monkeypatch.delenv("PULPER_SYNTHETIC_QUALIFICATION", raising=False)
+    provider, _client = _synthetic_provider(SyntheticHTTPError(400))
+    with pytest.raises(LLMProviderInternalFailure):
+        provider.complete("system", "user")
+    assert "pulper_benchmark_transport" not in caplog.text

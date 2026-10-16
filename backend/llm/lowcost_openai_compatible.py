@@ -134,7 +134,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             tuning.update(
                 {
                     "response_format": _GPT_OSS_REPLY_FORMAT,
-                    "extra_body": {"reasoning_format": "hidden"},
+                    "extra_body": {"include_reasoning": False},
                 }
             )
         return tuning
@@ -148,6 +148,22 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                 **self._complete_tuning(),
             )
         except Exception as exc:
+            # Synthetic benchmark only: status and exception *type*, never
+            # the vendor response, exception text, source, or request.
+            if (
+                self.provider_id == "groq"
+                and os.environ.get("PULPER_SYNTHETIC_QUALIFICATION") == "1"
+            ):
+                status = getattr(exc, "status_code", None)
+                safe_status = status if type(status) is int and 100 <= status <= 599 else 0
+                safe_type = type(exc).__name__
+                if not safe_type.isidentifier():
+                    safe_type = "Unknown"
+                logger.warning(
+                    "pulper_benchmark_transport status=%d exception_type=%s",
+                    safe_status,
+                    safe_type,
+                )
             raise normalize_provider_exception(exc, self.provider_id) from exc
         return LLMResponse(
             content=response.choices[0].message.content or "",
@@ -159,7 +175,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
         """Single-turn plain-text completion for bounded non-JSON contracts."""
         tuning = self._request_tuning()
         if self._is_groq_gpt_oss():
-            tuning["extra_body"] = {"reasoning_format": "hidden"}
+            tuning["extra_body"] = {"include_reasoning": False}
         try:
             response = self.client.chat.completions.create(
                 model=self.model,

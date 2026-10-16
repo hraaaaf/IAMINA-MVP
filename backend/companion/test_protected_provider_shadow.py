@@ -35,17 +35,31 @@ def _resolution() -> AdviceResolution:
 
 
 def test_request_contains_only_locale_script_and_opaque_token():
-    envelope = build_shadow_envelope(_resolution(), language="fr")
+    # A cryptographically random opaque token may legitimately include "142".
+    # Force that collision to prevent a flaky false positive in the privacy
+    # assertion without weakening the exact payload allowlist.
+    with patch(
+        "core.contracts.narration_envelope.secrets.token_hex",
+        return_value="142" + "a" * 29,
+    ):
+        envelope = build_shadow_envelope(_resolution(), language="fr")
     request = build_protected_provider_shadow_request(envelope)
     prompt = request.user_prompt()
 
     assert request.locale == "fr"
     assert request.protected_body_token == envelope.protected_body_token
-    assert "Réponse clinique déterministe" not in prompt
-    assert "142" not in prompt
-    assert "mg/dL" not in prompt
-    assert "certified_consultation_brief" not in prompt
-    assert "diabetes.clinician_prep" not in prompt
+    assert "142" in envelope.protected_body_token
+    assert prompt == (
+        f"locale=fr\n"
+        f"script=default\n"
+        f"protected_body_token={envelope.protected_body_token}"
+    )
+    payload_without_token = prompt.replace(envelope.protected_body_token, "")
+    assert "Réponse clinique déterministe" not in payload_without_token
+    assert "142" not in payload_without_token
+    assert "mg/dL" not in payload_without_token
+    assert "certified_consultation_brief" not in payload_without_token
+    assert "diabetes.clinician_prep" not in payload_without_token
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=False)

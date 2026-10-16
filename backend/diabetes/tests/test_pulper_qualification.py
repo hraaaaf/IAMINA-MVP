@@ -44,11 +44,21 @@ def test_pdf_golden_fixture_is_admissible_digital_pdf():
 
 
 def test_sparse_prompt_contract_stays_versioned_and_placeholder_free():
-    assert _PARSE_PROMPT_VERSION == "pulper-parse-v4-sparse-output"
+    assert _PARSE_PROMPT_VERSION == "pulper-parse-v6-fasting-evidence"
     rendered = _PARSE_PROMPT_TEMPLATE.format(text="L0001|HbA1c: 7.2 %")
     assert "null" not in rendered.lower()
     assert "omit every absent field" in rendered.lower()
     assert '"lab_values":{"hba1c_pct":7.2}' in rendered
+
+
+def test_fasting_glucose_example_is_not_fallback_or_missing_source_permission():
+    rendered = _PARSE_PROMPT_TEMPLATE.format(
+        text="L0001|Completely unrelated document",
+    )
+    assert "lab_values.fasting_glucose_mgdl" in rendered
+    assert "NEVER a fallback measurement" in rendered
+    assert "invented timestamp" in rendered
+    assert "if its numeric glucose value or unit is missing" in rendered
 
 
 def test_synthetic_image_parser_is_deterministic_and_other_text_stays_live():
@@ -89,6 +99,22 @@ def test_synthetic_image_parser_is_deterministic_and_other_text_stays_live():
     assert provider.deterministic_calls == 1
     assert provider.live_calls == 1
     assert delegate.calls == 1
+
+
+def test_source_rule_recovery_is_marked_distinct_from_groq_parser():
+    from diabetes.services.documents.pulper import (
+        _recover_single_explicit_lab_line,
+    )
+
+    output = PulperOutput()
+    _recover_single_explicit_lab_line(
+        output,
+        {"document_type": "lab_report", "confidence": 0.95},
+        {"L0001": "Fasting glucose: 126 mg/dL"},
+    )
+    assert output.lab_values.fasting_glucose_mgdl == 126
+    assert output.lab_values.evidence["fasting_glucose_mgdl"].verified
+    assert any("règle déterministe" in w for w in output.warnings)
 
 
 def test_score_facts_counts_wrong_values_as_fp_and_fn():
