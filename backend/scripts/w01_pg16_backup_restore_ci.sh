@@ -63,7 +63,7 @@ DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/$restore_db" \
 # and migrating forwards again must restore them. Refuse if any clinical rows exist.
 sandbox_url="postgresql://postgres:postgres@127.0.0.1:5432/$restore_db"
 clinical_rows="$(pg psql -d "$restore_db" -X -A -t -v ON_ERROR_STOP=1 -c \
-  "SELECT (SELECT count(*) FROM public.diabetes_diabetesprofile) + (SELECT count(*) FROM public.diabetes_logentry)")"
+  "SELECT (SELECT count(*) FROM public.diabetes_patientprofile) + (SELECT count(*) FROM public.diabetes_logentry)")"
 [[ "$clinical_rows" == 0 ]] || {
   echo "W01-G6 BLOCK: refusing migration rollback with clinical rows" >&2
   exit 2
@@ -71,7 +71,7 @@ clinical_rows="$(pg psql -d "$restore_db" -X -A -t -v ON_ERROR_STOP=1 -c \
 fields="'treatment_declaration_state','treatment_declarations','treatment_declaration_version','treatment_declaration_source','treatment_declaration_updated_at'"
 column_count() {
   pg psql -d "$1" -X -A -t -v ON_ERROR_STOP=1 \
-    -c "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='diabetes_diabetesprofile' AND column_name IN ($fields)"
+    -c "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='diabetes_patientprofile' AND column_name IN ($fields)"
 }
 [[ "$(column_count "$restore_db")" == 5 ]] || {
   echo "W01-G6 BLOCK: expected five migration-0034 fields" >&2
