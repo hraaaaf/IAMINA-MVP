@@ -5,6 +5,8 @@
 **Succès de ce sous-lot :** données distantes non secrètes relevées, requête PostgreSQL 16 **read-only sur projet de test indépendant**, rapport traçable, test automatisé empêchant d'interpréter l'inventaire comme feu vert prod.
 **Ce n'est pas la certification W01/W02/W14.**
 
+**Closeout scope :** [PR #1099](https://github.com/hraaaaf/IAMINA-MVP/pull/1099) fusionnée `main@149fbf7b21333565fde61728a54d149bcf8ccf33`. CI prémerge : [#38879454959](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38879454959), [#38879455063](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38879455063) SUCCESS ; postmerge : [#38879958969](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38879958969), [#38879958961](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38879958961) SUCCESS sur SHA exact. Inventaire read-only validé comme **audit NO-GO**, pas une preuve de routage cloud.
+
 ## Preuves directes — connecteurs authentifiés
 
 | Cible | Preuve vérifiée le 16/10/2026 | Interprétation contrôlée |
