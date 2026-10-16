@@ -15,6 +15,16 @@
 
 **G1** Web root `./` au lieu de `frontend/` ; **G2** Neon sandbox PG16 39 tables hors métadonnées Django vides mais protection IAMINA prod et DSN runtime inconnues ; **G3** `IAMINA_ENV` absente et prérequis SMTP non démontrés ; **G4/G5/G6 distant/G7** toujours ouverts. **W01 global NO-GO / W02 GELÉ**. Aucune modification Vercel/Neon réalisée ; tout déploiement Vercel futur requiert une autorisation explicite distincte.
 
+## W01-G2/G3 — Durcissement ciblé, sans déploiement (16/10/2026)
+
+**État vérifié (source + API, pas un GO) :** Vercel API `iamina-certified` porte désormais `IAMINA_ENV=development` pour `production` + `preview` (non-patient explicite). `IAMINA_EXPECTED_DB_HOST`/`IAMINA_EXPECTED_DB_NAME` sont définis **par cible**, provenant des métadonnées Neon vérifiées : Production → projet IAMINA `square-sun-82359137` / DB `neondb` ; Preview → projet séparé `noisy-truth-00115950` / DB `iamina925_empty`. Les valeurs sont des identifiants non secrets ; **les `DATABASE_URL` sensibles ne sont ni publiées ni certifiées conformes à ces identifiants**. Aucune publication Vercel.
+
+**Nouvelle garde Django testable :** `vercel_settings.py` valide avant création de `DATABASES` que `IAMINA_ENV` est explicite et reconnue, que `VERCEL_ENV` est identifié, que `DATABASE_URL` respecte le host Neon et le nom de DB attendus (direct ou pooler exact), et impose `sslmode=require|verify-ca|verify-full`. Les échecs ne loguent **aucune URL/password**. Tests synthétiques de bon chemin et mismatch host/DB/TLS/mode. La mise en vigueur réelle attend un nouveau déploiement explicitement autorisé ; **les déploiements existants gardent leur ancien environnement**.
+
+**Neon G2 protection :** `update_branch protected=true` sur branche IAMINA `production` tenté et **REFUSÉ HTTP 422 (quota de branches protégées atteint sur forfait actuel)**. Aucune protection acquise, aucun paiement/upgrade. Le rôle d'essai API Neon était trop privilégié (CREATEDB/CREATEROLE/BYPASSRLS) : tentative de réduction refusée ; **rôle éphémère supprimé**, jamais affecté à Vercel. Mise à jour de la valeur sensible Preview `DATABASE_URL` vers sandbox via connecteurs **non effectuée**, secrets non divulgués ; son identité réelle reste inconnue.
+
+**Verdict :** G2/G3 **PARTIELS / NON CERTIFIÉS**. Prochaines preuves : CI de la PR code, mapping réel des DSN et séparation effective avant preview Web→Django→Neon ; protection Neon via option forfait autorisée ou mécanisme compensatoire approuvé ; config SMTP/récupération avant passage `IAMINA_ENV=production` ; déploiement Vercel seulement sur autorisation distincte. W01 NO-GO, W02 gelé.
+
 ## Gate W01 : critères de clôture exacts
 
 | ID | Résultat observable requis | Preuve acceptable | État au 16/10/2026 |
