@@ -8,6 +8,10 @@
 
 **Goal restant W01 :** vérifier la séparation réelle Web Preview→API→Neon synthétique sous autorisation ciblée ultérieure, puis G4/G5/G6/G7 ; ne pas annoncer G2/G3 ou W01 clos. **W01 NO-GO, W02 gelé.**
 
+## W01-G2 — Audit read-only de la sandbox et des rôles (17 octobre 2026)
+
+**Preuve directe Neon :** branche synthétique `br-sweet-frog-b9ok6ptp` / DB `iamina925_empty` / PG16.15. Les **42 tables `public` ont été comptées individuellement** : 39 tables applicatives hors métadonnées Django = **0 ligne** ; les 3 tables de métadonnées contiennent **150, 38 et 69** lignes. Les 42 tables sont détenues par `iamina925_empty_owner`, **non-superuser mais `CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS`**, inadapté comme identité applicative Preview. **0 rôle `iamina_preview_*`** au contrôle final. ACL schéma `public` : PUBLIC = USAGE sans CREATE. **Aucune écriture ni secret Vercel déchiffré.** [Requête, résultat et protocole de reprise](2026-10-17-w01-sandbox-readonly-role-audit.md). Ce contrôle local **ne certifie toujours pas** que la `DATABASE_URL` sensible de Vercel Preview pointe vers cette sandbox. Garder la décision propriétaire de sandbox synthétique sans patients, aucune dépense Neon, aucun deploy Vercel. **W01 NO-GO/W02 gelé.**
+
 ## Règle d'exécution
 
 - **Chantier actif : W01 (architecture Web, API, Neon)**, toujours **EN COURS / NON CERTIFIÉ**.
