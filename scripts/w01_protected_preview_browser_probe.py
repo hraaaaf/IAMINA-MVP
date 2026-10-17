@@ -111,6 +111,9 @@ def _browser_test() -> dict:
     from websocket import create_connection
 
     requests: list[dict] = []
+    seen_api_request_ids: set[str] = set()
+    api_status_codes: list[int] = []
+    api_cors_errors: list[str] = []
     with tempfile.TemporaryDirectory(prefix="iamina-w01-protected-", ignore_cleanup_errors=True) as tmp:
         log_path = Path(tmp) / "chromium.log"
         with log_path.open("w", encoding="utf-8") as logfile:
@@ -143,11 +146,27 @@ def _browser_test() -> dict:
                         ws.send(json.dumps({"id": this_id, "method": method, "params": params or {}}))
                         while True:
                             event = json.loads(ws.recv())
-                            if event.get("method") == "Network.requestWillBeSent":
-                                request = event.get("params", {}).get("request", {})
+                            event_method = event.get("method")
+                            event_params = event.get("params", {})
+                            if event_method == "Network.requestWillBeSent":
+                                request = event_params.get("request", {})
                                 if request.get("url", "").startswith(API_HEALTH_URL):
                                     # No headers, cookies, query params or body recorded.
+                                    seen_api_request_ids.add(event_params.get("requestId", ""))
                                     requests.append({"method": request.get("method", "unknown")})
+                                    redirect = event_params.get("redirectResponse") or {}
+                                    if isinstance(redirect.get("status"), (int, float)):
+                                        api_status_codes.append(int(redirect["status"]))
+                            elif event_method == "Network.responseReceived":
+                                if event_params.get("requestId") in seen_api_request_ids:
+                                    response = event_params.get("response", {})
+                                    if isinstance(response.get("status"), (int, float)):
+                                        api_status_codes.append(int(response["status"]))
+                            elif event_method == "Network.loadingFailed":
+                                if event_params.get("requestId") in seen_api_request_ids:
+                                    cors = event_params.get("corsErrorStatus") or {}
+                                    if isinstance(cors.get("corsError"), str):
+                                        api_cors_errors.append(cors["corsError"])
                             if event.get("id") == this_id:
                                 if "error" in event:
                                     raise RuntimeError("CDP_COMMAND_FAILED")
@@ -188,6 +207,8 @@ def _browser_test() -> dict:
                         "frontend": "EXACT_SYNTHETIC_PREVIEW_LOADED",
                         "cases": cases,
                         "api_request_methods": [entry["method"] for entry in requests],
+                        "api_response_statuses": api_status_codes,
+                        "api_cors_errors": api_cors_errors,
                         "limit": "Fresh unauthenticated Chrome only; no authenticated browser session, no SSO/CORS repair evidence",
                     }
                 finally:
