@@ -151,6 +151,7 @@ def test_vercel_preview_can_boot_without_smtp_settings():
     result = _import_vercel_settings(
         _FAKE_DATABASE_URL,
         vercel_env="preview",
+        iamina_env="development",
         email_overrides={
             "EMAIL_BACKEND": None,
             "EMAIL_HOST": None,
