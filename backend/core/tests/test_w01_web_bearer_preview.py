@@ -160,8 +160,19 @@ def test_bearer_a_b_a_profile_read_write_stays_patient_scoped():
         assert a_again.status_code == 200
         assert a_again.json()["preferred_language"] == "fr"
         assert client.get("/api/v1/profile").status_code == 401
-        assert client.patch(
+        # Without IAMINA Bearer, Django can reject a mutation at the CSRF
+        # boundary (403) before its auth boundary (401). Both are fail-closed.
+        anonymous_write = client.patch(
             "/api/v1/profile",
             data=json.dumps({"preferred_language": "ar"}),
             content_type="application/json",
-        ).status_code == 401
+        )
+        assert anonymous_write.status_code in (401, 403)
+        # Status alone is insufficient: prove that the denied write did not
+        # change either account's clinical profile in the same client.
+        a_after_denial = client.get("/api/v1/profile", **_bearer(a_token))
+        b_after_denial = client.get("/api/v1/profile", **_bearer(b_token))
+        assert a_after_denial.status_code == 200
+        assert b_after_denial.status_code == 200
+        assert a_after_denial.json()["preferred_language"] == "fr"
+        assert b_after_denial.json()["preferred_language"] == "ar"
