@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Writable } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 import { proxy, safePath, requestPath, previewOnlyAndSameOrigin } from '../../frontend/api/preview-proxy.js';
 
 const envKeys = [
