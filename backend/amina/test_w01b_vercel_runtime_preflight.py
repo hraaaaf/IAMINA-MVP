@@ -29,6 +29,7 @@ DEFAULT_ENV = {
     "IAMINA_ENV": "development",
     "IAMINA_EXPECTED_DB_HOST": FAKE_HOST,
     "IAMINA_EXPECTED_DB_NAME": "w01_synthetic",
+    "IAMINA_EXPECTED_DB_ROLE": "w01_synthetic",
 }
 PROBE = (
     "from amina import vercel_settings as s; "
@@ -46,6 +47,7 @@ def _check_settings(overrides: dict[str, str] | None = None) -> subprocess.Compl
     # Do not inherit sensitive runtime or SMTP config into preflight.
     for key in [
         "IAMINA_ENV", "IAMINA_EXPECTED_DB_HOST", "IAMINA_EXPECTED_DB_NAME",
+        "IAMINA_EXPECTED_DB_ROLE",
         "VERCEL_ENV", "VERCEL", "DATABASE_URL",
         "DEBUG", "SECRET_KEY", "ALLOWED_HOSTS", "CORS_ALLOWED_ORIGINS",
         "CSRF_TRUSTED_ORIGINS", "EMAIL_BACKEND", "EMAIL_HOST",
@@ -226,3 +228,52 @@ def test_vercel_database_url_rejects_duplicate_sslmode():
     assert result.returncode != 0
     assert "must explicitly enforce PostgreSQL TLS" in result.stderr
 
+
+
+def test_preview_requires_expected_least_privileged_db_role():
+    result = _check_settings({
+        "VERCEL_ENV": "preview",
+        "IAMINA_EXPECTED_DB_ROLE": "",
+    })
+    assert result.returncode != 0
+    assert "IAMINA_EXPECTED_DB_ROLE is required on Preview" in result.stderr
+
+
+def test_preview_rejects_unexpected_db_role_without_leaking_password():
+    result = _check_settings({
+        "VERCEL_ENV": "preview",
+        "IAMINA_EXPECTED_DB_ROLE": "different_runtime_role",
+    })
+    assert result.returncode != 0
+    assert "unapproved PostgreSQL Preview role" in result.stderr
+    assert "w01_synthetic:w01_synthetic" not in result.stderr
+
+
+def test_preview_rejects_owner_role_even_when_expected():
+    owner_url = FAKE_PG.replace(
+        "w01_synthetic:w01_synthetic@", "iamina925_empty_owner:w01_synthetic@"
+    )
+    result = _check_settings({
+        "VERCEL_ENV": "preview",
+        "IAMINA_EXPECTED_DB_ROLE": "iamina925_empty_owner",
+        "DATABASE_URL": owner_url,
+    })
+    assert result.returncode != 0
+    assert "unapproved PostgreSQL Preview role" in result.stderr
+
+
+@pytest.mark.parametrize("override", [
+    "user=iamina925_empty_owner",
+    "password=other_password",
+    "passfile=/tmp/passwords",
+    "options=-c%20role%3Diamina925_empty_owner",
+])
+def test_db_url_rejects_authentication_override_parameters(override: str):
+    result = _check_settings({"DATABASE_URL": FAKE_PG + "&" + override})
+    assert result.returncode != 0
+    assert "cannot override PostgreSQL routing" in result.stderr
+
+
+def test_development_production_target_does_not_require_preview_role_marker():
+    result = _check_settings({"IAMINA_EXPECTED_DB_ROLE": ""})
+    assert result.returncode == 0, result.stderr

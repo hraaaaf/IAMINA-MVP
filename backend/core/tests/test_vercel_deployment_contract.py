@@ -48,6 +48,7 @@ def _import_vercel_settings(
             "IAMINA_ENV": iamina_env,
             "IAMINA_EXPECTED_DB_HOST": _FAKE_NEON_HOST,
             "IAMINA_EXPECTED_DB_NAME": "iamina",
+            "IAMINA_EXPECTED_DB_ROLE": "user",
             "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
             "EMAIL_HOST": "smtp.example.test",
             "EMAIL_PORT": "587",
