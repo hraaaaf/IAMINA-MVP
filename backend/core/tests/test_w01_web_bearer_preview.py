@@ -4,13 +4,16 @@ Synthetic identities only. Django integration tests do NOT certify hosted SSO,
 Vercel OIDC Trusted Sources, browser behaviour, or all patient-resource isolation.
 """
 import json
+from unittest.mock import patch as mock_patch
 
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client, override_settings
+from ninja.security import HttpBearer
 
 from core.models import BasePatientProfile
 from core.native_auth import NativeTokenError, issue_native_token, verify_native_token
+from diabetes.api.v1.security import HybridBearerAuth
 
 
 def _patient(name: str):
@@ -125,36 +128,40 @@ def test_bearer_a_b_a_profile_read_write_stays_patient_scoped():
     DiabetesProfile.objects.get_or_create(base_profile=a.base_profile)
     DiabetesProfile.objects.get_or_create(base_profile=b.base_profile)
 
-    client = Client(enforce_csrf_checks=True)
-    a_write = client.patch(
-        "/api/v1/profile",
-        data=json.dumps({"preferred_language": "fr"}),
-        content_type="application/json",
-        **_bearer(a_token),
-    )
-    assert a_write.status_code == 200
-    assert a_write.json()["preferred_language"] == "fr"
+    # backend/conftest.py intentionally patches the global HybridBearerAuth
+    # adapter to support legacy force_login tests. Restore the real Ninja
+    # HttpBearer parser ONLY for this explicit Bearer A/B integration case.
+    with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
+        client = Client(enforce_csrf_checks=True)
+        a_write = client.patch(
+            "/api/v1/profile",
+            data=json.dumps({"preferred_language": "fr"}),
+            content_type="application/json",
+            **_bearer(a_token),
+        )
+        assert a_write.status_code == 200
+        assert a_write.json()["preferred_language"] == "fr"
 
-    # Same HTTP client, but only B's Bearer now authorizes this operation.
-    b_read = client.get("/api/v1/profile", **_bearer(b_token))
-    assert b_read.status_code == 200
-    assert b_read.json()["preferred_language"] != "fr"
+        # Same HTTP client, but only B's Bearer now authorizes this operation.
+        b_read = client.get("/api/v1/profile", **_bearer(b_token))
+        assert b_read.status_code == 200
+        assert b_read.json()["preferred_language"] != "fr"
 
-    b_write = client.patch(
-        "/api/v1/profile",
-        data=json.dumps({"preferred_language": "ar"}),
-        content_type="application/json",
-        **_bearer(b_token),
-    )
-    assert b_write.status_code == 200
-    assert b_write.json()["preferred_language"] == "ar"
+        b_write = client.patch(
+            "/api/v1/profile",
+            data=json.dumps({"preferred_language": "ar"}),
+            content_type="application/json",
+            **_bearer(b_token),
+        )
+        assert b_write.status_code == 200
+        assert b_write.json()["preferred_language"] == "ar"
 
-    a_again = client.get("/api/v1/profile", **_bearer(a_token))
-    assert a_again.status_code == 200
-    assert a_again.json()["preferred_language"] == "fr"
-    assert client.get("/api/v1/profile").status_code == 401
-    assert client.patch(
-        "/api/v1/profile",
-        data=json.dumps({"preferred_language": "ar"}),
-        content_type="application/json",
-    ).status_code == 401
+        a_again = client.get("/api/v1/profile", **_bearer(a_token))
+        assert a_again.status_code == 200
+        assert a_again.json()["preferred_language"] == "fr"
+        assert client.get("/api/v1/profile").status_code == 401
+        assert client.patch(
+            "/api/v1/profile",
+            data=json.dumps({"preferred_language": "ar"}),
+            content_type="application/json",
+        ).status_code == 401
