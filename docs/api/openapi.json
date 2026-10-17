@@ -336,7 +336,7 @@
             }
           }
         },
-        "description": "Injects 30 days of realistic glucose logs for the current authenticated user.\nIdempotent \u2014 skips if the user already has \u2265 20 entries.",
+        "description": "D11: a real patient token must NEVER authorize synthetic clinical writes.\n\nThis API used to inject 30 days of fabricated readings under request.user.\nAuthentication is not consent to create medical history, and neither a\n\"dev only\" comment nor a Django DEBUG flag protects a patient record.\n\nDemo datasets remain available through the dedicated setup_demo management\ncommand and the isolated /demo/chat synthetic runtime. HTTP seeding stays\ndisabled for *all* patient identities, including the demo fixture user.\nPreserve this route as an explicit 403 (rather than an accidental 404)\nso clients fail closed without mutating historical patient records.",
         "tags": [
           "demo"
         ],
