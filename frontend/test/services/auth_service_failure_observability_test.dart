@@ -117,6 +117,14 @@ void main() {
       if (key == 'iamina_native_access_token') return token;
       return null;
     });
+    // A cached bearer enrolls the local marker during initialize().
+    // Mock the write or initialize() fails closed before reaching the 503 test.
+    when(
+      () => storage.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => storage.delete(key: any(named: 'key'))).thenAnswer((_) async {});
     when(() => httpClient.post(any(), headers: any(named: 'headers')))
         .thenAnswer((invocation) async {
