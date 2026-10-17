@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { getVercelOidcToken } from '@vercel/oidc';
 
 const WEB_PROJECT = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';
 const EXACT_API_ORIGIN =
@@ -46,7 +47,7 @@ export const config = {
   maxDuration: 30,
 };
 
-export default async function handler(request, response) {
+export async function proxy(request, response, getToken = getVercelOidcToken) {
   response.setHeader('Cache-Control', 'private, no-store, max-age=0');
   response.setHeader('X-Content-Type-Options', 'nosniff');
   const gate = previewOnlyAndSameOrigin(request);
@@ -59,14 +60,18 @@ export default async function handler(request, response) {
       length > MAX_REQUEST_BYTES) return response.status(413).end();
 
   // Fail closed on missing/incorrect configuration; no fallback to production.
-  if (process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL !== EXACT_API_ORIGIN ||
-      !/^[A-Za-z0-9]{32}$/.test(process.env.IAMINA_W01_API_PROTECTION_BYPASS ?? '')) {
+  if (process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL !== EXACT_API_ORIGIN) {
     return response.status(503).end();
   }
+  // Vercel Trusted Sources authenticates this Preview-to-Preview workload.
+  // No project-wide automation bypass is provisioned or shared with Flutter.
+  let oidcToken;
+  try { oidcToken = await getToken(); } catch { return response.status(503).end(); }
+  if (typeof oidcToken !== 'string' || oidcToken.length < 3)
+    return response.status(503).end();
 
   const outgoingHeaders = new Headers();
-  outgoingHeaders.set('x-vercel-protection-bypass',
-    process.env.IAMINA_W01_API_PROTECTION_BYPASS);
+  outgoingHeaders.set('x-vercel-trusted-oidc-idp-token', oidcToken);
   for (const name of ['authorization', 'accept', 'content-type', 'if-match', 'if-none-match']) {
     const value = request.headers[name];
     if (typeof value === 'string') outgoingHeaders.set(name, value);
@@ -104,6 +109,10 @@ export default async function handler(request, response) {
     if (!response.headersSent) return response.status(502).end();
     response.end();
   }
+}
+
+export default async function handler(request, response) {
+  return proxy(request, response);
 }
 
 export { safePath, requestPath, previewOnlyAndSameOrigin };

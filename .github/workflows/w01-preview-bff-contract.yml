@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install pinned Vercel OIDC helper for runtime contract
+        run: npm install --prefix frontend --no-audit --no-fund
       - name: Assert Node parse and adversarial BFF transport
         run: |
           node --check frontend/api/preview-proxy.js
