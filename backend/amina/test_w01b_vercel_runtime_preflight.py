@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 BACKEND = Path(__file__).resolve().parents[1]
 FAKE_HOST = "ep-w01-synthetic.c-7.eu-central-1.aws.neon.tech"
 FAKE_PG = f"postgresql://w01_synthetic:w01_synthetic@{FAKE_HOST}/w01_synthetic?sslmode=require"
@@ -103,7 +105,13 @@ def test_wildcard_hosts_fail_closed():
 def test_iamina_production_runtime_requires_mail_recovery_gate():
     # IAMINA_ENV=production is deliberately NOT enabled on the shared dev stack.
     # A future production runtime must pass all independent SMTP + reset gates.
-    result = _check_settings({"IAMINA_ENV": "production"})
+    verified_tls = FAKE_PG.replace(
+        "sslmode=require", "sslmode=verify-full&sslrootcert=system"
+    )
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "DATABASE_URL": verified_tls,
+    })
     assert result.returncode != 0
     assert "requires SMTP EMAIL_BACKEND" in result.stderr
 
@@ -158,3 +166,63 @@ def test_matching_neon_pooler_host_is_accepted():
     pooled = FAKE_HOST.replace(".c-", "-pooler.c-", 1)
     result = _check_settings({"DATABASE_URL": FAKE_PG.replace(FAKE_HOST, pooled)})
     assert result.returncode == 0, result.stderr
+
+def test_patient_production_rejects_tls_without_server_verification():
+    result = _check_settings({"IAMINA_ENV": "production"})
+    assert result.returncode != 0
+    assert "requires sslmode=verify-full" in result.stderr
+
+
+def test_patient_production_rejects_verify_full_without_system_ca():
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "DATABASE_URL": FAKE_PG.replace("sslmode=require", "sslmode=verify-full"),
+    })
+    assert result.returncode != 0
+    assert "requires sslrootcert=system" in result.stderr
+
+
+def test_patient_production_rejects_preview_target_even_with_verified_tls():
+    verified = FAKE_PG.replace(
+        "sslmode=require", "sslmode=verify-full&sslrootcert=system"
+    )
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "VERCEL_ENV": "preview",
+        "DATABASE_URL": verified,
+    })
+    assert result.returncode != 0
+    assert "cannot run on a Vercel preview" in result.stderr
+
+
+def test_verified_production_tls_passes_identity_gate_to_smtp_gate():
+    verified = FAKE_PG.replace(
+        "sslmode=require", "sslmode=verify-full&sslrootcert=system"
+    )
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "DATABASE_URL": verified,
+    })
+    assert result.returncode != 0
+    assert "requires SMTP EMAIL_BACKEND" in result.stderr
+
+@pytest.mark.parametrize("routing_query", [
+    "host=ep-attacker.example.test",
+    "hostaddr=127.0.0.1",
+    "dbname=other_database",
+    "service=attacker_profile",
+    "servicefile=/tmp/attacker_service.conf",
+    "port=6432",
+])
+def test_vercel_database_url_rejects_routing_query_overrides(routing_query: str):
+    result = _check_settings({"DATABASE_URL": FAKE_PG + "&" + routing_query})
+    assert result.returncode != 0
+    assert "cannot override PostgreSQL routing" in result.stderr
+    assert "w01_synthetic:w01_synthetic" not in result.stderr
+
+
+def test_vercel_database_url_rejects_duplicate_sslmode():
+    result = _check_settings({"DATABASE_URL": FAKE_PG + "&sslmode=disable"})
+    assert result.returncode != 0
+    assert "must explicitly enforce PostgreSQL TLS" in result.stderr
+

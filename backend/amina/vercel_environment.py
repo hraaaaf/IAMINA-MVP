@@ -44,6 +44,24 @@ def validate_vercel_database_identity(database_url: str) -> None:
     if host not in {expected_host, pooled_host} or dbname != expected_name:
         raise ValueError("DATABASE_URL does not match the expected Neon environment")
 
-    tls_mode = parse_qs(parsed.query).get("sslmode", [])
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    # libpq supports connection routing parameters in the query string.
+    # Never let them silently override the host or database we authenticated.
+    forbidden_overrides = {"host", "hostaddr", "dbname", "service", "servicefile", "port"}
+    if forbidden_overrides.intersection(params):
+        raise ValueError("DATABASE_URL cannot override PostgreSQL routing in query parameters")
+
+    tls_mode = params.get("sslmode", [])
     if len(tls_mode) != 1 or tls_mode[0] not in {"require", "verify-ca", "verify-full"}:
         raise ValueError("DATABASE_URL must explicitly enforce PostgreSQL TLS")
+
+    # Clinical/patient production must authenticate the PostgreSQL server too.
+    # sslmode=require encrypts, but does not ensure server identity (MITM).
+    # The production connection additionally uses the system-trusted CA set.
+    if iamina_env == "production":
+        if vercel_env != "production":
+            raise ValueError("IAMINA patient production cannot run on a Vercel preview")
+        if tls_mode[0] != "verify-full":
+            raise ValueError("IAMINA patient production requires sslmode=verify-full")
+        if params.get("sslrootcert") != ["system"]:
+            raise ValueError("IAMINA patient production requires sslrootcert=system")
