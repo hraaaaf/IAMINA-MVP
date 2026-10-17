@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'auth_epoch.dart';
 import 'auth_service.dart';
+import 'preview_api_origin.dart';
 import 'document_ingest_minimizer.dart';
 import 'sync_api_contract.dart';
 import '../data/models/ai_models.dart';
@@ -283,11 +284,12 @@ class ApiClient {
       PendingDocumentDeduplicator<PulperPreview>();
 
   ApiClient({
-    this.baseUrl = kBaseUrl,
+    String? baseUrl,
     AuthService? authService,
     bool Function()? canUsePatientSyncTransport,
     bool Function()? allowClinicalTransportForSyntheticTests,
-  }) : _authService = authService ?? AuthService(),
+  }) : baseUrl = baseUrl ?? resolveIaminaApiOrigin(kBaseUrl),
+       _authService = authService ?? AuthService(),
        _canUsePatientSyncTransport = canUsePatientSyncTransport,
        _allowClinicalTransportForSyntheticTests =
            allowClinicalTransportForSyntheticTests;

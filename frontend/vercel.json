@@ -6,6 +6,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/v1/:path*",
+      "destination": "/api/preview-proxy?path=:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

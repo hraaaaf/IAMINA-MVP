@@ -1,0 +1,35 @@
+name: W01 Web Preview same-origin BFF contract
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/api/preview-proxy.js'
+      - 'frontend/vercel.json'
+      - 'frontend/vercel_build.sh'
+      - 'frontend/lib/services/api_client.dart'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/lib/services/preview_api_origin.dart'
+      - 'scripts/check_web_topology_contract.py'
+      - 'scripts/tests/test_w01_web_topology_contract.py'
+      - 'scripts/tests/test_w01_preview_bff.mjs'
+      - '.github/workflows/w01-preview-bff-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bff-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Assert Node parse and adversarial BFF transport
+        run: |
+          node --check frontend/api/preview-proxy.js
+          node --test scripts/tests/test_w01_preview_bff.mjs
+      - name: Reject topology, bypass and Flutter Preview regressions
+        run: |
+          python scripts/check_web_topology_contract.py
+          python -m unittest discover -s scripts/tests -p test_w01_web_topology_contract.py -v

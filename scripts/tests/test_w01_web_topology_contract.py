@@ -24,6 +24,7 @@ class W01WebTopologyContractTest(unittest.TestCase):
             "vercel.json",
             "backend/api/index.py",
             "frontend/vercel_build.sh",
+            "frontend/api/preview-proxy.js",
         ]:
             destination = self.root / rel
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -50,6 +51,15 @@ class W01WebTopologyContractTest(unittest.TestCase):
         with (self.root / "frontend/vercel_build.sh").open("a", encoding="utf-8") as f:
             f.write("\nDATABASE_URL=should_never_be_here\n")
         self.assertTrue(any("SQL credentials" in e for e in check_web_topology(self.root)))
+
+    def test_preview_api_must_not_fall_through_to_flutter_html(self) -> None:
+        self._edit_json("frontend/vercel.json", lambda cfg: cfg.pop("rewrites"))
+        self.assertTrue(any("BFF API rewrite" in e for e in check_web_topology(self.root)))
+
+    def test_proxy_preview_gate_must_remain(self) -> None:
+        path = self.root / "frontend/api/preview-proxy.js"
+        path.write_text(path.read_text(encoding="utf-8").replace("VERCEL_ENV !== 'preview'", "false"))
+        self.assertTrue(any("proxy fail-closed" in e for e in check_web_topology(self.root)))
 
     def test_backend_region_needs_explicit_review(self) -> None:
         self._edit_json("backend/vercel.json", lambda cfg: cfg.update(regions=["fra1"]))
