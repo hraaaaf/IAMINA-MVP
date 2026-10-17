@@ -36,7 +36,7 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       # never the stable backend alias (which can address a different database).
       # The fixed project/account suffix prevents another Vercel app or origin
       # from being injected into the web bundle.
-      if [[ ! "${IAMINA_REVIEW_PREVIEW_API_BASE_URL:-}" =~ ^https://iamina-certified-[a-z0-9-]+-achraf-benmoussa-s-projects\\.vercel\\.app/?$ ]]; then
+      if [[ ! "${IAMINA_REVIEW_PREVIEW_API_BASE_URL:-}" =~ ^https://iamina-certified-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app/?$ ]]; then
         echo "ERROR: Preview requires the exact IAMINA synthetic backend deployment URL" >&2
         exit 64
       fi
