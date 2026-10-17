@@ -1,5 +1,14 @@
 # IAMINA Web V2 — W01 avant W02 : contrat de passage
 
+## W01-G4 — Hosted Preview synthétique vérifiée (17 octobre 2026, état le plus récent)
+
+**GO propriétaire pour Preview uniquement exécuté.** Backend Django Vercel `iamina-certified` sur `dpl_EYcpDXk1juYoYBxb3okkcCAkHd1X` (`READY`, Preview, source `c0192ded...`) et Web Flutter `iamina-review` sur `dpl_Mvz8HrtW3ZTq2Awf4yykeVfrD9U7` (`READY`, Preview, source `1d42c311...`). L'API a répondu **HTTP 200** à `/api/v1/health` avec `status=ok, db=ok, cache=unavailable`; logs Python Vercel du même déploiement confirment le GET 200 en `environment=preview`. La Web Preview sert HTML Flutter en HTTP 200 ; ses logs de compilation prouvent `API_BASE_URL` vers **l'URL unique de l'API Preview**, jamais l'alias stable. **39 tables métier Neon synthétiques vérifiées à 0 ligne via le rôle limité** après le smoke. Les SHA Web et API ne diffèrent que par un test Python, sans modification du backend runtime. Production Vercel reste sur ses anciens déploiements (backend `dpl_9tPKqRpMiyEMhCtQ99Jc5QV2ew77`, Web `dpl_8eqWcB1cTJudwE9Rw581WenUsy1K`) ; Neon Production `protected=false`.
+
+**Code et tests :** [PR #1124](https://github.com/hraaaaf/IAMINA-MVP/pull/1124) fusionnée `main@37d9a5c2db62d66018172796b6f95b94bed8ab20`. Quatre CI prémerge **SUCCESS** ([CI #39031832193](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39031832193), [Portability #39031831993](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39031831993), [W01 #39031832012](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39031832012), [drift #39031832013](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39031832013)). Tests postmerge référencés dans le [rapport détaillé](2026-10-17-w01-hosted-synthetic-preview-smoke.md) ; vérifier les conclusions avant d'affirmer vert. Le script Flutter refuse désormais une Preview vers l'API stable, impose une URL backend Preview allowlistée et désactive l'inscription à distance sur Preview, comportement Production conservé.
+
+**Gates encore ouverts :** **aucun navigateur interactif Web→API→DB testé**, l'API Preview est sous **SSO Vercel actif** ; CORS/CSRF, authentification utilisateur, sauvegarde/restauration distantes, SMTP, protection Production et revue indépendante non certifiés. Cache `unavailable` non fatal, à investiguer. Toute modification de protection SSO exige un accord distinct. **W01 G4 PARTIEL, W01 NO-GO, W02 gelé.** Next exact : établir une preuve navigateur authentifié sans affaiblir le SSO, puis G4–G7/revue et closeout.
+
+
 **Date : 16 octobre 2026. Décision explicite du propriétaire : ordre séquentiel strict W01 → W02.**
 
 ## W01-G2/G3 — LOGIN Neon réparé et Preview Vercel préparée (17/10/2026, état le plus récent)
