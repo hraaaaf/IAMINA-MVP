@@ -32,3 +32,9 @@
 
 ## Revue adversariale complémentaire (17/10)
 Revue source à issue ouverte [W01-G5 adversarial review](2026-10-17-w01-preview-bff-adversarial-review.md) : Django `SessionAuth`/CSRF non transportés par le BFF (Bearer uniquement candidat), pièces 15 MiB non compatibles limite Node 4 MiB, Trusted Sources 404, fonction Web et routing non éprouvés. Statut **BLOCKER de certification**, pas une approbation de release.
+
+## Correctifs probants après la première candidate — 17/10/2026
+- **Clients Flutter :** `ApiClient`, `AuthService`, `CgmService` et `CompanionService` résolvent en Preview l'origine HTTPS du navigateur, y compris les appels CGM/Companion qui auraient conservé l'URL d'origine obsolète. Contrat `resolveIaminaApiOriginForMode` testé pour Preview et Production ; pas de changement de l'adresse API Production.
+- **BFF :** le plafond 4 MiB ne repose plus seulement sur `Content-Length`, les octets sont mesurés et bornés avant l'appel upstream. Requêtes chunked ou `Content-Length` trompeur de plus de 4 MiB → 413 et **0 egress**. Pas de prise en charge des uploads Flutter 15 MiB ; ce reste un bloqueur.
+- **CI exact HEAD code `7c2a870fbc005e0c4925db0d943d3f124ef9235d` :** [BFF #39060465243](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39060465243) **SUCCESS (13 Node/7 Python)**. Les autres workflows de cette candidate restent à certifier séparément.
+- **Blocage externe inchangé :** Vercel Trusted Sources a retourné HTTP 404 ; aucune autorisation OIDC inter-projets n'a été installée ou démontrée. Web/API SSO actifs, Preview BFF toujours non déployée.
