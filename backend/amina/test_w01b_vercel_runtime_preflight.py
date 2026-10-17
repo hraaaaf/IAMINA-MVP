@@ -158,3 +158,43 @@ def test_matching_neon_pooler_host_is_accepted():
     pooled = FAKE_HOST.replace(".c-", "-pooler.c-", 1)
     result = _check_settings({"DATABASE_URL": FAKE_PG.replace(FAKE_HOST, pooled)})
     assert result.returncode == 0, result.stderr
+
+def test_patient_production_rejects_tls_without_server_verification():
+    result = _check_settings({"IAMINA_ENV": "production"})
+    assert result.returncode != 0
+    assert "requires sslmode=verify-full" in result.stderr
+
+
+def test_patient_production_rejects_verify_full_without_system_ca():
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "DATABASE_URL": FAKE_PG.replace("sslmode=require", "sslmode=verify-full"),
+    })
+    assert result.returncode != 0
+    assert "requires sslrootcert=system" in result.stderr
+
+
+def test_patient_production_rejects_preview_target_even_with_verified_tls():
+    verified = FAKE_PG.replace(
+        "sslmode=require", "sslmode=verify-full&sslrootcert=system"
+    )
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "VERCEL_ENV": "preview",
+        "DATABASE_URL": verified,
+    })
+    assert result.returncode != 0
+    assert "cannot run on a Vercel preview" in result.stderr
+
+
+def test_verified_production_tls_passes_identity_gate_to_smtp_gate():
+    verified = FAKE_PG.replace(
+        "sslmode=require", "sslmode=verify-full&sslrootcert=system"
+    )
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "DATABASE_URL": verified,
+    })
+    assert result.returncode != 0
+    assert "requires SMTP EMAIL_BACKEND" in result.stderr
+

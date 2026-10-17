@@ -7,7 +7,7 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _FAKE_NEON_HOST = "ep-w01-synthetic.c-7.eu-central-1.aws.neon.tech"
 _FAKE_DATABASE_URL = (
-    f"postgresql://user:pass@{_FAKE_NEON_HOST}/iamina?sslmode=require"
+    f"postgresql://user:pass@{_FAKE_NEON_HOST}/iamina?sslmode=verify-full&sslrootcert=system"
 )
 
 _EMAIL_ENV_KEYS = {

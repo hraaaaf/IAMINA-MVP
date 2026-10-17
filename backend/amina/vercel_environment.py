@@ -47,3 +47,14 @@ def validate_vercel_database_identity(database_url: str) -> None:
     tls_mode = parse_qs(parsed.query).get("sslmode", [])
     if len(tls_mode) != 1 or tls_mode[0] not in {"require", "verify-ca", "verify-full"}:
         raise ValueError("DATABASE_URL must explicitly enforce PostgreSQL TLS")
+
+    # Clinical/patient production must authenticate the PostgreSQL server too.
+    # sslmode=require encrypts, but does not ensure server identity (MITM).
+    # The production connection additionally uses the system-trusted CA set.
+    if iamina_env == "production":
+        if vercel_env != "production":
+            raise ValueError("IAMINA patient production cannot run on a Vercel preview")
+        if tls_mode[0] != "verify-full":
+            raise ValueError("IAMINA patient production requires sslmode=verify-full")
+        if parse_qs(parsed.query).get("sslrootcert") != ["system"]:
+            raise ValueError("IAMINA patient production requires sslrootcert=system")
