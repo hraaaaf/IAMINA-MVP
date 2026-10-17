@@ -361,10 +361,16 @@ class AuthService extends ChangeNotifier {
 
     if (token != null) {
       try {
-        await _httpClient.post(
+        final response = await _httpClient.post(
           Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
+        // Local sign-out remains final, but only 2xx confirms remote
+        // revocation. A protected Preview API can return 401/403/502/503
+        // without throwing: never silently count this as a revoked token.
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw StateError('Remote logout revocation not confirmed');
+        }
       } catch (error, stackTrace) {
         _failureLogger(
           'logout',
