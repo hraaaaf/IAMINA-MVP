@@ -2,6 +2,12 @@
 
 **Date : 16 octobre 2026. Décision explicite du propriétaire : ordre séquentiel strict W01 → W02.**
 
+## Décision du propriétaire — 17 octobre 2026 : sandbox provisoire, sans patients
+
+**Décision explicite :** « Conserve provisoirement », en réponse à l'alternative entre sandbox non-patient et sécurisation Neon potentiellement payante. **Portée :** maintenir le chantier sur l'environnement **synthétique exclusivement**, sans achat, sans activation patient, sans déploiement Vercel et sans écriture sur la base Neon IAMINA production. Cette décision **ne certifie PAS** l'isolation du `DATABASE_URL` Vercel Preview : la valeur demeure sensible/non vérifiée. La protection de branche Neon prod (`protected=false`, HTTP 422 quota du plan) et la restriction réseau restent des **gates bloquants pour toute utilisation patient**, simplement différés en phase synthétique. Autorisé : contrôles read-only, tests locaux/CI avec données fictives, préparation documentée d'un rôle sandbox least-privilege et d'une future vérification de connexion Preview sans montrer de secrets. **Non autorisé :** modifier les variables sensibles Vercel, déployer sur Vercel, changer forfait/plan Neon ou utiliser des données patients ; ces actions demanderont une décision distincte. [Preuve GitHub : décision #1117](https://github.com/hraaaaf/IAMINA-MVP/issues/1117#issuecomment-6227852503).
+
+**Goal restant W01 :** vérifier la séparation réelle Web Preview→API→Neon synthétique sous autorisation ciblée ultérieure, puis G4/G5/G6/G7 ; ne pas annoncer G2/G3 ou W01 clos. **W01 NO-GO, W02 gelé.**
+
 ## Règle d'exécution
 
 - **Chantier actif : W01 (architecture Web, API, Neon)**, toujours **EN COURS / NON CERTIFIÉ**.
