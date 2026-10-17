@@ -9,6 +9,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
+import 'widgets/dashboard_reminders_summary_card.dart';
 import 'widgets/dashboard_responsive_sections.dart';
 import 'widgets/dashboard_today_section.dart';
 
@@ -273,6 +274,10 @@ class _DashboardBody extends StatelessWidget {
                             high: high,
                             companionService: companionService,
                           ),
+                          const SizedBox(height: 18),
+                          // Keep clinical trends in their established position.
+                          // A private-title-free reminder count follows the overview.
+                          const DashboardRemindersSummaryCard(),
                           const SizedBox(height: 22),
                           const _DataTools(),
                         ]),
