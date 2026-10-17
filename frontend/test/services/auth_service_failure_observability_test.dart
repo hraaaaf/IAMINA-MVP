@@ -108,4 +108,47 @@ void main() {
 
     service.dispose();
   });
+
+  test('non-2xx remote logout is observable but local bearer stays erased',
+      () async {
+    const token = 'iamina.e30:1abcde:synthetic_secret_token';
+    when(() => storage.read(key: any(named: 'key'))).thenAnswer((invocation) async {
+      final key = invocation.namedArguments[#key] as String?;
+      if (key == 'iamina_native_access_token') return token;
+      return null;
+    });
+    // A cached bearer enrolls the local marker during initialize().
+    // Mock the write or initialize() fails closed before reaching the 503 test.
+    when(
+      () => storage.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenAnswer((_) async {});
+    when(() => storage.delete(key: any(named: 'key'))).thenAnswer((_) async {});
+    when(() => httpClient.post(any(), headers: any(named: 'headers')))
+        .thenAnswer((invocation) async {
+      final uri = invocation.positionalArguments.first as Uri;
+      final headers = invocation.namedArguments[#headers] as Map<String, String>;
+      expect(uri.path, '/api/v1/auth/logout');
+      expect(headers['Authorization'], 'Bearer $token');
+      // Synthetic API denial: the token must not be assumed revoked remotely.
+      return http.Response('synthetic-private-upstream-response', 503);
+    });
+
+    final service = buildService();
+    await service.initialize();
+    expect(service.hasRemoteApiCredential, isTrue);
+
+    await service.signOut();
+
+    expect(service.isAuthenticated, isFalse);
+    expect(service.hasRemoteApiCredential, isFalse);
+    expect(await service.getIdToken(), isNull);
+    expect(failures, <String>['logout:StateError']);
+    expect(failures.single, isNot(contains(token)));
+    expect(failures.single, isNot(contains('synthetic-private')));
+    verify(() => storage.delete(key: 'iamina_native_access_token')).called(1);
+    service.dispose();
+  });
 }

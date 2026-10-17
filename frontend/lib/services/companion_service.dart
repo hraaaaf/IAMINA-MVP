@@ -14,6 +14,7 @@ import '../data/models/proactive_preview_models.dart';
 import 'companion_legacy_governance_fallback.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
+import 'preview_api_origin.dart';
 
 const String companionApiBaseUrl = kBaseUrl;
 
@@ -80,11 +81,12 @@ class CompanionService {
   CompanionService({
     AuthService? authService,
     http.Client? httpClient,
-    this.baseUrl = companionApiBaseUrl,
+    String? baseUrl,
     this.demoLanguage = 'fr',
     String? demoSessionId,
     CompanionFailureLogger? failureLogger,
-  }) : _authService = authService ?? AuthService(),
+  }) : baseUrl = baseUrl ?? resolveIaminaApiOrigin(companionApiBaseUrl),
+       _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client(),
        demoSessionId = demoSessionId ?? _newDemoSessionId(),
        _failureLogger = failureLogger ?? _defaultFailureLogger;

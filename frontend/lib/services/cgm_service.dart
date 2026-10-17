@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'auth_service.dart';
+import 'preview_api_origin.dart';
 
 const String cgmApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -120,8 +121,9 @@ class CgmService {
   CgmService({
     AuthService? authService,
     http.Client? httpClient,
-    this.baseUrl = cgmApiBaseUrl,
-  }) : _authService = authService ?? AuthService(),
+    String? baseUrl,
+  }) : baseUrl = baseUrl ?? resolveIaminaApiOrigin(cgmApiBaseUrl),
+       _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client();
 
   Future<Map<String, String>> _headers({bool json = false}) async {

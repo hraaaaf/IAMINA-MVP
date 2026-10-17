@@ -91,6 +91,14 @@
         },
         "tags": [
           "auth"
+        ],
+        "security": [
+          {
+            "NativeAccountBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
         ]
       }
     },
@@ -106,6 +114,14 @@
         },
         "tags": [
           "auth"
+        ],
+        "security": [
+          {
+            "NativeAccountBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
         ]
       }
     },
@@ -132,7 +148,15 @@
             }
           },
           "required": true
-        }
+        },
+        "security": [
+          {
+            "NativeAccountBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/password/reset/request": {
@@ -243,7 +267,15 @@
             }
           },
           "required": true
-        }
+        },
+        "security": [
+          {
+            "NativeAccountBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
       },
       "delete": {
         "operationId": "core_api_v1_auth_unlink_firebase_identity",
@@ -257,6 +289,14 @@
         "description": "Remove the migration credential only when native recovery is available.",
         "tags": [
           "auth"
+        ],
+        "security": [
+          {
+            "NativeAccountBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
         ]
       }
     },
@@ -6245,7 +6285,7 @@
       }
     },
     "securitySchemes": {
-      "HybridBearerAuth": {
+      "NativeAccountBearerAuth": {
         "type": "http",
         "scheme": "bearer"
       },
@@ -6253,6 +6293,10 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "sessionid"
+      },
+      "HybridBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   },

@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../data/drift/patient_vault_scope.dart';
 
 import 'auth_epoch.dart';
+import 'preview_api_origin.dart';
 import 'firebase_migration_policy.dart';
 
 const String kAuthBaseUrl = String.fromEnvironment(
@@ -360,10 +361,16 @@ class AuthService extends ChangeNotifier {
 
     if (token != null) {
       try {
-        await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+        final response = await _httpClient.post(
+          Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
+        // Local sign-out remains final, but only 2xx confirms remote
+        // revocation. A protected Preview API can return 401/403/502/503
+        // without throwing: never silently count this as a revoked token.
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw StateError('Remote logout revocation not confirmed');
+        }
       } catch (error, stackTrace) {
         _failureLogger(
           'logout',
@@ -421,7 +428,7 @@ class AuthService extends ChangeNotifier {
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
