@@ -12,6 +12,8 @@ on:
       - 'scripts/check_web_topology_contract.py'
       - 'scripts/tests/test_w01_web_topology_contract.py'
       - 'scripts/tests/test_w01_preview_bff.mjs'
+      - 'docs/assessments/2026-10-17-w01-preview-bff-adversarial-review.md'
+      - 'docs/assessments/2026-10-16-w01-before-w02-gates.md'
       - '.github/workflows/w01-preview-bff-contract.yml'
   workflow_dispatch:
 permissions:

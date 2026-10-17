@@ -1,5 +1,7 @@
 # IAMINA Web V2 — W01 avant W02 : contrat de passage
 
+**W01-G5 — Revue adverse code au 17/10/2026 :** [MAJOR auth SessionAuth/CSRF et limite d'upload ; Trusted Sources 404 ; routage Vercel/BFF non certifié](2026-10-17-w01-preview-bff-adversarial-review.md). Tests du HEAD PR à recontrôler après correctif. **W01 NO-GO, W02 GELÉ.**
+
 ## W01-G5 — 17/10/2026 — Preview Web SSO durci / BFF OIDC candidate, dépendance Vercel bloquée
 
 **Sécurité Vercel réalisée et relue :** Web `iamina-review` SSO `enabled=true`, `deploymentType=preview` ; backend `iamina-certified` SSO demeure `enabled=true`, `all_except_custom_domains`. Deux Preview initiales READY inchangées ; Production et Neon intacts. Décision GO du propriétaire limitée à Preview.

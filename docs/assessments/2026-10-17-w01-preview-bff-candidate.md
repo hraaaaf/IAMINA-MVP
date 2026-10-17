@@ -29,3 +29,6 @@
 **Écart réel API Vercel (17/10) :** ajout d'une Trusted Source `iamina-review Preview → iamina-certified Preview` via PATCH rejeté HTTP 404 `Deployment Protection Trusted Sources not found`. L'état effectif de cette configuration n'est pas attesté ; ne pas contourner par secret bypass project-wide. La CI de la première candidate 1f06b725 a passé (Node/Python #39051136895, générale #39051136837, W01 #39051136831) ; vérifier à nouveau après dernier commit.
 
 **Statut : PROTOTYPE CANDIDAT NON DÉPLOYÉ, W01 NO-GO, W02 GELÉ.**
+
+## Revue adversariale complémentaire (17/10)
+Revue source à issue ouverte [W01-G5 adversarial review](2026-10-17-w01-preview-bff-adversarial-review.md) : Django `SessionAuth`/CSRF non transportés par le BFF (Bearer uniquement candidat), pièces 15 MiB non compatibles limite Node 4 MiB, Trusted Sources 404, fonction Web et routing non éprouvés. Statut **BLOCKER de certification**, pas une approbation de release.
