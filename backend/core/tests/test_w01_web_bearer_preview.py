@@ -176,3 +176,58 @@ def test_bearer_a_b_a_profile_read_write_stays_patient_scoped():
         assert b_after_denial.status_code == 200
         assert a_after_denial.json()["preferred_language"] == "fr"
         assert b_after_denial.json()["preferred_language"] == "ar"
+
+
+@pytest.mark.django_db
+def test_bearer_a_b_a_clinical_logs_resource_scope():
+    """Real HTTP routes must block read, patch and delete across patients."""
+    from diabetes.models import LogEntry
+
+    a, token_a = _patient("w01-log-a")
+    b, token_b = _patient("w01-log-b")
+    a_log = LogEntry.objects.create(patient=a, blood_sugar=111, source="demo")
+    b_log = LogEntry.objects.create(patient=b, blood_sugar=222, source="demo")
+
+    # The shared test configuration patches HybridBearerAuth for session tests.
+    # Exercise the real HttpBearer header parser for this isolated clinical case.
+    with mock_patch.object(HybridBearerAuth, "__call__", HttpBearer.__call__):
+        client = Client(enforce_csrf_checks=True)
+        for token, owned, foreign in (
+            (token_a, a_log, b_log),
+            (token_b, b_log, a_log),
+            (token_a, a_log, b_log),
+        ):
+            own_list = client.get("/api/v1/logs", **_bearer(token))
+            assert own_list.status_code == 200
+            assert own_list.json()["total"] == 1
+            assert [row["id"] for row in own_list.json()["items"]] == [owned.pk]
+
+            own_detail = client.get(f"/api/v1/logs/{owned.pk}", **_bearer(token))
+            assert own_detail.status_code == 200
+            assert own_detail.json()["id"] == owned.pk
+            assert client.get(
+                f"/api/v1/logs/{foreign.pk}", **_bearer(token)
+            ).status_code == 404
+
+            denied_patch = client.patch(
+                f"/api/v1/logs/{foreign.pk}",
+                data=json.dumps({"blood_sugar": 333}),
+                content_type="application/json",
+                **_bearer(token),
+            )
+            assert denied_patch.status_code == 404
+            denied_delete = client.delete(
+                f"/api/v1/logs/{foreign.pk}", **_bearer(token)
+            )
+            assert denied_delete.status_code == 404
+
+        # Denied mutations cannot alter or remove either medical record.
+        a_log.refresh_from_db()
+        b_log.refresh_from_db()
+        assert float(a_log.blood_sugar) == 111
+        assert float(b_log.blood_sugar) == 222
+        assert LogEntry.objects.filter(pk__in=[a_log.pk, b_log.pk]).count() == 2
+
+        anonymous = client.get("/api/v1/logs")
+        assert anonymous.status_code in (401, 403)
+        assert "blood_sugar" not in anonymous.content.decode()
