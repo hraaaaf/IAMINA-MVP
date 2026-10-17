@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Writable } from 'node:stream';
 import { proxy, safePath, requestPath, previewOnlyAndSameOrigin } from '../../frontend/api/preview-proxy.js';
 
 const envKeys = [
@@ -110,5 +111,99 @@ test('invalid cross-origin origin, body-size, path and methods fail closed',asyn
       const out=res(); await proxy(r,out, async()=>process.env.VERCEL_OIDC_TOKEN);
       assert.equal(out.statusCode,status);
     }
+  });
+});
+
+function streamingResponse() {
+  const chunks = [];
+  const response = new Writable({
+    write(chunk, _encoding, callback) {
+      chunks.push(Buffer.from(chunk));
+      callback();
+    },
+  });
+  response.statusCode = 200;
+  response.headers = {};
+  response.setHeader = (name, value) => {
+    response.headers[name.toLowerCase()] = value;
+    return response;
+  };
+  response.status = (statusCode) => {
+    response.statusCode = statusCode;
+    return response;
+  };
+  response.text = () => Buffer.concat(chunks).toString('utf8');
+  return response;
+}
+
+test('synthetic 200 JSON from Django streams without leaking CORS or Set-Cookie', async () => {
+  await withEnv(async () => {
+    let upstreamCalls = 0;
+    globalThis.fetch = async (url, init) => {
+      upstreamCalls += 1;
+      assert.equal(url, apiOrigin + '/api/v1/health');
+      assert.equal(init.headers.get('x-vercel-trusted-oidc-idp-token'), 'synthetic-oidc');
+      assert.equal(init.headers.get('authorization'), 'Bearer synthetic');
+      assert.equal(init.headers.get('cookie'), null);
+      assert.equal(init.headers.get('origin'), null);
+      assert.equal(init.redirect, 'manual');
+      return new Response(JSON.stringify({status:'ok',db:'ok'}), {
+        status: 200,
+        headers: {
+          'content-type':'application/json',
+          'set-cookie':'sessionid=NEVER_FORWARD',
+          'access-control-allow-origin':'*',
+          'cache-control':'public, max-age=3600',
+        },
+      });
+    };
+    const output = streamingResponse();
+    await proxy(req('health', {headers: {
+      origin,
+      authorization:'Bearer synthetic',
+      cookie:'SSO=must_not_forward; sessionid=never_forward',
+    }}), output, async () => 'synthetic-oidc');
+    assert.equal(upstreamCalls, 1);
+    assert.equal(output.statusCode, 200);
+    assert.deepEqual(JSON.parse(output.text()), {status:'ok',db:'ok'});
+    assert.equal(output.headers['content-type'], 'application/json');
+    assert.equal(output.headers['set-cookie'], undefined);
+    assert.equal(output.headers['access-control-allow-origin'], undefined);
+    assert.equal(output.headers['cache-control'], 'private, no-store, max-age=0');
+  });
+});
+
+test('Django 401 remains 401, cannot be misreported as 200 health', async () => {
+  await withEnv(async () => {
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({detail:'Unauthorized'}), {
+        status: 401,
+        headers: {'content-type':'application/json'},
+      }
+    );
+    const output = streamingResponse();
+    await proxy(req('profile'), output, async () => 'synthetic-oidc');
+    assert.equal(output.statusCode, 401);
+    assert.equal(JSON.parse(output.text()).detail, 'Unauthorized');
+  });
+});
+
+test('host spoof, cross-site state mutation and hostile method never fetch API', async () => {
+  await withEnv(async () => {
+    let called = 0;
+    globalThis.fetch = async () => {called++; throw Error('egress forbidden');};
+    const cases = [
+      [req('health',{headers:{host:'attacker.example'}}),403],
+      [req('health',{headers:{host:'iamina-review.vercel.app'}}),403],
+      [req('auth/login',{method:'POST',headers:{origin:'https://attacker.example'}}),403],
+      [req('auth/login',{method:'POST'}),403],
+      [req('health',{method:'TRACE'}),405],
+    ];
+    for (const [request, expected] of cases) {
+      const result = res();
+      await proxy(request, result, async()=> 'synthetic-oidc');
+      assert.equal(result.statusCode, expected);
+    }
+    assert.equal(called,0);
   });
 });
