@@ -6,6 +6,22 @@ const WEB_PROJECT = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';
 const EXACT_API_ORIGIN =
   'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app';
 const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
+
+class PayloadTooLargeError extends Error {}
+
+async function readBoundedBody(request) {
+  const parts = [];
+  let received = 0;
+  // Read and cap actual bytes, not only the caller-controlled Content-Length.
+  // Never begin upstream egress until this completes successfully.
+  for await (const value of request) {
+    const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+    received += chunk.length;
+    if (received > MAX_REQUEST_BYTES) throw new PayloadTooLargeError();
+    parts.push(chunk);
+  }
+  return Buffer.concat(parts, received);
+}
 const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const RESPONSE_HEADERS = ['content-type', 'content-disposition', 'etag', 'last-modified'];
 const WEB_HOST = /^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$/;
@@ -70,6 +86,15 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   if (typeof oidcToken !== 'string' || oidcToken.length < 3)
     return response.status(503).end();
 
+  let payload;
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    try {
+      payload = await readBoundedBody(request);
+    } catch (error) {
+      return response.status(error instanceof PayloadTooLargeError ? 413 : 400).end();
+    }
+  }
+
   const outgoingHeaders = new Headers();
   outgoingHeaders.set('x-vercel-trusted-oidc-idp-token', oidcToken);
   for (const name of ['authorization', 'accept', 'content-type', 'if-match', 'if-none-match']) {
@@ -82,7 +107,7 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     const upstream = await fetch(EXACT_API_ORIGIN + '/api/v1/' + route.path + route.search, {
       method: request.method,
       headers: outgoingHeaders,
-      body: ['GET', 'HEAD'].includes(request.method) ? undefined : request,
+      body: payload,
       duplex: 'half',
       redirect: 'manual',
       cache: 'no-store',

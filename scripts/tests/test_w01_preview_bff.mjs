@@ -207,3 +207,64 @@ test('host spoof, cross-site state mutation and hostile method never fetch API',
     assert.equal(called,0);
   });
 });
+
+
+// No Content-Length header can authorize more bytes than the actual cap.
+// Reject even chunked requests without Content-Length *before* egress.
+test('chunked request above 4 MiB cannot reach protected Django', async () => {
+  await withEnv(async () => {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error('unexpected API egress'); };
+    const chunks = [Buffer.alloc(3 * 1024 * 1024), Buffer.alloc(2 * 1024 * 1024)];
+    const incoming = Readable.from(chunks);
+    Object.assign(incoming, req('auth/login', {
+      method: 'POST',
+      headers: {origin, 'content-type':'application/json'},
+    }));
+    const output = res();
+    await proxy(incoming, output, async () => 'synthetic-oidc');
+    assert.equal(output.statusCode, 413);
+    assert.equal(calls, 0);
+  });
+});
+
+test('misleading Content-Length cannot bypass actual stream size', async () => {
+  await withEnv(async () => {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error('unexpected API egress'); };
+    const incoming = Readable.from([Buffer.alloc(4 * 1024 * 1024 + 1)]);
+    Object.assign(incoming, req('auth/login', {
+      method:'POST',
+      headers: {origin, 'content-type':'application/json', 'content-length':'1'},
+    }));
+    const output=res();
+    await proxy(incoming, output, async () => 'synthetic-oidc');
+    assert.equal(output.statusCode, 413);
+    assert.equal(calls, 0);
+  });
+});
+
+test('small POST forwards exact bytes and Bearer without browser SSO cookies',async()=>{
+  await withEnv(async()=>{
+    const body = Buffer.from(JSON.stringify({event:'synthetic'}));
+    const incoming = Readable.from([body]);
+    Object.assign(incoming, req('auth/login', {
+      method:'POST',
+      headers:{origin,'content-type':'application/json',authorization:'Bearer synthetic',cookie:'_vercel_jwt=do_not_pass'},
+    }));
+    let calls=0;
+    globalThis.fetch = async(url,opts)=>{
+      calls++;
+      assert.equal(url,apiOrigin+'/api/v1/auth/login');
+      assert.deepEqual(opts.body,body);
+      assert.equal(opts.headers.get('authorization'),'Bearer synthetic');
+      assert.equal(opts.headers.get('cookie'),null);
+      return new Response(JSON.stringify({ok:true}),{status:200,headers:{'content-type':'application/json'}});
+    };
+    const output=streamingResponse();
+    await proxy(incoming,output,async()=> 'synthetic-oidc');
+    assert.equal(calls,1);
+    assert.equal(output.statusCode,200);
+    assert.equal(JSON.parse(output.text()).ok,true);
+  });
+});
