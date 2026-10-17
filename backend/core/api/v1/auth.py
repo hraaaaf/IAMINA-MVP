@@ -19,6 +19,9 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
 from ninja.errors import HttpError
+
+from amina.vercel_session_auth import SessionAuth
+from diabetes.api.v1.security import firebase_auth_backend
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from core.auth_migration import (
@@ -34,6 +37,11 @@ from core.observability import EVT_SESSION_START, track
 logger = logging.getLogger(__name__)
 
 router = Router(tags=["auth"])
+# Authentication endpoints stay publicly mounted for login/recovery, but any
+# operation reading or mutating request.user must explicitly authenticate.
+# Bearer supports same-origin Web Preview without Django cookies; session users
+# retain CSRF protection on unsafe methods.
+_patient_auth = [firebase_auth_backend, SessionAuth()]
 
 
 class FirebaseAuthRequest(BaseModel):
@@ -174,12 +182,12 @@ def login_native(request, data: NativeLoginRequest):
     return _auth_response(user, "Authenticated")
 
 
-@router.get("/auth/me", response=UserResponse)
+@router.get("/auth/me", response=UserResponse, auth=_patient_auth)
 def current_identity(request):
     return _serialize_user(_require_authenticated(request))
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", auth=_patient_auth)
 def logout_native(request):
     user = request.user if request.user.is_authenticated else None
     if user is not None:
@@ -188,7 +196,7 @@ def logout_native(request):
     return {"detail": "Signed out"}
 
 
-@router.post("/auth/password")
+@router.post("/auth/password", auth=_patient_auth)
 @transaction.atomic
 def set_native_password(request, data: SetPasswordRequest):
     """Establish or rotate the native credential without weakening ownership."""
@@ -292,7 +300,7 @@ def firebase_auth(request, data: FirebaseAuthRequest):
     return _auth_response(user, "Authenticated through migration bridge")
 
 
-@router.post("/auth/firebase/link")
+@router.post("/auth/firebase/link", auth=_patient_auth)
 @transaction.atomic
 def link_firebase_identity(request, data: FirebaseAuthRequest):
     """Explicitly attach a verified Firebase UID to the current Django account."""
@@ -324,7 +332,7 @@ def link_firebase_identity(request, data: FirebaseAuthRequest):
     return {"detail": "Firebase identity linked"}
 
 
-@router.delete("/auth/firebase/link")
+@router.delete("/auth/firebase/link", auth=_patient_auth)
 @transaction.atomic
 def unlink_firebase_identity(request):
     """Remove the migration credential only when native recovery is available."""
