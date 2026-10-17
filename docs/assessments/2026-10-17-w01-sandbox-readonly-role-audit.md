@@ -76,3 +76,10 @@ L'utilisateur a explicitement dit « Go » pour créer le rôle sandbox et, **un
 - **Gate humain restant :** opérateur Neon autorisé à créer/activer une identité de connexion réellement limitée ; vérification de login SCRAM et droits ; puis mutation ciblée `DATABASE_URL` de Preview uniquement (pas Production), sans déploiement automatique. Éviter d'utiliser `create_postgres_role` par défaut si les attributs hérités accordent `BYPASSRLS`.
 
 **État prouvé :** grants et rôle `NOLOGIN` sur sandbox **PASS** ; compte connecté Preview, secret Vercel et tests runtime **BLOCKED/NOT VERIFIED** ; **W01 NO-GO, W02 gelé**.
+
+
+## Closeout Git de la prévention Preview — 17/10/2026
+
+[PR #1121](https://github.com/hraaaaf/IAMINA-MVP/pull/1121) fusionnée : `main@c4507fb8d920da830cc69b083711d9271623ad59`. Tests backend de la garde d'identité Preview : CI prémerge [#39013879410](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39013879410), [W01 #39013879437](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39013879437), [drift #39013879408](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39013879408) SUCCESS. Postmerge W01 [#39014322981](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39014322981) et drift [#39014322888](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39014322888) SUCCESS ; générale [#39014322826](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39014322826) SUCCESS sur SHA exact du merge.
+
+**Attention : succès des tests de code ≠ preuve login/Preview.** Neon `iamina_preview_app` est toujours `NOLOGIN`, le secret `DATABASE_URL` Vercel Preview reste inchangé. Aucune publication Vercel ni donnée patient. [État blocage et procédure opérateur Neon](https://github.com/hraaaaf/IAMINA-MVP/issues/1117#issuecomment-6231236408). **W01 NO-GO.**
