@@ -1,0 +1,26 @@
+name: W01 protected Preview unauthenticated browser probe
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/w01_protected_preview_browser_probe.py'
+      - 'scripts/tests/test_w01_protected_preview_browser_probe.py'
+      - '.github/workflows/w01-protected-preview-browser.yml'
+permissions:
+  contents: read
+jobs:
+  negative-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce safe targets and prevent false-positive browser evidence
+        run: python -m unittest discover -s scripts/tests -p test_w01_protected_preview_browser_probe.py -v
+      - name: Install only Chromium DevTools websocket driver
+        run: python -m pip install 'websocket-client==1.8.0'
+      - name: Probe public Web to SSO-protected API in fresh Chrome
+        run: python scripts/w01_protected_preview_browser_probe.py
