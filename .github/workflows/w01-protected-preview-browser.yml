@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/w01_protected_preview_browser_probe.py'
       - 'scripts/tests/test_w01_protected_preview_browser_probe.py'
+      - 'docs/assessments/2026-10-16-w01-before-w02-gates.md'
       - '.github/workflows/w01-protected-preview-browser.yml'
 permissions:
   contents: read
