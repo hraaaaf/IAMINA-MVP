@@ -114,3 +114,47 @@ def test_sensitive_auth_operations_no_longer_accept_anonymous_requests():
             args["data"] = json.dumps(payload)
         response = getattr(client, method)(path, **args)
         assert response.status_code in (401, 403), (method, path, response.status_code)
+
+@pytest.mark.django_db
+def test_bearer_a_b_a_profile_read_write_stays_patient_scoped():
+    """Medical profile mutations must not jump between two Bearer identities."""
+    from diabetes.models import DiabetesProfile
+
+    a, a_token = _patient("w01-clinical-a")
+    b, b_token = _patient("w01-clinical-b")
+    DiabetesProfile.objects.get_or_create(base_profile=a.base_profile)
+    DiabetesProfile.objects.get_or_create(base_profile=b.base_profile)
+
+    client = Client(enforce_csrf_checks=True)
+    a_write = client.patch(
+        "/api/v1/profile",
+        data=json.dumps({"preferred_language": "fr"}),
+        content_type="application/json",
+        **_bearer(a_token),
+    )
+    assert a_write.status_code == 200
+    assert a_write.json()["preferred_language"] == "fr"
+
+    # Same HTTP client, but only B's Bearer now authorizes this operation.
+    b_read = client.get("/api/v1/profile", **_bearer(b_token))
+    assert b_read.status_code == 200
+    assert b_read.json()["preferred_language"] != "fr"
+
+    b_write = client.patch(
+        "/api/v1/profile",
+        data=json.dumps({"preferred_language": "ar"}),
+        content_type="application/json",
+        **_bearer(b_token),
+    )
+    assert b_write.status_code == 200
+    assert b_write.json()["preferred_language"] == "ar"
+
+    a_again = client.get("/api/v1/profile", **_bearer(a_token))
+    assert a_again.status_code == 200
+    assert a_again.json()["preferred_language"] == "fr"
+    assert client.get("/api/v1/profile").status_code == 401
+    assert client.patch(
+        "/api/v1/profile",
+        data=json.dumps({"preferred_language": "ar"}),
+        content_type="application/json",
+    ).status_code == 401
