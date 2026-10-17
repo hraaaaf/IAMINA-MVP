@@ -197,7 +197,7 @@ test('host spoof, cross-site state mutation and hostile method never fetch API',
       [req('health',{headers:{host:'iamina-review.vercel.app'}}),403],
       [req('auth/login',{method:'POST',headers:{origin:'https://attacker.example'}}),403],
       [req('auth/login',{method:'POST'}),403],
-      [req('health',{method:'TRACE'}),405],
+      [req('health',{method:'TRACE'}),403], // Origin gate rejects unsafe methods first
     ];
     for (const [request, expected] of cases) {
       const result = res();
