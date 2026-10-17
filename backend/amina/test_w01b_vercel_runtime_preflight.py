@@ -6,6 +6,7 @@ patient data, SMTP message or deployment occurs.
 from __future__ import annotations
 
 import os
+import pytest
 import subprocess
 import sys
 from pathlib import Path
@@ -203,4 +204,24 @@ def test_verified_production_tls_passes_identity_gate_to_smtp_gate():
     })
     assert result.returncode != 0
     assert "requires SMTP EMAIL_BACKEND" in result.stderr
+
+@pytest.mark.parametrize("routing_query", [
+    "host=ep-attacker.example.test",
+    "hostaddr=127.0.0.1",
+    "dbname=other_database",
+    "service=attacker_profile",
+    "servicefile=/tmp/attacker_service.conf",
+    "port=6432",
+])
+def test_vercel_database_url_rejects_routing_query_overrides(routing_query: str):
+    result = _check_settings({"DATABASE_URL": FAKE_PG + "&" + routing_query})
+    assert result.returncode != 0
+    assert "cannot override PostgreSQL routing" in result.stderr
+    assert "w01_synthetic:w01_synthetic" not in result.stderr
+
+
+def test_vercel_database_url_rejects_duplicate_sslmode():
+    result = _check_settings({"DATABASE_URL": FAKE_PG + "&sslmode=disable"})
+    assert result.returncode != 0
+    assert "must explicitly enforce PostgreSQL TLS" in result.stderr
 
