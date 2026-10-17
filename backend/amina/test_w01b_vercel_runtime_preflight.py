@@ -11,7 +11,8 @@ import sys
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
-FAKE_PG = "postgresql://w01_synthetic:w01_synthetic@127.0.0.1:5432/w01_synthetic"
+FAKE_HOST = "ep-w01-synthetic.c-7.eu-central-1.aws.neon.tech"
+FAKE_PG = f"postgresql://w01_synthetic:w01_synthetic@{FAKE_HOST}/w01_synthetic?sslmode=require"
 
 DEFAULT_ENV = {
     "SECRET_KEY": "w01-ci-not-for-prod",
@@ -24,6 +25,8 @@ DEFAULT_ENV = {
     "VERCEL_ENV": "production",
     # Vercel target=production != IAMINA production authorization.
     "IAMINA_ENV": "development",
+    "IAMINA_EXPECTED_DB_HOST": FAKE_HOST,
+    "IAMINA_EXPECTED_DB_NAME": "w01_synthetic",
 }
 PROBE = (
     "from amina import vercel_settings as s; "
@@ -40,7 +43,8 @@ def _check_settings(overrides: dict[str, str] | None = None) -> subprocess.Compl
     env = os.environ.copy()
     # Do not inherit sensitive runtime or SMTP config into preflight.
     for key in [
-        "IAMINA_ENV", "VERCEL_ENV", "VERCEL", "DATABASE_URL",
+        "IAMINA_ENV", "IAMINA_EXPECTED_DB_HOST", "IAMINA_EXPECTED_DB_NAME",
+        "VERCEL_ENV", "VERCEL", "DATABASE_URL",
         "DEBUG", "SECRET_KEY", "ALLOWED_HOSTS", "CORS_ALLOWED_ORIGINS",
         "CSRF_TRUSTED_ORIGINS", "EMAIL_BACKEND", "EMAIL_HOST",
         "EMAIL_PORT", "EMAIL_HOST_USER", "EMAIL_HOST_PASSWORD",
@@ -102,3 +106,55 @@ def test_iamina_production_runtime_requires_mail_recovery_gate():
     result = _check_settings({"IAMINA_ENV": "production"})
     assert result.returncode != 0
     assert "requires SMTP EMAIL_BACKEND" in result.stderr
+
+def test_missing_iamina_env_fails_closed():
+    result = _check_settings({"IAMINA_ENV": ""})
+    assert result.returncode != 0
+    assert "IAMINA_ENV must explicitly" in result.stderr
+
+
+def test_invalid_iamina_env_fails_closed():
+    result = _check_settings({"IAMINA_ENV": "produciton"})
+    assert result.returncode != 0
+    assert "IAMINA_ENV must explicitly" in result.stderr
+
+
+def test_missing_database_identity_marker_fails_closed():
+    result = _check_settings({"IAMINA_EXPECTED_DB_HOST": ""})
+    assert result.returncode != 0
+    assert "IAMINA_EXPECTED_DB_HOST" in result.stderr
+
+
+def test_wrong_neon_endpoint_fails_closed_without_leaking_password():
+    wrong = FAKE_PG.replace(FAKE_HOST, "ep-unrelated.c-7.eu-central-1.aws.neon.tech")
+    result = _check_settings({"DATABASE_URL": wrong})
+    assert result.returncode != 0
+    assert "does not match the expected Neon environment" in result.stderr
+    assert "w01_synthetic:w01_synthetic" not in result.stderr
+
+
+def test_wrong_neon_database_fails_closed():
+    result = _check_settings({"IAMINA_EXPECTED_DB_NAME": "another_db"})
+    assert result.returncode != 0
+    assert "does not match the expected Neon environment" in result.stderr
+
+
+def test_missing_tls_requirement_fails_closed():
+    result = _check_settings({"DATABASE_URL": FAKE_PG.replace("?sslmode=require", "")})
+    assert result.returncode != 0
+    assert "must explicitly enforce PostgreSQL TLS" in result.stderr
+
+
+def test_preview_must_match_its_own_declared_neon_identity():
+    result = _check_settings({"VERCEL_ENV": "preview", "IAMINA_ENV": "development"})
+    assert result.returncode == 0, result.stderr
+
+    mismatch = _check_settings({"VERCEL_ENV": "preview", "IAMINA_EXPECTED_DB_HOST": "ep-prod.c-5.eu-central-1.aws.neon.tech"})
+    assert mismatch.returncode != 0
+    assert "does not match the expected Neon environment" in mismatch.stderr
+
+
+def test_matching_neon_pooler_host_is_accepted():
+    pooled = FAKE_HOST.replace(".c-", "-pooler.c-", 1)
+    result = _check_settings({"DATABASE_URL": FAKE_PG.replace(FAKE_HOST, pooled)})
+    assert result.returncode == 0, result.stderr

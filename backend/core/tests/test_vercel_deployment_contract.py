@@ -5,6 +5,10 @@ import sys
 from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
+_FAKE_NEON_HOST = "ep-w01-synthetic.c-7.eu-central-1.aws.neon.tech"
+_FAKE_DATABASE_URL = (
+    f"postgresql://user:pass@{_FAKE_NEON_HOST}/iamina?sslmode=require"
+)
 
 _EMAIL_ENV_KEYS = {
     "EMAIL_BACKEND",
@@ -42,6 +46,8 @@ def _import_vercel_settings(
             "VERCEL_ENV": vercel_env,
             "VERCEL_URL": "iamina-certified.vercel.app",
             "IAMINA_ENV": iamina_env,
+            "IAMINA_EXPECTED_DB_HOST": _FAKE_NEON_HOST,
+            "IAMINA_EXPECTED_DB_NAME": "iamina",
             "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
             "EMAIL_HOST": "smtp.example.test",
             "EMAIL_PORT": "587",
@@ -100,7 +106,7 @@ def test_vercel_settings_reject_sqlite_database_url():
 
 def test_vercel_settings_reject_non_https_cors_origin():
     result = _import_vercel_settings(
-        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        _FAKE_DATABASE_URL,
         cors_origins="http://iamina-review.vercel.app",
     )
 
@@ -110,7 +116,7 @@ def test_vercel_settings_reject_non_https_cors_origin():
 
 def test_vercel_settings_reject_non_https_csrf_origin():
     result = _import_vercel_settings(
-        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        _FAKE_DATABASE_URL,
         csrf_origins="http://localhost:8000",
     )
 
@@ -120,7 +126,7 @@ def test_vercel_settings_reject_non_https_csrf_origin():
 
 def test_vercel_settings_fail_closed_without_email_host_in_production():
     result = _import_vercel_settings(
-        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        _FAKE_DATABASE_URL,
         email_overrides={"EMAIL_HOST": None},
     )
 
@@ -131,7 +137,7 @@ def test_vercel_settings_fail_closed_without_email_host_in_production():
 
 def test_vercel_settings_reject_non_smtp_email_backend_in_production():
     result = _import_vercel_settings(
-        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        _FAKE_DATABASE_URL,
         email_overrides={
             "EMAIL_BACKEND": "django.core.mail.backends.console.EmailBackend"
         },
@@ -143,7 +149,7 @@ def test_vercel_settings_reject_non_smtp_email_backend_in_production():
 
 def test_vercel_preview_can_boot_without_smtp_settings():
     result = _import_vercel_settings(
-        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        _FAKE_DATABASE_URL,
         vercel_env="preview",
         email_overrides={
             "EMAIL_BACKEND": None,
@@ -162,7 +168,7 @@ def test_vercel_preview_can_boot_without_smtp_settings():
 
 def test_vercel_production_target_can_boot_as_iamina_dev_without_smtp_settings():
     result = _import_vercel_settings(
-        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        _FAKE_DATABASE_URL,
         vercel_env="production",
         iamina_env="development",
         email_overrides={
@@ -181,7 +187,7 @@ def test_vercel_production_target_can_boot_as_iamina_dev_without_smtp_settings()
 
 
 def test_vercel_settings_accept_postgres_without_connecting():
-    result = _import_vercel_settings("postgresql://user:pass@127.0.0.1:5432/iamina")
+    result = _import_vercel_settings(_FAKE_DATABASE_URL)
 
     assert result.returncode == 0, result.stderr
     assert "django.db.backends.postgresql" in result.stdout
