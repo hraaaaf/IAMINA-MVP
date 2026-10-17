@@ -21,7 +21,8 @@ def validate_vercel_database_identity(database_url: str) -> None:
     settings. The URL (including credentials) must never appear in exceptions.
     Existing deployments retain their old environment until redeployed.
     """
-    from urllib.parse import parse_qs, urlsplit
+    import re
+    from urllib.parse import parse_qs, unquote, urlsplit
 
     iamina_env = os.environ.get("IAMINA_ENV", "").strip().lower()
     if iamina_env not in {"development", "production"}:
@@ -44,10 +45,28 @@ def validate_vercel_database_identity(database_url: str) -> None:
     if host not in {expected_host, pooled_host} or dbname != expected_name:
         raise ValueError("DATABASE_URL does not match the expected Neon environment")
 
+    # Preview must never reuse the Neon owner role, which can BYPASSRLS and
+    # administer roles. The approved role name is an independent, non-secret
+    # Vercel setting; neither the URI nor its password is logged.
+    if vercel_env == "preview":
+        expected_role = os.environ.get("IAMINA_EXPECTED_DB_ROLE", "").strip()
+        actual_role = unquote(parsed.username or "")
+        if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", expected_role):
+            raise ValueError("IAMINA_EXPECTED_DB_ROLE is required on Preview")
+        if (
+            actual_role != expected_role
+            or actual_role in {"postgres", "neondb_owner"}
+            or actual_role.endswith("_owner")
+        ):
+            raise ValueError("DATABASE_URL uses an unapproved PostgreSQL Preview role")
+
     params = parse_qs(parsed.query, keep_blank_values=True)
     # libpq supports connection routing parameters in the query string.
     # Never let them silently override the host or database we authenticated.
-    forbidden_overrides = {"host", "hostaddr", "dbname", "service", "servicefile", "port"}
+    forbidden_overrides = {
+        "host", "hostaddr", "dbname", "service", "servicefile", "port",
+        "user", "password", "passfile", "options",
+    }
     if forbidden_overrides.intersection(params):
         raise ValueError("DATABASE_URL cannot override PostgreSQL routing in query parameters")
 

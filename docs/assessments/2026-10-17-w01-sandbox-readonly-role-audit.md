@@ -64,3 +64,15 @@ Pour l'absence de données applicatives, faire **`SELECT COUNT(*)` individuellem
 **Preuve locale sandbox : PASS** pour l'inventaire de schéma, les comptages exacts et la découverte de privilèges. **Accès runtime Vercel Preview, compte least-privilege, G2/G3 complet : NOT VERIFIED.** **W01 NO-GO ; W02 GELÉ.**
 
 Décision propriétaire de conserver provisoirement la sandbox synthétique : [issue #1117, décision](https://github.com/hraaaaf/IAMINA-MVP/issues/1117#issuecomment-6227852503). Audit ajouté au suivi : [issue #1117, comptages/permissions](https://github.com/hraaaaf/IAMINA-MVP/issues/1117#issuecomment-6227987143).
+
+## Tentative autorisée du 17/10 — compte SQL sandbox à privilèges limités
+
+L'utilisateur a explicitement dit « Go » pour créer le rôle sandbox et, **uniquement si sa connexion était vérifiée**, modifier le secret **Vercel Preview**. **La mutation du secret n'a PAS eu lieu.**
+
+- `iamina_preview_app` a été créé en SQL comme rôle **`NOLOGIN`**, sans `SUPERUSER/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS`. Attribution transactionnelle par tables réelles : **39 tables runtime** avec `SELECT/INSERT/UPDATE/DELETE`, **2 métadonnées** (`auth_permission`, `django_content_type`) en `SELECT` seulement ; **aucun droit sur `django_migrations`**, ni `CREATE` de schéma ; **37 séquences runtime** en `USAGE/SELECT`. Le compte reste inutilisable pour se connecter, donc **pas prêt** pour Vercel.
+- `ALTER ROLE ... LOGIN PASSWORD` refusé (permissions Neon). Deux alternatives avec `CREATE ROLE ... LOGIN PASSWORD` / transaction atomique ont été rejetées ; **aucun deuxième rôle `LOGIN` ajouté**. La confirmation finale par `pg_roles` ne montre que `iamina_preview_app` **`rolcanlogin=false`**.
+- Les mots de passe aléatoires générés lors des essais n'ont jamais été imprimés, enregistrés dans Git/Notion ni injectés à Vercel ; aucune requête vers Neon IAMINA production.
+- **Mesure de prévention ajoutée au code candidat, non déployée :** toute cible `VERCEL_ENV=preview` doit déclarer `IAMINA_EXPECTED_DB_ROLE` et sa `DATABASE_URL` doit utiliser exactement cet utilisateur non propriétaire. Interdiction des paramètres libpq de redéfinition d'identité `user`, `password`, `passfile`, `options`. Des tests synthétiques couvrent les violations.
+- **Gate humain restant :** opérateur Neon autorisé à créer/activer une identité de connexion réellement limitée ; vérification de login SCRAM et droits ; puis mutation ciblée `DATABASE_URL` de Preview uniquement (pas Production), sans déploiement automatique. Éviter d'utiliser `create_postgres_role` par défaut si les attributs hérités accordent `BYPASSRLS`.
+
+**État prouvé :** grants et rôle `NOLOGIN` sur sandbox **PASS** ; compte connecté Preview, secret Vercel et tests runtime **BLOCKED/NOT VERIFIED** ; **W01 NO-GO, W02 gelé**.
