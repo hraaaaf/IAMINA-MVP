@@ -19,11 +19,9 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
 from ninja.errors import HttpError
-
-from amina.vercel_session_auth import SessionAuth
-from diabetes.api.v1.security import firebase_auth_backend
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from amina.vercel_session_auth import SessionAuth
 from core.auth_migration import (
     FirebaseIdentityConflict,
     FirebaseMigrationError,
@@ -33,6 +31,7 @@ from core.auth_migration import (
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, revoke_native_tokens
 from core.observability import EVT_SESSION_START, track
+from diabetes.api.v1.security import firebase_auth_backend
 
 logger = logging.getLogger(__name__)
 

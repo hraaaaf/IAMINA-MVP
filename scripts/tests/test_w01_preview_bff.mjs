@@ -268,3 +268,46 @@ test('small POST forwards exact bytes and Bearer without browser SSO cookies',as
     assert.equal(JSON.parse(output.text()).ok,true);
   });
 });
+
+test('synthetic Django 403 is preserved and does not expose upstream session cookies', async () => {
+  await withEnv(async () => {
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({detail:'Forbidden'}),
+      {status:403,headers:{'content-type':'application/json','set-cookie':'sessionid=secret'}}
+    );
+    const output = streamingResponse();
+    await proxy(req('account/consent',{headers:{authorization:'Bearer synthetic'}}),
+      output,async()=> 'synthetic-oidc');
+    assert.equal(output.statusCode,403);
+    assert.equal(output.headers['set-cookie'],undefined);
+    assert.equal(JSON.parse(output.text()).detail,'Forbidden');
+  });
+});
+
+test('synthetic bearer A-B-A forwarding never inherits a browser SSO cookie', async () => {
+  await withEnv(async () => {
+    const users={'Bearer fixture-A':'A','Bearer fixture-B':'B'};
+    globalThis.fetch=async (_url, init) => {
+      assert.equal(init.headers.get('cookie'),null);
+      assert.equal(init.headers.get('x-csrftoken'),null);
+      const who=users[init.headers.get('authorization')];
+      return new Response(JSON.stringify(who?{patient:who}:{detail:'Unauthorized'}), {
+        status:who?200:401,headers:{'content-type':'application/json'}
+      });
+    };
+    for (const [credential,who] of [
+      ['Bearer fixture-A','A'],['Bearer fixture-B','B'],['Bearer fixture-A','A'],
+    ]) {
+      const output=streamingResponse();
+      await proxy(req('profile',{headers:{
+        authorization:credential,cookie:'_vercel_jwt=must-not-cross-patient',
+      }}),output,async()=> 'synthetic-oidc');
+      assert.equal(output.statusCode,200);
+      assert.equal(JSON.parse(output.text()).patient,who);
+    }
+    const missing=streamingResponse();
+    await proxy(req('profile',{headers:{cookie:'_vercel_jwt=not-identity'}}),
+      missing,async()=> 'synthetic-oidc');
+    assert.equal(missing.statusCode,401);
+  });
+});
