@@ -30,8 +30,29 @@ fi
 # The review project has one canonical backend origin. Always override any
 # stale project-level API_BASE_URL when Vercel exposes the expected project ID.
 if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
-  API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
-  IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+  case "${VERCEL_ENV:-}" in
+    preview)
+      # A synthetic Web Preview MUST use the uniquely deployed synthetic API,
+      # never the stable backend alias (which can address a different database).
+      # The fixed project/account suffix prevents another Vercel app or origin
+      # from being injected into the web bundle.
+      if [[ ! "${IAMINA_REVIEW_PREVIEW_API_BASE_URL:-}" =~ ^https://iamina-certified-[a-z0-9-]+-achraf-benmoussa-s-projects\\.vercel\\.app/?$ ]]; then
+        echo "ERROR: Preview requires the exact IAMINA synthetic backend deployment URL" >&2
+        exit 64
+      fi
+      API_BASE_URL="${IAMINA_REVIEW_PREVIEW_API_BASE_URL%/}"
+      IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      ;;
+    production)
+      # Existing production routing remains unchanged.
+      API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
+      IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+      ;;
+    *)
+      echo "ERROR: refusing IAMINA Web build for unknown Vercel environment" >&2
+      exit 64
+      ;;
+  esac
 fi
 
 # Defensive normalization: some Vercel builds can inherit a legacy project-
