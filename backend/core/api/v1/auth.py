@@ -19,6 +19,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
 from ninja.errors import HttpError
+from ninja.security import HttpBearer
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from amina.vercel_session_auth import SessionAuth
@@ -29,18 +30,34 @@ from core.auth_migration import (
     verify_firebase_token,
 )
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token, revoke_native_tokens
+from core.native_auth import (
+    NativeTokenError,
+    issue_native_token,
+    revoke_native_tokens,
+    verify_native_token,
+)
 from core.observability import EVT_SESSION_START, track
-from diabetes.api.v1.security import firebase_auth_backend
 
 logger = logging.getLogger(__name__)
 
 router = Router(tags=["auth"])
-# Authentication endpoints stay publicly mounted for login/recovery, but any
-# operation reading or mutating request.user must explicitly authenticate.
-# Bearer supports same-origin Web Preview without Django cookies; session users
-# retain CSRF protection on unsafe methods.
-_patient_auth = [firebase_auth_backend, SessionAuth()]
+
+
+class NativeAccountBearerAuth(HttpBearer):
+    """Core-owned IAMINA native Bearer path, without condition imports."""
+
+    def authenticate(self, request, token: str):
+        try:
+            user = verify_native_token(token)
+        except NativeTokenError:
+            return None
+        request.user = user
+        return user
+
+
+# Account operations use IAMINA native Bearer or Django SessionAuth with CSRF.
+# Firebase migration exchanges issue native tokens before this protected path.
+_patient_auth = [NativeAccountBearerAuth(), SessionAuth()]
 
 
 class FirebaseAuthRequest(BaseModel):

@@ -94,7 +94,7 @@
         ],
         "security": [
           {
-            "HybridBearerAuth": []
+            "NativeAccountBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -117,7 +117,7 @@
         ],
         "security": [
           {
-            "HybridBearerAuth": []
+            "NativeAccountBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -151,7 +151,7 @@
         },
         "security": [
           {
-            "HybridBearerAuth": []
+            "NativeAccountBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -270,7 +270,7 @@
         },
         "security": [
           {
-            "HybridBearerAuth": []
+            "NativeAccountBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -292,7 +292,7 @@
         ],
         "security": [
           {
-            "HybridBearerAuth": []
+            "NativeAccountBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -6285,7 +6285,7 @@
       }
     },
     "securitySchemes": {
-      "HybridBearerAuth": {
+      "NativeAccountBearerAuth": {
         "type": "http",
         "scheme": "bearer"
       },
@@ -6293,6 +6293,10 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "sessionid"
+      },
+      "HybridBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   },
