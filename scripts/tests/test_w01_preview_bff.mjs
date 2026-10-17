@@ -83,7 +83,14 @@ test('health proxy forwards short-lived OIDC only, excludes cookies and cannot r
     assert.equal(out.headers['set-cookie'],undefined);
   });
 });
-test('production refuses to run even when secret and browser cookies exist',async()=>{
+test('HTML SSO login cannot masquerade as Django API success',async()=>{
+  await withEnv(async()=>{
+    globalThis.fetch=async()=>({status:200,headers:new Headers({'content-type':'text/html'}),body:{cancel:async()=>{}}});
+    const out=res(); await proxy(req(),out,async()=>'a.test.token');
+    assert.equal(out.statusCode,502);
+  });
+});
+test('production refuses to run even when OIDC and browser cookies exist',async()=>{
   await withEnv(async()=>{
     process.env.VERCEL_ENV='production';
     globalThis.fetch=async()=>{throw Error('Unexpected egress');};

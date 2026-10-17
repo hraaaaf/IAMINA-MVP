@@ -88,8 +88,11 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
       cache: 'no-store',
       signal: AbortSignal.timeout(25000),
     });
-    // Redirects could leak the backend-only SSO bypass on a different host.
-    if (upstream.status >= 300 && upstream.status < 400) {
+    // No redirect or HTML login challenge from Deployment Protection may
+    // masquerade as a successful Django API response.
+    const type = (upstream.headers.get('content-type') ?? '').toLowerCase();
+    if ((upstream.status >= 300 && upstream.status < 400) ||
+        type.includes('text/html') || type.includes('application/xhtml+xml')) {
       await upstream.body?.cancel();
       return response.status(502).end();
     }

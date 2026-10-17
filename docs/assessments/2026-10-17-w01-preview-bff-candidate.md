@@ -16,6 +16,7 @@
 - Flutter Preview prend `Uri.base.origin` à l'exécution (même origine) ; production conserve la configuration antérieure.
 - Proxy fixe **un hôte API Preview synthétique exact**, vérifie Vercel target/ID projet/Host/Origin, rejette traversal, redirects, méthode inconnue, contenu trop volumineux ; transfère uniquement des en-têtes expressément autorisés et **jamais** Cookie/Host/Origin/x-* client, refuse caches, masque les erreurs. La fonction utilise `@vercel/oidc` pour récupérer un jeton d'identité éphémère Vercel et le transmet dans `x-vercel-trusted-oidc-idp-token` ; sans OIDC valide le proxy échoue fermé en HTTP 503. **Aucun bypass permanent.**
 - Protection Django/Bearer demeure obligatoire pour les ressources médicales. **La confiance au SSO Web en amont est une condition de déploiement, non une assertion prouvée par tests unitaires.**
+- La passerelle refuse aussi les réponses `text/html` et les redirections Vercel, afin qu'une page SSO HTML 200 ne soit jamais présentée comme un succès API.
 - Limitation : Vercel Functions plafonne les tailles de corps requête ; proxy candidate limite à 4 MiB et ne valide pas les uploads médicaux de 15 MiB. G5 reste ouvert, ne pas utiliser pour patients.
 
 ## Préflight nécessaire avant Preview
@@ -24,5 +25,7 @@
 3. Vérifier SSO Web Preview actif et origine d'accès requise. Aucun bypass navigateur, aucune ouverture de l'API.
 4. Seulement après validation de ces gates, déploiement Preview isolé autorisé puis tests E2E, contrôle négatif non-authentifié, contrôle d'absence de données patients, tests échecs/rollback et preuves.
 5. W01-G4/G5/G6/G7 + revue indépendante restant à clôturer ; W02 gelé.
+
+**Écart réel API Vercel (17/10) :** ajout d'une Trusted Source `iamina-review Preview → iamina-certified Preview` via PATCH rejeté HTTP 404 `Deployment Protection Trusted Sources not found`. L'état effectif de cette configuration n'est pas attesté ; ne pas contourner par secret bypass project-wide. La CI de la première candidate 1f06b725 a passé (Node/Python #39051136895, générale #39051136837, W01 #39051136831) ; vérifier à nouveau après dernier commit.
 
 **Statut : PROTOTYPE CANDIDAT NON DÉPLOYÉ, W01 NO-GO, W02 GELÉ.**
