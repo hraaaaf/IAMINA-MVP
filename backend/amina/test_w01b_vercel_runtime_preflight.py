@@ -103,7 +103,13 @@ def test_wildcard_hosts_fail_closed():
 def test_iamina_production_runtime_requires_mail_recovery_gate():
     # IAMINA_ENV=production is deliberately NOT enabled on the shared dev stack.
     # A future production runtime must pass all independent SMTP + reset gates.
-    result = _check_settings({"IAMINA_ENV": "production"})
+    verified_tls = FAKE_PG.replace(
+        "sslmode=require", "sslmode=verify-full&sslrootcert=system"
+    )
+    result = _check_settings({
+        "IAMINA_ENV": "production",
+        "DATABASE_URL": verified_tls,
+    })
     assert result.returncode != 0
     assert "requires SMTP EMAIL_BACKEND" in result.stderr
 
