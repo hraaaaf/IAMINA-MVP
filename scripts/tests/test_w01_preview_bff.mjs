@@ -112,39 +112,39 @@ test('missing OIDC token returns 503 before any egress',async()=>{
     assert.equal(out.statusCode,503);
   });
 });
-test('Preview anonymous auth bootstrap marker is BFF-owned and limited to safe routes', async () => {
+test('Web password login returns IAMINA bearer but no Django session cookie', async () => {
   await withEnv(async () => {
-    const routes = [
-      'auth/login', 'auth/register', 'auth/firebase',
-      'auth/password/reset/request', 'auth/password/reset/confirm',
-    ];
-    let forwarded = 0;
-    globalThis.fetch = async (_url, init) => {
-      const path = new URL(_url).pathname;
-      const shouldMark = routes.some(x => path === '/api/v1/' + x);
-      assert.equal(
-        init.headers.get('x-iamina-stateless-bootstrap'),
-        shouldMark ? 'w01-preview-v1' : null,
-      );
-      assert.equal(init.headers.get('cookie'), null);
-      assert.equal(init.headers.get('origin'), null);
-      assert.equal(init.headers.get('x-vercel-trusted-oidc-idp-token'), 'synthetic-oidc');
-      forwarded++;
-      return new Response(JSON.stringify({ok:true}), {
-        status:200, headers:{'content-type':'application/json'},
-      });
+    const request = Readable.from([Buffer.from(JSON.stringify({
+      email:'fixture@example.test', password:'synthetic-only',
+    }))]);
+    Object.assign(request, req('auth/login', {method:'POST', headers:{
+      origin, 'content-type':'application/json',
+      cookie:'_vercel_jwt=private-session',
+      'x-iamina-stateless-bootstrap':'spoofed',
+    }}));
+    let calls=0;
+    globalThis.fetch = async (url, options) => {
+      calls++;
+      assert.equal(url, apiOrigin+'/api/v1/auth/login');
+      assert.equal(options.headers.get('cookie'), null);
+      assert.equal(options.headers.get('origin'), null);
+      assert.equal(options.headers.get('x-iamina-stateless-bootstrap'), null);
+      assert.equal(options.headers.get('x-vercel-trusted-oidc-idp-token'), 'synthetic-oidc');
+      return new Response(JSON.stringify({
+        access_token:'iamina.synthetic-bearer',token_type:'Bearer',
+      }), {status:200, headers:{
+        'content-type':'application/json',
+        'set-cookie':'sessionid=django_private; HttpOnly',
+        'access-control-allow-origin':'*',
+      }});
     };
-    for (const path of [...routes,'profile']) {
-      const incoming = Readable.from([Buffer.from('{}')]);
-      Object.assign(incoming, req(path,{method:'POST',headers:{
-        origin,'content-type':'application/json',cookie:'_vercel_jwt=private',
-        'x-iamina-stateless-bootstrap':'hostile-user-supplied-marker',
-      }}));
-      const out = streamingResponse();
-      await proxy(incoming,out,async()=> 'synthetic-oidc');
-      assert.equal(out.statusCode,200);
-    }
-    assert.equal(forwarded, routes.length+1);
+    const outgoing=streamingResponse();
+    await proxy(request,outgoing,async()=> 'synthetic-oidc');
+    assert.equal(calls,1);
+    assert.equal(outgoing.statusCode,200);
+    assert.equal(JSON.parse(outgoing.text()).access_token,'iamina.synthetic-bearer');
+    assert.equal(outgoing.headers['set-cookie'],undefined);
+    assert.equal(outgoing.headers['access-control-allow-origin'],undefined);
   });
 });
 
