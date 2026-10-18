@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/rea-android-synthetic-lab.yml'
+      - 'docs/research/W11_REA_CGM_INTEROPERABILITY.md'
+      - 'docs/research/evidence/W11_REA_APIDEMOS_2026-10-18.md'
   workflow_dispatch:
 
 permissions: {}
