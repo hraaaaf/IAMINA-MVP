@@ -30,7 +30,10 @@ function safePath(value) {
   if (typeof value !== 'string' || !value || value.length > 1024 ||
       value.startsWith('/') || value.includes('\\') || value.includes('%') ||
       value.includes('//')) return false;
-  return value.split('/').every((part) =>
+  // Django has canonical endpoints ending in '/'. Only a single terminal
+  // slash is acceptable: empty middle segments and traversal remain blocked.
+  const segments = (value.endsWith('/') ? value.slice(0, -1) : value).split('/');
+  return segments.every((part) =>
     part !== '.' && part !== '..' &&
     /^[A-Za-z0-9][A-Za-z0-9_.~-]*$/.test(part));
 }

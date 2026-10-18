@@ -49,6 +49,52 @@ test('safe fixed origin and path rejects traversals, invalid url segments',()=>{
   assert.equal(safePath('auth/login'),true);
   assert.deepEqual(requestPath(req('health')), {path:'health',search:''});
 });
+test('slash-terminated Django routes pass BFF without weakening path checks', async () => {
+  for (const good of ['documents/', 'kpis/', 'personal-response/']) {
+    assert.equal(safePath(good), true, good);
+  }
+  for (const bad of ['/', 'documents//', 'documents//ingest',
+    'documents/../', 'documents/%2e%2e/', 'documents/./']) {
+    assert.equal(safePath(bad), false, bad);
+  }
+  assert.deepEqual(requestPath(req('documents/')), {path:'documents/',search:''});
+  assert.deepEqual(requestPath({
+    ...req('documents/'), url:'/api/v1/documents/?limit=20',
+  }), {path:'documents/',search:'?limit=20'});
+
+  await withEnv(async () => {
+    const paths = [
+      '/api/v1/documents/?limit=20',
+      '/api/v1/kpis/?days=14',
+      '/api/v1/personal-response/?days=7',
+    ];
+    let calls = 0;
+    globalThis.fetch = async (url, init) => {
+      assert.equal(url, apiOrigin + paths[calls]);
+      assert.equal(init.headers.get('authorization'), 'Bearer fixture-A');
+      assert.equal(init.headers.get('cookie'), null);
+      calls++;
+      return new Response(JSON.stringify({ok:true}), {
+        status:200, headers:{'content-type':'application/json'},
+      });
+    };
+    for (const url of paths) {
+      const incoming = {
+        ...req('health', {headers:{
+          authorization:'Bearer fixture-A',
+          cookie:'_vercel_jwt=not-forwarded',
+        }}),
+        url,
+      };
+      const outgoing = streamingResponse();
+      await proxy(incoming, outgoing, async () => 'synthetic-oidc');
+      assert.equal(outgoing.statusCode, 200);
+      assert.equal(JSON.parse(outgoing.text()).ok, true);
+    }
+    assert.equal(calls, paths.length);
+  });
+});
+
 test('production and cross-origin requests are rejected before backend',()=>{
   envSet();
   process.env.VERCEL_ENV = 'production';
