@@ -71,6 +71,21 @@ jobs:
           if checks.get('node') is not True or checks.get('jadx') is not True:
               raise SystemExit('Node/JADX prerequisite not healthy')
           print('REA doctor: Android prerequisites healthy (other engines optional)')
+          inspected = json.loads((d / 'inspect.json').read_text(encoding='utf-8')).get('normalized_result', {})
+          classes = json.loads((d / 'classes.json').read_text(encoding='utf-8')).get('normalized_result', {})
+          if inspected.get('package_name') != 'io.appium.android.apis' or inspected.get('version_name') != '6.0.18':
+              raise SystemExit('REA did not inspect the exact expected public application')
+          engine = inspected.get('engine', {})
+          if engine.get('version') != '0.7.1' or engine.get('artifact_sha256') != os.environ['JADX_SHA256']:
+              raise SystemExit('REA JADX engine provenance mismatch')
+          if classes.get('query') != 'ApiDemos' or classes.get('coverage') != 'complete' or classes.get('total_classes', 0) < 2:
+              raise SystemExit('REA class search incomplete')
+          required = {'io.appium.android.apis.ApiDemos', 'io.appium.android.apis.ApiDemosApplication'}
+          if not required.issubset(set(classes.get('matches', []))):
+              raise SystemExit('REA required demo classes missing')
+          if classes.get('engine', {}).get('artifact_sha256') != os.environ['JADX_SHA256']:
+              raise SystemExit('REA class search JADX provenance mismatch')
+          print('REA package, engine provenance and expected demo classes confirmed')
           (d / 'evidence-summary.json').write_text(json.dumps({
               'rea_version': os.environ['REA_RELEASE'],
               'fixture': 'appium/android-apidemos v6.0.18 Apache-2.0',
