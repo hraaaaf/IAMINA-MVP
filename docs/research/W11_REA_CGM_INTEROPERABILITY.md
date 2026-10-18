@@ -49,3 +49,15 @@ Never put APKs, screenshots with patient identifiers, tokens, credentials, decry
 4. For UI, mandatory BEFORE → goal → reference/mockup → AFTER same browser viewports → accessibility/RTL and visual comparison.
 
 **Next:** install and run pinned REA in an authorized environment with an authorized sample APK (no patient data), capture evidence IDs and hashes, and compare source-derived Nightscout semantics with the synthetic lab. No production deployment.
+
+## 18 octobre 2026 — découvertes et préparation d'une exécution REA isolée
+
+**xDrip+ inspecté en source** : `UiBasedCollector.java` déclare des notifications Android de `com.dexcom.g7` et `com.microtech.aidexx.mgdl` (LinX). `onNotificationPosted` filtre les notifications ; `handleNewValue` accepte uniquement 40–405 mg/dL et applique une déduplication. Ceci ne prouve ni la compatibilité d'une app réelle ni une récupération sur iOS. La prise en charge de Libre 3 n'a pas été établie par cet inventaire.
+
+**Nightscout** : `NightscoutUploader.java` de xDrip+ utilise `@POST("entries")` et l'en-tête `api-secret`. La documentation [Local Web Services](https://github.com/NightscoutFoundation/xDrip/blob/master/Documentation/technical/Local_Web_Services.md) expose `127.0.0.1:17580/sgv.json` avec des valeurs **toujours en mg/dL**. Ce localhost est celui du téléphone Android ; le navigateur Web et le backend IAMINA n'y accèdent pas automatiquement, et CORS doit être vérifié.
+
+**Sources** : [UiBasedCollector](https://github.com/NightscoutFoundation/xDrip/blob/master/app/src/main/java/com/eveningoutpost/dexdrip/services/UiBasedCollector.java), [NightscoutUploader](https://github.com/NightscoutFoundation/xDrip/blob/master/app/src/main/java/com/eveningoutpost/dexdrip/utilitymodels/NightscoutUploader.java).
+
+**Banc REA préparé** : `.github/workflows/rea-android-synthetic-lab.yml` doit installer la version fixe REA 6.7.0 (tag officiel commit `27dc42d10249f0410904a75c0997842eb03b931c`) sur Node 24.11 + JDK 21, puis analyser l'APK open source Appium ApiDemos v6.0.18. Empreinte APK `a9eecf37b26cd084855c530db81c2bb1b91f4c1b095a04f47aa7c20e2791f686` ; JADX 0.7.1 `6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75`. Vérifier les deux SHA avant l'exécution ; aucune donnée patient ou application propriétaire, aucun deploy. **REA n'a pas encore été exécuté ; le futur run CI seul en établira l'issue.** Un APK de démonstration ne certifie pas la compatibilité Dexcom/Libre/LinX.
+
+**Next** : vérifier une fois la CI de la PR #1129, diagnostiquer les échecs éventuels, comparer les résultats à la source xDrip/Nightscout, revue indépendante/certification et maintien du gate W01 NO-GO avant intégration clinique.
