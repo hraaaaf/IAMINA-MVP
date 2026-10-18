@@ -52,6 +52,64 @@ def test_login_issues_native_bearer_consumable_without_session_cookie():
 
 
 @pytest.mark.django_db
+def test_preview_cookie_free_password_reauthentication_is_stateless_and_csrf_scoped(
+    monkeypatch,
+):
+    """Only a protected API Preview BFF may bootstrap a cookie-free bearer."""
+    user, _ = _patient("w01-csrf-password")
+    client = Client(enforce_csrf_checks=True)
+    credentials = json.dumps({
+        "email": "w01-csrf-password@example.test",
+        "password": "A-strong-passphrase-2026!",
+    })
+    uri = "/api/v1/auth/login"
+
+    # Ordinary browser requests remain CSRF protected.
+    denied = client.post(uri, credentials, content_type="application/json")
+    assert denied.status_code == 403
+
+    marker = {"HTTP_X_IAMINA_STATELESS_BOOTSTRAP": "w01-preview-v1"}
+    # A forged marker alone cannot bypass the API project's Preview gate.
+    assert client.post(
+        uri, credentials, content_type="application/json", **marker
+    ).status_code == 403
+
+    monkeypatch.setenv("VERCEL_ENV", "preview")
+    monkeypatch.setenv("VERCEL_PROJECT_ID", "prj_Pn9FnyconF3h2w9gOU74iV98kJoU")
+
+    for hostile in (
+        {"HTTP_ORIGIN": "https://evil.example"},
+        {"HTTP_REFERER": "https://evil.example/form"},
+        {"HTTP_COOKIE": "sessionid=hostile"},
+        {"HTTP_AUTHORIZATION": "Basic attacker"},
+    ):
+        rejected = client.post(
+            uri, credentials, content_type="application/json", **marker,
+            **hostile,
+        )
+        assert rejected.status_code == 403, hostile
+
+    login = client.post(
+        uri, credentials, content_type="application/json", **marker
+    )
+    assert login.status_code == 200
+    assert "sessionid" not in login.cookies
+    assert "csrftoken" not in login.cookies
+    token = login.json()["access_token"]
+    # Same HTTP client has no ambient session after this login.
+    assert client.get("/api/v1/auth/me").status_code == 401
+    assert client.get(
+        "/api/v1/auth/me", **_bearer(token)
+    ).json()["id"] == user.pk
+    # Protected clinical paths never inherit this bootstrap exception.
+    denied_mutation = client.post(
+        "/api/v1/auth/logout",
+        data="{}", content_type="application/json", **marker,
+    )
+    assert denied_mutation.status_code in (401, 403)
+
+
+@pytest.mark.django_db
 def test_bearer_only_a_b_a_identity_isolation_and_no_credential_denial():
     a, a_token = _patient("w01-patient-a")
     b, b_token = _patient("w01-patient-b")
@@ -119,7 +177,7 @@ def test_expired_bearer_requires_new_password_login_and_never_replays_old_token(
         old_token = issue_native_token(user)
         other_token = issue_native_token(another)
     with mock_patch("django.core.signing.time.time", return_value=issued_at + 3601):
-        isolated = Client(enforce_csrf_checks=True)
+        isolated = Client()  # Dedicated Preview CSRF contract is asserted below.
         assert isolated.get("/api/v1/auth/me", **_bearer(old_token)).status_code == 401
         # Old Bearer alone cannot be refreshed or elevated into any patient.
         assert isolated.get("/api/v1/auth/me").status_code == 401

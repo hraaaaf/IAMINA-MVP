@@ -112,6 +112,42 @@ test('missing OIDC token returns 503 before any egress',async()=>{
     assert.equal(out.statusCode,503);
   });
 });
+test('Preview anonymous auth bootstrap marker is BFF-owned and limited to safe routes', async () => {
+  await withEnv(async () => {
+    const routes = [
+      'auth/login', 'auth/register', 'auth/firebase',
+      'auth/password/reset/request', 'auth/password/reset/confirm',
+    ];
+    let forwarded = 0;
+    globalThis.fetch = async (_url, init) => {
+      const path = new URL(_url).pathname;
+      const shouldMark = routes.some(x => path === '/api/v1/' + x);
+      assert.equal(
+        init.headers.get('x-iamina-stateless-bootstrap'),
+        shouldMark ? 'w01-preview-v1' : null,
+      );
+      assert.equal(init.headers.get('cookie'), null);
+      assert.equal(init.headers.get('origin'), null);
+      assert.equal(init.headers.get('x-vercel-trusted-oidc-idp-token'), 'synthetic-oidc');
+      forwarded++;
+      return new Response(JSON.stringify({ok:true}), {
+        status:200, headers:{'content-type':'application/json'},
+      });
+    };
+    for (const path of [...routes,'profile']) {
+      const incoming = Readable.from([Buffer.from('{}')]);
+      Object.assign(incoming, req(path,{method:'POST',headers:{
+        origin,'content-type':'application/json',cookie:'_vercel_jwt=private',
+        'x-iamina-stateless-bootstrap':'hostile-user-supplied-marker',
+      }}));
+      const out = streamingResponse();
+      await proxy(incoming,out,async()=> 'synthetic-oidc');
+      assert.equal(out.statusCode,200);
+    }
+    assert.equal(forwarded, routes.length+1);
+  });
+});
+
 test('health proxy forwards short-lived OIDC only, excludes cookies and cannot redirect',async()=>{
   await withEnv(async()=>{
     globalThis.fetch=async(url,init)=>{
