@@ -19,6 +19,7 @@ jobs:
       REA_RELEASE: '6.7.0'
       FIXTURE_SHA256: 'a9eecf37b26cd084855c530db81c2bb1b91f4c1b095a04f47aa7c20e2791f686'
       JADX_SHA256: '6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75'
+      XDRIP_SHA256: 'bfc74ebfce94e67bc5f3c5199c8312cf046205fd0123b9ae7cf6ed953890774b'
     steps:
       - name: Supported REA runtime
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -48,7 +49,10 @@ jobs:
             'https://github.com/1013503897/jadx-headless-mcp/releases/download/v0.7.1/jadx-headless-mcp-0.7.1-all.jar'
           printf '%s  %s\n' "$JADX_SHA256" "$RUNNER_TEMP/rea-evidence/jadx-headless-mcp-0.7.1-all.jar" | sha256sum --check --status
           echo "REA_JADX_MCP_JAR=$RUNNER_TEMP/rea-evidence/jadx-headless-mcp-0.7.1-all.jar" >> "$GITHUB_ENV"
-          echo "Both SHA-256 checks passed"
+          curl --fail --location --retry 2 --max-time 120 -o "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" \
+            'https://github.com/NightscoutFoundation/xDrip/releases/download/2026.03.01/xDrip-plus-20260301-805ba04.apk'
+          printf '%s  %s\n' "$XDRIP_SHA256" "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" | sha256sum --check --status
+          echo "Three artifact SHA-256 checks passed"
       - name: Execute REA on public Appium demonstration APK
         shell: bash
         run: |
@@ -57,6 +61,9 @@ jobs:
           rea doctor --json > "$RUNNER_TEMP/rea-evidence/doctor.json" || test -s "$RUNNER_TEMP/rea-evidence/doctor.json"
           timeout 300s rea inspect-android-package "$RUNNER_TEMP/rea-evidence/ApiDemos-debug.apk" --json > "$RUNNER_TEMP/rea-evidence/inspect.json"
           timeout 300s rea search-android-classes "$RUNNER_TEMP/rea-evidence/ApiDemos-debug.apk" ApiDemos --json > "$RUNNER_TEMP/rea-evidence/classes.json"
+          timeout 420s rea inspect-android-package "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" --json > "$RUNNER_TEMP/rea-evidence/xdrip-inspect.json"
+          timeout 420s rea search-android-classes "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" NightscoutUploader --json > "$RUNNER_TEMP/rea-evidence/xdrip-nightscout-classes.json"
+          timeout 420s rea search-android-classes "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" UiBasedCollector --json > "$RUNNER_TEMP/rea-evidence/xdrip-collector-classes.json"
           python3 - <<'PY'
           import json, os, pathlib
           d = pathlib.Path(os.environ['RUNNER_TEMP']) / 'rea-evidence'
@@ -86,12 +93,28 @@ jobs:
           if classes.get('engine', {}).get('artifact_sha256') != os.environ['JADX_SHA256']:
               raise SystemExit('REA class search JADX provenance mismatch')
           print('REA package, engine provenance and expected demo classes confirmed')
+          xdrip = json.loads((d / 'xdrip-inspect.json').read_text(encoding='utf-8')).get('normalized_result', {})
+          if xdrip.get('package_name') != 'com.eveningoutpost.dexdrip':
+              raise SystemExit('Official xDrip app package mismatch')
+          if xdrip.get('engine', {}).get('artifact_sha256') != os.environ['JADX_SHA256']:
+              raise SystemExit('xDrip JADX engine provenance mismatch')
+          for kind, keyword in [('nightscout', 'NightscoutUploader'), ('collector', 'UiBasedCollector')]:
+              data = json.loads((d / f'xdrip-{kind}-classes.json').read_text(encoding='utf-8')).get('normalized_result', {})
+              if data.get('query') != keyword or data.get('coverage') != 'complete':
+                  raise SystemExit(f'xDrip class inventory incomplete: {keyword}')
+              if not any(keyword in name for name in data.get('matches', [])):
+                  raise SystemExit(f'Expected xDrip class unavailable: {keyword}')
+              if data.get('engine', {}).get('artifact_sha256') != os.environ['JADX_SHA256']:
+                  raise SystemExit(f'xDrip class search engine mismatch: {keyword}')
+              print(f'xDrip {keyword}: class inventory verified, total={data.get("total_classes")}')
+          print('Official xDrip Android app static inspection and class names confirmed')
           (d / 'evidence-summary.json').write_text(json.dumps({
               'rea_version': os.environ['REA_RELEASE'],
               'fixture': 'appium/android-apidemos v6.0.18 Apache-2.0',
               'fixture_sha256': os.environ['FIXTURE_SHA256'],
               'jadx_sha256': os.environ['JADX_SHA256'],
-              'scope': 'public demo only, no medical device or patient data'
+              'xdrip_official_sha256': os.environ['XDRIP_SHA256'],
+              'scope': 'open-source Appium and xDrip APK static analysis, no medical device or patient data'
           }, indent=2)+'\n')
           PY
       - name: Upload JSON evidence only (never APK/JAR)
@@ -103,6 +126,9 @@ jobs:
             ${{ runner.temp }}/rea-evidence/doctor.json
             ${{ runner.temp }}/rea-evidence/inspect.json
             ${{ runner.temp }}/rea-evidence/classes.json
+            ${{ runner.temp }}/rea-evidence/xdrip-inspect.json
+            ${{ runner.temp }}/rea-evidence/xdrip-nightscout-classes.json
+            ${{ runner.temp }}/rea-evidence/xdrip-collector-classes.json
             ${{ runner.temp }}/rea-evidence/evidence-summary.json
           if-no-files-found: warn
           retention-days: 7
