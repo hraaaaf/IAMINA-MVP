@@ -88,6 +88,80 @@ def test_expired_bearer_is_denied_without_falling_back_to_session():
         response = Client().get("/api/v1/auth/me", **_bearer(token))
     assert response.status_code == 401
 
+@pytest.mark.django_db
+def test_native_bearer_hard_expires_in_one_hour_even_with_legacy_30_day_setting():
+    """An accidentally stale runtime setting cannot re-enable month-long access."""
+    user, _ = _patient("w01-bounded-session")
+    issued_at = 1_800_000_000
+    with mock_patch("django.core.signing.time.time", return_value=issued_at):
+        token = issue_native_token(user)
+
+    # Reading just inside the hard cap still authenticates without cookies.
+    with mock_patch("django.core.signing.time.time", return_value=issued_at + 3599):
+        assert Client().get("/api/v1/auth/me", **_bearer(token)).status_code == 200
+
+    # A 30-day legacy override cannot bypass the 1h ceiling.
+    with override_settings(NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS=30 * 24 * 3600):
+        with mock_patch("django.core.signing.time.time", return_value=issued_at + 3601):
+            with pytest.raises(NativeTokenError):
+                verify_native_token(token)
+            expired = Client().get("/api/v1/auth/me", **_bearer(token))
+    assert expired.status_code == 401
+
+
+@pytest.mark.django_db
+def test_expired_bearer_requires_new_password_login_and_never_replays_old_token():
+    """Controlled renewal uses password reauthentication, not a 30-day refresh secret."""
+    user, _ = _patient("w01-relogin")
+    another, _ = _patient("w01-other-session")
+    issued_at = 1_800_000_000
+    with mock_patch("django.core.signing.time.time", return_value=issued_at):
+        old_token = issue_native_token(user)
+        other_token = issue_native_token(another)
+    with mock_patch("django.core.signing.time.time", return_value=issued_at + 3601):
+        isolated = Client(enforce_csrf_checks=True)
+        assert isolated.get("/api/v1/auth/me", **_bearer(old_token)).status_code == 401
+        # Old Bearer alone cannot be refreshed or elevated into any patient.
+        assert isolated.get("/api/v1/auth/me").status_code == 401
+        assert isolated.get("/api/v1/auth/me", **_bearer(other_token)).status_code == 401
+        denied = isolated.post(
+            "/api/v1/auth/login",
+            data=json.dumps({
+                "email": "w01-relogin@example.test",
+                "password": "wrong-password",
+            }),
+            content_type="application/json",
+        )
+        assert denied.status_code == 401
+
+        login = isolated.post(
+            "/api/v1/auth/login",
+            data=json.dumps({
+                "email": "w01-relogin@example.test",
+                "password": "A-strong-passphrase-2026!",
+            }),
+            content_type="application/json",
+        )
+        assert login.status_code == 200
+        replacement = login.json()["access_token"]
+        assert replacement != old_token
+        assert isolated.get("/api/v1/auth/me", **_bearer(replacement)).json()["id"] == user.pk
+        # Deliberately new client: login session cookie cannot rescue the old bearer.
+        assert Client().get("/api/v1/auth/me", **_bearer(old_token)).status_code == 401
+    assert another.pk != user.pk
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("invalid_age", [0, -1, "3600", None, True])
+def test_native_bearer_invalid_lifetime_configuration_fails_closed(invalid_age):
+    _, token = _patient("w01-ttl-invalid")
+    with override_settings(NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS=invalid_age):
+        with pytest.raises(NativeTokenError):
+            verify_native_token(token)
+        response = Client().get("/api/v1/auth/me", **_bearer(token))
+    assert response.status_code == 401
+
+
 
 @pytest.mark.django_db
 def test_existing_django_session_still_reads_identity_but_logout_requires_csrf():
