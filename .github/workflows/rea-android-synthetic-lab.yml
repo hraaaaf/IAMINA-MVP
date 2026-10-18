@@ -64,6 +64,8 @@ jobs:
           timeout 420s rea inspect-android-package "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" --json > "$RUNNER_TEMP/rea-evidence/xdrip-inspect.json"
           timeout 420s rea search-android-classes "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" NightscoutUploader --json > "$RUNNER_TEMP/rea-evidence/xdrip-nightscout-classes.json"
           timeout 420s rea search-android-classes "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" UiBasedCollector --json > "$RUNNER_TEMP/rea-evidence/xdrip-collector-classes.json"
+          timeout 420s rea inspect-android-class "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" com.eveningoutpost.dexdrip.utilitymodels.NightscoutUploader --json > "$RUNNER_TEMP/rea-evidence/xdrip-uploader-class.json"
+          timeout 420s rea inspect-android-method "$RUNNER_TEMP/rea-evidence/xDrip-plus-20260301.apk" com.eveningoutpost.dexdrip.services.UiBasedCollector onNotificationPosted --json > "$RUNNER_TEMP/rea-evidence/xdrip-notification-method.json"
           python3 - <<'PY'
           import json, os, pathlib
           d = pathlib.Path(os.environ['RUNNER_TEMP']) / 'rea-evidence'
@@ -108,6 +110,11 @@ jobs:
                   raise SystemExit(f'xDrip class search engine mismatch: {keyword}')
               print(f'xDrip {keyword}: class inventory verified, total={data.get("total_classes")}')
           print('Official xDrip Android app static inspection and class names confirmed')
+          for filename in ('xdrip-uploader-class.json', 'xdrip-notification-method.json'):
+              evidence = json.loads((d / filename).read_text(encoding='utf-8'))
+              if not isinstance(evidence, dict) or evidence.get('error') or not isinstance(evidence.get('normalized_result'), dict):
+                  raise SystemExit(f'REA detailed Android method/class inspection failed: {filename}')
+              print(f'{filename}: evidence normalized')
           (d / 'evidence-summary.json').write_text(json.dumps({
               'rea_version': os.environ['REA_RELEASE'],
               'fixture': 'appium/android-apidemos v6.0.18 Apache-2.0',
@@ -129,6 +136,8 @@ jobs:
             ${{ runner.temp }}/rea-evidence/xdrip-inspect.json
             ${{ runner.temp }}/rea-evidence/xdrip-nightscout-classes.json
             ${{ runner.temp }}/rea-evidence/xdrip-collector-classes.json
+            ${{ runner.temp }}/rea-evidence/xdrip-uploader-class.json
+            ${{ runner.temp }}/rea-evidence/xdrip-notification-method.json
             ${{ runner.temp }}/rea-evidence/evidence-summary.json
           if-no-files-found: warn
           retention-days: 7
