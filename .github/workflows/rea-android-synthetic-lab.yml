@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           rea --version
-          rea doctor --json > "$RUNNER_TEMP/rea-evidence/doctor.json"
+          rea doctor --json > "$RUNNER_TEMP/rea-evidence/doctor.json" || test -s "$RUNNER_TEMP/rea-evidence/doctor.json"
           timeout 300s rea inspect-android-package "$RUNNER_TEMP/rea-evidence/ApiDemos-debug.apk" --json > "$RUNNER_TEMP/rea-evidence/inspect.json"
           timeout 300s rea search-android-classes "$RUNNER_TEMP/rea-evidence/ApiDemos-debug.apk" ApiDemos --json > "$RUNNER_TEMP/rea-evidence/classes.json"
           python3 - <<'PY'
@@ -64,6 +64,11 @@ jobs:
               if not isinstance(payload, dict) or not payload or payload.get('error') or payload.get('ok') is False:
                   raise SystemExit(f'REA result invalid/error: {name}')
               print(f'{name}: valid JSON, bytes={p.stat().st_size}')
+          diagnostics = json.loads((d / 'doctor.json').read_text(encoding='utf-8'))
+          checks = {c.get('name'): c.get('ok') for c in diagnostics.get('scope_checks', [])}
+          if checks.get('node') is not True or checks.get('jadx') is not True:
+              raise SystemExit('Node/JADX prerequisite not healthy')
+          print('REA doctor: Android prerequisites healthy (other engines optional)')
           (d / 'evidence-summary.json').write_text(json.dumps({
               'rea_version': os.environ['REA_RELEASE'],
               'fixture': 'appium/android-apidemos v6.0.18 Apache-2.0',
