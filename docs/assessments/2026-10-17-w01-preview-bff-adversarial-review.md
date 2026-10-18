@@ -37,3 +37,6 @@ Le BFF original refusait toute barre finale dans `safePath()`, causant un refus 
 
 ## 18/10/2026 — Leçon contradictoire CSRF Web
 Les tests réels démontrent que Django Ninja accepte déjà POST /auth/login sous Client(enforce_csrf_checks=True) avec 200 ; l'hypothèse 403 était fausse. La tentative de marqueur BFF + exemption CSRF ajoutée dans 76e1a2f8 n'était donc ni nécessaire ni justifiée : annulée intégralement. La séparation de sécurité correcte est Django login public/SessionAuth côté API et BFF sans propagation de Cookie ni Set-Cookie vers le navigateur ; des tests Python/Node sont ajoutés. Toujours aucune attestation hébergée Vercel Trusted Sources/OIDC.
+
+## 18/10/2026 — CSRF hybrid fallback Cookie + Bearer
+Le middleware marquait toute requête Bearer comme exemptée CSRF, y compris celles contenant une session Django cookie. Après rejet d'un Bearer invalide, SessionAuth pouvait être invoqué avec la même exemption, ce qui est un risque de downgrade. Correctif candidat : aucune exemption Bearer si le moindre cookie est présent ; l'identité Bearer sans cookie reste le seul transport W01 autorisé. Test Django de refus 403 pour session+Bearer invalide, intégrité du token intacte, et réussite du logout sans cookie. Un Bearer valide peut être prioritaire sans recours à SessionAuth. Suite conditionnée à CI de SHA exact et revue indépendante.

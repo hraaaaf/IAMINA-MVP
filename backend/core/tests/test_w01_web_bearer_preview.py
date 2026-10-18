@@ -193,6 +193,36 @@ def test_native_bearer_invalid_lifetime_configuration_fails_closed(invalid_age):
 
 
 @pytest.mark.django_db
+def test_browser_session_and_forged_bearer_cannot_bypass_csrf_or_revoke_token():
+    """A bogus Authorization header cannot turn a session into CSRF-free auth."""
+    user, live_token = _patient("w01-dual-auth-cookie")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(user)
+    assert client.get("/api/v1/auth/me").status_code == 200
+
+    # A forged bearer must not authorize SessionAuth's fallback via a CSRF
+    # exemption. No cross-site request should be able to revoke this account.
+    denied = client.post(
+        "/api/v1/auth/logout",
+        **_bearer("iamina.synthetic-invalid-token"),
+    )
+    assert denied.status_code == 403
+    assert verify_native_token(live_token).pk == user.pk
+    user.base_profile.refresh_from_db()
+    assert user.base_profile.auth_token_version == 0
+
+    # A valid Bearer is an explicit credential and may authenticate before
+    # SessionAuth fallback. Only a rejected Bearer must never downgrade into
+    # a CSRF-free ambient session.
+    # A clean, cookie-free Bearer still revokes successfully.
+    isolated = Client(enforce_csrf_checks=True)
+    permitted = isolated.post("/api/v1/auth/logout", **_bearer(live_token))
+    assert permitted.status_code == 200
+    with pytest.raises(NativeTokenError):
+        verify_native_token(live_token)
+
+
+@pytest.mark.django_db
 def test_existing_django_session_still_reads_identity_but_logout_requires_csrf():
     user, token = _patient("w01-session")
     session_client = Client(enforce_csrf_checks=True)
