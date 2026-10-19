@@ -217,7 +217,10 @@ class _Capture(logging.Handler):
 
 
 def run_live_qualification(output_path: Path) -> dict[str, Any]:
-    from llm.tests.pulper_qualification_provider import install_synthetic_groq
+    from llm.tests.pulper_qualification_provider import (
+        bounded_synthetic_transport_probe,
+        install_synthetic_groq,
+    )
     score = Score()
     qualified = set()
     cases_out = []
@@ -227,9 +230,13 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
     root = logging.getLogger()
     root.addHandler(capture)
     provider = None
+    transport_probe: list[dict[str, str]] = []
     try:
         with ExitStack() as stack:
             provider = install_synthetic_groq(stack)
+            # Two additional, bounded API calls with synthetic text only.
+            # This is not clinical qualification and never changes thresholds.
+            transport_probe = bounded_synthetic_transport_probe(provider.delegate)
             for case in build_corpus():
                 calls_before = provider.live_calls
                 output = ingest(case.payload, case.filename, case.mime_type)
@@ -311,7 +318,7 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
 
     parser_route_counts = {"live_groq": getattr(provider, "live_calls", 0), "deterministic_fixture": getattr(provider, "deterministic_calls", 0)}
     metrics = {"critical_precision": score.precision, "critical_recall": score.recall, "timestamp_timezone_preservation": ratio(ts_ok, ts_total), "critical_provenance_coverage": ratio(prov_ok, prov_total), "supported_format_coverage": len(qualified) / len(SUPPORTED_FORMATS), "fail_closed_rate": ratio(fail_ok, fail_total), "version_capture": ratio(ver_ok, ver_total), "ambiguous_critical_autoaccepted": autoaccepted, "qualification_log_sentinel_leaks": sum(SYNTHETIC_SENTINEL in message for message in capture.messages), "critical_corruptions": corruptions, "scored_cases": scored}
-    report = {"schema": "pulper-qualification-v3", "synthetic_only": True, "text_provider": "groq/openai-gpt-oss-120b", "vision_accuracy_mode": "synthetic_transcription_not_live_ocr", "synthetic_vision_parser_mode": "deterministic_fixture_parser", "live_vision_accuracy_qualified": False, "supported_formats": sorted(SUPPORTED_FORMATS), "parser_route_counts": parser_route_counts, "metrics": metrics, "counts": {"tp": score.true_positive, "fp": score.false_positive, "fn": score.false_negative, "provenance_expected": prov_total, "provenance_verified": prov_ok, "timestamps_expected": ts_total, "timestamps_exact": ts_ok, "fail_closed_expected": fail_total, "fail_closed_passed": fail_ok, "formats_qualified": len(qualified), "formats_expected": len(SUPPORTED_FORMATS)}, "cases": cases_out}
+    report = {"schema": "pulper-qualification-v3", "synthetic_only": True, "text_provider": "groq/openai-gpt-oss-120b", "vision_accuracy_mode": "synthetic_transcription_not_live_ocr", "synthetic_vision_parser_mode": "deterministic_fixture_parser", "live_vision_accuracy_qualified": False, "supported_formats": sorted(SUPPORTED_FORMATS), "parser_route_counts": parser_route_counts, "transport_probe": {"synthetic_only": True, "planned_calls": 2, "attempted_calls": len(transport_probe), "results": transport_probe}, "metrics": metrics, "counts": {"tp": score.true_positive, "fp": score.false_positive, "fn": score.false_negative, "provenance_expected": prov_total, "provenance_verified": prov_ok, "timestamps_expected": ts_total, "timestamps_exact": ts_ok, "fail_closed_expected": fail_total, "fail_closed_passed": fail_ok, "formats_qualified": len(qualified), "formats_expected": len(SUPPORTED_FORMATS)}, "cases": cases_out}
     if SYNTHETIC_SENTINEL in json.dumps(report, sort_keys=True):
         raise AssertionError("qualification report leaked synthetic sentinel")
     thresholds = {"critical_precision": metrics["critical_precision"] >= .99, "critical_recall": metrics["critical_recall"] >= .99, "timestamp_timezone_preservation": metrics["timestamp_timezone_preservation"] == 1.0, "critical_provenance_coverage": metrics["critical_provenance_coverage"] == 1.0, "supported_format_coverage": metrics["supported_format_coverage"] == 1.0, "fail_closed_rate": metrics["fail_closed_rate"] == 1.0, "version_capture": metrics["version_capture"] == 1.0, "ambiguous_critical_autoaccepted": autoaccepted == 0, "qualification_log_sentinel_leaks": metrics["qualification_log_sentinel_leaks"] == 0, "critical_corruptions": corruptions == 0, "parser_route_budget": parser_route_counts == {"live_groq": 4, "deterministic_fixture": 3}}

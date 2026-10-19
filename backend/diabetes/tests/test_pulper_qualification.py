@@ -22,10 +22,37 @@ from diabetes.services.documents.schema import (
 from llm.base import LLMResponse
 from llm.tests.pulper_qualification_provider import (
     SyntheticQualificationTextProvider,
+    bounded_synthetic_transport_probe,
     classify_live_reply_shape,
     classify_upstream_http_status,
 )
 from media.documents.extractors.pdf import extract_pdf
+
+
+def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeypatch):
+    monkeypatch.setenv("PULPER_SYNTHETIC_QUALIFICATION", "1")
+    observed_formats = []
+
+    def create(**kwargs):
+        observed_formats.append(kwargs["response_format"]["type"])
+        if kwargs["response_format"]["type"] == "json_schema":
+            class SyntheticHTTP400(Exception):
+                status_code = 400
+            raise SyntheticHTTP400("secret-do-not-log")
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="SECRET"))])
+
+    delegate = SimpleNamespace(
+        model="openai/gpt-oss-120b",
+        timeout_seconds=15.0,
+        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+    )
+    result = bounded_synthetic_transport_probe(delegate)
+    assert observed_formats == ["json_schema", "json_object"]
+    assert result == [
+        {"variant": "strict_schema", "status": "http_400"},
+        {"variant": "json_object", "status": "http_200"},
+    ]
+    assert "SECRET" not in json.dumps(result)
 
 
 def test_upstream_http_status_diagnostics_show_only_numeric_codes():

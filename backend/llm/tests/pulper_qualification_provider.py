@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from llm.base import LLMResponse
 from llm.errors import LLMProviderError
+from llm.lowcost_openai_compatible import _GPT_OSS_REPLY_FORMAT
 from llm.provider_registry import build_openai_compatible_provider
 from media.documents.ocr_router import OcrCapabilities
 
@@ -21,6 +22,44 @@ _SYNTHETIC_GATE = "PULPER_SYNTHETIC_QUALIFICATION"
 _BEGIN_DOCUMENT = "BEGIN_UNTRUSTED_DOCUMENT\n"
 _END_DOCUMENT = "\nEND_UNTRUSTED_DOCUMENT"
 _DETERMINISTIC_PARSER_MODEL = "qualification-deterministic-parser-v1"
+
+
+def bounded_synthetic_transport_probe(delegate) -> list[dict[str, str]]:
+    """Two metadata-only Groq calls: strict-schema vs JSON object transport.
+
+    Only reachable under the explicit synthetic qualification environment gate.
+    No raw response, exception text, system secret, token, or clinical data
+    is placed in the returned diagnostic report.
+    """
+    if os.environ.get(_SYNTHETIC_GATE) != "1":
+        raise RuntimeError("synthetic_qualification_gate_missing")
+
+    base = {
+        "model": delegate.model,
+        "messages": [
+            {"role": "system", "content": "Synthetic API protocol test. Respond with JSON."},
+            {"role": "user", "content": "Return a JSON object with reply exactly ok."},
+        ],
+        "timeout": delegate.timeout_seconds,
+        "max_completion_tokens": 192,
+        "reasoning_effort": "low",
+    }
+    formats = [
+        ("strict_schema", _GPT_OSS_REPLY_FORMAT),
+        ("json_object", {"type": "json_object"}),
+    ]
+    results = []
+    for label, response_format in formats:
+        try:
+            delegate.client.chat.completions.create(
+                **base, response_format=response_format,
+            )
+            status = "http_200"
+        except Exception as exc:
+            code = getattr(exc, "status_code", None)
+            status = f"http_{code}" if type(code) is int and 400 <= code <= 599 else "unknown"
+        results.append({"variant": label, "status": status})
+    return results
 
 
 def classify_upstream_http_status(exc: Exception) -> str:
