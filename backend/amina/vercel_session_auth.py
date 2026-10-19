@@ -44,4 +44,9 @@ class SessionAuth(NinjaSessionAuth):
         request: HttpRequest,
         key: Optional[str],
     ) -> Optional[Any]:
+        # Ninja's SessionAuth.authenticate() reads request.user directly and
+        # ignores key. Reject an invalid explicit Authorization credential
+        # instead of silently returning the cookie-authenticated patient.
+        if request.META.get("HTTP_AUTHORIZATION"):
+            return None
         return super().authenticate(request, key)

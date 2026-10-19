@@ -1789,6 +1789,18 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response",
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "description": "Stage 1 (confirm=False): Extract and validate.  Returns preview.\nStage 2 (confirm=True):  Persist from a previously staged batch_id\n                         passed as query param ?batch_id=<uuid>.",
