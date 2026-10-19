@@ -38,14 +38,17 @@ def test_request_contains_only_locale_script_and_opaque_token():
     envelope = build_shadow_envelope(_resolution(), language="fr")
     request = build_protected_provider_shadow_request(envelope)
     prompt = request.user_prompt()
+    # Opaque random tokens may coincidentally contain fixture digits.
+    # Assert only against the visible prompt with the token removed.
+    visible_prompt = prompt.replace(envelope.protected_body_token, "")
 
     assert request.locale == "fr"
     assert request.protected_body_token == envelope.protected_body_token
-    assert "Réponse clinique déterministe" not in prompt
-    assert "142" not in prompt
-    assert "mg/dL" not in prompt
-    assert "certified_consultation_brief" not in prompt
-    assert "diabetes.clinician_prep" not in prompt
+    assert "Réponse clinique déterministe" not in visible_prompt
+    assert "142" not in visible_prompt
+    assert "mg/dL" not in visible_prompt
+    assert "certified_consultation_brief" not in visible_prompt
+    assert "diabetes.clinician_prep" not in visible_prompt
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=False)
