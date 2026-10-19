@@ -120,7 +120,7 @@ void requireUnlockedPatientSyncTransport(
 /// Pilot A: deny all clinical API routes except public authentication.
 void requirePilotClinicalTransport(Uri url, bool Function()? allowed, {String method = ''}) {
   if (allowed != null && !allowed() &&
-      !isPublicCountrySuggestion(url, 'GET') &&
+      !isPublicCountrySuggestion(url, method) &&
       url.path.startsWith('/api/v1/') &&
       !url.path.startsWith('/api/v1/auth/')) {
     throw StateError('Clinical transport disabled: local-only pilot');
