@@ -3,8 +3,25 @@ import { pipeline } from 'node:stream/promises';
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const WEB_PROJECT = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';
-const EXACT_API_ORIGIN =
-  'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app';
+// Only deployment-specific URLs of IAMINA's protected API project are accepted.
+// No stable Production alias, arbitrary Vercel project or caller-provided URL.
+const API_PREVIEW_HOST =
+  /^iamina-certified-[a-z0-9]+-achraf-benmoussa-s-projects\.vercel\.app$/;
+
+function resolvePreviewApiOrigin() {
+  const value = process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL;
+  if (typeof value !== 'string' || value.length > 180) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:' || parsed.origin !== value ||
+        parsed.pathname !== '/' || parsed.search || parsed.hash ||
+        parsed.username || parsed.password ||
+        !API_PREVIEW_HOST.test(parsed.hostname)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
 const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
 
 class PayloadTooLargeError extends Error {}
@@ -78,10 +95,10 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   if (!Number.isSafeInteger(length) || length < 0 ||
       length > MAX_REQUEST_BYTES) return response.status(413).end();
 
-  // Fail closed on missing/incorrect configuration; no fallback to production.
-  if (process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL !== EXACT_API_ORIGIN) {
-    return response.status(503).end();
-  }
+  // Fail closed on missing/malformed or cross-project configuration.
+  // The W01 Git-branch-scoped Preview variable pins a single deployment URL.
+  const apiOrigin = resolvePreviewApiOrigin();
+  if (!apiOrigin) return response.status(503).end();
   // Vercel Trusted Sources authenticates this Preview-to-Preview workload.
   // No project-wide automation bypass is provisioned or shared with Flutter.
   let oidcToken;
@@ -107,7 +124,7 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   // Never forward browser cookies, Origin, Host, IP assertions, arbitrary
   // x-* headers, or client-supplied deployment-protection secrets.
   try {
-    const upstream = await fetch(EXACT_API_ORIGIN + '/api/v1/' + route.path + route.search, {
+    const upstream = await fetch(apiOrigin + '/api/v1/' + route.path + route.search, {
       method: request.method,
       headers: outgoingHeaders,
       body: payload,
@@ -146,4 +163,4 @@ export default async function handler(request, response) {
   return proxy(request, response);
 }
 
-export { safePath, requestPath, previewOnlyAndSameOrigin };
+export { safePath, requestPath, previewOnlyAndSameOrigin, resolvePreviewApiOrigin };

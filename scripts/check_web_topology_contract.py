@@ -63,7 +63,8 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
             problems.append("frontend: Preview same-origin Flutter define must be explicit")
         proxy = (root / "frontend/api/preview-proxy.js").read_text(encoding="utf-8")
         for marker in ("VERCEL_ENV !== 'preview'", "VERCEL_PROJECT_ID !== WEB_PROJECT",
-                       "x-vercel-trusted-oidc-idp-token", "bodyParser: false", "redirect: 'manual'"):
+                       "x-vercel-trusted-oidc-idp-token", "bodyParser: false", "redirect: 'manual'",
+                       "API_PREVIEW_HOST", "resolvePreviewApiOrigin()", "IAMINA_REVIEW_PREVIEW_API_BASE_URL"):
             if marker not in proxy:
                 problems.append("frontend: Preview proxy fail-closed security marker missing: " + marker)
     except FileNotFoundError as exc:

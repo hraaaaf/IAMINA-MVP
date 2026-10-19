@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable, Writable } from 'node:stream';
-import { proxy, safePath, requestPath, previewOnlyAndSameOrigin } from '../../frontend/api/preview-proxy.js';
+import { proxy, safePath, requestPath, previewOnlyAndSameOrigin, resolvePreviewApiOrigin } from '../../frontend/api/preview-proxy.js';
 
 const envKeys = [
   'VERCEL_ENV','VERCEL_PROJECT_ID','IAMINA_REVIEW_PREVIEW_API_BASE_URL',
@@ -42,6 +42,58 @@ async function withEnv(fn) {
     }
   }
 }
+test('W01 API Preview pin permits only immutable protected-project deployment URL', async () => {
+  await withEnv(async () => {
+    assert.equal(resolvePreviewApiOrigin(), apiOrigin);
+    const nextDeployment =
+      'https://iamina-certified-w01synthetic9-achraf-benmoussa-s-projects.vercel.app';
+    process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL = nextDeployment;
+    assert.equal(resolvePreviewApiOrigin(), nextDeployment);
+    let observed = 0;
+    globalThis.fetch = async url => {
+      observed++;
+      assert.equal(url, nextDeployment + '/api/v1/health');
+      return new Response('{"status":"ok"}', {status:200,
+        headers:{'content-type':'application/json'}});
+    };
+    const response = streamingResponse();
+    await proxy(req('health'), response, async()=> 'synthetic-oidc');
+    assert.equal(response.statusCode, 200);
+    assert.equal(observed, 1);
+  });
+});
+
+test('W01 BFF refuses Production alias, cross-project and malformed Preview targets', async () => {
+  await withEnv(async () => {
+    const bad = [
+      '',
+      'https://iamina-certified.vercel.app',
+      'https://iamina-review-goowsfx8j-achraf-benmoussa-s-projects.vercel.app',
+      'https://another-project-a-achraf-benmoussa-s-projects.vercel.app',
+      'http://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app',
+      'https://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app/',
+      'https://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app/path',
+      'https://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app?test=1',
+      'https://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app#x',
+      'https://u:p@iamina-certified-a-achraf-benmoussa-s-projects.vercel.app',
+      'https://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app:444',
+      'https://iamina-certified-a-achraf-benmoussa-s-projects.vercel.app.evil.test',
+    ];
+    let requests = 0;
+    let oidc = 0;
+    globalThis.fetch = async () => {requests++; throw Error('forbidden network');};
+    for (const invalid of bad) {
+      process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL = invalid;
+      assert.equal(resolvePreviewApiOrigin(), null, invalid);
+      const response = res();
+      await proxy(req('health'), response, async () => {oidc++;return 'synthetic-oidc';});
+      assert.equal(response.statusCode, 503, invalid);
+    }
+    assert.equal(requests, 0);
+    assert.equal(oidc, 0);
+  });
+});
+
 test('safe fixed origin and path rejects traversals, invalid url segments',()=>{
   for (const bad of ['','/admin','../admin','foo//bar','%2e%2e','foo%2fbar','foo\\bar','https:']) {
     assert.equal(safePath(bad),false,bad);
