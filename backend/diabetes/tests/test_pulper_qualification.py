@@ -31,11 +31,16 @@ from media.documents.extractors.pdf import extract_pdf
 
 def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeypatch):
     monkeypatch.setenv("PULPER_SYNTHETIC_QUALIFICATION", "1")
-    observed_formats = []
+    observed_pairs = []
 
     def create(**kwargs):
-        observed_formats.append(kwargs["max_completion_tokens"])
-        if kwargs["max_completion_tokens"] == 384:
+        assert kwargs["max_completion_tokens"] == 384
+        assert kwargs["response_format"]["type"] == "json_schema"
+        observed_pairs.append((
+            kwargs["messages"][0]["content"],
+            kwargs["messages"][1]["content"],
+        ))
+        if "Extract medical data" in kwargs["messages"][1]["content"]:
             class SyntheticHTTP400(Exception):
                 status_code = 400
             raise SyntheticHTTP400("secret-do-not-log")
@@ -47,10 +52,12 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
         client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
     )
     result = bounded_synthetic_transport_probe(delegate)
-    assert observed_formats == [384, 1024]
+    assert len(observed_pairs) == 2
+    assert "Extract medical data" in observed_pairs[0][1]
+    assert "You are a medical document parser" in observed_pairs[1][0]
     assert result == [
-        {"variant": "full_prompt_384", "status": "http_400"},
-        {"variant": "full_prompt_1024", "status": "http_200"},
+        {"variant": "full_user_short_system", "status": "http_400"},
+        {"variant": "full_system_short_user", "status": "http_200"},
     ]
     assert "SECRET" not in json.dumps(result)
 

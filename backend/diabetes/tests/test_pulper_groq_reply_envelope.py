@@ -2,6 +2,7 @@
 
 Synthetic documents only. Never infer medical facts from free-form narration.
 """
+
 import json
 from types import SimpleNamespace
 from unittest.mock import patch
