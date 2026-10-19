@@ -9,10 +9,9 @@ void main() {
     ).readAsStringSync();
     final router = File('lib/routes/app_router.dart').readAsStringSync();
 
-    expect(enrollment, contains("kIaminaPreviewSameOriginApi"));
-    expect(enrollment, contains("'/w01-preview'"));
-    expect(enrollment, contains("'/app-lock/setup'"));
-    expect(router, contains("initialLocation: kIaminaPreviewSameOriginApi"));
+    expect(enrollment, contains("context.go('/app-lock/setup')"));
+    expect(router, contains('initialLocation: _homeRoute()'));
+    expect(router, contains('!activeLock.isExplicitlyOpen'));
     expect(router, contains("path: '/app-lock/setup'"));
     expect(router, contains("path: '/app-lock/unlock'"));
     expect(router, contains('activeLock.recoveryRequired'));
@@ -40,11 +39,20 @@ void main() {
     expect(unlock, contains('if (!recovery)'));
     expect(unlock, contains('recoveryRequired'));
     expect(unlock, contains("appLockPreview'] == 'recovery'"));
-    // Optional exploration is scoped to W01 preview and NEVER unlocks a vault.
+    // W01 optional clinical access is explicit, persisted per patient, and
+    // cannot supersede an existing strong lock or recovery condition.
     expect(setup, contains('kIaminaPreviewSameOriginApi'));
     expect(unlock, contains('kIaminaPreviewSameOriginApi'));
-    expect(setup, contains("context.go('/w01-preview')"));
+    expect(setup, contains("continueWithoutDeviceLock()"));
+    expect(setup, contains("context.go('/onboarding')"));
+    expect(setup, contains("key: const Key('w01-clinical-lock-opt-out')"));
     expect(unlock, contains("context.go('/w01-preview')"));
+    final shell = File('lib/features/navigation/main_shell.dart')
+        .readAsStringSync();
+    expect(shell, contains('w01-medical-consent-choices'));
+    expect(shell, contains('w01-medical-consent-skip'));
+    expect(shell, contains('w01-disable-lock-after-unlock'));
+    expect(shell, contains('disableConfiguredLockAfterUnlock()'));
     final router = File('lib/routes/app_router.dart').readAsStringSync();
     final readOnly = File('lib/features/auth/w01_read_only_preview_screen.dart').readAsStringSync();
     expect(router, contains("kIaminaPreviewSameOriginApi ? null : '/login'"));

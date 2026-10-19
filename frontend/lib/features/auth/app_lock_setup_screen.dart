@@ -42,6 +42,24 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
     }
   }
 
+  Future<void> _continueWithoutLock() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<AppLockService>().continueWithoutDeviceLock();
+      if (mounted) context.go('/onboarding');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context)!.appLockSetupFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _activate() async {
     setState(() {
       _busy = true;
@@ -229,21 +247,18 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                             ),
                             if (kIaminaPreviewSameOriginApi) ...[
                               const SizedBox(height: 12),
-                              Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: TextButton(
-                                  key: const Key('w01-preview-lock-skip'),
-                                  onPressed: _busy ? null : () => context.go('/w01-preview'),
-                                  child: Text(l10n.w01PreviewSkipLock),
-                                ),
+                              OutlinedButton(
+                                key: const Key('w01-clinical-lock-opt-out'),
+                                onPressed: _busy ? null : _continueWithoutLock,
+                                child: Text(l10n.w01OpenMedicalSpace),
                               ),
+                              const SizedBox(height: 6),
                               Text(
-                                l10n.w01PreviewReadOnlyNotice,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AminaTheme.textSecondary(context),
-                                ),
+                                l10n.w01OpenMedicalSpaceWarning,
+                                style: TextStyle(fontSize: 12,
+                                  color: AminaTheme.textSecondary(context)),
                               ),
+
                             ],
                           ],
                         ),

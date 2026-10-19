@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../core/localization/auth_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
-import '../../services/preview_api_origin.dart';
 
 class LocalDeviceEnrollmentScreen extends StatefulWidget {
   const LocalDeviceEnrollmentScreen({super.key});
@@ -29,9 +28,9 @@ class _LocalDeviceEnrollmentScreenState
     try {
       await context.read<AuthService>().enrollLocalDevice();
       if (mounted) {
-        context.go(kIaminaPreviewSameOriginApi
-            ? '/w01-preview'
-            : '/app-lock/setup');
+        // Let the patient explicitly enable biometrics or decline the
+        // optional lock. Neither choice is silently imposed.
+        context.go('/app-lock/setup');
       }
     } catch (_) {
       if (mounted) {

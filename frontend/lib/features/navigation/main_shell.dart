@@ -12,6 +12,10 @@ import '../../services/auth_service.dart';
 import '../../modules/module_config.dart';
 import '../../modules/module_registry.dart';
 import '../../services/modules_provider.dart';
+import '../../services/app_lock_service.dart';
+import '../../services/consent_service.dart';
+import '../../services/preview_api_origin.dart';
+import '../../core/localization/app_lock_localized_copy.dart';
 
 /// A single nav entry — one source of truth for sidebar + bottom nav + index
 /// mapping, derived from the module registry (+ chassis settings).
@@ -102,7 +106,15 @@ class MainShell extends StatelessWidget {
                   data: media.copyWith(
                     size: Size(constraints.maxWidth, constraints.maxHeight),
                   ),
-                  child: child,
+                  child: kIaminaPreviewSameOriginApi
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _W01OptionalChoicesBar(),
+                            Expanded(child: child),
+                          ],
+                        )
+                      : child,
                 );
               },
             ),
@@ -112,6 +124,140 @@ class MainShell extends StatelessWidget {
       bottomNavigationBar: isMedium
           ? null
           : _BottomNav(entries: entries, selectedIndex: selected),
+    );
+  }
+}
+
+
+/// W01 only: consent to external providers is separate from entering the
+/// medical record. No network request or consent grant occurs on Skip.
+class _W01OptionalChoicesBar extends StatefulWidget {
+  const _W01OptionalChoicesBar();
+
+  @override
+  State<_W01OptionalChoicesBar> createState() =>
+      _W01OptionalChoicesBarState();
+}
+
+class _W01OptionalChoicesBarState extends State<_W01OptionalChoicesBar> {
+  bool _showInfo = false;
+  bool _busy = false;
+
+  Future<void> _disableLock() async {
+    final lock = context.read<AppLockService>();
+    if (!lock.isConfigured || !lock.isUnlocked || _busy) return;
+    final l10n = AppLocalizations.of(context)!;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.w01DisableLockTitle),
+        content: Text(l10n.w01OpenMedicalSpaceWarning),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.w01Cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.w01DisableLockConfirm),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await lock.disableConfiguredLockAfterUnlock();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.appLockSetupFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final consent = context.watch<ConsentService>();
+    final lock = context.watch<AppLockService>();
+    final l10n = AppLocalizations.of(context)!;
+    final pending = !consent.hasConsent && !consent.hasDeclinedLocally;
+    if (!pending && !lock.isExplicitlyOpen &&
+        !(lock.isConfigured && lock.isUnlocked)) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 2),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          if (pending)
+            Container(
+              key: const Key('w01-medical-consent-choices'),
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 4),
+              decoration: BoxDecoration(
+                color: AminaTheme.surface(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AminaTheme.divider(context)),
+              ),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                children: [
+                  Text(l10n.w01PreviewConsentTitle,
+                    style: TextStyle(fontSize: 12,
+                      color: AminaTheme.textPrimary(context))),
+                  TextButton(
+                    key: const Key('w01-medical-consent-accept'),
+                    onPressed: () {
+                      if (!context.read<AuthService>().hasRemoteApiCredential) {
+                        setState(() => _showInfo = true);
+                        return;
+                      }
+                      GoRouter.of(context).go('/consent');
+                    },
+                    child: Text(l10n.w01PreviewAccept),
+                  ),
+                  TextButton(
+                    key: const Key('w01-medical-consent-skip'),
+                    onPressed: () {
+                      context.read<ConsentService>().declineLocally();
+                      setState(() => _showInfo = false);
+                    },
+                    child: Text(l10n.w01PreviewSkip),
+                  ),
+                ],
+              ),
+            ),
+          if (lock.isExplicitlyOpen)
+            TextButton.icon(
+              key: const Key('w01-activate-lock-later'),
+              onPressed: () => GoRouter.of(context).go('/app-lock/setup'),
+              icon: const Icon(Icons.fingerprint, size: 18),
+              label: Text(l10n.w01PreviewProtect),
+            ),
+          if (lock.isConfigured && lock.isUnlocked)
+            TextButton.icon(
+              key: const Key('w01-disable-lock-after-unlock'),
+              onPressed: _busy ? null : _disableLock,
+              icon: const Icon(Icons.lock_open_outlined, size: 18),
+              label: Text(l10n.w01DisableLockTitle),
+            ),
+          if (_showInfo && pending)
+            Text(
+              l10n.consentRemoteAccountRequired,
+              key: const Key('w01-medical-consent-unavailable'),
+              style: TextStyle(fontSize: 12,
+                color: AminaTheme.textSecondary(context)),
+            ),
+        ],
+      ),
     );
   }
 }

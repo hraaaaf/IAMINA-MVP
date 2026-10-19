@@ -95,11 +95,9 @@ AppRouterHolder createAppRouterHolder({
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    // W01 Web Preview starts with public non-patient exploration.
-    // Patient routes still require secure unlock and protected-state recovery.
-    initialLocation: kIaminaPreviewSameOriginApi
-        ? '/w01-preview'
-        : _homeRoute(),
+    // Patient choice is explicit on first use. W01 no-lock choice is
+    // persisted by AppLockService; it never bypasses existing credentials.
+    initialLocation: _homeRoute(),
     refreshListenable: refreshables.length == 1
         ? refreshables.first
         : Listenable.merge(refreshables),
@@ -162,7 +160,8 @@ AppRouterHolder createAppRouterHolder({
           )) {
         if (activeLock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
-        } else if (!activeLock.isConfigured) {
+        } else if (!activeLock.isConfigured &&
+            !activeLock.isExplicitlyOpen) {
           if (!isAppLockSetupPage) return '/app-lock/setup';
         } else if (!activeLock.isUnlocked) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
@@ -174,7 +173,7 @@ AppRouterHolder createAppRouterHolder({
           (!kRemoteAccountEnrollmentEnabled ||
               authService.hasRemoteApiCredential ||
               authService.isAuditSession)) {
-        return kIaminaPreviewSameOriginApi ? '/w01-preview' : _homeRoute();
+        return _homeRoute();
       }
 
       // ── First-use onboarding gate ────────────────────────────────────────
@@ -204,20 +203,25 @@ AppRouterHolder createAppRouterHolder({
         final hasConsent = activeConsent.hasConsent;
         final hasDeclined = activeConsent.hasDeclinedLocally;
 
-        if (!hasConsent &&
+        // W01: the patient can use the actual medical dashboard without
+        // consenting to external AI. An unobtrusive banner in MainShell
+        // offers Accept/Skip. Backend egress still requires exact evidence.
+        if (kIaminaPreviewSameOriginApi &&
+            isConsentPage &&
+            !authService.hasRemoteApiCredential) {
+          return _homeRoute();
+        }
+        if (!kIaminaPreviewSameOriginApi &&
+            !hasConsent &&
             !hasDeclined &&
             !isConsentPage &&
             !isAppLockPage &&
             !isOnboardingPage) {
-          return kIaminaPreviewSameOriginApi ? '/w01-preview' : '/consent';
-        }
-        if (kIaminaPreviewSameOriginApi &&
-            isConsentPage &&
-            !authService.hasRemoteApiCredential) {
-          return '/w01-preview';
+          return '/consent';
         }
         if ((hasConsent || hasDeclined) && isConsentPage) return _homeRoute();
         if (activeConsent.hasCompletedOnboarding && isOnboardingPage) {
+          if (kIaminaPreviewSameOriginApi) return _homeRoute();
           return hasConsent || hasDeclined ? _homeRoute() : '/consent';
         }
       }

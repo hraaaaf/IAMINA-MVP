@@ -21,9 +21,8 @@ void main() {
     ).readAsStringSync();
 
     expect(source, contains('enrollLocalDevice()'));
-    expect(source, contains('kIaminaPreviewSameOriginApi'));
-    expect(source, contains("'/w01-preview'"));
-    expect(source, contains("'/app-lock/setup'"));
+    expect(source, contains("context.go('/app-lock/setup')"));
+    expect(source, isNot(contains("context.go('/w01-preview')")));
     expect(source, isNot(contains("context.go('/onboarding')")));
     expect(source, isNot(contains('registerWithEmail')));
     expect(source, isNot(contains('signInWithEmail')));

@@ -129,6 +129,36 @@ extension AppLockLocalizedCopy on AppLocalizations {
         ar: 'فشلت استعادة الأمان. تبقى المساحة السريرية مقفلة.',
       );
 
+  String get w01DisableLockTitle => _appLockPick(
+        en: 'Turn off device lock',
+        fr: 'Désactiver le verrou',
+        ar: 'إيقاف قفل الجهاز',
+      );
+
+  String get w01DisableLockConfirm => _appLockPick(
+        en: 'Keep account open',
+        fr: 'Garder mon compte ouvert',
+        ar: 'إبقاء حسابي مفتوحاً',
+      );
+
+  String get w01Cancel => _appLockPick(
+        en: 'Cancel',
+        fr: 'Annuler',
+        ar: 'إلغاء',
+      );
+
+  String get w01OpenMedicalSpace => _appLockPick(
+        en: 'Continue without device lock',
+        fr: 'Continuer sans verrou',
+        ar: 'المتابعة دون قفل الجهاز',
+      );
+
+  String get w01OpenMedicalSpaceWarning => _appLockPick(
+        en: 'Your medical information can be opened on this device without Face ID or fingerprint. You can activate the lock later.',
+        fr: 'Vos données médicales seront accessibles sur cet appareil sans Face ID ni empreinte. Vous pourrez activer le verrou plus tard.',
+        ar: 'ستكون بياناتك الطبية متاحة على هذا الجهاز دون بصمة الوجه أو الإصبع. يمكنك تفعيل القفل لاحقاً.',
+      );
+
   String get w01PreviewSkipLock => _appLockPick(
         en: 'Later · Explore without patient data',
         fr: 'Plus tard · Explorer sans données médicales',
