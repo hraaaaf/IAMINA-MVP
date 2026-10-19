@@ -1,7 +1,32 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:amina/services/api_client.dart';
 import 'package:amina/services/preview_api_origin.dart';
 
 void main() {
+
+  test('W01 country suggestion is public GET only, not a clinical bypass', () {
+    final uri = Uri.parse('/api/v1/country/suggestion');
+    expect(isPublicCountrySuggestion(uri, 'GET'), isTrue);
+    for (final method in ['POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', '']) {
+      expect(isPublicCountrySuggestion(uri, method), isFalse);
+    }
+    expect(isPublicCountrySuggestion(Uri.parse('/api/v1/profile'), 'GET'), isFalse);
+    expect(isPublicCountrySuggestion(Uri.parse('/api/v1/country/suggestion?x=1'), 'GET'), isFalse);
+
+    expect(() => requirePilotClinicalTransport(uri, () => false, method: 'GET'),
+        returnsNormally);
+    expect(() => requireUnlockedPatientSyncTransport(uri, () => false, method: 'GET'),
+        returnsNormally);
+    expect(() => requirePilotClinicalTransport(uri, () => false, method: 'POST'),
+        throwsStateError);
+    expect(() => requireUnlockedPatientSyncTransport(uri, () => false, method: 'POST'),
+        throwsStateError);
+    expect(() => requirePilotClinicalTransport(uri, () => false),
+        throwsStateError);
+    expect(() => requireUnlockedPatientSyncTransport(uri, () => false),
+        throwsStateError);
+  });
+
   test('Production and local-first mode preserve configured base exactly', () {
     final browser = Uri.parse('https://iamina-review-123-team.vercel.app/path');
     expect(
