@@ -12,9 +12,9 @@ import os
 from contextlib import ExitStack
 from unittest.mock import patch
 
+from diabetes.services.documents.pulper import _GROQ_REPLY_SCHEMA_PREFACE
 from llm.base import LLMResponse
 from llm.errors import LLMProviderError
-from diabetes.services.documents.pulper import _GROQ_REPLY_SCHEMA_PREFACE
 from llm.lowcost_openai_compatible import _GPT_OSS_REPLY_FORMAT
 from llm.provider_registry import build_openai_compatible_provider
 from media.documents.ocr_router import OcrCapabilities
