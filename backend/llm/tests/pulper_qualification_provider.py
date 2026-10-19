@@ -21,6 +21,25 @@ _BEGIN_DOCUMENT = "BEGIN_UNTRUSTED_DOCUMENT\n"
 _END_DOCUMENT = "\nEND_UNTRUSTED_DOCUMENT"
 _DETERMINISTIC_PARSER_MODEL = "qualification-deterministic-parser-v1"
 
+
+def classify_live_reply_shape(content: str) -> str:
+    """Structural diagnostics only: never capture model output or PHI."""
+    try:
+        parsed = json.loads(content)
+    except (TypeError, ValueError):
+        return "outer_non_json"
+    if not isinstance(parsed, dict):
+        return "outer_non_object"
+    if set(parsed) != {"reply"}:
+        return "direct_json_object"
+    if not isinstance(parsed["reply"], str):
+        return "reply_not_string"
+    try:
+        inner = json.loads(parsed["reply"])
+    except (TypeError, ValueError):
+        return "reply_non_json"
+    return "reply_json_object" if isinstance(inner, dict) else "reply_json_non_object"
+
 _SYNTHETIC_PARSE_BY_BLOCK = {
     "L0001|HbA1c: 6.8 %": {
         "document_type": "lab_report",
@@ -62,6 +81,7 @@ class SyntheticQualificationTextProvider:
         self.delegate = delegate
         self.client = getattr(delegate, "client", None)
         self.live_calls = 0
+        self.live_reply_shapes: list[str] = []
         self.deterministic_calls = 0
 
     def complete(self, system: str, user: str) -> LLMResponse:
@@ -69,7 +89,13 @@ class SyntheticQualificationTextProvider:
         payload = _SYNTHETIC_PARSE_BY_BLOCK.get(block)
         if payload is None:
             self.live_calls += 1
-            return self.delegate.complete(system, user)
+            try:
+                response = self.delegate.complete(system, user)
+            except Exception:
+                self.live_reply_shapes.append("upstream_exception")
+                raise
+            self.live_reply_shapes.append(classify_live_reply_shape(response.content))
+            return response
 
         self.deterministic_calls += 1
         return LLMResponse(

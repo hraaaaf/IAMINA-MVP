@@ -20,8 +20,19 @@ from diabetes.services.documents.schema import (
     PulperOutput,
 )
 from llm.base import LLMResponse
-from llm.tests.pulper_qualification_provider import SyntheticQualificationTextProvider
+from llm.tests.pulper_qualification_provider import (
+    SyntheticQualificationTextProvider,
+    classify_live_reply_shape,
+)
 from media.documents.extractors.pdf import extract_pdf
+
+
+def test_live_reply_diagnostic_keeps_only_structure_and_never_content():
+    assert classify_live_reply_shape('{"reply":"{}"}') == "reply_json_object"
+    assert classify_live_reply_shape('{"reply":"not json"}') == "reply_non_json"
+    assert classify_live_reply_shape('{"lab_values":{}}') == "direct_json_object"
+    assert classify_live_reply_shape('bad response') == "outer_non_json"
+    assert classify_live_reply_shape('{"reply":42}') == "reply_not_string"
 
 
 def test_supported_and_fail_closed_format_contract_is_explicit():

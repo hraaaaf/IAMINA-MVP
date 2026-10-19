@@ -231,7 +231,12 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
         with ExitStack() as stack:
             provider = install_synthetic_groq(stack)
             for case in build_corpus():
+                calls_before = provider.live_calls
                 output = ingest(case.payload, case.filename, case.mime_type)
+                live_reply_shape = (
+                    provider.live_reply_shapes[-1]
+                    if provider.live_calls > calls_before else "not_live_text"
+                )
                 actual = critical_facts(output)
                 if case.expected_error_code:
                     fail_total += 1
@@ -271,7 +276,22 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
                             ts_total += 1
                             ts_ok += int(actual.get(path) == _canonical(expected))
                     mode = "synthetic_vision_then_deterministic_fixture_parser" if case.format_name in SYNTHETIC_VISION_FORMATS else "live_groq_parser" if case.format_name in LIVE_TEXT_FORMATS else "deterministic_native"
-                    cases_out.append({"id": case.case_id, "format": case.format_name, "status": "pass" if exact else "fail", "expected_outcome": "exact_critical_fields", "provider_mode": mode})
+                    case_record = {"id": case.case_id, "format": case.format_name, "status": "pass" if exact else "fail", "expected_outcome": "exact_critical_fields", "provider_mode": mode}
+                    if not exact and case.format_name in LIVE_TEXT_FORMATS:
+                        # Only structural facts about generated fixtures, never
+                        # model responses, raw text, tokens or patient content.
+                        case_record["safe_diagnostic"] = {
+                            "model_reply_shape": live_reply_shape,
+                            "parser_model_present": bool(output.parser_model),
+                            "source_text_present": bool(output.raw_text.strip()),
+                            "parse_error_category": (
+                                "invalid_json" if any("JSON valide" in e for e in output.errors)
+                                else "parser_error" if output.errors else "none"
+                            ),
+                            "missing_field_paths": sorted(set(case.expected) - set(actual)),
+                            "unexpected_field_paths": sorted(set(actual) - set(case.expected)),
+                        }
+                    cases_out.append(case_record)
     finally:
         root.removeHandler(capture)
         close = getattr(getattr(provider, "client", None), "close", None)
