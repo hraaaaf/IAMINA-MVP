@@ -259,6 +259,15 @@ def _parse_with_llm(output: PulperOutput, raw_text: str) -> None:
         json_text = re.sub(r"\s*```$", "", json_text, flags=re.MULTILINE)
 
         data = json.loads(json_text)
+        # Groq GPT-OSS completes under an API-constrained {"reply": str}
+        # schema. Accept only a single, valid, JSON-encoded object inside
+        # that string; never treat narrative replies as medical facts.
+        if isinstance(data, dict) and set(data) == {"reply"}:
+            if not isinstance(data["reply"], str):
+                raise ValueError("Réponse IA non structurée.")
+            data = json.loads(data["reply"])
+        if not isinstance(data, dict) or "reply" in data:
+            raise ValueError("Réponse IA non structurée.")
         _map_json_to_output(output, data)
         _attach_verified_evidence(output, data.get("evidence"), source_lines)
 
