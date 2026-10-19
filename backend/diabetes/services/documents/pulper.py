@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 _SCHEMA_VERSION = "pulper-output-v2"
 _EXTRACTOR_VERSION = "2"
-_PARSE_PROMPT_VERSION = "pulper-parse-v4-sparse-output"
+_PARSE_PROMPT_VERSION = "pulper-parse-v5-fasting-lab-routing"
 _GROQ_REPLY_SCHEMA_PREFACE = (
     'The API forces a strict JSON object with exactly one key "reply" '
     'whose value must be a string containing the complete medical JSON. '
@@ -52,7 +52,7 @@ _GROQ_REPLY_SCHEMA_PREFACE = (
     'reply. Use only the documented medical fields and source-line evidence; '
     'omit absent facts. Never invent values.\n'
 )
-_GROQ_REPLY_PROMPT_VERSION = "pulper-parse-v5-groq-strict-reply"
+_GROQ_REPLY_PROMPT_VERSION = "pulper-parse-v6-groq-strict-fasting"
 _LINE_REF_RE = re.compile(r"^L(\d{4})$")
 _GLUCOSE_EVIDENCE_RE = re.compile(
     r"^glucose_readings\[(\d+)]\."
@@ -101,6 +101,7 @@ Rules:
 - confidence: 0.0–1.0 — how certain you are about the extracted values
 - Convert mmol/L to mg/dL: multiply by 18.018
 - Convert % HbA1c values (e.g. "7.2%" → 7.2)
+- A named fasting glucose laboratory result (e.g. "Fasting glucose: 126 mg/dL") belongs to lab_values.fasting_glucose_mgdl, not glucose_readings. Keep individual glucose-log measurements in glucose_readings.
 - lab_values.report_date: use "YYYY-MM-DD" when present
 - glucose_readings.timestamp: preserve an explicit source date+time as ISO-8601; keep its timezone/offset when present
 - if a glucose reading has no explicit time, omit timestamp; NEVER invent midnight or a timezone

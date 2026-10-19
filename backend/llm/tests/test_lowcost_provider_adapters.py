@@ -117,6 +117,7 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     assert kwargs["max_completion_tokens"] == 384
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
+    assert kwargs["temperature"] == 0.0
     assert "extra_body" not in kwargs
     assert kwargs["response_format"] == {
         "type": "json_schema",
@@ -153,6 +154,7 @@ def test_groq_gpt_oss_stream_does_not_use_structured_outputs():
     assert kwargs["max_completion_tokens"] == 384
     assert kwargs["reasoning_effort"] == "low"
     assert "response_format" not in kwargs
+    assert "temperature" not in kwargs
     assert "extra_body" not in kwargs
 
 
@@ -174,6 +176,7 @@ def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id,
     assert "max_completion_tokens" not in kwargs
     assert "reasoning_effort" not in kwargs
     assert "response_format" not in kwargs
+    assert "temperature" not in kwargs
     assert "extra_body" not in kwargs
 
 def test_groq_strict_schema_400_fails_closed_without_second_billable_call():

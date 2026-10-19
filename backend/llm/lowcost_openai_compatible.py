@@ -136,6 +136,10 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                     # Avoid optional reasoning controls on constrained JSON
                     # completions; preserve strict schema and response parsing.
                     "response_format": _GPT_OSS_REPLY_FORMAT,
+                    # Groq converts temperature=0 to a tiny positive value.
+                    # Reduce sampling variance for schema-bound extraction;
+                    # no deterministic-output guarantee is implied.
+                    "temperature": 0.0,
                 }
             )
         return tuning
