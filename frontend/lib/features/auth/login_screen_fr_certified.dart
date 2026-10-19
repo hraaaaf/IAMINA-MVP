@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../data/drift/database.dart';
-import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -223,15 +220,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     final auth = context.read<AuthService>();
-    final db = context.read<AppDatabase>();
-    final api = context.read<ApiClient>();
     try {
       if (isDemo) {
+        // Audit-only identity; scoped host owns any permitted demo fixture.
         await auth.signInAnonymously();
-        if (!kOfflineDemo) {
-          await api.seedDemoData(); // best-effort backend mirror
-        }
-        await db.seedDemoData(); // complete local dataset before navigation
       } else {
         await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
       }
