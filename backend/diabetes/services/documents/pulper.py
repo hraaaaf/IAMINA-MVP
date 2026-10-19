@@ -53,6 +53,7 @@ _GROQ_REPLY_SCHEMA_PREFACE = (
     'omit absent facts. Never invent values.\n'
 )
 _GROQ_REPLY_PROMPT_VERSION = "pulper-parse-v6-groq-strict-fasting"
+_GROQ_DIRECT_JSON_PROMPT_VERSION = "pulper-parse-v7-groq-direct-json"
 _LINE_REF_RE = re.compile(r"^L(\d{4})$")
 _GLUCOSE_EVIDENCE_RE = re.compile(
     r"^glucose_readings\[(\d+)]\."
@@ -271,12 +272,24 @@ def _parse_with_llm(output: PulperOutput, raw_text: str) -> None:
             getattr(llm, "provider_policy_key", None) == "groq"
             and str(getattr(llm, "model_name", "")).startswith("openai/gpt-oss-")
         )
-        if strict_reply:
+        # For Groq GPT-OSS, ask for a JSON object directly in one billable
+        # completion. The shared {"reply": str} schema cannot constrain the
+        # string to valid medical JSON; it intermittently returns prose.
+        # Legacy/test providers lacking this method retain fail-closed parsing.
+        direct_json = strict_reply and callable(
+            getattr(llm, "complete_json_object", None)
+        )
+        if strict_reply and not direct_json:
             prompt = _GROQ_REPLY_SCHEMA_PREFACE + prompt
-        response = llm.complete(_SYSTEM_PROMPT, prompt)
+        response = (
+            llm.complete_json_object(_SYSTEM_PROMPT, prompt)
+            if direct_json else llm.complete(_SYSTEM_PROMPT, prompt)
+        )
         output.parser_model = (response.provider or "").strip() or None
         output.prompt_version = (
-            _GROQ_REPLY_PROMPT_VERSION if strict_reply else _PARSE_PROMPT_VERSION
+            _GROQ_DIRECT_JSON_PROMPT_VERSION if direct_json
+            else _GROQ_REPLY_PROMPT_VERSION if strict_reply
+            else _PARSE_PROMPT_VERSION
         )
         json_text = (response.content or "").strip()
         json_text = re.sub(r"^```(?:json)?\s*", "", json_text, flags=re.MULTILINE)
