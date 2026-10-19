@@ -165,6 +165,11 @@ class TimeoutInterceptor implements Interceptor {
   }
 }
 
+/// A server 5xx may mean a medical mutation was committed but its response
+/// was lost. Only safe reads can be resent without a per-operation receipt.
+bool mayRetryAfterServerError(String method) =>
+    method.toUpperCase() == 'GET' || method.toUpperCase() == 'HEAD';
+
 class RetryInterceptor implements Interceptor {
   final AuthService authService;
   final bool Function()? canUsePatientSyncTransport;
@@ -209,7 +214,9 @@ class RetryInterceptor implements Interceptor {
       return response;
     }
 
-    // 5xx — exponential backoff (1s, 2s, 4s)
+    // 5xx: retry safe reads only. POST/PATCH/PUT/DELETE may have committed
+    // before the upstream 502/503, so the caller must reconcile their status.
+    if (!mayRetryAfterServerError(chain.request.method)) return response;
     int attempt = 0;
     while (_isServerError(response.statusCode) && attempt < _maxRetries) {
       await Future.delayed(Duration(seconds: 1 << attempt));

@@ -326,6 +326,67 @@ void main() {
     expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
     service.dispose();
   });
+  test('W01 stale A login never replaces B in either HTTP response order', () async {
+    for (final bFirst in <bool>[true, false]) {
+      seedStorage({});
+      final patientA = Completer<http.Response>();
+      final patientB = Completer<http.Response>();
+      final service = AuthService(httpClient: MockClient((request) {
+        if (request.body.contains('a@example.com')) return patientA.future;
+        if (request.body.contains('b@example.com')) return patientB.future;
+        fail('Unexpected endpoint in synthetic login race');
+      }));
+      await service.initialize();
+      final aLogin = service.signInWithEmail('a@example.com', 'synthetic');
+      final aRejected = expectLater(aLogin, throwsStateError);
+      final bLogin = service.signInWithEmail('b@example.com', 'synthetic');
+
+      final aResponse = http.Response(
+        '{"access_token":"$_token","user":{"id":734}}', 200);
+      final bResponse = http.Response(
+        '{"access_token":"$_freshToken","user":{"id":812}}', 200);
+      if (bFirst) {
+        patientB.complete(bResponse);
+        await bLogin;
+        patientA.complete(aResponse);
+        await aRejected;
+      } else {
+        patientA.complete(aResponse);
+        await aRejected;
+        patientB.complete(bResponse);
+        await bLogin;
+      }
+
+      expect(service.boundNativeAccountId, 812);
+      expect(await service.getIdToken(), _freshToken);
+      expect(await const FlutterSecureStorage().read(key: _tokenKey), _freshToken);
+      expect(await const FlutterSecureStorage().read(key: _identityKey),
+          contains('"user_id":812'));
+      service.dispose();
+    }
+  });
+
+  test('W01 logout cancels a pending login before its HTTP completion', () async {
+    seedStorage({});
+    final pending = Completer<http.Response>();
+    final service = AuthService(httpClient: MockClient((request) => pending.future));
+    await service.initialize();
+
+    final oldLogin = service.signInWithEmail('a@example.com', 'synthetic');
+    final rejected = expectLater(oldLogin, throwsStateError);
+    await service.signOut();
+    pending.complete(http.Response(
+        '{"access_token":"$_token","user":{"id":734}}', 200));
+    await rejected;
+
+    expect(service.isAuthenticated, isFalse);
+    expect(service.hasRemoteApiCredential, isFalse);
+    expect(service.boundNativeAccountId, isNull);
+    expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _identityKey), isNull);
+    service.dispose();
+  });
+
   test('D7 native binding persists offline only with the exact bearer', () async {
     seedStorage({});
     final service = AuthService(httpClient: MockClient((request) async =>

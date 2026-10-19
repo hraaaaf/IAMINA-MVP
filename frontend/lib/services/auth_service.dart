@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -92,6 +93,31 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
+  // An older HTTP login must never overwrite a more recent identity or
+  // reopen a session after logout. All credential writes share one queue.
+  int _authGeneration = 0;
+  Future<void> _credentialStorageTail = Future<void>.value();
+
+  void _requireCurrentAuthGeneration(int generation) {
+    if (generation != _authGeneration) {
+      throw StateError('Authentication attempt superseded');
+    }
+  }
+
+  Future<T> _withCredentialStorage<T>(
+    Future<T> Function() operation,
+  ) async {
+    final previous = _credentialStorageTail;
+    final finished = Completer<void>();
+    // Reserve the queue slot before the first await; logout is linearizable.
+    _credentialStorageTail = finished.future;
+    try {
+      await previous;
+      return await operation();
+    } finally {
+      finished.complete();
+    }
+  }
 
   AuthService({
     FirebaseAuth? auth,
@@ -265,6 +291,7 @@ class AuthService extends ChangeNotifier {
     if (!_initialized) {
       throw StateError('Audit session requires initialized authentication');
     }
+    _authGeneration++; // An audit-only identity supersedes pending logins.
     _auditSession = true;
     _notifyAuthChanged();
   }
@@ -279,27 +306,31 @@ class AuthService extends ChangeNotifier {
   Future<String?> refreshToken() async {
     if (_auditSession) return null;
     if (_nativeToken != null) {
+      _authGeneration++; // Expired bearer invalidates any pending login.
       _nativeToken = null;
       _nativeAccountId = null;
       _remoteCredentialVerified = false;
       // Retire the session before a storage/plugin await can resume its
       // pending clinical synchronizer under an unbound credential.
       _notifyAuthChanged();
-      await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _nativeIdentityKey);
+      await _withCredentialStorage(() async {
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+      });
       return null;
     }
     return _firebaseAuth?.currentUser?.getIdToken(true);
   }
 
   Future<void> signInWithEmail(String email, String password) async {
+    final generation = ++_authGeneration;
     final normalized = email.trim().toLowerCase();
     final nativeResponse = await _postJson(
       '/api/v1/auth/login',
       {'email': normalized, 'password': password},
     );
     if (nativeResponse.statusCode >= 200 && nativeResponse.statusCode < 300) {
-      await _acceptAuthResponse(nativeResponse);
+      await _acceptAuthResponse(nativeResponse, generation);
       return;
     }
     if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
@@ -316,10 +347,11 @@ class AuthService extends ChangeNotifier {
         {'id_token': firebaseToken},
       );
       if (exchange.statusCode >= 200 && exchange.statusCode < 300) {
-        await _acceptAuthResponse(exchange);
+        await _acceptAuthResponse(exchange, generation);
         return;
       }
     }
+    _requireCurrentAuthGeneration(generation);
     throw StateError('Authentication failed');
   }
 
@@ -327,6 +359,7 @@ class AuthService extends ChangeNotifier {
     if (!kRemoteAccountEnrollmentEnabled) {
       throw StateError('Remote account enrollment is disabled');
     }
+    final generation = ++_authGeneration;
     final response = await _postJson(
       '/api/v1/auth/register',
       {'email': email.trim().toLowerCase(), 'password': password},
@@ -334,10 +367,11 @@ class AuthService extends ChangeNotifier {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw registrationFailureForStatus(response.statusCode);
     }
-    await _acceptAuthResponse(response);
+    await _acceptAuthResponse(response, generation);
   }
 
   Future<void> signOut() async {
+    _authGeneration++; // Synchronous cancellation of every pending login.
     _auditSession = false;
     final token = _nativeToken;
 
@@ -350,9 +384,11 @@ class AuthService extends ChangeNotifier {
     // Cancel stale session egress SYNCHRONOUSLY. Awaiting secure storage first
     // left an A→logout window where old SyncService still had A's epoch.
     _notifyAuthChanged();
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _nativeIdentityKey);
-    await _storage.delete(key: _localSessionKey);
+    await _withCredentialStorage(() async {
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeIdentityKey);
+      await _storage.delete(key: _localSessionKey);
+    });
     // Preserve the stable local-only vault locator: deleting it orphaned
     // offline clinical records without removing their SQLite database.
     // The revoked session cannot resolve it until explicit re-enrollment;
@@ -434,7 +470,11 @@ class AuthService extends ChangeNotifier {
     );
   }
 
-  Future<void> _acceptAuthResponse(http.Response response) async {
+  Future<void> _acceptAuthResponse(
+    http.Response response,
+    int generation,
+  ) async {
+    _requireCurrentAuthGeneration(generation);
     final payload = jsonDecode(response.body);
     if (payload is! Map<String, dynamic>) {
       throw StateError('Malformed authentication response');
@@ -448,27 +488,50 @@ class AuthService extends ChangeNotifier {
     if (id is! int || id <= 0) {
       throw StateError('Missing authenticated IAMINA user ID');
     }
-    // A completed native response retires any previous local/remote account
-    // before the first persistence await. Failures leave no old patient open.
-    _nativeToken = null;
-    _nativeAccountId = null;
-    _remoteCredentialVerified = false;
-    _localSessionEnrolled = false;
-    _auditSession = false;
-    _notifyAuthChanged();
-    // Write binding first. Interrupted writes cannot pair a new token
-    // with a previous account's cached patient ID.
-    await _storage.write(
-      key: _nativeIdentityKey,
-      value: jsonEncode({'token': token, 'user_id': id}),
-    );
-    await _storage.write(key: _tokenKey, value: token);
-    await _storage.write(key: _localSessionKey, value: _localSessionValue);
-    _nativeToken = token;
-    _nativeAccountId = id;
-    _localSessionEnrolled = true;
-    _remoteCredentialVerified = true;
-    _notifyAuthChanged();
+
+    // The reservation is synchronous and ordered even when secure storage
+    // pauses, so a stale write can never overtake logout or patient B's write.
+    await _withCredentialStorage(() async {
+      _requireCurrentAuthGeneration(generation);
+      _nativeToken = null;
+      _nativeAccountId = null;
+      _remoteCredentialVerified = false;
+      _localSessionEnrolled = false;
+      _auditSession = false;
+      _notifyAuthChanged();
+
+      try {
+        // Persist the token and its typed owner as a matched pair. Check
+        // generation after EACH await, not only after the HTTP response.
+        await _storage.write(
+          key: _nativeIdentityKey,
+          value: jsonEncode({'token': token, 'user_id': id}),
+        );
+        _requireCurrentAuthGeneration(generation);
+        await _storage.write(key: _tokenKey, value: token);
+        _requireCurrentAuthGeneration(generation);
+        await _storage.write(key: _localSessionKey, value: _localSessionValue);
+        _requireCurrentAuthGeneration(generation);
+
+        _nativeToken = token;
+        _nativeAccountId = id;
+        _localSessionEnrolled = true;
+        _remoteCredentialVerified = true;
+        _notifyAuthChanged();
+      } catch (_) {
+        // A cancelled/interrupted write may have persisted half a credential.
+        // Clear it before releasing the queue to a newer login or logout.
+        _nativeToken = null;
+        _nativeAccountId = null;
+        _localSessionEnrolled = false;
+        _remoteCredentialVerified = false;
+        _notifyAuthChanged();
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+        await _storage.delete(key: _localSessionKey);
+        rethrow;
+      }
+    });
   }
 
   void _notifyAuthChanged() {

@@ -40,3 +40,10 @@ Les tests réels démontrent que Django Ninja accepte déjà POST /auth/login so
 
 ## 18/10/2026 — CSRF hybrid fallback Cookie + Bearer
 Le middleware marquait toute requête Bearer comme exemptée CSRF, y compris celles contenant une session Django cookie. Après rejet d'un Bearer invalide, SessionAuth pouvait être invoqué avec la même exemption, ce qui est un risque de downgrade. Correctif candidat : aucune exemption Bearer si le moindre cookie est présent ; l'identité Bearer sans cookie reste le seul transport W01 autorisé. Test Django de refus 403 pour session+Bearer invalide, intégrité du token intacte, et réussite du logout sans cookie. Un Bearer valide peut être prioritaire sans recours à SessionAuth. Suite conditionnée à CI de SHA exact et revue indépendante.
+
+## 19/10/2026 — Rapport indépendant et traitement F-01 / F-02 (candidate à vérifier)
+Rapport remis par le propriétaire : verdict **NO-GO** sur le HEAD initial `2405a66d`, risques P1 de réponses de login obsolètes, replay automatique de mutations après 502/503, absence de preuve hosted Trusted Sources/OIDC/Neon, flux clinique local-only et documents 4–15 MiB. Correction ciblée candidate :
+- `AuthService` garde une génération d'authentification ; toute réponse tardive après génération plus récente, refresh 401 ou logout est rejetée ; commits FlutterSecureStorage sérialisés, revalidation après chaque await, suppression de données partielles avant identité suivante.
+- `RetryInterceptor` ne réessaie les 5xx que pour GET/HEAD ; POST/PATCH/PUT/DELETE retournent l'incertitude originale, sans seconde émission. Idempotency-Key non ajouté au BFF parce que le contrat transactionnel serveur/endpoint n'est pas encore audité ; ne pas affirmer exécution unique en présence d'autres clients ou reprises manuelles.
+- Tests synthétiques Flutter de permutations A/B, logout pendant réponse, stockage A interrompu, et 502/503 pour chaque mutation. CI du **nouveau** HEAD obligatoire avant tout PASS.
+- Consulter F-03 à F-11 avant W01 GO ; aucun effet Neon Production, Vercel, CSS/UX ou déploiement.
