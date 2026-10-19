@@ -58,7 +58,7 @@ def bounded_synthetic_transport_probe(delegate) -> list[dict[str, str]]:
     from diabetes.services.documents.pulper import _PARSE_PROMPT_TEMPLATE, _SYSTEM_PROMPT
 
     user = _PARSE_PROMPT_TEMPLATE.format(
-        text="L0001|Synthetic laboratory report generated for tests only.\\nL0002|HbA1c: 7.2 %"
+        text="L0001|Synthetic laboratory report generated for tests only.\nL0002|HbA1c: 7.2 %"
     )
     base = {
         "model": delegate.model,
