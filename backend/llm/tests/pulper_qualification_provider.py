@@ -25,7 +25,7 @@ _DETERMINISTIC_PARSER_MODEL = "qualification-deterministic-parser-v1"
 
 
 def bounded_synthetic_transport_probe(delegate) -> list[dict[str, str]]:
-    """Two metadata-only Groq calls: strict-schema vs JSON object transport.
+    """Two metadata-only Groq calls: full prompt at 384 vs 1024 tokens.
 
     Only reachable under the explicit synthetic qualification environment gate.
     No raw response, exception text, system secret, token, or clinical data
@@ -34,25 +34,31 @@ def bounded_synthetic_transport_probe(delegate) -> list[dict[str, str]]:
     if os.environ.get(_SYNTHETIC_GATE) != "1":
         raise RuntimeError("synthetic_qualification_gate_missing")
 
+    # Reproduce the medical parser's *full* prompt contract with a fixed,
+    # synthetic HbA1c fixture. Vary only the completion-token reservation.
+    # The two earlier tiny-prompt probes both returned HTTP 200.
+    from diabetes.services.documents.pulper import _PARSE_PROMPT_TEMPLATE, _SYSTEM_PROMPT
+
+    user = _PARSE_PROMPT_TEMPLATE.format(text="L0001|HbA1c: 7.2 %")
     base = {
         "model": delegate.model,
         "messages": [
-            {"role": "system", "content": "Synthetic API protocol test. Respond with JSON."},
-            {"role": "user", "content": "Return a JSON object with reply exactly ok."},
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user},
         ],
         "timeout": delegate.timeout_seconds,
-        "max_completion_tokens": 192,
         "reasoning_effort": "low",
+        "response_format": _GPT_OSS_REPLY_FORMAT,
     }
-    formats = [
-        ("strict_schema", _GPT_OSS_REPLY_FORMAT),
-        ("json_object", {"type": "json_object"}),
+    limits = [
+        ("full_prompt_384", 384),
+        ("full_prompt_1024", 1024),
     ]
     results = []
-    for label, response_format in formats:
+    for label, max_tokens in limits:
         try:
             delegate.client.chat.completions.create(
-                **base, response_format=response_format,
+                **base, max_completion_tokens=max_tokens,
             )
             status = "http_200"
         except Exception as exc:

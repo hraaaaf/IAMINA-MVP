@@ -34,8 +34,8 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
     observed_formats = []
 
     def create(**kwargs):
-        observed_formats.append(kwargs["response_format"]["type"])
-        if kwargs["response_format"]["type"] == "json_schema":
+        observed_formats.append(kwargs["max_completion_tokens"])
+        if kwargs["max_completion_tokens"] == 384:
             class SyntheticHTTP400(Exception):
                 status_code = 400
             raise SyntheticHTTP400("secret-do-not-log")
@@ -47,10 +47,10 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
         client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
     )
     result = bounded_synthetic_transport_probe(delegate)
-    assert observed_formats == ["json_schema", "json_object"]
+    assert observed_formats == [384, 1024]
     assert result == [
-        {"variant": "strict_schema", "status": "http_400"},
-        {"variant": "json_object", "status": "http_200"},
+        {"variant": "full_prompt_384", "status": "http_400"},
+        {"variant": "full_prompt_1024", "status": "http_200"},
     ]
     assert "SECRET" not in json.dumps(result)
 
