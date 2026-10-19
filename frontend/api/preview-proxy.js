@@ -121,6 +121,12 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     const type = (upstream.headers.get('content-type') ?? '').toLowerCase();
     if ((upstream.status >= 300 && upstream.status < 400) ||
         type.includes('text/html') || type.includes('application/xhtml+xml')) {
+      // Fixed category/status only: never log patient paths, body, bearer or OIDC.
+      console.warn('IAMINA_W01_PREVIEW_UPSTREAM_GATE', {
+        category: upstream.status >= 300 && upstream.status < 400
+          ? 'redirect' : 'html-challenge',
+        status: upstream.status,
+      });
       await upstream.body?.cancel();
       return response.status(502).end();
     }
@@ -136,7 +142,8 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     }
     await pipeline(Readable.fromWeb(upstream.body), response);
   } catch {
-    // Do not expose secrets, patient payloads or remote target to the client.
+    // Fail closed; never print network exception details or patient data.
+    console.warn('IAMINA_W01_PREVIEW_UPSTREAM_GATE', { category: 'network-or-stream' });
     if (!response.headersSent) return response.status(502).end();
     response.end();
   }
