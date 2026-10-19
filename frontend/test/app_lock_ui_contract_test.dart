@@ -9,7 +9,10 @@ void main() {
     ).readAsStringSync();
     final router = File('lib/routes/app_router.dart').readAsStringSync();
 
-    expect(enrollment, contains("context.go('/app-lock/setup')"));
+    expect(enrollment, contains("kIaminaPreviewSameOriginApi"));
+    expect(enrollment, contains("'/w01-preview'"));
+    expect(enrollment, contains("'/app-lock/setup'"));
+    expect(router, contains("initialLocation: kIaminaPreviewSameOriginApi"));
     expect(router, contains("path: '/app-lock/setup'"));
     expect(router, contains("path: '/app-lock/unlock'"));
     expect(router, contains('activeLock.recoveryRequired'));

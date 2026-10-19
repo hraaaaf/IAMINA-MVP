@@ -95,7 +95,11 @@ AppRouterHolder createAppRouterHolder({
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: _homeRoute(),
+    // W01 Web Preview starts with public non-patient exploration.
+    // Patient routes still require secure unlock and protected-state recovery.
+    initialLocation: kIaminaPreviewSameOriginApi
+        ? '/w01-preview'
+        : _homeRoute(),
     refreshListenable: refreshables.length == 1
         ? refreshables.first
         : Listenable.merge(refreshables),
@@ -170,7 +174,7 @@ AppRouterHolder createAppRouterHolder({
           (!kRemoteAccountEnrollmentEnabled ||
               authService.hasRemoteApiCredential ||
               authService.isAuditSession)) {
-        return _homeRoute();
+        return kIaminaPreviewSameOriginApi ? '/w01-preview' : _homeRoute();
       }
 
       // ── First-use onboarding gate ────────────────────────────────────────

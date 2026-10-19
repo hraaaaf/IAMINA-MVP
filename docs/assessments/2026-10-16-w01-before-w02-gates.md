@@ -30,6 +30,9 @@
 
 # IAMINA Web V2 — W01 avant W02 : contrat de passage
 
+**W01 Web — 19/10/2026 — entrée Preview non bloquante :** pour corriger le risque d'afficher encore un verrou obligatoire après ajout du bouton « Plus tard », W01 `GoRouter.initialLocation` choisit désormais `/w01-preview` sous `kIaminaPreviewSameOriginApi` et `LocalDeviceEnrollmentScreen` y mène après inscription locale, sans détour par le setup WebAuthn. Le routeur redirige un utilisateur non authentifié vers le login local, et les routes patients restent strictement soumises au verrou. Cette entrée est une **visite read-only** : pas de clinique ni d'API protégée sans verrou, même si le consentement est passé. Tests de contrat router/enrollment mis à jour. CI et AFTER iPhone à confirmer ; aucun GO anticipé.
+
+
 ## W01 WEB — 19/10/2026 — choix facultatifs demandés par le propriétaire, Preview synthétique uniquement
 
 **BEFORE / preuve :** capture réelle iPhone de l'écran « Confidentialité & IA » bloquant ; bouton « Accepter et continuer » silencieux sur les premières Previews. Le patch `dd572127` expliquait l'absence de compte IAMINA distant, sans retirer l'interstitiel. Propriétaire demande : « le verrou facultatif » et « consentement discret en haut à gauche avec Accepter ou Skip ». **Goal W01 :** navigation non bloquée en mode aperçu *sans données médicales*, consentement extérieur optionnel et révocable, jamais de faux grant ou d'accès à un coffre patient verrouillé.
