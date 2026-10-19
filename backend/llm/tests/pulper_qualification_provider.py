@@ -13,6 +13,7 @@ from contextlib import ExitStack
 from unittest.mock import patch
 
 from llm.base import LLMResponse
+from llm.errors import LLMProviderError
 from llm.provider_registry import build_openai_compatible_provider
 from media.documents.ocr_router import OcrCapabilities
 
@@ -82,6 +83,7 @@ class SyntheticQualificationTextProvider:
         self.client = getattr(delegate, "client", None)
         self.live_calls = 0
         self.live_reply_shapes: list[str] = []
+        self.live_error_codes: list[str] = []
         self.deterministic_calls = 0
 
     def complete(self, system: str, user: str) -> LLMResponse:
@@ -91,10 +93,22 @@ class SyntheticQualificationTextProvider:
             self.live_calls += 1
             try:
                 response = self.delegate.complete(system, user)
-            except Exception:
+            except Exception as exc:
                 self.live_reply_shapes.append("upstream_exception")
+                # Only normalized, allowlisted provider error codes; never log
+                # original SDK exceptions, messages or model response content.
+                known = {
+                    "provider_timeout",
+                    "provider_unavailable",
+                    "provider_quota_exceeded",
+                    "provider_internal_failure",
+                    "provider_malformed_response",
+                }
+                code = exc.code if isinstance(exc, LLMProviderError) else ""
+                self.live_error_codes.append(code if code in known else "unknown")
                 raise
             self.live_reply_shapes.append(classify_live_reply_shape(response.content))
+            self.live_error_codes.append("none")
             return response
 
         self.deterministic_calls += 1

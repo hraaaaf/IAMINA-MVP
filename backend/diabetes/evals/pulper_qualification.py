@@ -282,6 +282,10 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
                         # model responses, raw text, tokens or patient content.
                         case_record["safe_diagnostic"] = {
                             "model_reply_shape": live_reply_shape,
+                            "upstream_error_code": (
+                                provider.live_error_codes[-1]
+                                if provider.live_calls > calls_before else "none"
+                            ),
                             "parser_model_present": bool(output.parser_model),
                             "source_text_present": bool(output.raw_text.strip()),
                             "parse_error_category": (

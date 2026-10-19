@@ -117,7 +117,7 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     assert kwargs["max_completion_tokens"] == 384
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
-    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
+    assert kwargs["extra_body"] == {"include_reasoning": False}
     assert kwargs["response_format"] == {
         "type": "json_schema",
         "json_schema": {
@@ -131,6 +131,14 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
             },
         },
     }
+
+
+def test_groq_gpt_oss_complete_text_excludes_reasoning_without_schema():
+    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
+    provider.complete_text("system", "synthetic user")
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["extra_body"] == {"include_reasoning": False}
+    assert "response_format" not in kwargs
 
 
 def test_groq_gpt_oss_stream_does_not_use_structured_outputs():
