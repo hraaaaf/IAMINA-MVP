@@ -32,7 +32,7 @@ from media.documents.extractors.pdf import extract_pdf
 
 @pytest.mark.parametrize(
     ("retries", "accepted"),
-    [(-1, False), (0, True), (1, True), (4, True), (5, False), ("4", False)],
+    [(-1, False), (0, True), (1, False), (4, False), (5, False), ("4", False)],
 )
 def test_parser_route_budget_counts_live_cases_and_bounds_transport_retries(retries, accepted):
     counters = {
@@ -94,7 +94,9 @@ def test_synthetic_live_text_seam_forwards_reply_preface_without_model_data():
     assert wrapper.deterministic_calls == 0
     assert len(captured) == 1
     assert captured[0][0] == "original-system"
-    assert captured[0][1].startswith('The API forces a strict JSON object with exactly one key "reply"')
+    # Product Pulper inserts the preface inside the governed/FinOps-bounded
+    # prompt. The test seam must never inject it a second time.
+    assert captured[0][1].startswith("BEGIN_UNTRUSTED_DOCUMENT")
     assert captured[0][1].endswith("END_UNTRUSTED_DOCUMENT")
 
 

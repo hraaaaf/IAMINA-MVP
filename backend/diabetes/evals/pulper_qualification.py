@@ -57,11 +57,10 @@ class Score:
 
 
 def parser_route_budget_ok(route_counts: dict[str, int]) -> bool:
-    """A retry is extra vendor traffic, never an extra qualified corpus case.
+    """Bound qualified case counts and forbid hidden extra billable calls.
 
-    Exactly four independently scored live cases and three deterministic
-    fixtures must still execute. The one-retry-per-live-case ceiling is
-    enforced without depending on dictionary equality with telemetry keys.
+    FinOps authorizes exactly one external attempt per source document.
+    Telemetry keys must not replace this invariant or quality thresholds.
     """
     live = route_counts.get("live_groq")
     fixture = route_counts.get("deterministic_fixture")
@@ -69,7 +68,7 @@ def parser_route_budget_ok(route_counts: dict[str, int]) -> bool:
     return (
         type(live) is int and live == 4
         and type(fixture) is int and fixture == 3
-        and type(retries) is int and 0 <= retries <= live
+        and type(retries) is int and retries == 0
     )
 
 

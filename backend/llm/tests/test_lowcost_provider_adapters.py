@@ -176,33 +176,16 @@ def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id,
     assert "response_format" not in kwargs
     assert "extra_body" not in kwargs
 
-def test_groq_strict_schema_400_retry_respects_error_boundary():
-    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
-    success = client.chat.completions.create.return_value
-    client.chat.completions.create.side_effect = [
-        SyntheticHTTPError(400), success,
-    ]
-
-    output = provider.complete("system", "synthetic medical parser")
-
-    assert output.content == "{}"
-    assert client.chat.completions.create.call_count == 2
-    first = client.chat.completions.create.call_args_list[0].kwargs
-    second = client.chat.completions.create.call_args_list[1].kwargs
-    assert first == second
-    assert first["response_format"]["json_schema"]["strict"] is True
-    assert provider.strict_json_retry_count == 1
-
-
-def test_groq_strict_schema_repeated_400_fails_closed_after_two_calls():
+def test_groq_strict_schema_400_fails_closed_without_second_billable_call():
     from llm.errors import LLMProviderInternalFailure
 
     provider, client = _synthetic_provider(SyntheticHTTPError(400))
     with pytest.raises(LLMProviderInternalFailure):
         provider.complete("system", "synthetic medical parser")
-
-    assert client.chat.completions.create.call_count == 2
-    assert provider.strict_json_retry_count == 1
+    assert client.chat.completions.create.call_count == 1
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["response_format"]["json_schema"]["strict"] is True
+    assert not hasattr(provider, "strict_json_retry_count")
 
 
 @pytest.mark.parametrize(
