@@ -110,10 +110,14 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   Future<void> _selectLanguage(String value) async {
-    _language = value;
-    await context.read<LocalePreferenceService>().setLanguageOnly(value);
-    if (!mounted) return;
-    setState(() {});
+    // Render the next step immediately; browser secure storage can be slow
+    // or unavailable (notably on Safari private sessions).
+    setState(() => _language = value);
+    unawaited(context.read<LocalePreferenceService>().setLanguageOnly(value)
+        .catchError((Object error, StackTrace stack) {
+      developer.log('Language preference persistence failed.',
+          name: 'iamina.onboarding.language', error: error, stackTrace: stack);
+    }));
     // The country step is inserted only after a language is selected.
     // Scroll after layout, without requesting focus or opening the keyboard.
     WidgetsBinding.instance.addPostFrameCallback((_) {
