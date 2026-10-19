@@ -4,7 +4,7 @@ import { getVercelOidcToken } from '@vercel/oidc';
 
 const WEB_PROJECT = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';
 const EXACT_API_ORIGIN =
-  'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app';
+  'https://iamina-certified-1mrvxnuk9-achraf-benmoussa-s-projects.vercel.app';
 const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
 
 class PayloadTooLargeError extends Error {}
