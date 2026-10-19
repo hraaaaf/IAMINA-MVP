@@ -35,9 +35,9 @@ class _LocalPreferences extends LocalePreferenceService {
 
 // The IP estimate is advisory and may arrive before or after manual input.
 class _PendingCountryPreferences extends _LocalPreferences {
-  final Completer<String?> country = Completer<String?>();
+  final Completer<String?> ipCountry = Completer<String?>();
   @override
-  Future<String?> suggestCountryFromIp() => country.future;
+  Future<String?> suggestCountryFromIp() => ipCountry.future;
 }
 
 Widget _w01OnboardingTestApp({
@@ -244,7 +244,7 @@ void main() {
       db: db, prefs: prefs, auth: auth));
     await tester.pumpAndSettle();
     // Vercel's coarse country has arrived before the user chooses language.
-    prefs.country.complete('MA');
+    prefs.ipCountry.complete('MA');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Français'));
@@ -294,7 +294,7 @@ void main() {
     await tester.tap(find.text('France').last);
     await tester.pumpAndSettle();
 
-    prefs.country.complete('MA');
+    prefs.ipCountry.complete('MA');
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(find.byType(TextField).last)
       .controller!.text, 'France');
