@@ -160,6 +160,10 @@ def _persist(
                 )
             result.glucose_readings_saved += 1
         except IntegrityError:
+            # Do not classify unrelated constraint failures (e.g. unsafe
+            # glucose values) as successful idempotent duplicates.
+            if not imported_reading_exists(patient, canonical_ts, reading.value_mgdl):
+                raise
             result.glucose_duplicates += 1
         # Other failures propagate through the outer transaction. Never
         # save a partial set of readings under a failed confirmation.

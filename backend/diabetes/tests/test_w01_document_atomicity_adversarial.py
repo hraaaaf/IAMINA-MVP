@@ -51,6 +51,17 @@ class W01DocumentAtomicityTest(TestCase):
         self.assertTrue(result.errors)
         self.assertNotIn("synthetic-write-interruption", " ".join(result.errors))
 
+    def test_unrelated_integrity_failure_is_not_a_duplicate_or_success(self):
+        # LogEntry has a DB CHECK restricting medically recorded glycemia.
+        output = self._output()
+        output.glucose_readings = [
+            GlucoseReading(value_mgdl=700.0, timestamp="2026-08-20T08:15:00+02:00"),
+        ]
+        result = persist(output, self.patient, "invalid-reading-constraint")
+        self._assert_rolled_back(result)
+        self.assertEqual(result.glucose_duplicates, 0)
+        self.assertTrue(result.errors)
+
     def test_missing_timestamp_cannot_commit_remaining_readings(self):
         result = persist(self._output(second_timestamp=None), self.patient, "bad-timestamp")
         self._assert_rolled_back(result)
