@@ -15,7 +15,7 @@ function resolvePreviewApiOrigin() {
     const parsed = new URL(value);
     if (parsed.protocol !== 'https:' || parsed.origin !== value ||
         parsed.pathname !== '/' || parsed.search || parsed.hash ||
-        parsed.username || parsed.password ||
+        parsed.port || parsed.username || parsed.password ||
         !API_PREVIEW_HOST.test(parsed.hostname)) return null;
     return value;
   } catch {
