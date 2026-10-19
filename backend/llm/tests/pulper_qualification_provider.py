@@ -159,12 +159,21 @@ class SyntheticQualificationTextProvider:
         self.deterministic_calls = 0
 
     def complete(self, system: str, user: str) -> LLMResponse:
+        return self._complete(system, user, direct_json=False)
+
+    def complete_json_object(self, system: str, user: str) -> LLMResponse:
+        return self._complete(system, user, direct_json=True)
+
+    def _complete(self, system: str, user: str, *, direct_json: bool) -> LLMResponse:
         block = _untrusted_document_block(user)
         payload = _SYNTHETIC_PARSE_BY_BLOCK.get(block)
         if payload is None:
             self.live_calls += 1
             try:
-                response = self.delegate.complete(system, user)
+                response = (
+                    self.delegate.complete_json_object(system, user)
+                    if direct_json else self.delegate.complete(system, user)
+                )
             except Exception as exc:
                 self.live_reply_shapes.append("upstream_exception")
                 # Only normalized, allowlisted provider error codes; never log
