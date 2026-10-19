@@ -7,6 +7,7 @@ import 'package:amina/services/auth_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
+import 'package:http/http.dart' show Response;
 
 const _credentialKey = 'iamina_app_lock_credential_v1';
 const _requiredKey = 'iamina_app_lock_required_v1';
@@ -480,5 +481,52 @@ void main() {
     expect(await const FlutterSecureStorage().read(key: _requiredKey),
         'required');
     service.dispose();
+  });
+
+  test('D10 verified account B cannot recover owner A lock', () async {
+    seedStorage({
+      _credentialKey: '{"version":1,"credentialId":"tampered"}',
+      _requiredKey: 'required',
+      'iamina_app_lock_native_owner_v1': '734',
+    });
+    final auth = AuthService(
+      httpClient: MockClient((request) async {
+        if (request.url.path == '/api/v1/auth/login') {
+          return Response(
+            jsonEncode({
+              'access_token': 'iamina.test:B123:synthetic',
+              'user': {'id': 735},
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return Response('{}', 204);
+      }),
+    );
+    await auth.initialize();
+    await auth.signInWithEmail('b@example.invalid', 'synthetic');
+    expect(auth.isRemoteCredentialVerified, isTrue);
+    expect(auth.boundNativeAccountId, 735);
+    final service = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      authService: auth,
+    );
+    await service.initialize();
+    expect(service.recoveryRequired, isTrue);
+    await expectLater(
+      service.recoverWithVerifiedRemoteAccount(),
+      throwsA(isA<AppLockException>().having(
+        (error) => error.code,
+        'code',
+        'verified_remote_recovery_required',
+      )),
+    );
+    expect(await const FlutterSecureStorage().read(
+      key: 'iamina_app_lock_native_owner_v1'), '734');
+    expect(await const FlutterSecureStorage().read(key: _requiredKey),
+        'required');
+    service.dispose();
+    auth.dispose();
   });
 }
