@@ -10,6 +10,7 @@ typedef ProtectedLocalStateProbe = Future<bool> Function();
 class AppLockService extends ChangeNotifier {
   static const _credentialKey = 'iamina_app_lock_credential_v1';
   static const _requiredKey = 'iamina_app_lock_required_v1';
+  static const _ownerKey = 'iamina_app_lock_native_owner_v1';
   static const _requiredValue = 'required';
   static const Duration defaultGracePeriod = Duration(seconds: 60);
 
@@ -26,6 +27,7 @@ class AppLockService extends ChangeNotifier {
   bool _unlocked = false;
   bool _recoveryRequired = false;
   AppLockCredential? _credential;
+  int? _nativeOwnerId;
   DateTime? _backgroundedAt;
 
   AppLockService({
@@ -57,15 +59,25 @@ class AppLockService extends ChangeNotifier {
     _unlocked = false;
     _recoveryRequired = false;
     _credential = null;
+    _nativeOwnerId = null;
 
     try {
       final requiredValue = await _storage.read(key: _requiredKey);
       final rawCredential = await _storage.read(key: _credentialKey);
+      final rawOwner = await _storage.read(key: _ownerKey);
+      final owner = int.tryParse(rawOwner ?? '');
+      if (rawOwner != null && (owner == null || owner <= 0)) {
+        throw const FormatException('Invalid lock owner');
+      }
+      _nativeOwnerId = owner;
       _required = requiredValue == _requiredValue;
 
       if (rawCredential != null && rawCredential.isNotEmpty) {
         try {
           _credential = AppLockCredential.decode(rawCredential);
+          if (_authService?.boundNativeAccountId != null && owner == null) {
+            throw const FormatException('Legacy lock owner ambiguous');
+          }
           _configured = true;
           _required = true;
           if (requiredValue != _requiredValue) {
@@ -120,7 +132,8 @@ class AppLockService extends ChangeNotifier {
     // D10: recovery is not authorized without an unambiguous original owner.
     // A verified but unrelated account must not reset this installation lock.
     if (!_recoveryRequired ||
-        auth?.boundNativeAccountId == null ||
+        _nativeOwnerId == null ||
+        auth?.boundNativeAccountId != _nativeOwnerId ||
         auth == null ||
         !auth.isRemoteCredentialVerified ||
         !auth.hasRemoteApiCredential) {
@@ -132,7 +145,9 @@ class AppLockService extends ChangeNotifier {
     // retained and remains inaccessible until a new strong device lock enrolls.
     await _storage.delete(key: _credentialKey);
     await _storage.delete(key: _requiredKey);
+    await _storage.delete(key: _ownerKey);
     _credential = null;
+    _nativeOwnerId = null;
     _configured = false;
     _required = false;
     _recoveryRequired = false;
@@ -155,11 +170,17 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('strong_auth_unavailable');
     }
 
+    final owner = _authService?.boundNativeAccountId;
+    if (_authService?.hasRemoteApiCredential == true && owner == null) {
+      throw const AppLockException('verified_owner_required');
+    }
     final credential = await _authenticator.enroll();
     await _storage.write(key: _credentialKey, value: credential.encode());
+    if (owner != null) await _storage.write(key: _ownerKey, value: '$owner');
     await _storage.write(key: _requiredKey, value: _requiredValue);
 
     _credential = credential;
+    _nativeOwnerId = owner;
     _configured = true;
     _required = true;
     _recoveryRequired = false;
@@ -179,6 +200,14 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('app_lock_not_configured');
     }
 
+    final currentOwner = _authService?.boundNativeAccountId;
+    if (_nativeOwnerId != null && currentOwner != _nativeOwnerId) {
+      throw const AppLockException('app_lock_owner_mismatch');
+    }
+    if (_authService?.hasRemoteApiCredential == true &&
+        _nativeOwnerId == null) {
+      throw const AppLockException('app_lock_owner_ambiguous');
+    }
     final assertion = await _authenticator.unlock(credential);
     final updated = credential.copyWith(signCount: assertion.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
@@ -213,7 +242,10 @@ class AppLockService extends ChangeNotifier {
 
   void _handleAuthChanged() {
     final auth = _authService;
-    if (auth != null && auth.isInitialized && !auth.isAuthenticated) {
+    if (auth != null && auth.isInitialized &&
+        (!auth.isAuthenticated ||
+            (_nativeOwnerId != null &&
+                auth.boundNativeAccountId != _nativeOwnerId))) {
       lock();
     }
   }
