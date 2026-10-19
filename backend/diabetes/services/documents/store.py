@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from django.contrib.auth.models import User
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import F
 
 from diabetes.models import LabReport, LogEntry
@@ -49,11 +49,20 @@ class StoreResult:
         return not self.errors and self.lab_report_id is not None
 
 
+class _IncompleteImport(Exception):
+    """Do not commit a partially rejected medical import."""
+
+
 def persist(output: PulperOutput, patient: User, import_batch_id: str) -> StoreResult:
-    """Persist PulperOutput to database. Always returns StoreResult, never raises."""
+    """Persist the document and readings atomically, returning safe errors."""
     result = StoreResult()
     try:
-        _persist(output, patient, import_batch_id, result)
+        with transaction.atomic():
+            _persist(output, patient, import_batch_id, result)
+            if result.errors:
+                raise _IncompleteImport()
+    except _IncompleteImport:
+        pass  # Rollback is complete; retain the validation error.
     except ValueError as exc:
         if str(exc) == "source_sha256 invalide":
             result.errors.append("source_sha256 invalide")
@@ -69,6 +78,11 @@ def persist(output: PulperOutput, patient: User, import_batch_id: str) -> StoreR
             type(exc).__name__,
         )
         result.errors.append("Erreur de sauvegarde du document.")
+    if result.errors:
+        # No ID or saved-count may survive a rolled-back transaction.
+        result.lab_report_id = None
+        result.glucose_readings_saved = 0
+        result.glucose_duplicates = 0
     return result
 
 
@@ -133,23 +147,22 @@ def _persist(
         )
 
         try:
-            LogEntry.objects.create(
-                patient=patient,
-                logged_at=canonical_ts,
-                blood_sugar=reading.value_mgdl,
-                client_uuid=client_uuid,
-                source="import",
-                meal_type=reading.context or "",
-            )
+            # The inner savepoint repairs PostgreSQL transaction state when
+            # an idempotent duplicate raises IntegrityError.
+            with transaction.atomic():
+                LogEntry.objects.create(
+                    patient=patient,
+                    logged_at=canonical_ts,
+                    blood_sugar=reading.value_mgdl,
+                    client_uuid=client_uuid,
+                    source="import",
+                    meal_type=reading.context or "",
+                )
             result.glucose_readings_saved += 1
         except IntegrityError:
             result.glucose_duplicates += 1
-        except Exception as exc:
-            logger.warning(
-                "pulper.store reading write failed error_class=%s",
-                type(exc).__name__,
-            )
-            result.errors.append("Lecture glycémique ignorée lors de la sauvegarde.")
+        # Other failures propagate through the outer transaction. Never
+        # save a partial set of readings under a failed confirmation.
 
     if result.glucose_readings_saved:
         LabReport.objects.filter(pk=report.pk).update(

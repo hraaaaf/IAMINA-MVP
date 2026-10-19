@@ -4,12 +4,12 @@ Document Pulper API — Phase 12
 POST /api/v1/documents/ingest
   Body: multipart/form-data
     - file     : UploadedFile  (PDF, image, Excel, CSV, DOCX)
-    - confirm  : bool = False  — if True, persist to DB; if False, return preview only
+    - confirm  : bool = False  — legacy True is rejected (no direct persistence)
 
 Two-step flow:
   1. POST with confirm=False → returns PulperPreviewResponse (no DB write)
      Flutter shows the user what was extracted, asks for confirmation.
-  2. POST with confirm=True  → persists and returns PulperConfirmResponse
+  2. POST /documents/confirm/{batch_id} → persists after review
 
 GET /api/v1/documents/
   Returns list of LabReport rows for the current patient.
@@ -86,7 +86,7 @@ class PulperPreviewResponse(Schema):
 
 
 class PulperConfirmResponse(Schema):
-    """Returned on confirm=True — data has been persisted."""
+    """Returned by POST /documents/confirm/{batch_id} after persistence."""
     ok:                       bool
     lab_report_id:            Optional[int]
     glucose_readings_saved:   int
@@ -173,11 +173,14 @@ def ingest_document(
     file: UploadedFile = File(...),
     confirm: bool = False,
 ):
+    """Stage 1 only: stage extraction for review and return a batch_id.
+    The legacy confirm=True query argument is rejected; clinical persistence
+    requires POST /documents/confirm/{batch_id}.
     """
-    Stage 1 (confirm=False): Extract and validate.  Returns preview.
-    Stage 2 (confirm=True):  Persist from a previously staged batch_id
-                             passed as query param ?batch_id=<uuid>.
-    """
+    # Reject before extracting or caching: ingestion cannot confirm itself.
+    if confirm:
+        return 422, {"detail": "Confirmez le document après sa prévisualisation."}
+
     patient   = request.auth
     mime_type = file.content_type or ''
     filename  = file.name or 'upload'
@@ -241,17 +244,12 @@ def ingest_document(
         errors=output.errors,
     )
 
-    if not confirm:
-        logger.info(
-            "documents.ingest preview patient=%s type=%s confidence=%.0f%% readings=%d",
-            getattr(patient, 'id', '?'), output.document_type,
-            output.confidence * 100, len(output.glucose_readings),
-        )
-        return 200, preview
-
-    # ── Confirm & persist ──────────────────────────────────────────────────────
-    cache.delete(_pending_key(patient.id, batch_id))
-    return _do_persist(output, patient, batch_id)
+    logger.info(
+        "documents.ingest preview patient=%s type=%s confidence=%.0f%% readings=%d",
+        getattr(patient, 'id', '?'), output.document_type,
+        output.confidence * 100, len(output.glucose_readings),
+    )
+    return 200, preview
 
 
 @router.post("/documents/confirm/{batch_id}", response=PulperConfirmResponse)

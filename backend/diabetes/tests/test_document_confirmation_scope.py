@@ -185,20 +185,17 @@ class DocumentConfirmationScopeTest(TestCase):
 
     @patch("diabetes.api.v1.documents._do_persist")
     @patch("diabetes.api.v1.documents.ingest", return_value=PulperOutput())
-    def test_immediate_confirmation_leaves_no_replayable_batch(self, _ingest, do_persist):
-        fake_cache = _FakeCache()
-        patient = SimpleNamespace(id=101)
-        request = SimpleNamespace(auth=patient)
-        do_persist.return_value = PulperConfirmResponse(
-            ok=True,
-            lab_report_id=1,
-            glucose_readings_saved=0,
-            glucose_duplicates=0,
-            errors=[],
-        )
-
-        with patch("diabetes.api.v1.documents.cache", fake_cache):
-            ingest_document.__wrapped__(request, _Upload(), confirm=True)
-
-        batch_id = do_persist.call_args.args[2]
-        self.assertIsNone(fake_cache.get(_pending_key(patient.id, batch_id)))
+    def test_direct_confirm_is_rejected_before_extraction_or_persistence(
+        self, ingest, do_persist,
+    ):
+        cache = _FakeCache()
+        request = SimpleNamespace(auth=SimpleNamespace(id=101))
+        with patch("diabetes.api.v1.documents.cache", cache):
+            status, payload = ingest_document.__wrapped__(
+                request, _Upload(), confirm=True,
+            )
+        self.assertEqual(status, 422)
+        self.assertIn("prévisualisation", payload["detail"])
+        ingest.assert_not_called()
+        do_persist.assert_not_called()
+        self.assertEqual(cache.values, {})

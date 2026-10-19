@@ -1803,7 +1803,7 @@
             }
           }
         },
-        "description": "Stage 1 (confirm=False): Extract and validate.  Returns preview.\nStage 2 (confirm=True):  Persist from a previously staged batch_id\n                         passed as query param ?batch_id=<uuid>.",
+        "description": "Stage 1 only: stage extraction for review and return a batch_id.\nThe legacy confirm=True query argument is rejected; clinical persistence\nrequires POST /documents/confirm/{batch_id}.",
         "tags": [
           "documents"
         ],
@@ -5660,7 +5660,7 @@
         "type": "object"
       },
       "PulperConfirmResponse": {
-        "description": "Returned on confirm=True \u2014 data has been persisted.",
+        "description": "Returned by POST /documents/confirm/{batch_id} after persistence.",
         "properties": {
           "ok": {
             "title": "Ok",
