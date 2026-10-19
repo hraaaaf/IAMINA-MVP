@@ -231,3 +231,118 @@ def test_verified_evidence_does_not_auto_accept_neutral_field():
     assert field.provenance is not None
     assert field.provenance.evidence_verified is True
     assert field.decision.value == "review_required"
+
+
+
+def test_groq_json_object_completion_is_one_call_without_reply_wrapper():
+    from llm.lowcost_openai_compatible import OpenAICompatibleLowCostProvider
+
+    requests = []
+
+    def create(**kwargs):
+        requests.append(kwargs)
+        return SimpleNamespace(choices=[
+            SimpleNamespace(message=SimpleNamespace(content='{"lab_values":{}}'))
+        ])
+
+    provider = object.__new__(OpenAICompatibleLowCostProvider)
+    provider.provider_id = "groq"
+    provider.model = "openai/gpt-oss-120b"
+    provider.timeout_seconds = 15.0
+    provider.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    reply = provider.complete_json_object(
+        "You extract JSON.", "Return JSON for L0001|HbA1c: 7.2 %"
+    )
+    assert json.loads(reply.content) == {"lab_values": {}}
+    assert len(requests) == 1
+    assert requests[0]["response_format"] == {"type": "json_object"}
+    assert requests[0]["temperature"] == 0.0
+    assert requests[0]["reasoning_effort"] == "low"
+    assert requests[0]["max_completion_tokens"] == 384
+    assert requests[0]["timeout"] == 15.0
+    assert "reply" not in reply.content
+
+
+def test_synthetic_qualification_routes_live_document_to_direct_json_once():
+    class Delegate:
+        def __init__(self):
+            self.client = SimpleNamespace(close=lambda: None)
+            self.calls = 0
+
+        def complete_json_object(self, _system, _user):
+            self.calls += 1
+            return LLMResponse(content='{"lab_values":{}}', provider="live-delegate")
+
+        def complete(self, _system, _user):
+            raise AssertionError("legacy double JSON must not be called")
+
+    delegate = Delegate()
+    provider = SyntheticQualificationTextProvider(delegate)
+    prompt = (
+        "qualification\\nBEGIN_UNTRUSTED_DOCUMENT\\n"
+        "L0001|Fasting glucose: 126 mg/dL\\nEND_UNTRUSTED_DOCUMENT"
+    )
+    result = provider.complete_json_object("system", prompt)
+    assert json.loads(result.content) == {"lab_values": {}}
+    assert delegate.calls == 1
+    assert provider.live_calls == 1
+    assert provider.deterministic_calls == 0
+    assert provider.live_reply_shapes == ["direct_json_object"]
+
+
+@pytest.mark.parametrize("payload,accepted", [
+    (
+        {
+            "document_type": "lab_report",
+            "confidence": 0.99,
+            "lab_values": {"fasting_glucose_mgdl": 126},
+            "evidence": {
+                "lab_values.fasting_glucose_mgdl": {
+                    "r": "L0001", "v": "126"
+                }
+            },
+        },
+        True,
+    ),
+    ({"reply": "Fasting glucose: 126 mg/dL"}, False),
+])
+def test_pulper_groq_direct_json_preserves_verified_source_or_fails_closed(
+    monkeypatch, payload, accepted
+):
+    from diabetes.services.documents import pulper
+
+    class Provider:
+        provider_policy_key = "groq"
+        model_name = "openai/gpt-oss-120b"
+        calls = 0
+
+        def complete_json_object(self, system, user):
+            self.calls += 1
+            assert "The API forces a strict JSON object" not in user
+            assert "Fasting glucose: 126 mg/dL" in user
+            return LLMResponse(
+                content=json.dumps(payload), provider=self.model_name
+            )
+
+        def complete(self, _system, _user):
+            raise AssertionError("legacy double JSON must not be called")
+
+    provider = Provider()
+    monkeypatch.setattr("llm.factory.get_llm", lambda: provider)
+    monkeypatch.setattr(pulper, "assert_ai_egress_allowed", lambda _: None)
+    output = PulperOutput(source_sha256="a" * 64)
+    pulper._parse_with_llm(output, "Fasting glucose: 126 mg/dL")
+    assert provider.calls == 1
+    assert output.prompt_version == "pulper-parse-v7-groq-direct-json"
+    if accepted:
+        assert output.errors == []
+        assert output.lab_values.fasting_glucose_mgdl == 126.0
+        proof = output.lab_values.evidence["fasting_glucose_mgdl"]
+        assert proof.verified and proof.source_ref == "text:L0001"
+        assert proof.raw_value == "126"
+    else:
+        assert output.errors
+        assert output.lab_values.fasting_glucose_mgdl is None
+        assert not output.lab_values.evidence
