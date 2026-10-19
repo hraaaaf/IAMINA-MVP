@@ -90,6 +90,13 @@ Future<T> readForStableAuthEpoch<T>(Future<T> Function() read) async {
   return value;
 }
 
+/// Public, read-only country estimate used only to prefill onboarding UI.
+/// No clinical data is sent or received by this route.
+bool isPublicCountrySuggestion(Uri url, String method) =>
+    method.toUpperCase() == 'GET' &&
+    url.path == '/api/v1/country/suggestion' &&
+    !url.hasQuery && url.fragment.isEmpty;
+
 /// Patient-owned sync must not leave the device after the app-lock closes,
 /// including while a bearer or retry timer is resolving asynchronously.
 /// Public login/enrollment endpoints are deliberately excluded.
@@ -102,7 +109,7 @@ void requireUnlockedPatientSyncTransport(
   // The demo route is also protected outside explicit local audit sessions.
   final protected = url.path.startsWith('/api/v1/') &&
       !url.path.startsWith('/api/v1/auth/');
-  if (protected &&
+  if (protected && !isPublicCountrySuggestion(url, 'GET') &&
       canUsePatientSyncTransport != null &&
       !canUsePatientSyncTransport()) {
     throw StateError('Patient sync blocked while device is locked');
@@ -112,6 +119,7 @@ void requireUnlockedPatientSyncTransport(
 /// Pilot A: deny all clinical API routes except public authentication.
 void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
   if (allowed != null && !allowed() &&
+      !isPublicCountrySuggestion(url, 'GET') &&
       url.path.startsWith('/api/v1/') &&
       !url.path.startsWith('/api/v1/auth/')) {
     throw StateError('Clinical transport disabled: local-only pilot');
