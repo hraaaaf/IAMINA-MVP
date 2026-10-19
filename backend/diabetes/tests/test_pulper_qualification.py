@@ -346,3 +346,78 @@ def test_pulper_groq_direct_json_preserves_verified_source_or_fails_closed(
         assert output.errors
         assert output.lab_values.fasting_glucose_mgdl is None
         assert not output.lab_values.evidence
+
+
+
+def test_groq_json_object_never_bypasses_processor_policy_or_finops(monkeypatch):
+    from core.ai_processor_policy import AIProcessorPolicyDenied
+    from llm import factory
+
+    class Provider:
+        provider_policy_key = "groq"
+
+        def __init__(self):
+            self.calls = 0
+
+        def complete(self, _system, _user):
+            raise AssertionError("wrong completion path")
+
+        def complete_json_object(self, _system, _user):
+            self.calls += 1
+            return LLMResponse(content="{}", provider="openai/gpt-oss-120b")
+
+        def stream(self, _system, _user):
+            return iter(())
+
+        def think(self, _system, _user):
+            return ("", "")
+
+    # Replace only the external policy dependencies, leaving the production
+    # guarded method and its call to the FinOps gate intact.
+    monkeypatch.setattr(
+        factory, "get_processor_policy",
+        lambda name: SimpleNamespace(external_egress=True),
+    )
+    monkeypatch.setattr(
+        factory, "minimize_external_text_payload",
+        lambda fields: SimpleNamespace(fields=fields),
+    )
+    monkeypatch.setattr(
+        factory, "authorize_text_payload",
+        lambda fields: SimpleNamespace(
+            system_prompt=fields["system_prompt"],
+            user_prompt=fields["user_prompt"],
+            purpose="companion_chat",
+        ),
+    )
+    def deny(*_args):
+        raise AIProcessorPolicyDenied("blocked")
+
+    monkeypatch.setattr(factory, "authorize_processor_policy", deny)
+    underlying = Provider()
+    guarded = factory._enforce_text_payload_policy(underlying)
+
+    with pytest.raises(AIProcessorPolicyDenied):
+        guarded.complete_json_object("system", "user")
+    assert underlying.calls == 0
+
+    monkeypatch.setattr(
+        factory, "authorize_processor_policy",
+        lambda *_: SimpleNamespace(external_egress=True),
+    )
+    reserved = []
+
+    def enforce_reservation(**kwargs):
+        reserved.append(kwargs)
+        return kwargs["original_complete"](
+            kwargs["payload"].system_prompt,
+            kwargs["payload"].user_prompt,
+        )
+
+    monkeypatch.setattr(factory, "_execute_external_complete", enforce_reservation)
+    reply = guarded.complete_json_object("system", "user")
+    assert reply.content == "{}"
+    assert underlying.calls == 1
+    assert len(reserved) == 1
+    assert reserved[0]["provider_name"] == "groq"
+    assert reserved[0]["payload"].purpose == "companion_chat"
