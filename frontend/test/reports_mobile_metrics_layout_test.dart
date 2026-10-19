@@ -1,4 +1,5 @@
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/features/journal/reports_screen.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,8 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final db = AppDatabase(NativeDatabase.memory());
+      final db = AppDatabase.testPatientVault(
+        NativeDatabase.memory(), PatientVaultScope.auditOnly());
       addTearDown(db.close);
       await db.seedDemoData();
 
