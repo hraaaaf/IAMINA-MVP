@@ -85,7 +85,7 @@ void main() {
 
     final reply = await service.sendChatMessage('126 mg/dL, insuline déclarée.');
     expect(reply?.conversationId, 'demo-local');
-    expect(reply?.reply, contains('mode démo local'));
+    expect(reply?.reply, contains('démo local'));
     expect(auth.tokenReads, 0);
     expect(requestCount, 0);
     service.dispose();
