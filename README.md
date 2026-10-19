@@ -19,7 +19,7 @@ The founder's onboarding established the following **target decisions** for CNDP
 - **Proposed retention:** on-device medical records persist until the patient requests deletion, **subject to applicable legal retention requirements**. This does not settle separate periods for security logs, technical data, OS backups, exports, or minors' records; secure deletion and restore design remain to be verified.
 - **Provisional privacy correspondence:** `lafabriquedapollon@gmail.com` (founder-provided, not verified as an active rights-handling service or a designated DPO). A formal controller and a validated rights-request process remain pending.
 
-These statements feed the restricted [CNDP + GCC preparation register](https://app.notion.com/p/3fa77c66336281298cd6deeba0879ac1) and the pre-real-patient **P5-6B / issue #320** gate. See `docs/ROADMAP.md` and `docs/architecture/ARCHITECTURE.md` for the **as-built** architecture and its unresolved compliance/technical gates. No CNDP/GCC authorization, independent medical clearance, or patient-production release is claimed.
+These statements feed the restricted [CNDP + GCC preparation register](https://app.notion.com/p/3fa77c66336281298cd6deeba0879ac1), the dated [web local-only egress audit](docs/security/2026-10-19-cndp-web-local-only-transport-audit.md), and the pre-real-patient **P5-6B / issue #320** gate. See `docs/ROADMAP.md` and `docs/architecture/ARCHITECTURE.md` for the **as-built** architecture and its unresolved compliance/technical gates. No CNDP/GCC authorization, independent medical clearance, or patient-production release is claimed.
 
 ## Product doctrine
 
