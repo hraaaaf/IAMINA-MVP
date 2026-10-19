@@ -117,7 +117,10 @@ class AppLockService extends ChangeNotifier {
       throw StateError('App lock requires initialized state');
     }
     final auth = _authService;
+    // D10: recovery is not authorized without an unambiguous original owner.
+    // A verified but unrelated account must not reset this installation lock.
     if (!_recoveryRequired ||
+        auth?.boundNativeAccountId == null ||
         auth == null ||
         !auth.isRemoteCredentialVerified ||
         !auth.hasRemoteApiCredential) {
