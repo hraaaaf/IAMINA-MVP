@@ -56,6 +56,23 @@ class Score:
         return self.true_positive / d if d else 1.0
 
 
+def parser_route_budget_ok(route_counts: dict[str, int]) -> bool:
+    """A retry is extra vendor traffic, never an extra qualified corpus case.
+
+    Exactly four independently scored live cases and three deterministic
+    fixtures must still execute. The one-retry-per-live-case ceiling is
+    enforced without depending on dictionary equality with telemetry keys.
+    """
+    live = route_counts.get("live_groq")
+    fixture = route_counts.get("deterministic_fixture")
+    retries = route_counts.get("groq_strict_json_retries", 0)
+    return (
+        type(live) is int and live == 4
+        and type(fixture) is int and fixture == 3
+        and type(retries) is int and 0 <= retries <= live
+    )
+
+
 def _canonical(value: Any) -> str:
     return f"{value:.6f}".rstrip("0").rstrip(".") if isinstance(value, float) else str(value)
 
@@ -330,7 +347,7 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
     report = {"schema": "pulper-qualification-v3", "synthetic_only": True, "text_provider": "groq/openai-gpt-oss-120b", "vision_accuracy_mode": "synthetic_transcription_not_live_ocr", "synthetic_vision_parser_mode": "deterministic_fixture_parser", "live_vision_accuracy_qualified": False, "supported_formats": sorted(SUPPORTED_FORMATS), "parser_route_counts": parser_route_counts, "transport_probe": {"synthetic_only": True, "planned_calls": 2, "attempted_calls": len(transport_probe), "results": transport_probe}, "metrics": metrics, "counts": {"tp": score.true_positive, "fp": score.false_positive, "fn": score.false_negative, "provenance_expected": prov_total, "provenance_verified": prov_ok, "timestamps_expected": ts_total, "timestamps_exact": ts_ok, "fail_closed_expected": fail_total, "fail_closed_passed": fail_ok, "formats_qualified": len(qualified), "formats_expected": len(SUPPORTED_FORMATS)}, "cases": cases_out}
     if SYNTHETIC_SENTINEL in json.dumps(report, sort_keys=True):
         raise AssertionError("qualification report leaked synthetic sentinel")
-    thresholds = {"critical_precision": metrics["critical_precision"] >= .99, "critical_recall": metrics["critical_recall"] >= .99, "timestamp_timezone_preservation": metrics["timestamp_timezone_preservation"] == 1.0, "critical_provenance_coverage": metrics["critical_provenance_coverage"] == 1.0, "supported_format_coverage": metrics["supported_format_coverage"] == 1.0, "fail_closed_rate": metrics["fail_closed_rate"] == 1.0, "version_capture": metrics["version_capture"] == 1.0, "ambiguous_critical_autoaccepted": autoaccepted == 0, "qualification_log_sentinel_leaks": metrics["qualification_log_sentinel_leaks"] == 0, "critical_corruptions": corruptions == 0, "parser_route_budget": parser_route_counts == {"live_groq": 4, "deterministic_fixture": 3}}
+    thresholds = {"critical_precision": metrics["critical_precision"] >= .99, "critical_recall": metrics["critical_recall"] >= .99, "timestamp_timezone_preservation": metrics["timestamp_timezone_preservation"] == 1.0, "critical_provenance_coverage": metrics["critical_provenance_coverage"] == 1.0, "supported_format_coverage": metrics["supported_format_coverage"] == 1.0, "fail_closed_rate": metrics["fail_closed_rate"] == 1.0, "version_capture": metrics["version_capture"] == 1.0, "ambiguous_critical_autoaccepted": autoaccepted == 0, "qualification_log_sentinel_leaks": metrics["qualification_log_sentinel_leaks"] == 0, "critical_corruptions": corruptions == 0, "parser_route_budget": parser_route_budget_ok(parser_route_counts)}
     report["thresholds"] = thresholds
     report["passed"] = all(thresholds.values())
     output_path.parent.mkdir(parents=True, exist_ok=True)

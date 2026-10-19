@@ -9,6 +9,7 @@ from diabetes.evals.pulper_qualification import (
     Score,
     build_corpus,
     critical_facts,
+    parser_route_budget_ok,
     score_facts,
 )
 from diabetes.services.documents.neutral_adapter import to_neutral
@@ -27,6 +28,21 @@ from llm.tests.pulper_qualification_provider import (
     classify_upstream_http_status,
 )
 from media.documents.extractors.pdf import extract_pdf
+
+
+@pytest.mark.parametrize(
+    ("retries", "accepted"),
+    [(-1, False), (0, True), (1, True), (4, True), (5, False), ("4", False)],
+)
+def test_parser_route_budget_counts_live_cases_and_bounds_transport_retries(retries, accepted):
+    counters = {
+        "live_groq": 4,
+        "deterministic_fixture": 3,
+        "groq_strict_json_retries": retries,
+    }
+    assert parser_route_budget_ok(counters) is accepted
+    assert not parser_route_budget_ok({**counters, "live_groq": 5})
+    assert not parser_route_budget_ok({**counters, "deterministic_fixture": 2})
 
 
 def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeypatch):
