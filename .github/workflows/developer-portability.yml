@@ -8,7 +8,6 @@ on:
       - IAMINA.py
       - IAMINA.bat
       - IAMINA.command
-      - .github/workflows/developer-portability.yml
       - .tool-versions
       - backend/requirements.txt
       - frontend/pubspec.yaml
