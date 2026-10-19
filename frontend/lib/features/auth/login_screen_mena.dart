@@ -3,8 +3,6 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import '../../services/api_client.dart';
-import '../../data/drift/database.dart';
 import '../../core/localization/auth_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -167,14 +165,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin({bool isDemo = false}) async {
     setState(() { _isLoading = true; _error = null; });
     final auth = context.read<AuthService>();
-    final db = context.read<AppDatabase>();
-    final api = context.read<ApiClient>();
     try {
       if (isDemo) {
+        // Audit-only login. Clinical records must never be seeded here.
         await auth.signInAnonymously();
-        await api.seedDemoData();
-        final count = await db.countLogs();
-        if (count == 0) await db.seedDemoData();
       } else {
         await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
       }
