@@ -94,6 +94,57 @@ test('W01 BFF refuses Production alias, cross-project and malformed Preview targ
   });
 });
 
+
+test('W01 visitor country suggestion uses Web edge geolocation, not API egress', async () => {
+  await withEnv(async () => {
+    let upstream = 0;
+    globalThis.fetch = async () => { upstream++; throw Error('country must remain at Web edge'); };
+    for (const [raw,code,source] of [
+      ['MA','MA','ip_estimate'],['FR','FR','ip_estimate'],
+      ['ZZ',null,'unavailable'],['ma',null,'unavailable'],
+      ['FR,MA',null,'unavailable'],['M',null,'unavailable'],
+      ['',null,'unavailable'],[undefined,null,'unavailable'],
+    ]) {
+      const headers = raw === undefined ? {} : {'x-vercel-ip-country':raw};
+      const output = streamingResponse();
+      await proxy(req('country/suggestion',{headers}),output,async()=> 'synthetic-oidc');
+      assert.equal(output.statusCode,200);
+      assert.equal(output.headers['cache-control'],'private, no-store, max-age=0');
+      assert.equal(output.headers['set-cookie'],undefined);
+      assert.deepEqual(JSON.parse(output.text()),{country_code:code,source});
+    }
+    assert.equal(upstream,0);
+  });
+});
+
+test('W01 coarse country never bypasses Preview, OIDC or cross-origin gates', async () => {
+  await withEnv(async () => {
+    let upstream=0;
+    globalThis.fetch=async()=>{upstream++;throw Error('forbidden egress');};
+    const cases=[
+      [req('country/suggestion',{headers:{origin:'https://attacker.invalid',
+        'x-vercel-ip-country':'MA'}}),403],
+      [req('country/suggestion',{method:'POST',headers:{
+        'x-vercel-ip-country':'MA'}}),403],
+    ];
+    for (const [request,status] of cases) {
+      const output=res();
+      await proxy(request,output,async()=> 'synthetic-oidc');
+      assert.equal(output.statusCode,status);
+    }
+    const withoutOidc=res();
+    await proxy(req('country/suggestion',{headers:{'x-vercel-ip-country':'MA'}}),
+      withoutOidc, async()=> null);
+    assert.equal(withoutOidc.statusCode,503);
+    process.env.VERCEL_ENV='production';
+    const prod=res();
+    await proxy(req('country/suggestion',{headers:{'x-vercel-ip-country':'MA'}}),
+      prod, async()=> 'synthetic-oidc');
+    assert.equal(prod.statusCode,404);
+    assert.equal(upstream,0);
+  });
+});
+
 test('safe fixed origin and path rejects traversals, invalid url segments',()=>{
   for (const bad of ['','/admin','../admin','foo//bar','%2e%2e','foo%2fbar','foo\\bar','https:']) {
     assert.equal(safePath(bad),false,bad);

@@ -58,6 +58,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   bool _countrySuggestionRequested = false;
   bool _countryTouched = false;
   bool _countrySuggestedByIp = false;
+  final GlobalKey _countryStepKey = GlobalKey(debugLabel: 'onboarding-country');
 
   AppLocalizations get l10n => AppLocalizations.of(context)!;
 
@@ -111,7 +112,21 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   Future<void> _selectLanguage(String value) async {
     _language = value;
     await context.read<LocalePreferenceService>().setLanguageOnly(value);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    // The country step is inserted only after a language is selected.
+    // Scroll after layout, without requesting focus or opening the keyboard.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _countryStepKey.currentContext;
+      if (!mounted || target == null) return;
+      final reduceMotion = MediaQuery.of(context).disableAnimations;
+      Scrollable.ensureVisible(
+        target,
+        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0.12,
+      );
+    });
   }
 
   Future<void> _finish() async {
@@ -242,6 +257,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ],
       ),
       _Question(
+        key: _countryStepKey,
         title: l10n.onboardingChooseCountry,
         children: [
           _CountrySearchField(
@@ -277,6 +293,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       ),
       if (_language != null)
         _Question(
+          key: _countryStepKey,
           title: l10n.onboardingChooseCountry,
           children: [
             _CountrySearchField(
@@ -723,7 +740,7 @@ class _Question extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _Question({required this.title, required this.children});
+  const _Question({super.key, required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) => Padding(

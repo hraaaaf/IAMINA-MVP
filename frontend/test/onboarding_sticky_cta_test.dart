@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/auth/onboarding_chat_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
@@ -29,6 +31,48 @@ class _LocalPreferences extends LocalePreferenceService {
     required String country,
     required String tone,
   }) async {}
+}
+
+// The IP estimate is advisory and may arrive before or after manual input.
+class _PendingCountryPreferences extends _LocalPreferences {
+  final Completer<String?> country = Completer<String?>();
+  @override
+  Future<String?> suggestCountryFromIp() => country.future;
+}
+
+Widget _w01OnboardingTestApp({
+  required AppDatabase db,
+  required LocalePreferenceService prefs,
+  required AuthService auth,
+}) {
+  final router = GoRouter(
+    initialLocation: '/onboarding',
+    routes: [
+      GoRoute(path: '/onboarding',
+        builder: (_, __) => const OnboardingChatScreen()),
+      GoRoute(path: '/dashboard',
+        builder: (_, __) => const Scaffold(body: Text('Dashboard'))),
+    ],
+  );
+  // The test owns router lifecycle with the outer widget tree.
+  return MultiProvider(
+    providers: [
+      Provider<AppDatabase>.value(value: db),
+      ChangeNotifierProvider<AuthService>.value(value: auth),
+      ChangeNotifierProvider<LocalePreferenceService>.value(value: prefs),
+    ],
+    child: MaterialApp.router(
+      routerConfig: router,
+      locale: const Locale('fr'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
 }
 
 void main() {
@@ -180,6 +224,81 @@ void main() {
     expect(profile, isNotNull);
     expect(profile!.diabetesType, isNull);
     expect(profile.treatment, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('W01 language choice scrolls to editable IP-suggested country on iPhone',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = AppDatabase(NativeDatabase.memory());
+    final prefs = _PendingCountryPreferences();
+    final auth = AuthService();
+    addTearDown(db.close);
+    addTearDown(prefs.dispose);
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(_w01OnboardingTestApp(
+      db: db, prefs: prefs, auth: auth));
+    await tester.pumpAndSettle();
+    // Vercel's coarse country has arrived before the user chooses language.
+    prefs.country.complete('MA');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Français'));
+    await tester.pumpAndSettle();
+    final search = find.byKey(const Key('onboarding-country-search'));
+    expect(search, findsOneWidget);
+    final viewport = tester.getRect(search);
+    expect(viewport.top, greaterThanOrEqualTo(0));
+    expect(viewport.top, lessThan(640));
+    expect(find.textContaining('Proposé selon votre connexion'), findsOneWidget);
+    final field = tester.widget<TextField>(find.byType(TextField).last);
+    expect(field.controller!.text, 'Maroc');
+
+    // A prefilled estimate must never prevent the patient from changing it.
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'France');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('France').last);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byType(TextField).last)
+      .controller!.text, 'France');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('W01 late IP estimate cannot replace manual country', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = AppDatabase(NativeDatabase.memory());
+    final prefs = _PendingCountryPreferences();
+    final auth = AuthService();
+    addTearDown(db.close);
+    addTearDown(prefs.dispose);
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(_w01OnboardingTestApp(
+      db: db, prefs: prefs, auth: auth));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Français'));
+    await tester.pumpAndSettle();
+    final search = find.byKey(const Key('onboarding-country-search'));
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'France');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('France').last);
+    await tester.pumpAndSettle();
+
+    prefs.country.complete('MA');
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byType(TextField).last)
+      .controller!.text, 'France');
+    expect(find.textContaining('Proposé selon votre connexion'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

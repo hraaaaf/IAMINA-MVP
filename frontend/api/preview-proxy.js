@@ -106,6 +106,23 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   if (typeof oidcToken !== 'string' || oidcToken.length < 3)
     return response.status(503).end();
 
+  // W01: the public country suggestion must reflect the visitor's Web
+  // request, not the API deployment's egress IP. Vercel annotates the
+  // inbound request with a coarse country code. This is UI-only and never
+  // used for clinical eligibility, auth or server-side patient identity.
+  // Do not relay/store the visitor IP, city, region or geo headers.
+  if (request.method === 'GET' && route.path === 'country/suggestion' &&
+      route.search === '') {
+    const raw = request.headers['x-vercel-ip-country'];
+    const country = typeof raw === 'string' && /^[A-Z]{2}$/.test(raw) &&
+      raw !== 'ZZ' ? raw : null;
+    response.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return response.status(200).end(JSON.stringify({
+      country_code: country,
+      source: country ? 'ip_estimate' : 'unavailable',
+    }));
+  }
+
   let payload;
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     try {
