@@ -13,7 +13,6 @@ on:
       - backend/requirements.txt
       - frontend/pubspec.yaml
       - frontend/pubspec.lock
-      - frontend/vercel_build.sh
       - docs/DEPENDENCIES.md
       - docs/DEVELOPER_MACOS.md
       - docs/LAUNCHER.md
