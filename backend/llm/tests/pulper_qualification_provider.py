@@ -23,6 +23,15 @@ _END_DOCUMENT = "\nEND_UNTRUSTED_DOCUMENT"
 _DETERMINISTIC_PARSER_MODEL = "qualification-deterministic-parser-v1"
 
 
+def classify_upstream_http_status(exc: Exception) -> str:
+    """Reveal only HTTP status category, never an SDK response or message."""
+    cause = getattr(exc, "__cause__", None)
+    code = getattr(cause, "status_code", None)
+    if type(code) is int and 400 <= code <= 599:
+        return f"http_{code}"
+    return "unknown"
+
+
 def classify_live_reply_shape(content: str) -> str:
     """Structural diagnostics only: never capture model output or PHI."""
     try:
@@ -84,6 +93,7 @@ class SyntheticQualificationTextProvider:
         self.live_calls = 0
         self.live_reply_shapes: list[str] = []
         self.live_error_codes: list[str] = []
+        self.live_http_statuses: list[str] = []
         self.deterministic_calls = 0
 
     def complete(self, system: str, user: str) -> LLMResponse:
@@ -106,9 +116,11 @@ class SyntheticQualificationTextProvider:
                 }
                 code = exc.code if isinstance(exc, LLMProviderError) else ""
                 self.live_error_codes.append(code if code in known else "unknown")
+                self.live_http_statuses.append(classify_upstream_http_status(exc))
                 raise
             self.live_reply_shapes.append(classify_live_reply_shape(response.content))
             self.live_error_codes.append("none")
+            self.live_http_statuses.append("none")
             return response
 
         self.deterministic_calls += 1

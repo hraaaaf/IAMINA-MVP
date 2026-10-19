@@ -23,8 +23,19 @@ from llm.base import LLMResponse
 from llm.tests.pulper_qualification_provider import (
     SyntheticQualificationTextProvider,
     classify_live_reply_shape,
+    classify_upstream_http_status,
 )
 from media.documents.extractors.pdf import extract_pdf
+
+
+def test_upstream_http_status_diagnostics_show_only_numeric_codes():
+    class UpstreamError(Exception):
+        status_code = 400
+
+    normalized = RuntimeError("safe")
+    normalized.__cause__ = UpstreamError("sensitive-ignored")
+    assert classify_upstream_http_status(normalized) == "http_400"
+    assert classify_upstream_http_status(RuntimeError("unknown")) == "unknown"
 
 
 def test_live_reply_diagnostic_keeps_only_structure_and_never_content():

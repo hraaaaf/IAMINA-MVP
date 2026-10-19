@@ -8,6 +8,9 @@
 
 # IAMINA Web V2 — W01 avant W02 : contrat de passage
 
+**W01-G5 — 19/10/2026, diagnostic statut HTTP Groq (sandbox synthétique seulement) :** benchmark [Pulper #39268986291](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39268986291) FAIL après correctif `include_reasoning:false`, classification `provider_internal_failure` insuffisante pour décider entre HTTP 400 (schéma/paramètre), 401/403 (credential/droits) ou autre. Ajout d'un détecteur qui ne restitue **que** le code numérique HTTP 400..599 de l'exception SDK chaînée à la réponse normalisée, **sans** logs ni persistance de réponse, URL, secret, document ou patient. Bench n'exécute que des fixtures synthétiques. Tests ciblés ajoutés. CI et artefact du futur HEAD nécessaires, pas de correction fournisseur à l'aveugle ni de baisse de seuil ; W01 NO-GO, W02 GELÉ, Vercel/Neon Production intacts.
+
+
 **W01-G5 — 19/10/2026, correction test Shadow :** workflow [Protected Shadow #39268744471](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39268744471) FAIL sur le SHA `83c26795`, test `llm/tests/test_provider_registry.py::test_groq_plain_text_completion_does_not_force_json_schema` attend encore `reasoning_format:hidden` alors que le transport effectif utilise `include_reasoning:false` conforme à la configuration candidate. Seule l'assertion de contrat mise à jour, pas de changement de comportement productif. Requiert CI exacte sur nouveau HEAD ; Pulper live reste NON CERTIFIÉ avant run Groq. W01 NO-GO, W02 GELÉ.
 
 

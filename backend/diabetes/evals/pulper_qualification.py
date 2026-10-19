@@ -286,6 +286,10 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
                                 provider.live_error_codes[-1]
                                 if provider.live_calls > calls_before else "none"
                             ),
+                            "upstream_http_status": (
+                                provider.live_http_statuses[-1]
+                                if provider.live_calls > calls_before else "none"
+                            ),
                             "parser_model_present": bool(output.parser_model),
                             "source_text_present": bool(output.raw_text.strip()),
                             "parse_error_category": (
