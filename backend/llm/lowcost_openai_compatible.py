@@ -133,8 +133,9 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
         if self._is_groq_gpt_oss():
             tuning.update(
                 {
+                    # Avoid optional reasoning controls on constrained JSON
+                    # completions; preserve strict schema and response parsing.
                     "response_format": _GPT_OSS_REPLY_FORMAT,
-                    "extra_body": {"include_reasoning": False},
                 }
             )
         return tuning
