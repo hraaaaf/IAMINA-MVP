@@ -434,4 +434,51 @@ void main() {
     expect(unlockWrite, greaterThan(unlockStart));
     expect(unlockState, greaterThan(unlockWrite));
   });
+
+  test('D10 owner 734 refuses unlock under a different account', () async {
+    seedStorage({
+      _credentialKey: _credential.encode(),
+      _requiredKey: 'required',
+      'iamina_app_lock_native_owner_v1': '734',
+    });
+    final authenticator = _FakeAuthenticator();
+    final service = AppLockService(authenticator: authenticator);
+    await service.initialize();
+    await expectLater(service.unlock(), throwsA(isA<AppLockException>()
+        .having((e) => e.code, 'code', 'app_lock_owner_mismatch')));
+    expect(authenticator.unlockCalls, 0);
+    expect(service.isUnlocked, isFalse);
+    expect(await const FlutterSecureStorage().read(
+        key: 'iamina_app_lock_native_owner_v1'), '734');
+    service.dispose();
+  });
+
+  test('D10 missing owner fails closed for recovery', () async {
+    seedStorage({_requiredKey: 'required'});
+    final service = AppLockService(authenticator: _FakeAuthenticator());
+    await service.initialize();
+    await expectLater(service.recoverWithVerifiedRemoteAccount(),
+        throwsA(isA<AppLockException>().having(
+            (e) => e.code, 'code', 'verified_remote_recovery_required')));
+    expect(service.recoveryRequired, isTrue);
+    expect(await const FlutterSecureStorage().read(key: _requiredKey),
+        'required');
+    service.dispose();
+  });
+
+  test('D10 corrupt owner remains fail closed', () async {
+    seedStorage({
+      _credentialKey: _credential.encode(),
+      _requiredKey: 'required',
+      'iamina_app_lock_native_owner_v1': 'tampered',
+    });
+    final service = AppLockService(authenticator: _FakeAuthenticator());
+    await service.initialize();
+    expect(service.recoveryRequired, isTrue);
+    expect(service.isUnlocked, isFalse);
+    expect(service.needsSetup, isFalse);
+    expect(await const FlutterSecureStorage().read(key: _requiredKey),
+        'required');
+    service.dispose();
+  });
 }
