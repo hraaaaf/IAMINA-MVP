@@ -51,3 +51,19 @@ Sandbox Vercel sécurisé, checkout SHA `e179a0b` puis `688e028`, ressources syn
 
 Journal Notion : https://app.notion.com/p/3fd77c66336281f390e2fe3e46651931
 Issue de suivi : https://github.com/hraaaaf/IAMINA-MVP/issues/1130
+
+
+## Diagnostic hosted W01-G5 — 19 octobre 2026 — REDIRECTION 302 PROUVÉE
+
+**Objectif observable :** classifier le HTTP 502 du Web BFF sans exposer de secret ou de données patient. **Résultat réel :**
+
+- Nouvelle instrumentation **Preview uniquement**, commit source `5c447f997f9747e464cfd6821d5a9fa944b2583d`, modifie `frontend/api/preview-proxy.js` uniquement : `console.warn` avec **catégorie fixe et entier HTTP** ; aucun jeton OIDC, Authorization, cookie, chemin de requête, contenu patient ou exception réseau journalisé. Régression Node sur clone exact en sandbox Vercel : **17/17 PASS**. Sandbox `sbx_8yTIgs28swVhpxHUnYotq27kaCUE` **arrêté** après les tests.
+- Web Vercel Preview **`dpl_ETsHZM56R2ZpEBBn37FNZkM94rUx`** `READY`, déployé manuellement sur commit `5c447f9` : `https://iamina-review-4bv5j2qrc-achraf-benmoussa-s-projects.vercel.app`. GET / = **200**.
+- GET `/api/v1/health` via Web = **502** ; log serveur de ce déploiement daté **19/10/2026 11:08:20Z**, request `6b88d-1792408099873-9436f40ef744`, classe `IAMINA_W01_PREVIEW_UPSTREAM_GATE {category:'redirect',status:302}`.
+- GET `/api/v1/demo/scenarios` via Web = **502** ; log serveur daté **11:08:23Z**, request `g46rh-1792408103847-dd9faea254ff`, **même HTTP 302** en amont.
+- La réponse `302` est refusée par le BFF conformément à son contrat fail-closed, qui retourne `502` au navigateur ; **le 502 n'est pas dû à une erreur réseau du BFF ni à un crash Flutter** dans ces deux requêtes. L'URL Location du 302 et les claims OIDC n'ont pas été inspectés/journalisés ; la redirection est compatible avec une interception par Vercel Deployment Protection/SSO mais cette cause exacte nécessite la configuration d'autorisation interprojets.
+- API Preview autonome `dpl_4RRtv8Aog9ZhzEswK3ftbgtXdFWU` a confirmé auparavant GET /api/v1/health 200 sous accès Vercel autorisé (`db=ok/cache=unavailable`) et demo/scenarios 200. **Aucun succès Web→API protégé n'a été observé.**
+
+**GATE EXTERNE inchangé :** Projet API `prj_Pn9FnyconF3h2w9gOU74iV98kJoU` → Settings → Deployment Protection → Trusted Sources : autoriser exclusivement l'appelant `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI`, **from=preview → to=preview**. La requête de configuration par API échoue **HTTP 404 `Deployment Protection Trusted Sources not found`** (request ID `fra1:sfo1::cd64q-1792406808820-a673da3b16c3`). Contacter administrateur/support Vercel, sans désactiver SSO ni créer de bypass statique. Référence incident : https://github.com/hraaaaf/IAMINA-MVP/issues/1130#issuecomment-6265746724
+
+**Next exact après human gate :** rerun GET /api/v1/health + scenarios par URL **Web Preview** et constater **200 JSON** sous OIDC, puis test Chrome connecté identité synthétique A/B, compte neuf vide D11, contrôle de non-interférence Neon, revue indépendante et closeout W01. Retirer le code temporaire d'observabilité avant toute intégration de production. **W01 NO-GO ; D11 OPEN ; aucun GO certifié.**
