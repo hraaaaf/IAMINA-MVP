@@ -44,6 +44,7 @@ void main() {
       );
     });
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _AuditAuthService(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
@@ -73,6 +74,7 @@ void main() {
     final captured = <http.Request>[];
     var call = 0;
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _AuditAuthService(),
       httpClient: MockClient((request) async {
         captured.add(request);
@@ -116,6 +118,7 @@ void main() {
   test('demo audit chat preserves nine prior exchanges on turn ten', () async {
     final capturedBodies = <Map<String, dynamic>>[];
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _AuditAuthService(),
       httpClient: MockClient((request) async {
         capturedBodies.add(
@@ -162,6 +165,7 @@ void main() {
 
   test('demo audit chat decodes governed Arabic reply', () async {
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _AuditAuthService(),
       httpClient: MockClient(
         (_) async => http.Response(
@@ -191,6 +195,7 @@ void main() {
 
   test('demo audit chat falls back locally when backend is unavailable', () async {
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _AuditAuthService(),
       httpClient: MockClient((_) async => throw http.ClientException('offline')),
       baseUrl: 'http://127.0.0.1:8000',
@@ -223,6 +228,7 @@ void main() {
       );
     });
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
@@ -267,6 +273,7 @@ void main() {
       );
     });
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
@@ -300,6 +307,7 @@ void main() {
 
   test('sendVoiceMessage requires an authenticated patient session', () async {
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _AuditAuthService(),
       httpClient: MockClient(
         (_) async => throw StateError('network must not be reached'),
