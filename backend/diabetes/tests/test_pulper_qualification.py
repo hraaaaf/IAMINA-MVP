@@ -64,6 +64,24 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
     assert "SECRET" not in json.dumps(result)
 
 
+def test_synthetic_live_text_seam_forwards_reply_preface_without_model_data():
+    captured = []
+    class Delegate:
+        def __init__(self):
+            self.client = SimpleNamespace(close=lambda: None)
+        def complete(self, system, user):
+            captured.append((system, user))
+            return LLMResponse(content='{"reply":"{}"}', provider="synthetic-delegate")
+    wrapper = SyntheticQualificationTextProvider(Delegate())
+    wrapper.complete("original-system", "BEGIN_UNTRUSTED_DOCUMENT\nL0001|HbA1c: 7.2 %\nEND_UNTRUSTED_DOCUMENT")
+    assert wrapper.live_calls == 1
+    assert wrapper.deterministic_calls == 0
+    assert len(captured) == 1
+    assert captured[0][0] == "original-system"
+    assert captured[0][1].startswith('The API forces a strict JSON object with exactly one key "reply"')
+    assert captured[0][1].endswith("END_UNTRUSTED_DOCUMENT")
+
+
 def test_upstream_http_status_diagnostics_show_only_numeric_codes():
     class UpstreamError(Exception):
         status_code = 400
