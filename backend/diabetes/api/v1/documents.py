@@ -145,7 +145,7 @@ def _read_upload_with_limit(file: UploadedFile) -> tuple[bytes | None, str | Non
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict})
+@router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict, 503: dict})
 @patient_ai_egress_scope("document_ingest", TEXT, IMAGE)
 def ingest_document(
     request: HttpRequest,
@@ -171,7 +171,19 @@ def ingest_document(
     # ── Extract ────────────────────────────────────────────────────────────────
     output    = ingest(file_bytes, filename, mime_type)
     batch_id  = str(uuid.uuid4())
-    cache.set(_pending_key(patient.id, batch_id), output, timeout=_PENDING_TTL)
+    key = _pending_key(patient.id, batch_id)
+    try:
+        cache.set(key, output, timeout=_PENDING_TTL)
+        # django-redis IGNORE_EXCEPTIONS=True can swallow a failed write.
+        # Never issue a confirmable batch ID unless it can be read back.
+        staged = cache.get(key)
+    except Exception:
+        staged = None
+    if staged is None:
+        logger.warning("documents.ingest pending extraction unavailable")
+        return 503, {
+            "detail": "Prévisualisation temporairement indisponible. Réessayez."
+        }
 
     preview = PulperPreviewResponse(
         batch_id=batch_id,

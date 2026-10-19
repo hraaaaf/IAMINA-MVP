@@ -53,6 +53,43 @@ class DocumentConfirmationScopeTest(TestCase):
         self.assertIsNotNone(fake_cache.get(_pending_key(patient.id, preview.batch_id)))
 
     @patch("diabetes.api.v1.documents._do_persist")
+    @patch("diabetes.api.v1.documents.ingest", return_value=PulperOutput())
+    def test_silent_redis_write_failure_does_not_return_fake_preview(
+        self, _ingest, do_persist,
+    ):
+        class SilentCache(_FakeCache):
+            def set(self, key, value, timeout=None):
+                return None  # django-redis IGNORE_EXCEPTIONS=True behavior
+
+        request = SimpleNamespace(auth=SimpleNamespace(id=101))
+        with patch("diabetes.api.v1.documents.cache", SilentCache()):
+            status, payload = ingest_document.__wrapped__(
+                request, _Upload(), confirm=False,
+            )
+        self.assertEqual(status, 503)
+        self.assertIn("indisponible", payload["detail"])
+        self.assertNotIn("batch_id", payload)
+        do_persist.assert_not_called()
+
+    @patch("diabetes.api.v1.documents._do_persist")
+    @patch("diabetes.api.v1.documents.ingest", return_value=PulperOutput())
+    def test_hard_redis_failure_never_confirms_or_persists(
+        self, _ingest, do_persist,
+    ):
+        class FailedCache(_FakeCache):
+            def set(self, key, value, timeout=None):
+                raise ConnectionError("synthetic-redis-down")
+
+        request = SimpleNamespace(auth=SimpleNamespace(id=101))
+        with patch("diabetes.api.v1.documents.cache", FailedCache()):
+            status, payload = ingest_document.__wrapped__(
+                request, _Upload(), confirm=False,
+            )
+        self.assertEqual(status, 503)
+        self.assertNotIn("synthetic-redis-down", payload["detail"])
+        do_persist.assert_not_called()
+
+    @patch("diabetes.api.v1.documents._do_persist")
     def test_other_patient_cannot_confirm_staged_batch(self, do_persist):
         fake_cache = _FakeCache()
         owner = SimpleNamespace(id=101)

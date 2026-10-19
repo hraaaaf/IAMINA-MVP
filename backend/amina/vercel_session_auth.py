@@ -32,6 +32,11 @@ class SessionAuth(NinjaSessionAuth):
             error_response = check_iamina_csrf(request)
             if error_response:
                 raise HttpError(403, "CSRF check Failed")
+        # Preserve 403 CSRF on unsafe cookie-auth requests, but never allow
+        # a rejected Authorization header to fall back to a cookie session.
+        # On GET, without this guard patient B could replace a forged Bearer A.
+        if request.META.get("HTTP_AUTHORIZATION"):
+            return None
         return request.COOKIES.get(self.param_name)
 
     def authenticate(

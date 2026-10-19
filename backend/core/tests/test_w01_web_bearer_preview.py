@@ -97,6 +97,28 @@ def test_bearer_only_a_b_a_identity_isolation_and_no_credential_denial():
 
 
 @pytest.mark.django_db
+def test_invalid_bearer_cannot_fallback_to_other_patients_cookie_on_get():
+    """Fail closed rather than return patient B when Bearer A is rejected."""
+    a, token_a = _patient("w01-fallback-a")
+    b, _ = _patient("w01-fallback-b")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(b)
+    ordinary = client.get("/api/v1/auth/me")
+    assert ordinary.status_code == 200
+    assert ordinary.json()["id"] == b.pk
+
+    forged = client.get(
+        "/api/v1/auth/me", **_bearer(token_a + "tampered"),
+    )
+    assert forged.status_code == 401
+    assert str(b.pk) not in forged.content.decode()
+
+    valid = client.get("/api/v1/auth/me", **_bearer(token_a))
+    assert valid.status_code == 200
+    assert valid.json()["id"] == a.pk
+
+
+@pytest.mark.django_db
 def test_bearer_logout_revokes_token_and_prevents_replay():
     user, token = _patient("w01-logout")
     isolated = Client(enforce_csrf_checks=True)
