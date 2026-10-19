@@ -162,6 +162,32 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             usage=_usage_from_response(response),
         )
 
+    def complete_json_object(self, system: str, user: str) -> LLMResponse:
+        """One Groq GPT-OSS JSON-object completion, with no hidden retries.
+
+        Pulper requires the *medical object itself* as JSON. The shared
+        strict {"reply": string} schema permits plain prose inside reply,
+        so it cannot guarantee a parseable clinical object.
+        """
+        if not self._is_groq_gpt_oss():
+            raise RuntimeError("JSON object completion requires Groq GPT-OSS")
+        tuning = self._complete_tuning()
+        tuning["response_format"] = {"type": "json_object"}
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=self._messages(system, user),
+                timeout=self.timeout_seconds,
+                **tuning,
+            )
+        except Exception as exc:
+            raise normalize_provider_exception(exc, self.provider_id) from exc
+        return LLMResponse(
+            content=response.choices[0].message.content or "",
+            provider=self.model,
+            usage=_usage_from_response(response),
+        )
+
     def complete_text(self, system: str, user: str) -> LLMResponse:
         """Single-turn plain-text completion for bounded non-JSON contracts."""
         tuning = self._request_tuning()
