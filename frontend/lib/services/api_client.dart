@@ -577,19 +577,6 @@ class ApiClient {
     }
   }
 
-  /// Seed demo data on the backend for the current user (creates PatientProfile + 30 days of logs).
-  Future<bool> seedDemoData() async {
-    try {
-      final response = await _client.post(
-        Uri.parse('/api/v1/demo/seed'),
-        body: <String, dynamic>{},
-      );
-      return response.isSuccessful;
-    } catch (_) {
-      return false;
-    }
-  }
-
   /// Discute avec l'assistant IAmina.
   Future<ChatResponse?> chatWithAmina(
     String message, {
