@@ -7,6 +7,7 @@ from django.test import TestCase
 from diabetes.models import LabReport, LogEntry
 from diabetes.services.documents.schema import GlucoseReading, PulperOutput
 from diabetes.services.documents.store import persist
+from diabetes.services.documents.shield import PulperShield
 
 
 class W01DocumentAtomicityTest(TestCase):
@@ -61,6 +62,17 @@ class W01DocumentAtomicityTest(TestCase):
         self._assert_rolled_back(result)
         self.assertEqual(result.glucose_duplicates, 0)
         self.assertTrue(result.errors)
+
+    def test_shield_vs_sql_glucose_range_disagreement_fails_closed(self):
+        # Current PulperShield accepts 25 mg/dL, while LogEntry's DB CHECK
+        # requires >=30. Never turn this mismatch into a false duplicate.
+        output = self._output()
+        output.glucose_readings[1].value_mgdl = 25.0
+        validated = PulperShield.validate(output)
+        self.assertEqual(len(validated.glucose_readings), 2)
+        result = persist(validated, self.patient, "synthetic-range-conflict")
+        self._assert_rolled_back(result)
+        self.assertEqual(result.glucose_duplicates, 0)
 
     def test_missing_timestamp_cannot_commit_remaining_readings(self):
         result = persist(self._output(second_timestamp=None), self.patient, "bad-timestamp")
