@@ -2,12 +2,19 @@ name: W02 synthetic Web vault A-B-A real Chrome
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, feat/w01-preview-same-origin-bff-20261017]
     paths:
       - 'frontend/lib/ui_w02_synthetic_vault_scope_probe_main.dart'
       - 'scripts/w02_web_local_vault_browser_probe.py'
       - 'scripts/tests/test_w02_web_vault_probe_contract.py'
       - '.github/workflows/w02-web-vault-a-b-a-browser.yml'
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/services/offline_demo_audit_seed.dart'
+      - 'frontend/lib/features/auth/**'
+      - 'frontend/lib/features/import/import_screen.dart'
+      - 'frontend/test/services/d11_vercel_preview_guards_test.dart'
+      - 'frontend/test/services/d11_import_demo_visibility_test.dart'
+      - 'frontend/test/d11_demo_login_no_seed_contract_test.dart'
   push:
     branches: [main]
     paths:
@@ -39,7 +46,20 @@ jobs:
         run: |
           set -euo pipefail
           flutter pub get
-          flutter analyze --no-fatal-infos lib/ui_w02_synthetic_vault_scope_probe_main.dart
+          flutter analyze --no-fatal-infos \
+            lib/ui_w02_synthetic_vault_scope_probe_main.dart \
+            lib/services/offline_demo_audit_seed.dart \
+            lib/data/drift/database.dart \
+            lib/features/import/import_screen.dart
+          # Native Drift fixture tests use Ubuntu's installed SQLite library.
+          mkdir -p "$RUNNER_TEMP/iamina-sqlite"
+          ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 "$RUNNER_TEMP/iamina-sqlite/libsqlite3.so"
+          export LD_LIBRARY_PATH="$RUNNER_TEMP/iamina-sqlite:${LD_LIBRARY_PATH:-}"
+          flutter test --no-pub \
+            test/services/d11_vercel_preview_guards_test.dart \
+            test/services/d11_import_demo_visibility_test.dart \
+            test/d11_demo_login_no_seed_contract_test.dart \
+            test/services/patient_vault_session_controller_test.dart
           flutter build web --release --no-web-resources-cdn -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
       - name: Chrome A-B-A synthetic IndexedDB isolation and browser reload
         shell: bash

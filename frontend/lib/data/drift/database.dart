@@ -453,6 +453,11 @@ class AppDatabase extends _$AppDatabase {
   // Generates 21 days of realistic Type-2 diabetic patient demo data.
   // Always clears existing entries first so data never goes stale (MISTAKES #22).
   Future<void> seedDemoData() async {
+    // D11: reject even a direct call before any delete or transaction.
+    if (patientVaultScope?.databaseName !=
+        PatientVaultScope.auditOnly().databaseName) {
+      throw StateError('Demo seeding restricted to audit-only vault');
+    }
     return transaction(() async {
       // Delete all existing log entries — demo data must be fresh (relative to now).
       await delete(logEntries).go();

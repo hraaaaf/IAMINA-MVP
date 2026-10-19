@@ -8,7 +8,7 @@ const envKeys = [
   'VERCEL_OIDC_TOKEN'
 ];
 const origin = 'https://iamina-review-goowsfx8j-achraf-benmoussa-s-projects.vercel.app';
-const apiOrigin = 'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app';
+const apiOrigin = 'https://iamina-certified-1mrvxnuk9-achraf-benmoussa-s-projects.vercel.app';
 function envSet() {
   process.env.VERCEL_ENV = 'preview';
   process.env.VERCEL_PROJECT_ID = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';

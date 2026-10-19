@@ -102,7 +102,26 @@ jobs:
           cat /tmp/iamina-dashboard-backend.log >&2 || true
           exit 1
 
-      - name: Create and seed synthetic certification identity
+      - name: Test D11 real Django rejection before browser certification
+        working-directory: backend
+        run: python manage.py test diabetes.tests.test_w02_d11_demo_seed_disabled --verbosity 1
+
+      - name: Test D11 real Flutter vault guards and no-seed logins
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Ubuntu runner: drift NativeDatabase needs a libsqlite3.so alias.
+          mkdir -p "$RUNNER_TEMP/iamina-sqlite"
+          ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 "$RUNNER_TEMP/iamina-sqlite/libsqlite3.so"
+          export LD_LIBRARY_PATH="$RUNNER_TEMP/iamina-sqlite:${LD_LIBRARY_PATH:-}"
+          flutter pub get
+          flutter test --no-pub \
+            test/d11_demo_login_no_seed_contract_test.dart \
+            test/services/d11_vercel_preview_guards_test.dart \
+            test/services/d11_import_demo_visibility_test.dart
+
+      - name: Create empty synthetic certification identity
         shell: bash
         run: |
           set -euo pipefail
@@ -115,14 +134,14 @@ jobs:
           print(json.dumps({'email':sys.argv[1],'password':sys.argv[2],'first_name':'Dashboard','last_name':'Visual'}))
           PY
           curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register -H 'Content-Type: application/json' --data-binary @/tmp/register.json >/tmp/auth.json
+          # D11: only the browser harness seeds its audit-only local fixture.
+          # The Django Preview/test account must remain clinically empty.
           python3 - <<'PY'
           import json
-          token=json.load(open('/tmp/auth.json')).get('access_token','')
-          assert token.startswith('iamina.')
-          open('/tmp/dashboard-token','w').write(token)
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/auth.json').read_text())
+          assert payload.get('access_token', '').startswith('iamina.')
           PY
-          TOKEN="$(cat /tmp/dashboard-token)"
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' >/tmp/demo-seed.json
 
       - name: Validate responsive and truthfulness contracts
         working-directory: frontend

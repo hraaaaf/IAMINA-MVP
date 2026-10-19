@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:amina/core/theme/amina_visual_language.dart';
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/data/models/companion_models.dart';
 import 'package:amina/data/models/proactive_preview_models.dart';
 import 'package:amina/features/companion/companion_premium_screen.dart';
@@ -124,7 +125,8 @@ class _Deps {
 }
 
 Future<_Deps> _createDeps() async {
-  final db = AppDatabase(NativeDatabase.memory());
+  final db = AppDatabase.testPatientVault(
+    NativeDatabase.memory(), PatientVaultScope.auditOnly());
   await db.seedDemoData();
   final profile =
       await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();

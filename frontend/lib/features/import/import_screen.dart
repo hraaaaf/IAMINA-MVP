@@ -11,6 +11,7 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_vault_scope.dart';
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -51,24 +52,35 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _seedDemo() async {
+    final db = context.read<AppDatabase>();
+    // D11: a debug button is never authority to mutate patient records.
+    if (db.patientVaultScope?.databaseName !=
+        PatientVaultScope.auditOnly().databaseName) {
+      return;
+    }
     setState(() {
       _seeding = true;
       _done = false;
     });
-    final db = context.read<AppDatabase>();
-    await db.seedDemoData();
-    if (mounted) {
-      setState(() {
-        _seeding = false;
-        _done = true;
-      });
-      await _loadStats();
+    try {
+      await db.seedDemoData();
+      if (mounted) {
+        setState(() => _done = true);
+        await _loadStats();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _done = false);
+    } finally {
+      if (mounted) setState(() => _seeding = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final canSeedAuditDemo = kDebugMode &&
+        context.read<AppDatabase>().patientVaultScope?.databaseName ==
+            PatientVaultScope.auditOnly().databaseName;
     final documentSurface = _totalLogs == 0
         ? AminaFirstUsePanel(
             key: const ValueKey('import-first-use'),
@@ -98,7 +110,7 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ),
         ),
-        if (kDebugMode) ...[
+        if (canSeedAuditDemo) ...[
           _ImportOption(
             icon: Icons.science_outlined,
             title: l10n.demoDataTitle,

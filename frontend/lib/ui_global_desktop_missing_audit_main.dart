@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
+import 'data/drift/patient_vault_scope.dart';
 import 'features/auth/consent_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_chat_screen.dart';
@@ -63,7 +64,7 @@ Future<void> main() async {
     debugPrint('Global route audit Firebase init unavailable: $error');
   }
 
-  final db = AppDatabase.defaults();
+  final db = AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
   final auth = AuthService();
   final api = ApiClient(authService: auth);
   final consent = ConsentService()

@@ -9,6 +9,7 @@ import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
+import 'data/drift/patient_vault_scope.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
 import 'features/auth/consent_screen.dart';
@@ -167,7 +168,8 @@ Future<void> main() async {
     debugPrint('Browser audit Firebase init unavailable: $error');
   }
 
-  final db = AppDatabase.defaults();
+  // Visual fixtures live in their own database; legacy/patient vaults stay inert.
+  final db = AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
   final auth = AuthService();
   final api = ApiClient(authService: auth);
   final consent = ConsentService()
