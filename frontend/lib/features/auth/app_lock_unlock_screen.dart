@@ -244,6 +244,24 @@ class _AppLockUnlockScreenState extends State<AppLockUnlockScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                                 ),
                               ),
+                            if (kIaminaPreviewSameOriginApi) ...[
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: TextButton(
+                                  key: const Key('w01-preview-locked-explore'),
+                                  onPressed: _busy ? null : () => context.go('/w01-preview'),
+                                  child: Text(l10n.w01PreviewSkipLock),
+                                ),
+                              ),
+                              Text(
+                                l10n.w01PreviewReadOnlyNotice,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AminaTheme.textSecondary(context),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

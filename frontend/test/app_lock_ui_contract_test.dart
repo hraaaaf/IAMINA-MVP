@@ -30,8 +30,6 @@ void main() {
       'mot de passe',
       'code PIN',
       'forgot',
-      'skip',
-      'ignorer',
     ]) {
       expect(setup.toLowerCase(), isNot(contains(weakSecret.toLowerCase())));
       expect(unlock.toLowerCase(), isNot(contains(weakSecret.toLowerCase())));
@@ -39,6 +37,18 @@ void main() {
     expect(unlock, contains('if (!recovery)'));
     expect(unlock, contains('recoveryRequired'));
     expect(unlock, contains("appLockPreview'] == 'recovery'"));
+    // Optional exploration is scoped to W01 preview and NEVER unlocks a vault.
+    expect(setup, contains('kIaminaPreviewSameOriginApi'));
+    expect(unlock, contains('kIaminaPreviewSameOriginApi'));
+    expect(setup, contains("context.go('/w01-preview')"));
+    expect(unlock, contains("context.go('/w01-preview')"));
+    final router = File('lib/routes/app_router.dart').readAsStringSync();
+    final readOnly = File('lib/features/auth/w01_read_only_preview_screen.dart').readAsStringSync();
+    expect(router, contains("kIaminaPreviewSameOriginApi ? null : '/login'"));
+    expect(router, contains('activeLock.recoveryRequired'));
+    expect(router, contains('!activeLock.isUnlocked'));
+    expect(readOnly, isNot(contains("import '../../data/drift/")));
+    expect(readOnly, isNot(contains("import '../../services/api_client.dart'")));
     expect(unlock, contains('appLockRecoveryReauthenticate'));
     expect(unlock, contains('appLockRecoveryReenroll'));
     expect(unlock, contains('recoverWithVerifiedRemoteAccount()'));

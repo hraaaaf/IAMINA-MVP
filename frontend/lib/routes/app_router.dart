@@ -7,6 +7,7 @@ import '../features/auth/app_lock_unlock_screen.dart';
 import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
+import '../features/auth/w01_read_only_preview_screen.dart';
 import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
@@ -14,6 +15,7 @@ import '../modules/module_registry.dart';
 import '../services/app_lock_service.dart';
 import '../services/auth_service.dart';
 import '../services/consent_service.dart';
+import '../services/preview_api_origin.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -104,6 +106,7 @@ AppRouterHolder createAppRouterHolder({
       final isLoginPage = path == '/login';
       final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
+      final isW01ReadOnlyPreview = path == '/w01-preview';
       final isOnboardingPage = path == '/onboarding';
       final isAppLockSetupPage = path == '/app-lock/setup';
       final isAppLockUnlockPage = path == '/app-lock/unlock';
@@ -132,6 +135,12 @@ AppRouterHolder createAppRouterHolder({
       );
       if (requiresHostedRemoteLogin && !isLoginPage) {
         return '/login';
+      }
+
+      // W01 Preview: optional lock permits PUBLIC read-only exploration only.
+      // No patient route or vault can be reached through this exception.
+      if (isW01ReadOnlyPreview) {
+        return kIaminaPreviewSameOriginApi ? null : '/login';
       }
 
       // Audit access is compile-time + loopback constrained. It may render the
@@ -196,7 +205,12 @@ AppRouterHolder createAppRouterHolder({
             !isConsentPage &&
             !isAppLockPage &&
             !isOnboardingPage) {
-          return '/consent';
+          return kIaminaPreviewSameOriginApi ? '/w01-preview' : '/consent';
+        }
+        if (kIaminaPreviewSameOriginApi &&
+            isConsentPage &&
+            !authService.hasRemoteApiCredential) {
+          return '/w01-preview';
         }
         if ((hasConsent || hasDeclined) && isConsentPage) return _homeRoute();
         if (activeConsent.hasCompletedOnboarding && isOnboardingPage) {
@@ -225,6 +239,14 @@ AppRouterHolder createAppRouterHolder({
               child: child,
             );
           },
+        ),
+      ),
+      GoRoute(
+        path: '/w01-preview',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const W01ReadOnlyPreviewScreen(),
         ),
       ),
       GoRoute(

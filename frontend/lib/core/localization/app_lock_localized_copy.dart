@@ -129,6 +129,66 @@ extension AppLockLocalizedCopy on AppLocalizations {
         ar: 'فشلت استعادة الأمان. تبقى المساحة السريرية مقفلة.',
       );
 
+  String get w01PreviewSkipLock => _appLockPick(
+        en: 'Later · Explore without patient data',
+        fr: 'Plus tard · Explorer sans données médicales',
+        ar: 'لاحقاً · استكشاف دون بيانات طبية',
+      );
+
+  String get w01PreviewReadOnlyNotice => _appLockPick(
+        en: 'Preview mode only. Clinical records remain inaccessible until the device is unlocked.',
+        fr: 'Aperçu uniquement. Les dossiers médicaux restent inaccessibles sans déverrouillage.',
+        ar: 'وضع المعاينة فقط. تبقى السجلات الطبية غير متاحة دون فتح القفل.',
+      );
+
+  String get w01PreviewTitle => _appLockPick(
+        en: 'Explore IAmina',
+        fr: 'Explorer IAmina',
+        ar: 'استكشاف IAmina',
+      );
+
+  String get w01PreviewDescription => _appLockPick(
+        en: 'Safe read-only preview. No patient record is displayed, sent or edited.',
+        fr: 'Aperçu sécurisé en lecture seule. Aucun dossier patient n’est affiché, envoyé ou modifié.',
+        ar: 'معاينة آمنة للقراءة فقط. لا يتم عرض أو إرسال أو تعديل أي ملف مريض.',
+      );
+
+  String get w01PreviewConsentTitle => _appLockPick(
+        en: 'External AI consent',
+        fr: 'Consentement IA',
+        ar: 'الموافقة على الذكاء الاصطناعي',
+      );
+
+  String get w01PreviewAccept => _appLockPick(
+        en: 'Accept',
+        fr: 'Accepter',
+        ar: 'قبول',
+      );
+
+  String get w01PreviewSkip => _appLockPick(
+        en: 'Skip',
+        fr: 'Passer',
+        ar: 'تخطي',
+      );
+
+  String get w01PreviewConsentUnavailable => _appLockPick(
+        en: 'A verified server account and unlocked device are required to record AI consent. Nothing was granted.',
+        fr: 'Un compte serveur vérifié et un appareil déverrouillé sont nécessaires pour accepter. Aucun consentement n’a été accordé.',
+        ar: 'يلزم حساب خادم موثق وجهاز مفتوح لتسجيل الموافقة. لم يتم منح أي موافقة.',
+      );
+
+  String get w01PreviewProtect => _appLockPick(
+        en: 'Set up secure lock',
+        fr: 'Configurer le verrou sécurisé',
+        ar: 'إعداد القفل الآمن',
+      );
+
+  String get w01PreviewReturnUnlock => _appLockPick(
+        en: 'Unlock medical space',
+        fr: 'Déverrouiller l’espace médical',
+        ar: 'فتح المساحة الطبية',
+      );
+
   String get appLockRetry => _appLockPick(
         en: 'Try again',
         fr: 'Réessayer',

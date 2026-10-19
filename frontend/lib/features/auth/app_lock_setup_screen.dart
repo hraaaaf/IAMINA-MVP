@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../services/app_lock_authenticator.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/audit_access_policy.dart';
+import '../../services/preview_api_origin.dart';
 
 class AppLockSetupScreen extends StatefulWidget {
   const AppLockSetupScreen({super.key});
@@ -226,6 +227,24 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
                             ),
+                            if (kIaminaPreviewSameOriginApi) ...[
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: TextButton(
+                                  key: const Key('w01-preview-lock-skip'),
+                                  onPressed: _busy ? null : () => context.go('/w01-preview'),
+                                  child: Text(l10n.w01PreviewSkipLock),
+                                ),
+                              ),
+                              Text(
+                                l10n.w01PreviewReadOnlyNotice,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AminaTheme.textSecondary(context),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

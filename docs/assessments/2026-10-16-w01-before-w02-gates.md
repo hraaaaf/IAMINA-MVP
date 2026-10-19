@@ -30,6 +30,26 @@
 
 # IAMINA Web V2 — W01 avant W02 : contrat de passage
 
+## W01 WEB — 19/10/2026 — choix facultatifs demandés par le propriétaire, Preview synthétique uniquement
+
+**BEFORE / preuve :** capture réelle iPhone de l'écran « Confidentialité & IA » bloquant ; bouton « Accepter et continuer » silencieux sur les premières Previews. Le patch `dd572127` expliquait l'absence de compte IAMINA distant, sans retirer l'interstitiel. Propriétaire demande : « le verrou facultatif » et « consentement discret en haut à gauche avec Accepter ou Skip ». **Goal W01 :** navigation non bloquée en mode aperçu *sans données médicales*, consentement extérieur optionnel et révocable, jamais de faux grant ou d'accès à un coffre patient verrouillé.
+
+**Mockup textuel 390 × 844, zone visible dès l'ouverture :**
+
+`┌ Consentement IA ───────────┐`
+`│ [ Accepter ] [ Passer ]   │`
+`└────────────────────────────┘`
+`        ◈ Explorer IAmina`
+`    Aperçu en lecture seule`
+`[ Configurer le verrou sécurisé ]`
+
+**Implémentation W01 :** ajout de `/w01-preview` accessible uniquement avec `IAMINA_PREVIEW_SAME_ORIGIN_API=true` compile time et utilisateur local authentifié. L'écran `W01ReadOnlyPreviewScreen` ne charge ni `AppDatabase`, ni `ApiClient`, ni patient data, ni clinique ; « Accepter » n'enregistre RIEN si absence de Bearer IAMINA et de verrou fort, montre une explication accessible ; « Passer » masque la demande (et, **si déjà déverrouillé**, marque explicitement la préférence locale de refus puis ouvre le tableau de bord). La fenêtre de consentement plein écran reste uniquement pour le consentement serveur effectivement possible ; sur Preview locale, les redirections automatiques sans choix pointent vers l'aperçu. Écran setup verrou : nouveau lien discret `Plus tard · Explorer sans données médicales`, uniquement Preview; écran unlock/recovery propose le même **aperçu sans aucune ouverture du coffre**. Router garde `recoveryRequired`, `!isConfigured`, `!isUnlocked` sur **toutes les routes patient**, WebAuthn/auth patient/rotation de jetons inchangés. `AppLockService` / état du coffre / DB **inchangés**. L'opt-out ne peut jamais restaurer ni retirer un verrou existant. Localisation FR/EN/AR via `app_lock_localized_copy.dart`, sans télémétrie PHI. **Le verrou médical n'est donc PAS facultatif pour entrer dans le coffre patient** : seul l'accès **à cet aperçu W01 exempt de données** l'est.
+
+**Tests attendus / preuve observable :** UI Flutter 390 × 844 consentement haut gauche, Accept sans identité distante affiche erreur et ne déclenche ni transfert ni navigation consent serveur, Passer supprime bandeau et n'ouvre pas dashboard ni verrou, lien protéger → setup, guards statiques / absence import API/DB, autres surfaces et tests CI. Attendre CI SHA exact avant Preview. **AFTER** : capture réelle iPhone même viewport à recueillir après nouveau déploiement Vercel **Web Preview W01 seul** et comparer avec BEFORE ; score visuel non attribué tant que test réel manquant.
+
+**Contraintes inchangées :** W01 NO-GO, W02 GELÉ, scope Web seulement, aucune modification Production/Neon Production, aucune fusion, aucune relaxation du consentement IA vérifiable ou app lock clinique. G4–G7, auth navigateur A/B, Redis/Neon runtime et upload 4 MiB/15 MiB restent ouverts.
+
+
 **W01-G5 — 19/10/2026 — deux assertions legacy résiduelles corrigées :** [CI #39290757536](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39290757536) sur SHA `379ddb15`: backend `ruff + pytest` **2 FAIL, 2909 PASS, 5 SKIP, 3 XFAIL, 124 subtests PASS** ; les deux FAIL attendent encore `pulper-parse-v4-sparse-output` dans `diabetes/tests/test_pulper_provenance.py` et `diabetes/tests/test_pulper_security.py`. Le produit est correctement versionné `pulper-parse-v5-fasting-lab-routing` pour un changement de consigne de classification du glucose à jeun. Seules les **deux attentes de test** sont synchronisées, aucun changement du code productif ni du seuil. En parallèle [Pulper Golden #39290758726](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39290758726) **SUCCESS, artefact #12204393448 lu : 18 TP / 0 FP / 0 FN ; 18/18 provenance ; 8/8 formats, 6/6 fail closed, tous les thresholds true, 0 retry** sur `379ddb15` avec `temperature=0`. Un succès unique ne suffit pas à prouver stabilité du provider sur plusieurs runs. **Nouvelle CI exacte attendue** après cette correction du harnais ; W01 NO-GO/W02 GELÉ, aucun deploy Vercel/merge/Neon Production.
 
 
