@@ -40,11 +40,10 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
             kwargs["messages"][0]["content"],
             kwargs["messages"][1]["content"],
         ))
-        if "Extract medical data" in kwargs["messages"][1]["content"]:
-            class SyntheticHTTP400(Exception):
-                status_code = 400
-            raise SyntheticHTTP400("secret-do-not-log")
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="SECRET"))])
+        reply = ('{"reply":"not json"}' if "Mandatory formatting:" not in
+                 kwargs["messages"][1]["content"] else
+                 '{"reply":"{\\\"document_type\\\":\\\"lab_report\\\"}"}')
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=reply))])
 
     delegate = SimpleNamespace(
         model="openai/gpt-oss-120b",
@@ -55,11 +54,12 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
     assert len(observed_pairs) == 2
     assert "Place ALL requested clinical fields" in observed_pairs[0][1]
     assert "Extract medical data" in observed_pairs[0][1]
-    assert "A human must review" in observed_pairs[1][1]
+    assert "Mandatory formatting:" not in observed_pairs[0][1]
+    assert "Mandatory formatting:" in observed_pairs[1][1]
     assert all("You are a medical document parser" in pair[0] for pair in observed_pairs)
     assert result == [
-        {"variant": "full_user_reply_preface", "status": "http_400"},
-        {"variant": "compact_user_reply_contract", "status": "http_200"},
+        {"variant": "pdf_base_preface", "status": "http_200", "shape": "reply_non_json"},
+        {"variant": "pdf_strict_inner_json", "status": "http_200", "shape": "reply_json_object"},
     ]
     assert "SECRET" not in json.dumps(result)
 
