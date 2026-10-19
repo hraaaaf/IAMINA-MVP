@@ -10,6 +10,8 @@ on:
       - '.github/workflows/w02-web-vault-a-b-a-browser.yml'
       - 'frontend/lib/data/drift/database.dart'
       - 'frontend/lib/services/offline_demo_audit_seed.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/test/services/app_lock_service_test.dart'
       - 'frontend/lib/features/auth/**'
       - 'frontend/lib/features/import/import_screen.dart'
       - 'frontend/test/services/d11_vercel_preview_guards_test.dart'
@@ -49,6 +51,7 @@ jobs:
           flutter analyze --no-fatal-infos \
             lib/ui_w02_synthetic_vault_scope_probe_main.dart \
             lib/services/offline_demo_audit_seed.dart \
+            lib/services/app_lock_service.dart \
             lib/data/drift/database.dart \
             lib/features/import/import_screen.dart
           # Native Drift fixture tests use Ubuntu's installed SQLite library.
@@ -59,7 +62,8 @@ jobs:
             test/services/d11_vercel_preview_guards_test.dart \
             test/services/d11_import_demo_visibility_test.dart \
             test/d11_demo_login_no_seed_contract_test.dart \
-            test/services/patient_vault_session_controller_test.dart
+            test/services/patient_vault_session_controller_test.dart \
+            test/services/app_lock_service_test.dart
           flutter build web --release --no-web-resources-cdn -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
       - name: Chrome A-B-A synthetic IndexedDB isolation and browser reload
         shell: bash
