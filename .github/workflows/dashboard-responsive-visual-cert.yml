@@ -118,7 +118,8 @@ jobs:
           flutter pub get
           flutter test --no-pub \
             test/d11_demo_login_no_seed_contract_test.dart \
-            test/services/d11_vercel_preview_guards_test.dart
+            test/services/d11_vercel_preview_guards_test.dart \
+            test/services/d11_import_demo_visibility_test.dart
 
       - name: Create empty synthetic certification identity
         shell: bash
