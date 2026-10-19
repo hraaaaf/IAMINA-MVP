@@ -18,6 +18,12 @@ class _FakeCache:
     def set(self, key, value, timeout=None):
         self.values[key] = value
 
+    def add(self, key, value, timeout=None):
+        if key in self.values:
+            return False
+        self.values[key] = value
+        return True
+
     def get(self, key):
         return self.values.get(key)
 
@@ -104,6 +110,55 @@ class DocumentConfirmationScopeTest(TestCase):
         self.assertFalse(response.ok)
         do_persist.assert_not_called()
         self.assertIs(fake_cache.get(_pending_key(owner.id, batch_id)), output)
+
+    @patch("diabetes.api.v1.documents._do_persist")
+    def test_parallel_confirmation_claim_allows_exactly_one_persist(self, do_persist):
+        owner = SimpleNamespace(id=101)
+        batch = "synthetic-racing-batch"
+        output = PulperOutput()
+        expected = PulperConfirmResponse(
+            ok=True,
+            lab_report_id=101,
+            glucose_readings_saved=0,
+            glucose_duplicates=0,
+            errors=[],
+        )
+        do_persist.return_value = expected
+
+        class InterleavingCache(_FakeCache):
+            nested_response = None
+            reentered = False
+
+            def get(self, key):
+                if key == _pending_key(owner.id, batch) and not self.reentered:
+                    self.reentered = True
+                    # Simulate B arriving after A claimed, before A reads.
+                    self.nested_response = confirm_import(
+                        SimpleNamespace(auth=owner), batch,
+                    )
+                return super().get(key)
+
+        cache = InterleavingCache()
+        cache.set(_pending_key(owner.id, batch), output)
+        with patch("diabetes.api.v1.documents.cache", cache):
+            response = confirm_import(SimpleNamespace(auth=owner), batch)
+        self.assertIs(response, expected)
+        self.assertFalse(cache.nested_response.ok)
+        self.assertEqual(cache.nested_response.glucose_readings_saved, 0)
+        do_persist.assert_called_once_with(output, owner, batch)
+
+    @patch("diabetes.api.v1.documents._do_persist")
+    def test_unavailable_claim_never_reads_or_persists_batch(self, do_persist):
+        owner = SimpleNamespace(id=101)
+        batch = "synthetic-failed-claim"
+        cache = _FakeCache()
+        cache.set(_pending_key(owner.id, batch), PulperOutput())
+        with patch.object(cache, "add", return_value=None):
+            with patch("diabetes.api.v1.documents.cache", cache):
+                response = confirm_import(SimpleNamespace(auth=owner), batch)
+        self.assertFalse(response.ok)
+        do_persist.assert_not_called()
+        self.assertIsNotNone(cache.get(_pending_key(owner.id, batch)))
 
     @patch("diabetes.api.v1.documents._do_persist")
     def test_owner_confirmation_consumes_batch_once(self, do_persist):

@@ -143,6 +143,27 @@ def _read_upload_with_limit(file: UploadedFile) -> tuple[bytes | None, str | Non
     return file_bytes, None
 
 
+def _consume_pending_batch_once(patient_id: int, batch_id: str):
+    """Claim patient-scoped confirmation atomically before reading the cache.
+
+    The Redis backend implements cache.add as an atomic SET-if-absent.
+    Redis outages (including IGNORE_EXCEPTIONS) fail closed. The claim is
+    time-bounded and contains no PHI.
+    """
+    key = _pending_key(patient_id, batch_id)
+    try:
+        claimed = cache.add(f"{key}:consume", "1", timeout=_PENDING_TTL)
+        if not claimed:
+            return None
+        output = cache.get(key)
+        if output is not None:
+            cache.delete(key)
+        return output
+    except Exception:
+        logger.warning("documents.confirm pending extraction unavailable")
+        return None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict, 503: dict})
@@ -240,9 +261,7 @@ def confirm_import(request: HttpRequest, batch_id: str):
     Called when the user taps "Confirmer" in the Flutter UI.
     """
     patient = request.auth
-    output = cache.get(_pending_key(patient.id, batch_id))
-    if output is not None:
-        cache.delete(_pending_key(patient.id, batch_id))   # consume once — no replay attacks
+    output = _consume_pending_batch_once(patient.id, batch_id)
     if output is None:
         return PulperConfirmResponse(
             ok=False,
