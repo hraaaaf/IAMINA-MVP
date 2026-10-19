@@ -53,11 +53,13 @@ def test_synthetic_protocol_probe_bounds_calls_and_never_records_content(monkeyp
     )
     result = bounded_synthetic_transport_probe(delegate)
     assert len(observed_pairs) == 2
+    assert "Place ALL requested clinical fields" in observed_pairs[0][1]
     assert "Extract medical data" in observed_pairs[0][1]
-    assert "You are a medical document parser" in observed_pairs[1][0]
+    assert "A human must review" in observed_pairs[1][1]
+    assert all("You are a medical document parser" in pair[0] for pair in observed_pairs)
     assert result == [
-        {"variant": "full_user_short_system", "status": "http_400"},
-        {"variant": "full_system_short_user", "status": "http_200"},
+        {"variant": "full_user_reply_preface", "status": "http_400"},
+        {"variant": "compact_user_reply_contract", "status": "http_200"},
     ]
     assert "SECRET" not in json.dumps(result)
 
