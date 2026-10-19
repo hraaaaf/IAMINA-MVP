@@ -316,7 +316,16 @@ def run_live_qualification(output_path: Path) -> dict[str, Any]:
     def ratio(ok, total):
         return ok / total if total else 1.0
 
-    parser_route_counts = {"live_groq": getattr(provider, "live_calls", 0), "deterministic_fixture": getattr(provider, "deterministic_calls", 0)}
+    parser_route_counts = {
+        "live_groq": getattr(provider, "live_calls", 0),
+        "deterministic_fixture": getattr(provider, "deterministic_calls", 0),
+        # Real transport attempts may exceed case count after a strict-schema
+        # HTTP 400; report aggregate retries instead of concealing them.
+        "groq_strict_json_retries": getattr(
+            getattr(provider, "delegate", None),
+            "strict_json_retry_count", 0,
+        ),
+    }
     metrics = {"critical_precision": score.precision, "critical_recall": score.recall, "timestamp_timezone_preservation": ratio(ts_ok, ts_total), "critical_provenance_coverage": ratio(prov_ok, prov_total), "supported_format_coverage": len(qualified) / len(SUPPORTED_FORMATS), "fail_closed_rate": ratio(fail_ok, fail_total), "version_capture": ratio(ver_ok, ver_total), "ambiguous_critical_autoaccepted": autoaccepted, "qualification_log_sentinel_leaks": sum(SYNTHETIC_SENTINEL in message for message in capture.messages), "critical_corruptions": corruptions, "scored_cases": scored}
     report = {"schema": "pulper-qualification-v3", "synthetic_only": True, "text_provider": "groq/openai-gpt-oss-120b", "vision_accuracy_mode": "synthetic_transcription_not_live_ocr", "synthetic_vision_parser_mode": "deterministic_fixture_parser", "live_vision_accuracy_qualified": False, "supported_formats": sorted(SUPPORTED_FORMATS), "parser_route_counts": parser_route_counts, "transport_probe": {"synthetic_only": True, "planned_calls": 2, "attempted_calls": len(transport_probe), "results": transport_probe}, "metrics": metrics, "counts": {"tp": score.true_positive, "fp": score.false_positive, "fn": score.false_negative, "provenance_expected": prov_total, "provenance_verified": prov_ok, "timestamps_expected": ts_total, "timestamps_exact": ts_ok, "fail_closed_expected": fail_total, "fail_closed_passed": fail_ok, "formats_qualified": len(qualified), "formats_expected": len(SUPPORTED_FORMATS)}, "cases": cases_out}
     if SYNTHETIC_SENTINEL in json.dumps(report, sort_keys=True):

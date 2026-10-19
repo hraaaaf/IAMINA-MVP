@@ -141,13 +141,34 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
         return tuning
 
     def complete(self, system: str, user: str) -> LLMResponse:
+        # The strict Groq GPT-OSS schema normally guarantees a JSON envelope,
+        # but upstream occasionally refuses a generated completion with HTTP 400.
+        # Retry that transport failure ONCE with the same strict schema. Do not
+        # retry quota, authentication, timeouts, or other models. Both failures
+        # remain fail-closed through the normal provider error boundary.
+        request = {
+            "model": self.model,
+            "messages": self._messages(system, user),
+            "timeout": self.timeout_seconds,
+            **self._complete_tuning(),
+        }
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=self._messages(system, user),
-                timeout=self.timeout_seconds,
-                **self._complete_tuning(),
-            )
+            try:
+                response = self.client.chat.completions.create(**request)
+            except Exception as exc:
+                if not (
+                    self._is_groq_gpt_oss()
+                    and getattr(exc, "status_code", None) == 400
+                ):
+                    raise
+                # Aggregate counter only: no medical text, SDK errors or tokens.
+                self.strict_json_retry_count = (
+                    getattr(self, "strict_json_retry_count", 0) + 1
+                )
+                logger.warning(
+                    "groq structured JSON HTTP 400; one bounded retry"
+                )
+                response = self.client.chat.completions.create(**request)
         except Exception as exc:
             raise normalize_provider_exception(exc, self.provider_id) from exc
         return LLMResponse(

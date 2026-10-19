@@ -12,7 +12,6 @@ from django.test import SimpleTestCase
 from diabetes.services.documents.pulper import ingest
 from media.documents.security import DocumentInspection
 
-
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
