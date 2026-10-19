@@ -12,6 +12,8 @@ Future<void> seedOfflineDemoAuditData(
   if (!auditAllowed || !offlineDemo) return;
   // D11: user-owned, device-local and legacy vaults never receive demo data.
   if (db.patientVaultScope?.databaseName !=
-      PatientVaultScope.auditOnly().databaseName) return;
+      PatientVaultScope.auditOnly().databaseName) {
+    return;
+  }
   await db.seedDemoData();
 }
