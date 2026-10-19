@@ -598,6 +598,12 @@ abstract class AppLocalizations {
   /// **'Continue without AI'**
   String get consentDeclineWithoutAI;
 
+  /// A server account is required to accept AI consent.
+  String get consentRemoteAccountRequired;
+
+  /// Server or secure-local confirmation failed; AI must remain disabled.
+  String get consentConfirmationFailed;
+
   /// No description provided for @consentAlreadyGiven.
   ///
   /// In en, this message translates to:

@@ -83,6 +83,8 @@
   "consentDataPoint3": "😴 Fatigue and life event markers",
   "consentAccept": "Accept & continue",
   "consentDeclineWithoutAI": "Continue without AI",
+  "consentRemoteAccountRequired": "AI consent requires an IAMINA account signed in to the server. This local session cannot record it. You can continue without AI.",
+  "consentConfirmationFailed": "AI consent was not confirmed. External AI access remains disabled. Try again or continue without AI.",
   "consentAlreadyGiven": "Consent given",
   "consentWithdraw": "Withdraw AI consent",
   "consentWithdrawConfirmTitle": "Withdraw AI consent?",

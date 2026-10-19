@@ -8,6 +8,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/auth/consent_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
+import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 import 'package:amina/services/consent_service.dart';
@@ -22,6 +23,13 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
+
+final class _TestAuthService extends AuthService {
+  bool remoteCredential = true;
+
+  @override
+  bool get hasRemoteApiCredential => remoteCredential;
+}
 
 final class _TestApiClient extends ApiClient {
   _TestApiClient(this._testClient) : super(baseUrl: 'http://localhost:8000');
@@ -55,6 +63,7 @@ class _FakeConsentEvidenceStore extends ConsentEvidenceStore {
 Widget _makeApp({
   required AppDatabase db,
   required ApiClient apiClient,
+  required AuthService authService,
   required ConsentService consentService,
   required ConsentEvidenceStore evidenceStore,
 }) {
@@ -76,6 +85,7 @@ Widget _makeApp({
     providers: [
       Provider<AppDatabase>.value(value: db),
       Provider<ApiClient>.value(value: apiClient),
+      ChangeNotifierProvider<AuthService>.value(value: authService),
       Provider<ConsentEvidenceStore>.value(value: evidenceStore),
       ChangeNotifierProvider<ConsentService>.value(value: consentService),
     ],
@@ -98,6 +108,7 @@ void main() {
   late ChopperClient chopper;
   late _TestApiClient apiClient;
   late ConsentService consentService;
+  late _TestAuthService authService;
   late _FakeConsentEvidenceStore evidenceStore;
   late ConsentNoticeClaim claim;
   late http.Request? capturedRequest;
@@ -122,6 +133,7 @@ void main() {
     responseSuccess = true;
     responseCompleter = null;
     consentService = ConsentService();
+    authService = _TestAuthService();
     evidenceStore = _FakeConsentEvidenceStore();
 
     chopper = ChopperClient(
@@ -146,6 +158,7 @@ void main() {
 
   tearDown(() async {
     consentService.dispose();
+    authService.dispose();
     chopper.dispose();
     await db.close();
   });
@@ -153,6 +166,7 @@ void main() {
   Widget app() => _makeApp(
     db: db,
     apiClient: apiClient,
+    authService: authService,
     consentService: consentService,
     evidenceStore: evidenceStore,
   );
@@ -267,5 +281,54 @@ void main() {
     expect(evidenceStore.written, isNull);
     expect(consentService.hasConsent, isFalse);
     expect(find.byType(ConsentScreen), findsOneWidget);
+    expect(find.textContaining('Le consentement IA n’a pas été confirmé'), findsOneWidget);
+    expect(find.text('Continuer sans IA'), findsOneWidget);
+  });
+
+  testWidgets('W01 local-only acceptance refuses before network and explains why', (tester) async {
+    authService.remoteCredential = false;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Accepter et continuer'));
+    await tester.pumpAndSettle();
+
+    expect(capturedRequest, isNull);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.textContaining('Cette session locale'), findsOneWidget);
+    expect(find.text('Continuer sans IA'), findsOneWidget);
+  });
+
+  testWidgets('W01 local-only decline still navigates without granting AI consent', (tester) async {
+    authService.remoteCredential = false;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accepter et continuer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continuer sans IA'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(capturedRequest, isNull);
+  });
+
+  testWidgets('W01 390px iPhone viewport keeps error and opt-out accessible', (tester) async {
+    authService.remoteCredential = false;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Accepter et continuer'));
+    await tester.tap(find.text('Accepter et continuer'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Cette session locale'), findsOneWidget);
+    await tester.ensureVisible(find.text('Continuer sans IA'));
+    expect(tester.takeException(), isNull);
   });
 }

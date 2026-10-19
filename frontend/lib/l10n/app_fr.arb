@@ -83,6 +83,8 @@
   "consentDataPoint3": "😴 Fatigue et marqueurs d'événements de vie",
   "consentAccept": "Accepter et continuer",
   "consentDeclineWithoutAI": "Continuer sans IA",
+  "consentRemoteAccountRequired": "Le consentement IA nécessite un compte IAMINA connecté au serveur. Cette session locale ne peut pas l’enregistrer. Vous pouvez continuer sans IA.",
+  "consentConfirmationFailed": "Le consentement IA n’a pas été confirmé. Aucun accès à l’IA externe n’est activé. Réessayez ou continuez sans IA.",
   "consentAlreadyGiven": "Consentement accordé",
   "consentWithdraw": "Retirer le consentement IA",
   "consentWithdrawConfirmTitle": "Retirer le consentement IA ?",
