@@ -6,8 +6,8 @@ from django.test import TestCase
 
 from diabetes.models import LabReport, LogEntry
 from diabetes.services.documents.schema import GlucoseReading, PulperOutput
-from diabetes.services.documents.store import persist
 from diabetes.services.documents.shield import PulperShield
+from diabetes.services.documents.store import persist
 
 
 class W01DocumentAtomicityTest(TestCase):
