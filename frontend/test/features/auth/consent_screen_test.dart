@@ -306,6 +306,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Accepter et continuer'));
     await tester.pumpAndSettle();
+    // Error notice enlarges the scrollable consent page on mobile. Flutter
+    // must scroll the opt-out CTA into view before simulating a real tap.
+    await tester.ensureVisible(find.text('Continuer sans IA'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Continuer sans IA'));
     await tester.pumpAndSettle();
 
