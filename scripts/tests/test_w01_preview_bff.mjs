@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Readable, Writable } from 'node:stream';
 import { proxy, safePath, requestPath, previewOnlyAndSameOrigin, resolvePreviewApiOrigin } from '../../frontend/api/preview-proxy.js';
 
@@ -521,5 +522,66 @@ test('synthetic bearer A-B-A forwarding never inherits a browser SSO cookie', as
     await proxy(req('profile',{headers:{cookie:'_vercel_jwt=not-identity'}}),
       missing,async()=> 'synthetic-oidc');
     assert.equal(missing.statusCode,401);
+  });
+});
+
+
+test('W01 Vercel API rewrite includes terminal slashes and never falls through to SPA', () => {
+  const frontend = JSON.parse(readFileSync(
+    new URL('../../frontend/vercel.json', import.meta.url), 'utf8'));
+  const monorepo = JSON.parse(readFileSync(
+    new URL('../../vercel.json', import.meta.url), 'utf8'));
+
+  assert.deepEqual(frontend.rewrites, [
+    {source:'/api/v1/:path(.*)', destination:'/api/preview-proxy?path=:path'},
+    {source:'/:path((?!api(?:/|$)).*)', destination:'/index.html'},
+  ]);
+  assert.deepEqual(monorepo.rewrites, [
+    {source:'/:path((?!api(?:/|$)).*)', destination:'/index.html'},
+  ]);
+
+  // Test the documented regex semantics independently of Django, without
+  // assuming the serverless proxy is invoked by Vercel for an unmatched URL.
+  const apiPrefix = /^\/api\/v1\/(.*)$/;
+  const spaFallback = /^\/(?!api(?:\/|$)).*$/;
+  for (const path of [
+    '/api/v1/documents/', '/api/v1/documents',
+    '/api/v1/logs/', '/api/v1/logs', '/api/v1/profile/',
+    '/api/v1/account/consent', '/api/v1/', '/api/other',
+  ]) {
+    assert.equal(spaFallback.test(path), false, path);
+  }
+  for (const [url,tail] of [
+    ['/api/v1/documents/', 'documents/'],
+    ['/api/v1/documents', 'documents'],
+    ['/api/v1/logs/', 'logs/'],
+    ['/api/v1/profile', 'profile'],
+  ]) {
+    assert.equal(apiPrefix.exec(url)?.[1], tail);
+    assert.deepEqual(requestPath({...req(tail),url}), {path:tail,search:''});
+  }
+  for (const path of ['/', '/dashboard', '/preferences']) {
+    assert.equal(spaFallback.test(path), true, path);
+  }
+});
+
+test('W01 slash-terminated documents route keeps bearer-only 401, never HTML', async () => {
+  await withEnv(async () => {
+    let calls = 0;
+    globalThis.fetch = async(url,init) => {
+      calls++;
+      assert.equal(url, apiOrigin + '/api/v1/documents/');
+      assert.equal(init.headers.get('cookie'), null);
+      return new Response(JSON.stringify({detail:'Unauthorized'}), {
+        status:401,headers:{'content-type':'application/json'},
+      });
+    };
+    const output = streamingResponse();
+    await proxy({...req('documents/'),url:'/api/v1/documents/'},
+      output,async()=> 'synthetic-oidc');
+    assert.equal(calls,1);
+    assert.equal(output.statusCode,401);
+    assert.match(output.headers['content-type'],/application\/json/);
+    assert.deepEqual(JSON.parse(output.text()),{detail:'Unauthorized'});
   });
 });
