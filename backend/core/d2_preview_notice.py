@@ -1,6 +1,7 @@
 """Exact D2 preview-only notice. Not permission to deliver health notifications."""
-from dataclasses import dataclass
+
 import hashlib
+from dataclasses import dataclass
 
 from core.consent_notice import normalize_notice_locale
 

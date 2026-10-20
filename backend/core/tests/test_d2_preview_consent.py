@@ -1,4 +1,5 @@
 """D2 preview preference contract: synthetic patient A/B and opt-out tests."""
+
 import json
 
 from django.contrib.auth.models import User

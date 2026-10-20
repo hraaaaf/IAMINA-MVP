@@ -20,8 +20,12 @@ from pydantic import BaseModel
 from core.account_hooks import run_account_delete_hooks
 from core.audit import record_audit
 from core.consent_notice import profile_has_current_consent, validate_notice_claim
-from core.models import (AIConsentReceipt, AIMediaConsentGrant, BasePatientProfile,
-                         D2PreviewConsentReceipt)
+from core.models import (
+    AIConsentReceipt,
+    AIMediaConsentGrant,
+    BasePatientProfile,
+    D2PreviewConsentReceipt,
+)
 from core.models.erasure_record import ErasureRecord
 
 logger = logging.getLogger(__name__)
