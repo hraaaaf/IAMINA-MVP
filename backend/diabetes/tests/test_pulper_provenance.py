@@ -1,12 +1,10 @@
 import hashlib
 import json
 import pickle
-import pytest
-from diabetes.services.documents.schema import PulperOutput
-from llm.base import LLMResponse
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from django.contrib.auth.models import User
 from django.test import SimpleTestCase, TestCase
 
@@ -14,7 +12,9 @@ from core.contracts.document_extraction import ExtractedField, ExtractionDecisio
 from diabetes.models import LabReport
 from diabetes.services.documents.neutral_adapter import from_neutral, to_neutral
 from diabetes.services.documents.pulper import ingest
+from diabetes.services.documents.schema import PulperOutput
 from diabetes.services.documents.store import persist
+from llm.base import LLMResponse
 from media.documents.security import DocumentInspection
 
 _DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
