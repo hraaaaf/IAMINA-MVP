@@ -28,13 +28,33 @@ class W01ReadOnlyPreviewScreen extends StatefulWidget {
 class _W01ReadOnlyPreviewScreenState
     extends State<W01ReadOnlyPreviewScreen> {
   bool _dismissedConsent = false;
-  bool _showConsentExplanation = false;
+
+  Future<void> _explainConsentUnavailable() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('w01-preview-consent-required-dialog'),
+        title: Text(l10n.w01PreviewConsentTitle),
+        content: Text(l10n.w01PreviewConsentUnavailable),
+        actions: [
+          TextButton(
+            key: const Key('w01-preview-consent-dialog-dismiss'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _accept() {
     final auth = context.read<AuthService>();
     final lock = context.read<AppLockService>();
     if (!auth.hasRemoteApiCredential || !lock.isUnlocked) {
-      setState(() => _showConsentExplanation = true);
+      // In a local/read-only Preview there is no valid server consent
+      // receipt. A modal gives immediate feedback at any viewport size.
+      _explainConsentUnavailable();
       return;
     }
     context.go('/consent');
@@ -49,10 +69,7 @@ class _W01ReadOnlyPreviewScreenState
       context.go('/dashboard');
       return;
     }
-    setState(() {
-      _dismissedConsent = true;
-      _showConsentExplanation = false;
-    });
+    setState(() => _dismissedConsent = true);
   }
 
   @override
@@ -113,18 +130,6 @@ class _W01ReadOnlyPreviewScreenState
                               ),
                             ],
                           ),
-                          if (_showConsentExplanation)
-                            Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                l10n.w01PreviewConsentUnavailable,
-                                key: const Key('w01-preview-consent-unavailable'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AminaTheme.textSecondary(context),
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ),
