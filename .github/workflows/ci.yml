@@ -116,10 +116,7 @@ jobs:
         run: pip install -r requirements.txt ruff==0.15.17 bandit[toml] import-linter
 
       - name: Lint (ruff)
-        run: |
-          # TEMP D2 diagnostics: remove after exact Ruff diff is captured.
-          ruff check --diff core/tests/test_d2_preview_consent.py || true
-          ruff check .
+        run: ruff check .
 
       - name: Architecture boundaries (import-linter)
         run: lint-imports

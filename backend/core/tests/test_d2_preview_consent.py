@@ -10,7 +10,6 @@ from core.consent_notice import expected_notice_claim
 from core.d2_preview_notice import expected_d2_notice
 from core.models import BasePatientProfile, D2PreviewConsentReceipt
 
-
 PATH = "/api/v1/account/notification-preview-consent"
 
 
