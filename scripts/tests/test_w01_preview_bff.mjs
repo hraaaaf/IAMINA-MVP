@@ -107,17 +107,27 @@ test('W01 visitor country suggestion uses Web edge geolocation, not API egress',
     ]) {
       const headers = raw === undefined ? {} : {'x-vercel-ip-country':raw};
       const output = streamingResponse();
-      await proxy(req('country/suggestion',{headers}),output,async()=> 'synthetic-oidc');
+      await proxy(req('country/suggestion',{headers}),output,
+        async()=>{throw Error('public country must not acquire OIDC');});
       assert.equal(output.statusCode,200);
       assert.equal(output.headers['cache-control'],'private, no-store, max-age=0');
       assert.equal(output.headers['set-cookie'],undefined);
       assert.deepEqual(JSON.parse(output.text()),{country_code:code,source});
     }
+    // Even when the protected API's Preview URL is unconfigured, public
+    // country is resolved on the Web edge, not through a clinical backend.
+    delete process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL;
+    const offline = streamingResponse();
+    await proxy(req('country/suggestion',{headers:{'x-vercel-ip-country':'MA'}}),
+      offline, async()=>{throw Error('must not invoke OIDC');});
+    assert.equal(offline.statusCode, 200);
+    assert.deepEqual(JSON.parse(offline.text()),
+      {country_code:'MA',source:'ip_estimate'});
     assert.equal(upstream,0);
   });
 });
 
-test('W01 coarse country never bypasses Preview, OIDC or cross-origin gates', async () => {
+test('W01 coarse country is Preview-only; clinical routes still need OIDC', async () => {
   await withEnv(async () => {
     let upstream=0;
     globalThis.fetch=async()=>{upstream++;throw Error('forbidden egress');};
@@ -132,10 +142,27 @@ test('W01 coarse country never bypasses Preview, OIDC or cross-origin gates', as
       await proxy(request,output,async()=> 'synthetic-oidc');
       assert.equal(output.statusCode,status);
     }
-    const withoutOidc=res();
+    const withoutOidc=streamingResponse();
     await proxy(req('country/suggestion',{headers:{'x-vercel-ip-country':'MA'}}),
       withoutOidc, async()=> null);
-    assert.equal(withoutOidc.statusCode,503);
+    assert.equal(withoutOidc.statusCode,200);
+    assert.deepEqual(JSON.parse(withoutOidc.text()),
+      {country_code:'MA',source:'ip_estimate'});
+
+    const protectedHealth=res();
+    await proxy(req('health'), protectedHealth, async()=> null);
+    assert.equal(protectedHealth.statusCode,503);
+
+    // Query-bearing or non-GET variants cannot use the public local handler.
+    for (const request of [
+      {...req('country/suggestion'),url:'/api/v1/country/suggestion?x=1'},
+      req('country/suggestion',{method:'HEAD'}),
+      req('country/suggestion',{method:'POST',headers:{origin}}),
+    ]) {
+      const result=res();
+      await proxy(request,result,async()=>null);
+      assert.equal(result.statusCode,503);
+    }
     process.env.VERCEL_ENV='production';
     const prod=res();
     await proxy(req('country/suggestion',{headers:{'x-vercel-ip-country':'MA'}}),
