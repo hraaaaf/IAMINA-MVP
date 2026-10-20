@@ -1601,6 +1601,92 @@
         ]
       }
     },
+    "/api/v1/account/notification-preview-consent": {
+      "get": {
+        "operationId": "core_api_v1_d2_preview_consent_get_d2_preview_consent",
+        "summary": "Get D2 Preview Consent",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "default": "fr",
+              "title": "Locale",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-preview-consent"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "core_api_v1_d2_preview_consent_grant_d2_preview_consent",
+        "summary": "Grant D2 Preview Consent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-preview-consent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/D2GrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "core_api_v1_d2_preview_consent_revoke_d2_preview_consent",
+        "summary": "Revoke D2 Preview Consent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-preview-consent"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/modules/{module_name}/activate": {
       "post": {
         "operationId": "core_api_v1_modules_activate_module",
@@ -5253,6 +5339,36 @@
           "confirm"
         ],
         "title": "DeleteConfirmSchema",
+        "type": "object"
+      },
+      "D2GrantRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "notice_version": {
+            "title": "Notice Version",
+            "type": "string"
+          },
+          "notice_hash": {
+            "title": "Notice Hash",
+            "type": "string"
+          },
+          "acknowledgment": {
+            "const": "ENABLE_PREVIEW_ONLY",
+            "title": "Acknowledgment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "locale",
+          "notice_version",
+          "notice_hash",
+          "acknowledgment"
+        ],
+        "title": "D2GrantRequest",
         "type": "object"
       },
       "ImportResultResponse": {
