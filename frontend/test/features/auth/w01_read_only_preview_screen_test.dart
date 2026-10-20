@@ -1,4 +1,5 @@
 import 'package:amina/features/auth/w01_read_only_preview_screen.dart';
+import 'package:amina/features/navigation/main_shell.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/auth_service.dart';
@@ -79,6 +80,70 @@ void main() {
     );
   }
 
+  Widget medicalBannerApp() => MultiProvider(
+    providers: [
+      ChangeNotifierProvider<AuthService>.value(value: auth),
+      ChangeNotifierProvider<AppLockService>.value(value: lock),
+      ChangeNotifierProvider<ConsentService>.value(value: consent),
+    ],
+    child: MaterialApp(
+      locale: const Locale('fr'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+      home: const Scaffold(
+        body: Column(
+          children: [
+            W01OptionalChoicesBar(),
+            Expanded(child: Center(child: Text('Medical home unchanged'))),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  for (final size in [const Size(390, 640), const Size(390, 844)]) {
+    testWidgets('W01 medical banner accept visibly explains local-only block '
+        'on ${size.width}x${size.height}', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(medicalBannerApp());
+      await tester.pumpAndSettle();
+
+      final accept = find.byKey(const Key('w01-medical-consent-accept'));
+      expect(accept, findsOneWidget);
+      await tester.tap(accept);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('w01-consent-account-required-dialog')),
+          findsOneWidget);
+      expect(find.textContaining('Cette session locale ne peut pas'),
+          findsOneWidget);
+      expect(find.text('Medical home unchanged'), findsOneWidget);
+      expect(consent.hasConsent, isFalse);
+
+      await tester.tap(
+          find.byKey(const Key('w01-consent-account-required-dismiss')));
+      await tester.pumpAndSettle();
+      expect(accept, findsOneWidget);
+      expect(consent.hasConsent, isFalse);
+
+      await tester.tap(find.byKey(const Key('w01-medical-consent-skip')));
+      await tester.pumpAndSettle();
+      expect(consent.hasDeclinedLocally, isTrue);
+      expect(consent.hasConsent, isFalse);
+      expect(accept, findsNothing);
+      expect(find.text('Medical home unchanged'), findsOneWidget);
+    });
+  }
+
   testWidgets('390x844 top-left accept and skip never unlock patient vault', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -96,11 +161,19 @@ void main() {
 
     await tester.tap(find.byKey(const Key('w01-preview-consent-accept')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('w01-preview-consent-unavailable')), findsOneWidget);
+    expect(find.byKey(const Key('w01-preview-consent-required-dialog')),
+        findsOneWidget);
+    expect(find.textContaining('Aucun consentement n’a été accordé'),
+        findsOneWidget);
     expect(find.text('Server consent'), findsNothing);
     expect(consent.hasConsent, isFalse);
     expect(lock.isUnlocked, isFalse);
 
+    await tester.tap(
+        find.byKey(const Key('w01-preview-consent-dialog-dismiss')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('w01-preview-consent-required-dialog')),
+        findsNothing);
     await tester.tap(find.byKey(const Key('w01-preview-consent-skip')));
     await tester.pumpAndSettle();
     expect(card, findsNothing);
