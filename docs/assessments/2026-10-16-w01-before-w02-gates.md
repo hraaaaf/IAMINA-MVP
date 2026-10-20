@@ -326,3 +326,23 @@
 **Correctif ciblé et fail-closed :** déplacer le test de non-fabrication JSON/provenance utilisant `llm.factory.get_llm` vers la suite existante explicitement autorisée `backend/diabetes/tests/test_pulper_provenance.py` ; retirer uniquement cette référence de `test_pulper_qualification.py`. Ne pas élargir la liste blanche ni affaiblir le garde. Les tests de provenance, de refus JSON invalide et d'appel unique restent présents. Ajuster les imports du fichier et la fixture de document non fiable à véritables séparateurs de lignes. Commits `97e59777`, `0513ef60`, `a8b3195d`, `6085fb7e`.
 
 **Succès attendu :** garde anti-bypass PASS + pytest backend PASS + Pulper live synthétique PASS **sur le même HEAD** ; résultats CI à confirmer, ne pas déclarer acquis avant preuve. Aucun déploiement Vercel, W01 reste NO-GO et W02 gelé.
+
+
+## W01 — Onboarding Web country suggestion at the edge (20/10/2026)
+
+**Goal précis :** sur Safari iPhone, la sélection FR/EN/AR révèle immédiatement l'étape Pays et fait défiler jusqu'à elle ; si Vercel estime `MA` à partir de l'IP, le champ pays préremplit Maroc sans empêcher une correction manuelle, ni imposer une authentification ou une dépendance à l'API médicale. Si l'estimation est absente, **ne jamais supposer Maroc**.
+
+**BEFORE (preuve code) :** dans `frontend/api/preview-proxy.js`, `GET /api/v1/country/suggestion` consultait `resolvePreviewApiOrigin()` puis obtenait un jeton OIDC avant d'exécuter le traitement **local** du pays. Toute panne/configuration manquante du backend renvoyait 503. Côté Flutter, `AuthInterceptor` effectuait également `getIdToken` pour ce GET public, malgré le délai de 4 s de `suggestCountryFromIp()`. Le scroll post-frame après choix de langue avait déjà été corrigé avant ce lot.
+
+**AFTER candidat, non hébergé :**
+- Commit `136c1b57` : le seul GET pays sans query est servi par le BFF **après** les gardes Preview/site/origin/méthode/route/taille, mais **avant** dépendances upstream et OIDC. Les routes patient restent soumises à la validation OIDC et au proxy privé.
+- Commit `dc7ab18a` : tests Node adversariaux (pays sans OIDC ni URL API ; `MA`, `FR` et absence/invalidité ; interdiction POST/HEAD/query ; route santé toujours fail-closed sans OIDC).
+- Commit `a67f076b` : le seul GET public contourne le lookup bearer dans `AuthInterceptor`, sans changer les gardes du transport clinique.
+- Commit `7c560fdf` : tests Flutter Chopper garantissent GET pays sans lookup/lock, POST/HEAD interdits.
+- Référence primaire externe : Vercel décrit `x-vercel-ip-country` comme **estimation** ISO 3166-1 à deux lettres ; non fournie localement et incertaine derrière un proxy. Ne pas utiliser pour identité, résidence, éligibilité clinique ou règles de sécurité.
+
+**Preuve actuelle :** code et tests ajoutés sur SHA `7c560fdf9b7873d29c02982d995cb1c76cc7d8ee` ; run CI générale `39412301174`, W01 BFF `39412301261`, Chrome onboarding `39412301298` démarrés, verdicts à consulter. Aucun déploiement de ce SHA observé. Le dernier déploiement Web READY identifié en lecture seule Vercel correspond à `e3038605caf868c63286a5344bed39d512eec86f`, l'API READY à `120f6e9b6220505619cd20b175be3d6c082b1f26` : **pas une preuve de comportement de ce correctif**. Une variable Preview branche W01 `IAMINA_REVIEW_PREVIEW_API_BASE_URL` est déclarée ; `IAMINA_ENV` apparaît dans les métadonnées des variables API (contrairement au contrôle antérieur). Valeurs/secrets et configuration effective non certifiés.
+
+**Validation visuelle/UX restante (mêmes viewports) :** BEFORE/AFTER du parcours réel iPhone Safari **390×640 et 390×844**, langue FR/EN/AR, scroll, pays Maroc si IP estimée MA, édition manuelle France, fallback pays inconnu ; Chrome + desktop 1280×900 ; captures comparées, tests, score visuel uniquement avec images réelles. **Aucune preuve Safari ni score visuel à ce stade.**
+
+**Human gate distinct :** tout nouveau déploiement Vercel, même Preview synthétique, exige l'autorisation explicite du propriétaire. W01-G4/G5 restent NON PROUVÉS ; W01 NO-GO, W02 GELÉ. Ne pas ouvrir production.
