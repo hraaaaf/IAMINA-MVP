@@ -7,6 +7,7 @@ from django.test import Client, TestCase
 
 from core.d2_preview_notice import expected_d2_notice
 from core.models import D2PreviewConsentReceipt
+
 from core.tests.consent_helpers import grant_current_ai_consent
 
 
