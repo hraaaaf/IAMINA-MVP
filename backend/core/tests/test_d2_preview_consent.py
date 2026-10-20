@@ -141,3 +141,73 @@ class D2PreviewConsentTests(TestCase):
                 status = self.client.get(PATH + f"?locale={locale}").json()
                 self.assertTrue(status["opted_in"])
                 self.assertFalse(status["browser_push_enabled"])
+
+    def test_same_browser_session_switch_a_b_a_keeps_receipts_separated(self):
+        """Server-side A -> B -> A scope, not Web vault isolation certification."""
+        grant_current_ai_consent(self.a)
+        grant_current_ai_consent(self.b)
+        self.client.force_login(self.a)
+        self.assertEqual(self._grant().status_code, 200)
+
+        self.client.force_login(self.b)
+        self.assertFalse(self.client.get(PATH).json()["opted_in"])
+        self.assertEqual(self._grant("en").status_code, 200)
+        self.assertTrue(self.client.get(PATH).json()["opted_in"])
+        self.assertFalse(self.client.delete(PATH).json()["opted_in"])
+
+        self.client.force_login(self.a)
+        self.assertTrue(self.client.get(PATH).json()["opted_in"])
+        self.assertEqual(
+            D2PreviewConsentReceipt.objects.filter(
+                patient=self.a, revoked_at__isnull=True,
+            ).count(), 1,
+        )
+        self.assertEqual(
+            D2PreviewConsentReceipt.objects.filter(
+                patient=self.b, revoked_at__isnull=True,
+            ).count(), 0,
+        )
+
+    def test_cookie_session_mutations_enforce_csrf_token_and_origin(self):
+        """A legitimate same-session cookie cannot opt in via forged cross-site POST."""
+        grant_current_ai_consent(self.a)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.a)
+        notice = expected_d2_notice("fr")
+        body = json.dumps({
+            "locale": "fr",
+            "notice_version": notice.version,
+            "notice_hash": notice.notice_hash,
+            "acknowledgment": "ENABLE_PREVIEW_ONLY",
+        })
+        params = {"data": body, "content_type": "application/json"}
+
+        self.assertEqual(client.put(PATH, **params).status_code, 403)
+        self.assertFalse(D2PreviewConsentReceipt.objects.exists())
+
+        # Valid token but unrelated Vercel account origin is still rejected.
+        client.cookies["csrftoken"] = "a" * 32
+        self.assertEqual(
+            client.put(
+                PATH, **params,
+                HTTP_X_CSRFTOKEN="a" * 32,
+                HTTP_ORIGIN="https://unrelated-app.vercel.app",
+            ).status_code, 403,
+        )
+        self.assertFalse(D2PreviewConsentReceipt.objects.exists())
+
+        # No cross-site Origin; matching Django CSRF cookie/header is accepted.
+        self.assertEqual(
+            client.put(PATH, **params, HTTP_X_CSRFTOKEN="a" * 32).status_code,
+            200,
+        )
+        self.assertTrue(client.get(PATH).json()["opted_in"])
+
+        # Withdrawal is itself protected against CSRF.
+        self.assertEqual(client.delete(PATH).status_code, 403)
+        self.assertTrue(client.get(PATH).json()["opted_in"])
+        self.assertEqual(
+            client.delete(PATH, HTTP_X_CSRFTOKEN="a" * 32).status_code,
+            200,
+        )
+        self.assertFalse(client.get(PATH).json()["opted_in"])
