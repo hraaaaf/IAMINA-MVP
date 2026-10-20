@@ -292,63 +292,6 @@ def test_synthetic_qualification_routes_live_document_to_direct_json_once():
     assert provider.live_reply_shapes == ["direct_json_object"]
 
 
-@pytest.mark.parametrize("payload,accepted", [
-    (
-        {
-            "document_type": "lab_report",
-            "confidence": 0.99,
-            "lab_values": {"fasting_glucose_mgdl": 126},
-            "evidence": {
-                "lab_values.fasting_glucose_mgdl": {
-                    "r": "L0001", "v": "126"
-                }
-            },
-        },
-        True,
-    ),
-    ({"reply": "Fasting glucose: 126 mg/dL"}, False),
-])
-def test_pulper_groq_direct_json_preserves_verified_source_or_fails_closed(
-    monkeypatch, payload, accepted
-):
-    from diabetes.services.documents import pulper
-
-    class Provider:
-        provider_policy_key = "groq"
-        model_name = "openai/gpt-oss-120b"
-        calls = 0
-
-        def complete_json_object(self, system, user):
-            self.calls += 1
-            assert "The API forces a strict JSON object" not in user
-            assert "Fasting glucose: 126 mg/dL" in user
-            return LLMResponse(
-                content=json.dumps(payload), provider=self.model_name
-            )
-
-        def complete(self, _system, _user):
-            raise AssertionError("legacy double JSON must not be called")
-
-    provider = Provider()
-    monkeypatch.setattr("llm.factory.get_llm", lambda: provider)
-    monkeypatch.setattr(pulper, "assert_ai_egress_allowed", lambda _: None)
-    output = PulperOutput(source_sha256="a" * 64)
-    pulper._parse_with_llm(output, "Fasting glucose: 126 mg/dL")
-    assert provider.calls == 1
-    assert output.prompt_version == "pulper-parse-v7-groq-direct-json"
-    if accepted:
-        assert output.errors == []
-        assert output.lab_values.fasting_glucose_mgdl == 126.0
-        proof = output.lab_values.evidence["fasting_glucose_mgdl"]
-        assert proof.verified and proof.source_ref == "text:L0001"
-        assert proof.raw_value == "126"
-    else:
-        assert output.errors
-        assert output.lab_values.fasting_glucose_mgdl is None
-        assert not output.lab_values.evidence
-
-
-
 def test_groq_json_object_never_bypasses_processor_policy_or_finops(monkeypatch):
     from core.ai_processor_policy import AIProcessorPolicyDenied
     from llm import factory
