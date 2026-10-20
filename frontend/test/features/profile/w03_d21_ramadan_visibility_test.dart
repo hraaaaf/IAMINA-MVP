@@ -34,4 +34,13 @@ void main() {
     final build = File('vercel_build.sh').readAsStringSync();
     expect(build, isNot(contains('IAMINA_WEB_RAMADAN_UI=true')));
   });
+  test('W03 D21 synthetic browser audit honors AR without changing patient entrypoint', () {
+    final audit = File('lib/ui_browser_audit_main.dart').readAsStringSync();
+    final harness = File('tool/w03_d21_web_profile_browser.py').readAsStringSync();
+    expect(audit, contains("Uri.base.queryParameters['locale'] == 'ar'"));
+    expect(audit, contains('SemanticsBinding.instance.ensureSemantics()'));
+    expect(harness, contains('keyboard_focus_trace'));
+    expect(harness, contains('if stage == "after" and ramadan:'));
+    expect(harness, contains('if stage == "before" and not ramadan:'));
+  });
 }

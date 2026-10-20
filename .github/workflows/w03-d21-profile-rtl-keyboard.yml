@@ -1,0 +1,94 @@
+name: W03 D21 Web Profile RTL and keyboard proof
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/profile/**'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/test/features/profile/w03_d21_ramadan_visibility_test.dart'
+      - 'frontend/tool/w03_d21_web_profile_browser.py'
+      - '.github/workflows/w03-d21-profile-rtl-keyboard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile-rtl-keyboard:
+    name: Synthetic Chrome FR/AR BEFORE-AFTER + Tab/Shift-Tab
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: 31380a7f4c8f61a3ec886ec9d2d66d26c2bf222b
+          path: baseline
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Install Chrome probe dependency
+        run: python3 -m pip install --quiet websocket-client
+      - name: Build D21 candidate isolated Web audit
+        working-directory: candidate/frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          cp -a build/web /tmp/iamina-d21-after
+      - name: Capture and assert D21 AFTER in real Chrome
+        run: |
+          python3 candidate/frontend/tool/w03_d21_web_profile_browser.py \
+            --stage after --build /tmp/iamina-d21-after --output "$GITHUB_WORKSPACE/d21-proof"
+      - name: Instrument historical baseline capture only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("baseline/frontend/lib/ui_browser_audit_main.dart")
+          s=p.read_text()
+          a="import 'package:flutter/material.dart';"
+          b="  WidgetsFlutterBinding.ensureInitialized();"
+          c="      locale: const Locale('fr'),"
+          assert s.count(a)==s.count(b)==s.count(c)==1
+          s=s.replace(a,a+"\nimport 'package:flutter/semantics.dart';")
+          s=s.replace(b,b+"\n  SemanticsBinding.instance.ensureSemantics();")
+          s=s.replace(c,"      locale: Uri.base.queryParameters['locale'] == 'ar'\n"
+                        "          ? const Locale('ar')\n          : const Locale('fr'),")
+          p.write_text(s)
+          print("Baseline instrumentation: audit entrypoint only; product code unchanged")
+          PY
+      - name: Build historical main baseline Web audit
+        working-directory: baseline/frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          cp -a build/web /tmp/iamina-d21-before
+      - name: Capture and assert BEFORE in real Chrome
+        run: |
+          python3 candidate/frontend/tool/w03_d21_web_profile_browser.py \
+            --stage before --build /tmp/iamina-d21-before --output "$GITHUB_WORKSPACE/d21-proof"
+      - name: Verify complete comparable grid
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("d21-proof")
+          sizes=("390x844","768x1024","1280x900")
+          expected={f"{stage}-profile-{lang}-{size}"
+                    for stage in ("before","after")
+                    for lang in ("fr","ar") for size in sizes}
+          assert {p.stem for p in root.glob("*.png")}==expected
+          assert {p.stem for p in root.glob("*.json")}==expected
+          print("12 real Chrome screenshots + 12 assertions reports complete")
+          PY
+      - name: Upload D21 target evidence even when failing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-d21-profile-fr-ar-rtl-keyboard
+          path: d21-proof/*
+          if-no-files-found: warn
+          retention-days: 7

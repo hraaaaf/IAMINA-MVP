@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -158,6 +159,8 @@ class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // D21 synthetic Chrome probe: expose Flutter's accessibility semantics tree.
+  SemanticsBinding.instance.ensureSemantics();
 
   try {
     await Firebase.initializeApp(
@@ -347,7 +350,10 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      // Capture harness only; normal Web entrypoint and patient locale untouched.
+      locale: Uri.base.queryParameters['locale'] == 'ar'
+          ? const Locale('ar')
+          : const Locale('fr'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
