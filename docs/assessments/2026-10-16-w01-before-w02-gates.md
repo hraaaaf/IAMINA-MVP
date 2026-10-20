@@ -310,3 +310,10 @@
 5. **Clore G7**, puis et seulement puis reprendre W02 depuis sa PR préservée, revoir son code face à `main` et relancer ses tests.
 
 **Maintenir production patient = NO-GO** jusqu'aux W02/W14 et à une décision de déploiement séparée.
+
+
+## W01 — CI native portability trigger scope (19/10/2026)
+
+**Goal :** les corrections exclusivement Web/W01 ne doivent pas lancer la régression locale macOS/Windows « Developer portability ». **Preuve de configuration :** sur la PR #1128, le seul fichier qui correspondait encore à `pull_request.paths` du workflow était `.github/workflows/developer-portability.yml` lui-même. Les chemins déclencheurs `frontend/vercel_build.sh` puis ce fichier de workflow ont été retirés au cours du chantier, sans désactiver `workflow_dispatch` ni les chemins des lanceurs et dépendances natifs.
+
+**Validation observable :** commit `7e84b9146999b537436255d75d1b534dede2e677`, lecture de la configuration et intersection des chemins PR/filtre = **ensemble vide**. Premier inventaire des runs liés au commit : 20 workflows visibles, **aucun « Developer portability »** ; les contrôles W01, CI et Pulper restent déclenchés. Cette preuve porte uniquement sur le déclenchement automatique depuis l'état présent de la PR : la portabilité native doit rester testée manuellement ou par PR qui modifie ses dépendances, et toute modification future de ce workflow seul ne le déclenchera plus automatiquement. Les autres gates W01 restent inchangés et W01 demeure NO-GO.
