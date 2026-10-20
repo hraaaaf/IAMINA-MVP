@@ -141,6 +141,12 @@ class AuthInterceptor implements Interceptor {
     Chain<BodyType> chain,
   ) async {
     requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport, method: chain.request.method);
+    // Public, read-only Web geolocation has no patient identity. Do not let
+    // a slow or failing browser credential lookup stall its 4-second UI
+    // deadline. All other clinical requests still resolve and guard bearer.
+    if (isPublicCountrySuggestion(chain.request.url, chain.request.method)) {
+      return chain.proceed(chain.request);
+    }
     final token = await readForStableAuthEpoch(authService.getIdToken);
     requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport, method: chain.request.method);
     // This executes AFTER any async credential lookup and immediately before
