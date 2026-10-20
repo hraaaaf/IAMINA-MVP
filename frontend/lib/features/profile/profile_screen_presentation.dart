@@ -50,7 +50,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                         const SizedBox(height: 14),
                         // D21 Web: hide seasonal settings and their save actions
                         // without deleting historical/native Ramadan code.
-                        if (!kIsWeb || kWebRamadanUiEnabled) ...[
+                        if (shouldShowRamadanProfileSection(isWeb: kIsWeb)) ...[
                           _buildRamadanSection(l10n),
                           const SizedBox(height: 14),
                         ],
