@@ -29,6 +29,8 @@ void main() {
     expect(reminders, contains('System notifications are not enabled'));
     expect(reminders, contains("Icons.event_note_outlined"));
     expect(reminders, isNot(contains("Icons.notifications_none_rounded")));
+    expect(reminders, isNot(contains("Icons.add_alert_outlined")));
+    expect(reminders, contains('icon: const Icon(Icons.add_rounded)'));
     expect(RegExp(r"Icons\.event_note_outlined").allMatches(reminders).length,
         greaterThanOrEqualTo(3));
   });

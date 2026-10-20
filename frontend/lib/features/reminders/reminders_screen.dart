@@ -278,7 +278,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               child: FilledButton.icon(
                 key: const Key('save-reminder'),
                 onPressed: _addReminder,
-                icon: const Icon(Icons.add_alert_outlined),
+                icon: const Icon(Icons.add_rounded),
                 label: Text(
                   _rt(
                     context,

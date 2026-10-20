@@ -12,22 +12,22 @@ Status: **CONTRACT-ONLY / NO NOTIFICATION DELIVERY / NOT CERTIFIED**.
 
 ## Existing verified state
 
-- \`frontend/lib/features/reminders/reminders_screen.dart\` stores user-authored reminders with Drift. OS notifications are explicitly unavailable.
-- \`backend/diabetes/api/v1/proactive.py\` provides a read-only GET preview and state-changing POST evaluation. Neither provides browser/OS push.
-- \`backend/diabetes/services/clinical/proactive_intelligence.py\` owns the existing **one non-urgent observation per 24 hours** budget. This is **not** an emergency threshold or a right to contact the patient.
-- \`frontend/lib/services/consent_service.dart\` governs existing AI consent. It is **not** a verified D2 category-specific notification consent.
+- `frontend/lib/features/reminders/reminders_screen.dart` stores user-authored reminders with Drift. OS notifications are explicitly unavailable.
+- `backend/diabetes/api/v1/proactive.py` provides a read-only GET preview and state-changing POST evaluation. Neither provides browser/OS push.
+- `backend/diabetes/services/clinical/proactive_intelligence.py` owns the existing **one non-urgent observation per 24 hours** budget. This is **not** an emergency threshold or a right to contact the patient.
+- `frontend/lib/services/consent_service.dart` governs existing AI consent. It is **not** a verified D2 category-specific notification consent.
 - Web patient/consent persistence and real-patient W01 Preview are not certified. W01 NO-GO / W02 frozen.
 
 ## New candidate technical boundary
 
-\`frontend/lib/services/d2_notification_policy.dart\` separates:
+`frontend/lib/services/d2_notification_policy.dart` separates:
 1. **Reminder** — user-authored and stored locally. Never inferred as push delivery.
 2. **In-app notification preview** — only a sourced, non-urgent proactive candidate can pass the dry-run gate.
 3. **Companion conversation** — not a system notification or reminder.
 
 Every candidate must have stable patient identity/epoch, unlocked state, explicit proactive opt-in **and** independently confirmed server consent, evidence ID and exact governed source version, nonexpired evidence, no treatment/emergency authority, no duplicate signature and the existing 24-hour attention rule. Missing/unknown inputs fail closed.
 
-**Even a preview-eligible result is not a dispatch authorization.** \`browserPushAvailable\` is hard-disabled. The engine has **no runtime consumer**, storage schema, OS permission request, service worker, network action, scheduling, inbox state, clinical threshold, or LLM call. Test fixtures simulate consent only to prove reject/accept logic; they **do not** constitute real patient approval.
+**Even a preview-eligible result is not a dispatch authorization.** `browserPushAvailable` is hard-disabled. The engine has **no runtime consumer**, storage schema, OS permission request, service worker, network action, scheduling, inbox state, clinical threshold, or LLM call. Test fixtures simulate consent only to prove reject/accept logic; they **do not** constitute real patient approval.
 
 ## Remaining sequence / human gates
 
@@ -39,3 +39,10 @@ Every candidate must have stable patient identity/epoch, unlocked state, explici
 6. No merge or Vercel deployment without project release gates and explicit deployment authorization.
 
 D1 remains deferred; D3 starts only after the D2 scope is genuinely concluded or transparently blocked.
+
+## Visual D2 CTA correction — BEFORE / Goal / reference (written pre-implementation)
+
+BEFORE: real Chrome artifacts [390×844](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39436913086/artifacts/12271632356), [768×1024](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39436913086/artifacts/12271557631), [1280×900](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39436913086/artifacts/12272382552) from run #39436913086 and source-equivalent `6fc5375c`. Actual mobile + tablet PNGs inspected. The 'Ajouter le rappel' CTA still used `Icons.add_alert_outlined` (bell).
+Goal: stop implying OS alert delivery while preserving the real user-authored local save flow.
+Reference/mockup: keep existing 48px dark green `FilledButton.icon`, text, accessible layout, timing and handler; replace only bell glyph with `Icons.add_rounded` (simple plus).
+AFTER: **not yet visually inspected** on the new HEAD. Require Chrome screenshots at identical 390/768/1280 viewports, compare CTA region, contrast, text, RTL and keyboard behavior before claiming UX certification. Different fixture values and clocks must not be misinterpreted as UI regressions.
