@@ -38,10 +38,18 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
         problems.append("frontend: static SPA outputDirectory must be build/web")
     if front.get("functions"):
         problems.append("frontend: function settings must be reviewed independently")
-    if front.get("rewrites", [])[:1] != [
-        {"source": "/api/v1/:path*", "destination": "/api/preview-proxy?path=:path*"}
+    if front.get("rewrites", []) != [
+        {"source": "/api/v1/:path(.*)", "destination": "/api/preview-proxy?path=:path"},
+        {"source": "/:path((?!api(?:/|$)).*)", "destination": "/index.html"},
     ]:
-        problems.append("frontend: Preview BFF API rewrite must precede SPA fallback")
+        problems.append(
+            "frontend: API prefix (including trailing slash) must be proxied "
+            "before SPA, and /api must never fall back to Flutter HTML"
+        )
+    if monorepo.get("rewrites") != [
+        {"source": "/:path((?!api(?:/|$)).*)", "destination": "/index.html"}
+    ]:
+        problems.append("monorepo: API paths must never receive SPA fallback")
     if "api/index.py" not in back.get("functions", {}):
         problems.append("backend: expected Django WSGI api/index.py function absent")
     if back.get("outputDirectory") == "build/web":
