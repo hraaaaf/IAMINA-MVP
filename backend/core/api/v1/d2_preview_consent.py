@@ -7,6 +7,7 @@ from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, ConfigDict
 
+from amina.vercel_session_auth import check_iamina_csrf
 from core.audit import record_audit
 from core.consent_notice import profile_has_current_consent
 from core.d2_preview_notice import expected_d2_notice, validate_d2_notice
@@ -22,6 +23,22 @@ class D2GrantRequest(BaseModel):
     notice_version: str
     notice_hash: str
     acknowledgment: Literal["ENABLE_PREVIEW_ONLY"]
+
+
+def _require_cookie_session_csrf(request):
+    """Consent mutations with any cookie must prove CSRF, even in Ninja views.
+
+    Django-Ninja wraps its endpoint as csrf_exempt, so Django's outer
+    middleware does not enforce the token there. Bearer-only API callers
+    remain stateless; mixed cookie+Authorization requests are ambiguous and
+    fail closed, never falling back to a session identity.
+    """
+    if not request.COOKIES:
+        return
+    if request.META.get("HTTP_AUTHORIZATION", "").strip():
+        raise HttpError(403, "Mixed cookie and Authorization not allowed")
+    if check_iamina_csrf(request) is not None:
+        raise HttpError(403, "CSRF check failed")
 
 
 def _status(user, locale="fr"):
@@ -71,6 +88,7 @@ def get_d2_preview_consent(request, locale: str = "fr"):
 @router.put(PATH)
 @transaction.atomic
 def grant_d2_preview_consent(request, data: D2GrantRequest):
+    _require_cookie_session_csrf(request)
     try:
         notice = validate_d2_notice(
             version=data.notice_version, notice_hash=data.notice_hash,
@@ -112,6 +130,7 @@ def grant_d2_preview_consent(request, data: D2GrantRequest):
 @router.delete(PATH)
 @transaction.atomic
 def revoke_d2_preview_consent(request):
+    _require_cookie_session_csrf(request)
     BasePatientProfile.objects.select_for_update().filter(patient=request.user).first()
     revoked = D2PreviewConsentReceipt.objects.filter(
         patient=request.user, revoked_at__isnull=True,
