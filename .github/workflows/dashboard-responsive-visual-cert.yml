@@ -198,6 +198,11 @@ jobs:
               report[name]['pixelDuplicateCaptures'] = pixel_dups
               if any(pixel_dups.values()):
                   failures.append(f'{name}: {pixel_dups}')
+              reminders_path = root / f'{name}-reminders-{size}.png'
+              with Image.open(reminders_path) as reminders:
+                  if reminders.size != images['top'].size:
+                      failures.append(f'{name}: wrong Reminders screenshot dimensions')
+
           report_path.write_text(json.dumps(report, indent=2))
           if failures:
               raise SystemExit('pixel-identical responsive captures: ' + '; '.join(failures))

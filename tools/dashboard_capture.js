@@ -52,19 +52,28 @@ const minScreenshotBytes = 15000;
       const buffers = {};
       const screenshotBytes = {};
 
+      // Load once per viewport: repeated authentication when only scrolling
+      // triggered real HTTP 429 /auth/login failures in run #38800782973.
+      // Reuse this authenticated page and scroll the real Flutter viewport.
+      const dashboardReady = page.waitForResponse(
+        (r) => r.url().includes('/api/v1/companion/overview') &&
+          r.status() >= 200 && r.status() < 300,
+        { timeout: 45000 },
+      );
+      await page.goto('http://127.0.0.1:7358/?scroll=0', {
+        waitUntil: 'domcontentloaded', timeout: 120000,
+      });
+      await dashboardReady;
+      await page.locator('flutter-view').first().waitFor({
+        state: 'attached', timeout: 30000,
+      });
+      await page.mouse.move(Math.max(10, width - 48), Math.round(height * .60));
+      let previousOffset = 0;
       for (const [position, offset] of Object.entries(positions)) {
-        const dashboardReady = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/companion/overview') &&
-            r.status() >= 200 &&
-            r.status() < 300,
-          { timeout: 45000 },
-        );
-        await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
-          waitUntil: 'domcontentloaded',
-          timeout: 120000,
-        });
-        await dashboardReady;
+        if (offset > previousOffset) {
+          await page.mouse.wheel(0, offset - previousOffset);
+        }
+        previousOffset = offset;
         await page.waitForTimeout(1600);
         const screenshotPath = path.join(
           'dashboard-visual-cert',
@@ -73,6 +82,20 @@ const minScreenshotBytes = 15000;
         const buffer = await page.screenshot({ path: screenshotPath });
         buffers[position] = buffer;
         screenshotBytes[position] = buffer.length;
+      }
+
+      // D3: retain baseline top/mid/lower, plus a real lower-down Reminders view.
+      const remindersOffset = Math.round(height * 2.35);
+      // No fourth login: use the same authenticated Flutter session.
+      await page.mouse.wheel(0, remindersOffset - previousOffset);
+      await page.waitForTimeout(2000);
+      const remindersScreenshotPath = path.join(
+        'dashboard-visual-cert', `${name}-reminders-${width}x${height}.png`,
+      );
+      const remindersBuffer = await page.screenshot({ path: remindersScreenshotPath });
+      screenshotBytes.reminders = remindersBuffer.length;
+      if (name === 'mobile' && remindersBuffer.equals(buffers.lower)) {
+        throw new Error('mobile: Reminders capture duplicates existing lower view');
       }
 
       const byteDuplicateCaptures = {
@@ -85,7 +108,7 @@ const minScreenshotBytes = 15000;
         errors,
         consoleErrors,
         api,
-        requestedScrollOffsets: positions,
+        requestedScrollOffsets: { ...positions, reminders: remindersOffset },
         screenshotBytes,
         byteDuplicateCaptures,
       };
@@ -96,6 +119,13 @@ const minScreenshotBytes = 15000;
       }
       if (api.some((x) => x.status >= 500)) {
         throw new Error(`${name}: backend 5xx`);
+      }
+      // Keep the original network truth gate: at least one verified,
+      // authenticated overview. Browser cache may satisfy later navigations.
+      if (!api.some((x) =>
+          x.url.includes('/api/v1/companion/overview') &&
+          x.status >= 200 && x.status < 300)) {
+        throw new Error(`${name}: never observed successful overview API`);
       }
       if (
         Object.values(screenshotBytes).some(
