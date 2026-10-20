@@ -164,7 +164,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 height: 42,
                 decoration: AminaVisualLanguage.mintIconDecoration(context),
                 child: const Icon(
-                  Icons.notifications_none_rounded,
+                  Icons.event_note_outlined,
                   color: AminaVisualLanguage.actionGreen,
                   size: 21,
                 ),
@@ -328,7 +328,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         height: 46,
                         decoration: AminaVisualLanguage.mintIconDecoration(context),
                         child: const Icon(
-                          Icons.notifications_none_rounded,
+                          Icons.event_note_outlined,
                           color: AminaVisualLanguage.actionGreen,
                           size: 22,
                         ),
