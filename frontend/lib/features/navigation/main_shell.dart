@@ -110,7 +110,7 @@ class MainShell extends StatelessWidget {
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const _W01OptionalChoicesBar(),
+                            const W01OptionalChoicesBar(),
                             Expanded(child: child),
                           ],
                         )
@@ -131,17 +131,38 @@ class MainShell extends StatelessWidget {
 
 /// W01 only: consent to external providers is separate from entering the
 /// medical record. No network request or consent grant occurs on Skip.
-class _W01OptionalChoicesBar extends StatefulWidget {
-  const _W01OptionalChoicesBar();
+class W01OptionalChoicesBar extends StatefulWidget {
+  const W01OptionalChoicesBar({super.key});
 
   @override
-  State<_W01OptionalChoicesBar> createState() =>
+  State<W01OptionalChoicesBar> createState() =>
       _W01OptionalChoicesBarState();
 }
 
-class _W01OptionalChoicesBarState extends State<_W01OptionalChoicesBar> {
-  bool _showInfo = false;
+class _W01OptionalChoicesBarState extends State<W01OptionalChoicesBar> {
   bool _busy = false;
+
+  // In Web Preview local-only sessions, the backend cannot issue a
+  // patient-bound AI consent receipt. Surface an explicit modal rather than
+  // setting a small inline flag that may be off-screen on mobile.
+  Future<void> _explainConsentUnavailable() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('w01-consent-account-required-dialog'),
+        title: Text(l10n.w01PreviewConsentTitle),
+        content: Text(l10n.consentRemoteAccountRequired),
+        actions: [
+          TextButton(
+            key: const Key('w01-consent-account-required-dismiss'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _disableLock() async {
     final lock = context.read<AppLockService>();
@@ -217,7 +238,7 @@ class _W01OptionalChoicesBarState extends State<_W01OptionalChoicesBar> {
                     key: const Key('w01-medical-consent-accept'),
                     onPressed: () {
                       if (!context.read<AuthService>().hasRemoteApiCredential) {
-                        setState(() => _showInfo = true);
+                        _explainConsentUnavailable();
                         return;
                       }
                       GoRouter.of(context).go('/consent');
@@ -228,7 +249,6 @@ class _W01OptionalChoicesBarState extends State<_W01OptionalChoicesBar> {
                     key: const Key('w01-medical-consent-skip'),
                     onPressed: () {
                       context.read<ConsentService>().declineLocally();
-                      setState(() => _showInfo = false);
                     },
                     child: Text(l10n.w01PreviewSkip),
                   ),
@@ -248,13 +268,6 @@ class _W01OptionalChoicesBarState extends State<_W01OptionalChoicesBar> {
               onPressed: _busy ? null : _disableLock,
               icon: const Icon(Icons.lock_open_outlined, size: 18),
               label: Text(l10n.w01DisableLockTitle),
-            ),
-          if (_showInfo && pending)
-            Text(
-              l10n.consentRemoteAccountRequired,
-              key: const Key('w01-medical-consent-unavailable'),
-              style: TextStyle(fontSize: 12,
-                color: AminaTheme.textSecondary(context)),
             ),
         ],
       ),
