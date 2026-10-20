@@ -95,17 +95,10 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   if (!Number.isSafeInteger(length) || length < 0 ||
       length > MAX_REQUEST_BYTES) return response.status(413).end();
 
-  // Fail closed on missing/malformed or cross-project configuration.
-  // The W01 Git-branch-scoped Preview variable pins a single deployment URL.
-  const apiOrigin = resolvePreviewApiOrigin();
-  if (!apiOrigin) return response.status(503).end();
-  // Vercel Trusted Sources authenticates this Preview-to-Preview workload.
-  // No project-wide automation bypass is provisioned or shared with Flutter.
-  let oidcToken;
-  try { oidcToken = await getToken(); } catch { return response.status(503).end(); }
-  if (typeof oidcToken !== 'string' || oidcToken.length < 3)
-    return response.status(503).end();
-
+  // The visitor's country is already available on this protected Web
+  // Preview request. It is public UI-only data: answering locally must not
+  // depend on API Preview availability or backend-to-backend OIDC. Every
+  // patient/clinical proxy route below still requires both gates.
   // W01: the public country suggestion must reflect the visitor's Web
   // request, not the API deployment's egress IP. Vercel annotates the
   // inbound request with a coarse country code. This is UI-only and never
@@ -122,6 +115,18 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
       source: country ? 'ip_estimate' : 'unavailable',
     }));
   }
+
+  // Fail closed on missing/malformed or cross-project configuration.
+  // The W01 Git-branch-scoped Preview variable pins a single deployment URL.
+  const apiOrigin = resolvePreviewApiOrigin();
+  if (!apiOrigin) return response.status(503).end();
+  // Vercel Trusted Sources authenticates this Preview-to-Preview workload.
+  // No project-wide automation bypass is provisioned or shared with Flutter.
+  let oidcToken;
+  try { oidcToken = await getToken(); } catch { return response.status(503).end(); }
+  if (typeof oidcToken !== 'string' || oidcToken.length < 3)
+    return response.status(503).end();
+
 
   let payload;
   if (request.method !== 'GET' && request.method !== 'HEAD') {
