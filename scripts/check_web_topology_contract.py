@@ -43,8 +43,8 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
         {"source": "/:path((?!api(?:/|$)).*)", "destination": "/index.html"},
     ]:
         problems.append(
-            "frontend: API prefix (including trailing slash) must be proxied "
-            "before SPA, and /api must never fall back to Flutter HTML"
+            "frontend: BFF API rewrite must include trailing slash "
+            "and precede SPA; /api must never fall back to Flutter HTML"
         )
     if monorepo.get("rewrites") != [
         {"source": "/:path((?!api(?:/|$)).*)", "destination": "/index.html"}
