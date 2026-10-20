@@ -139,6 +139,17 @@ jobs:
             exit 1
           fi
 
+      # TEMP D2: retain the authoritative generated OpenAPI when drift fails.
+      # Remove this diagnostic step in the very next commit.
+      - name: TEMP D2 export OpenAPI artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d2-openapi-diagnostic
+          path: /tmp/openapi.json
+          if-no-files-found: warn
+          retention-days: 1
+
       - name: Run tests
         run: pytest --tb=short -q
 
