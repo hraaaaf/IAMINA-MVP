@@ -4,14 +4,28 @@ import json
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from django.utils import timezone
 
+from core.consent_notice import expected_notice_claim
 from core.d2_preview_notice import expected_d2_notice
-from core.models import D2PreviewConsentReceipt
-
-from core.tests.consent_helpers import grant_current_ai_consent
+from core.models import BasePatientProfile, D2PreviewConsentReceipt
 
 
 PATH = "/api/v1/account/notification-preview-consent"
+
+
+def grant_current_ai_consent(user, locale="fr"):
+    """Seed only current exact global consent, without unrelated test imports."""
+    notice = expected_notice_claim(locale)
+    return BasePatientProfile.objects.update_or_create(
+        patient=user,
+        defaults={
+            "ai_consent_given_at": timezone.now(),
+            "ai_consent_notice_version": notice.version,
+            "ai_consent_notice_hash": notice.notice_hash,
+            "ai_consent_notice_locale": notice.locale,
+        },
+    )[0]
 
 
 class D2PreviewConsentTests(TestCase):
