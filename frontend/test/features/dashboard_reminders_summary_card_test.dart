@@ -49,6 +49,12 @@ void main() {
         value: db,
         child: const MaterialApp(
           locale: Locale('fr'),
+          supportedLocales: [Locale('fr'), Locale('en'), Locale('ar')],
+          localizationsDelegates: [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Scaffold(body: DashboardRemindersSummaryCard()),
         ),
       ),
