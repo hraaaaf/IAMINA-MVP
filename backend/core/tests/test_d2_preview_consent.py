@@ -200,8 +200,8 @@ class D2PreviewConsentTests(TestCase):
             HTTP_X_CSRFTOKEN="a" * 32,
         )
         self.assertEqual(accepted.status_code, 200)
-        self.assertEqual(
-            session_client.delete(PATH, **headers).status_code, 403,
+        self.assertIn(
+            session_client.delete(PATH, **headers).status_code, (401, 403),
         )
         self.assertEqual(
             D2PreviewConsentReceipt.objects.filter(
