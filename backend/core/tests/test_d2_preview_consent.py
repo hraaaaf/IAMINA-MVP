@@ -168,6 +168,47 @@ class D2PreviewConsentTests(TestCase):
             ).count(), 0,
         )
 
+    def test_mixed_cookie_and_bearer_cannot_bypass_d2_consent_csrf(self):
+        """A forged Bearer cannot turn an authenticated cookie into CSRF bypass."""
+        grant_current_ai_consent(self.a)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.a)
+        client.cookies["csrftoken"] = "a" * 32
+        notice = expected_d2_notice("fr")
+        body = json.dumps({
+            "locale": "fr",
+            "notice_version": notice.version,
+            "notice_hash": notice.notice_hash,
+            "acknowledgment": "ENABLE_PREVIEW_ONLY",
+        })
+        headers = {
+            "HTTP_AUTHORIZATION": "Bearer forged",
+            "HTTP_X_CSRFTOKEN": "a" * 32,
+        }
+        response = client.put(
+            PATH, data=body, content_type="application/json", **headers,
+        )
+        self.assertIn(response.status_code, (401, 403))
+        self.assertFalse(D2PreviewConsentReceipt.objects.exists())
+
+        # On an already consented session, mixed credentials cannot revoke.
+        session_client = Client(enforce_csrf_checks=True)
+        session_client.force_login(self.a)
+        session_client.cookies["csrftoken"] = "a" * 32
+        accepted = session_client.put(
+            PATH, data=body, content_type="application/json",
+            HTTP_X_CSRFTOKEN="a" * 32,
+        )
+        self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(
+            session_client.delete(PATH, **headers).status_code, 403,
+        )
+        self.assertEqual(
+            D2PreviewConsentReceipt.objects.filter(
+                patient=self.a, revoked_at__isnull=True,
+            ).count(), 1,
+        )
+
     def test_cookie_session_mutations_enforce_csrf_token_and_origin(self):
         """A legitimate same-session cookie cannot opt in via forged cross-site POST."""
         grant_current_ai_consent(self.a)
