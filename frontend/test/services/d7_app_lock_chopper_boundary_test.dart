@@ -50,6 +50,34 @@ void main() {
     expect(retry.dispatched, 0);
   });
 
+  test('W01 public country GET never waits for credentials or patient unlock',
+      () async {
+    final auth = _Auth();
+    final country = _Chain('GET', '/api/v1/country/suggestion');
+    final response = await AuthInterceptor(
+      auth,
+      canUseClinicalTransport: () => false,
+      canUsePatientSyncTransport: () => false,
+    ).intercept<Object?>(country);
+    expect(response.statusCode, 200);
+    expect(country.dispatched, 1);
+    verifyNever(() => auth.getIdToken());
+
+    for (final method in ['POST', 'HEAD']) {
+      final disallowed = _Chain(method, '/api/v1/country/suggestion');
+      await expectLater(
+        Future<Response<Object?>>.value(AuthInterceptor(
+          auth,
+          canUseClinicalTransport: () => false,
+          canUsePatientSyncTransport: () => false,
+        ).intercept<Object?>(disallowed)),
+        throwsStateError,
+      );
+      expect(disallowed.dispatched, 0);
+    }
+    verifyNever(() => auth.getIdToken());
+  });
+
   test('Pilot A keeps public login transport working', () async {
     final auth = _Auth();
     when(() => auth.getIdToken()).thenAnswer((_) async => null);
