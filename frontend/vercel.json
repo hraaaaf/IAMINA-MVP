@@ -6,11 +6,11 @@
   },
   "rewrites": [
     {
-      "source": "/api/v1/:path*",
-      "destination": "/api/preview-proxy?path=:path*"
+      "source": "/api/v1/:path(.*)",
+      "destination": "/api/preview-proxy?path=:path"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path((?!api(?:/|$)).*)",
       "destination": "/index.html"
     }
   ]
