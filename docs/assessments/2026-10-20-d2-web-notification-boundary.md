@@ -46,3 +46,9 @@ BEFORE: real Chrome artifacts [390×844](https://github.com/hraaaaf/IAMINA-MVP/a
 Goal: stop implying OS alert delivery while preserving the real user-authored local save flow.
 Reference/mockup: keep existing 48px dark green `FilledButton.icon`, text, accessible layout, timing and handler; replace only bell glyph with `Icons.add_rounded` (simple plus).
 AFTER: **not yet visually inspected** on the new HEAD. Require Chrome screenshots at identical 390/768/1280 viewports, compare CTA region, contrast, text, RTL and keyboard behavior before claiming UX certification. Different fixture values and clocks must not be misinterpreted as UI regressions.
+
+## D2 Web consent-only backend sublot (candidate, 20 Oct 2026)
+
+**Goal**: own non-urgent in-app preview preference OFF by default, revocable and patient-scoped, distinct from global AI consent. **NOT permission to notify.**
+**Implementation**: `D2PreviewConsentReceipt` append-by-grant evidence, unique active receipt per patient with hashed FR/EN/AR notice, bound to exact valid global AI consent epoch; core migration `0020`; protected `GET/PUT/DELETE /api/v1/account/notification-preview-consent`; global AI withdrawal or renewal revokes D2. Returned `delivery_enabled=false` and `browser_push_enabled=false` always, even if opted_in. No UI, browser push, inbox, messaging producer, dispatch or medication decision.
+**Proof targets**: Django tests `backend/core/tests/test_d2_preview_consent.py` cover anonymous deny, missing consent, wrong notice/hash, unknown caller fields, idempotency, A/B isolation, revocation, global reconsent and locale aliases. Exact-head Django SQLite/PostgreSQL/drift/Flutter CI required. Clinical + privacy human gates, W01 session safety and true user-facing rendered notice remain OPEN.
