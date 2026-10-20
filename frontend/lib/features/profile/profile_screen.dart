@@ -31,6 +31,9 @@ const bool kWebRamadanUiEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+bool shouldShowRamadanProfileSection({required bool isWeb}) =>
+    !isWeb || kWebRamadanUiEnabled;
+
 
 String _profileUiText(
   BuildContext context, {
