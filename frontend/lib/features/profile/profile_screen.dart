@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,15 @@ import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
 part 'profile_screen_presentation.dart';
+
+// W03-D21: Web Ramadan settings remain hidden until separately reviewed.
+// The existing model, local storage, and historical/native UI are preserved.
+// No Vercel Web build currently opts into this compile-time flag.
+const bool kWebRamadanUiEnabled = bool.fromEnvironment(
+  'IAMINA_WEB_RAMADAN_UI',
+  defaultValue: false,
+);
+
 
 String _profileUiText(
   BuildContext context, {
