@@ -281,9 +281,11 @@ def test_synthetic_qualification_routes_live_document_to_direct_json_once():
     delegate = Delegate()
     provider = SyntheticQualificationTextProvider(delegate)
     prompt = (
-        "qualification\\nBEGIN_UNTRUSTED_DOCUMENT\\n"
-        "L0001|Fasting glucose: 126 mg/dL\\nEND_UNTRUSTED_DOCUMENT"
+        "qualification\nBEGIN_UNTRUSTED_DOCUMENT\n"
+        "L0001|Fasting glucose: 126 mg/dL\nEND_UNTRUSTED_DOCUMENT"
     )
+    assert "BEGIN_UNTRUSTED_DOCUMENT\\nL0001|" not in prompt
+    assert "BEGIN_UNTRUSTED_DOCUMENT\nL0001|" in prompt
     result = provider.complete_json_object("system", prompt)
     assert json.loads(result.content) == {"lab_values": {}}
     assert delegate.calls == 1
