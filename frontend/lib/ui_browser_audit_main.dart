@@ -442,6 +442,8 @@ String _pathForSurface(String surface) => switch (surface) {
   'summary' => '/summary',
   'reports-local' => '/reports-local',
   'profile' => '/profile',
+  // Audit-only readback surface must resolve to its registered route.
+  'fue-d21-history' => '/fue-d21-history',
   'importer' => '/importer',
   'document-import' => '/document-import',
   'add-log' => '/add-log',

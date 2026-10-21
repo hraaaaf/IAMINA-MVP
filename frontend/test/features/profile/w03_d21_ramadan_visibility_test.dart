@@ -60,6 +60,8 @@ void main() {
     final harness = File('tool/w03_d21_web_profile_browser.py').readAsStringSync();
     expect(audit, contains("Uri.base.queryParameters['locale'] == 'ar'"));
     expect(audit, contains('SemanticsBinding.instance.ensureSemantics()'));
+    expect(audit, contains("'fue-d21-history' => '/fue-d21-history'"));
+    expect(audit, contains("path: '/fue-d21-history'"));
     expect(harness, contains('keyboard_focus_trace'));
     expect(harness, contains('keyboard_navigation_verdict'));
     expect(harness, contains('received_dom_keys'));
