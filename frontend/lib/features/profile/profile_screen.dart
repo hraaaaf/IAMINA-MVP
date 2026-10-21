@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../core/theme/amina_visual_language.dart';
+import '../../core/data/ramadan_context.dart' show shouldApplyRamadanProfileContext;
+export '../../core/data/ramadan_context.dart' show kWebRamadanUiEnabled;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
@@ -23,16 +25,10 @@ import 'medical_treatment_multi_selector.dart';
 
 part 'profile_screen_presentation.dart';
 
-// W03-D21: Web Ramadan settings remain hidden until separately reviewed.
-// The existing model, local storage, and historical/native UI are preserved.
-// No Vercel Web build currently opts into this compile-time flag.
-const bool kWebRamadanUiEnabled = bool.fromEnvironment(
-  'IAMINA_WEB_RAMADAN_UI',
-  defaultValue: false,
-);
-
+// W03-D21: Web Ramadan settings and derivative meal vocabulary are disabled
+// together by the same compile-time flag; historical/native data is intact.
 bool shouldShowRamadanProfileSection({required bool isWeb}) =>
-    !isWeb || kWebRamadanUiEnabled;
+    shouldApplyRamadanProfileContext(isWeb: isWeb);
 
 
 String _profileUiText(

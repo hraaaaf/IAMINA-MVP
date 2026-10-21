@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amina/features/profile/profile_screen.dart';
+import 'package:amina/core/data/ramadan_context.dart' as context_policy;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -8,6 +9,26 @@ void main() {
     expect(kWebRamadanUiEnabled, isFalse);
     expect(shouldShowRamadanProfileSection(isWeb: true), isFalse);
     expect(shouldShowRamadanProfileSection(isWeb: false), isTrue);
+    expect(context_policy.shouldApplyRamadanProfileContext(isWeb: true), isFalse);
+    expect(context_policy.shouldApplyRamadanProfileContext(isWeb: false), isTrue);
+  });
+
+  test('W03 D21 historical period changes native meal vocabulary but not Web', () {
+    final date = DateTime(2026, 3, 5);
+    final start = DateTime(2026, 2, 18);
+    final end = DateTime(2026, 3, 20);
+    expect(context_policy.mealTypesForSurfaceDate(date, start, end, isWeb: true),
+        context_policy.regularMealTypes);
+    expect(context_policy.mealTypesForSurfaceDate(date, start, end, isWeb: false),
+        context_policy.ramadanMealTypes);
+    expect(context_policy.isRamadanProfileDate(date, start, end), isTrue);
+  });
+
+  test('W03 D21 meal picker suppresses stale season on Web at open/date change', () {
+    final source = File('lib/features/dashboard/widgets/add_log_sheet.dart').readAsStringSync();
+    expect(source, contains('shouldApplyRamadanProfileContext(isWeb: kIsWeb)'));
+    expect(source, contains('mealTypesForSurfaceDate('));
+    expect(source.split('mealTypesForSurfaceDate(').length - 1, 2);
   });
 
   test('W03 D21 Web presentation gates section and calendar controls together', () {

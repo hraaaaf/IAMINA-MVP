@@ -210,6 +210,16 @@ Future<void> main() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await db.seedDemoData();
+        // Audit-only FUE fixture: a real historical period spanning today.
+        // Never enabled in the normal patient entrypoint.
+        if (Uri.base.queryParameters['fue_ramadan_history'] == '1') {
+          final now = DateTime.now();
+          final stored = await db.setRamadanPeriod(
+            start: now.subtract(const Duration(days: 2)),
+            end: now.add(const Duration(days: 2)),
+          );
+          if (!stored) throw StateError('FUE history fixture not stored');
+        }
       } catch (error) {
         debugPrint('Browser audit demo seed unavailable: $error');
       }
