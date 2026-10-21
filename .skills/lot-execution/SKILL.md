@@ -15,9 +15,9 @@ Execute one roadmap LOT from evidence to merge without scope drift.
 9. For every material step, record `EXECUTION_SCORE /10` and an adversarial `ADVERSARIAL_SCORE /10`; retain the lower score and apply every cap in `docs/QUALITY_SCORING_POLICY.md`.
 10. If the two scores differ by more than `0.5`, investigate, remediate/justify, rerun affected evidence and rescore before continuing.
 11. Review the final diff file-by-file; remove temporary workflows/scripts/generated noise.
-12. Hand off to an independent Reviewer. Builder may not certify its own work.
-13. Remediate every blocking Reviewer finding and re-run affected evidence.
-14. Hand off to the Release Certifier.
+12. **For each product decision D**, perform the complete FUE covering **every in-scope feature**, user entry/actions/positive-negative/recovery states, Web FR/AR RTL at 390×844, 768×1024 and 1280×900, keyboard/touch/refresh/persistence where applicable. Record the feature-to-scenario matrix, BEFORE/AFTER artifacts and `FUE_PASS` only if 100% of required cases passed. A separate independent Reviewer is not a blanket D gate.
+13. Run a fresh-evidence adversarial pass; remediate blockers, rerun affected FUE. For non-D LOTs use the applicable critical review; never bypass safety/clinical/privacy specialists where necessary.
+14. Run a distinct evidence-based Release Certification pass. It may be conducted in a separate pass by the same executor, but is not an independent review and is score-capped.
 15. If the LOT retained score is `>= 9.0/10` and binary gates are green, perform the mandatory final **Perfection Pass** from `docs/QUALITY_SCORING_POLICY.md`; fix every materially improvable in-scope weakness, rerun affected evidence and rescore.
 16. Update canonical docs before closure. If the SHA changes, re-run exact-head gates.
 17. A LOT may be `VERIFIED` only when the final retained score is `>= 9.0/10`, every required binary gate is green, no blocker remains, scoring discrepancies are resolved, and the Perfection Pass is complete.
@@ -40,8 +40,9 @@ Execute one roadmap LOT from evidence to merge without scope drift.
 - More than one roadmap responsibility in the same LOT without explicit inseparability rationale.
 - Temporary bypass or weakened safety gate.
 - Stale test evidence after the head SHA changed.
+- Declaring a product D closed with incomplete FUE coverage, or substituting independent review/CI for the required first-user journeys.
 - Canonical documentation disagreeing with merged reality.
 - Declaring `VERIFIED` below `9.0/10`, with a red/missing binary gate, unresolved `>0.5` score gap, or before the Perfection Pass.
 
 ## Required closeout evidence
-Branch, PR, exact head SHA, tests/gates, per-material-step Execution/Adversarial/retained scores, applied caps, discrepancy investigations, Reviewer verdict, Perfection Pass result, Certifier verdict, merge SHA, post-merge gates, next LOT.
+Branch, PR, exact head SHA, tests/gates, **for every D: full FUE inventory, case matrix, PASS/FAIL/NOT_RUN coverage and verdict**, per-material-step scores/caps and discrepancy investigations, risk-specialist findings if applicable, Perfection Pass and Certifier verdicts, merge SHA, post-merge gates, next LOT.
