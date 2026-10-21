@@ -1,4 +1,4 @@
-name: Companion real chat E2E screenshots
+name: Companion local-only web no-egress screenshots
 
 on:
   workflow_dispatch:
@@ -138,7 +138,7 @@ jobs:
           flutter build web --release -t lib/ui_companion_chat_e2e_main.dart \
             --dart-define=API_BASE_URL=http://127.0.0.1:7358
 
-      - name: Run Chrome real exchange and capture states
+      - name: Run Chrome local-only denial and capture states
         shell: bash
         run: |
           set -euo pipefail
@@ -332,19 +332,19 @@ jobs:
           screenshot('chat-typed-390x844.png')
           click(354, 793)
 
-          deadline = time.time() + 15
-          while time.time() < deadline:
-              if (proof / 'chat-response.json').exists():
-                  break
-              time.sleep(0.25)
-          if not (proof / 'chat-response.json').exists():
-              raise RuntimeError('No /api/v1/ai/chat response captured from the app')
-
-          payload = json.loads((proof / 'chat-response.json').read_text())
-          if not payload.get('reply') or payload.get('reply_language') != 'fr':
-              raise RuntimeError(f'Unexpected real chat response: {payload}')
-          time.sleep(2)
-          screenshot('chat-reply-390x844.png')
+          # A production web build MUST NOT contact clinical chat endpoints.
+          # Allow enough time for an accidental async HTTP request to surface.
+          time.sleep(5)
+          if (proof / 'chat-response.json').exists() or (proof / 'chat-request.json').exists():
+              raise RuntimeError('Local-only web build sent patient chat to the backend')
+          resources = call('Runtime.evaluate', {
+              'expression': "JSON.stringify(performance.getEntriesByType('resource').filter(r => r.name.includes('/api/v1/')).map(r => r.name))",
+              'returnByValue': True,
+          })
+          outbound = json.loads(resources['result'].get('value', '[]'))
+          if outbound:
+              raise RuntimeError(f'Local-only web build initiated clinical API requests: {outbound}')
+          screenshot('chat-local-only-390x844.png')
           call('Page.navigate', {'url': 'http://127.0.0.1:7358/?p1-proof=1'})
           time.sleep(8)
           click(155, 793)
@@ -362,24 +362,17 @@ jobs:
           import json
           from pathlib import Path
 
-          request = json.loads(Path('companion-chat-e2e/chat-request.json').read_text())
-          response = json.loads(Path('companion-chat-e2e/chat-response.json').read_text())
-          assert request == {
-              'message': "Est-ce que tu peux me dire quelle dose d'insuline prendre ?",
-              'context_days': 14,
-          }
-          assert response['reply']
-          assert response['conversation_id'].startswith('conv-')
-          assert response['reply_language'] == 'fr'
+          assert not Path('companion-chat-e2e/chat-request.json').exists()
+          assert not Path('companion-chat-e2e/chat-response.json').exists()
           for name in (
               'chat-empty-390x844.png',
               'chat-typed-390x844.png',
-              'chat-reply-390x844.png',
+              'chat-local-only-390x844.png',
               'p1-after-390x844.png',
           ):
               path = Path('companion-chat-e2e') / name
               assert path.stat().st_size > 10000, (name, path.stat().st_size)
-          print('Real UI -> IAMINA API -> certified Companion exchange verified.')
+          print('Local-only web build: blocked clinical HTTP with synthetic input; browser capture verified.')
           PY
 
           cleanup_process "$CHROME_PID"
@@ -391,11 +384,11 @@ jobs:
           rm -f /tmp/iamina-chat-backend.pid
           trap - EXIT
 
-      - name: Upload real chat visual proof
+      - name: Upload local-only chat visual proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-companion-real-chat-e2e
+          name: iamina-companion-local-only-no-egress
           path: |
             companion-chat-e2e/*.png
             companion-chat-e2e/chat-request.json
