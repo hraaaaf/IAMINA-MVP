@@ -42,6 +42,9 @@ void main() {
     expect(harness, contains('keyboard_focus_trace'));
     expect(harness, contains('keyboard_navigation_verdict'));
     expect(harness, contains('received_dom_keys'));
+    expect(harness, contains('reverse_first_return_step'));
+    expect(harness, contains('range(28)'));
+    expect(harness, contains('Shift keydown was not observed by document'));
     expect(harness, contains('report["problems"] = problems'));
     expect(harness, contains('trace = keyboard_focus_trace(cdp)'));
     expect(harness, contains('reverse_to_earlier_target'));
