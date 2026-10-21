@@ -283,6 +283,11 @@ class _BrowserAuditApp extends StatelessWidget {
           path: '/document-import',
           builder: (context, state) => const DocumentImportPremiumScreen(),
         ),
+        // FUE-only route in this isolated audit entrypoint, never in patient main.
+        GoRoute(
+          path: '/fue-d21-history',
+          builder: (context, state) => const _D21HistoryAuditScreen(),
+        ),
         GoRoute(
           path: '/add-log',
           builder: (context, state) => const AddLogScreen(),
@@ -455,6 +460,35 @@ String _pathForSurface(String surface) => switch (surface) {
   'next-action' => '/next-action',
   _ => '/dashboard',
 };
+
+// Test-only history readback: validates Web Drift continuity after navigation.
+class _D21HistoryAuditScreen extends StatelessWidget {
+  const _D21HistoryAuditScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final db = context.read<AppDatabase>();
+    return Scaffold(
+      body: FutureBuilder<PatientProfileData?>(
+        future: db.getProfileForLocalUserId(db.activeProfileRowId),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: Text('FUE_HISTORY_MISSING'));
+          }
+          final p = snapshot.data!;
+          return Center(
+            child: Text(
+              'FUE_HISTORY_PRESENT='${p.ramadanStartDate != null && p.ramadanEndDate != null}'
+              ';START=${p.ramadanStartDate?.year}'
+              ';END=${p.ramadanEndDate?.year}',
+              key: const Key('fue-history-readback'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class _BrowserMealPickerSurface extends StatefulWidget {
   const _BrowserMealPickerSurface();
