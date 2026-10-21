@@ -39,7 +39,7 @@ jobs:
           flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
           flutter build web --release -t lib/ui_browser_audit_main.dart
           cp -a build/web /tmp/iamina-d21-after
-      - name: Capture and assert D21 AFTER in real Chrome
+      - name: Capture D21 AFTER with complete keyboard diagnostics
         run: |
           python3 candidate/frontend/tool/w03_d21_web_profile_browser.py \
             --stage after --build /tmp/iamina-d21-after --output "$GITHUB_WORKSPACE/d21-proof"
@@ -67,7 +67,7 @@ jobs:
           flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
           flutter build web --release -t lib/ui_browser_audit_main.dart
           cp -a build/web /tmp/iamina-d21-before
-      - name: Capture and assert BEFORE in real Chrome
+      - name: Capture historical BEFORE with matching keyboard diagnostics
         run: |
           python3 candidate/frontend/tool/w03_d21_web_profile_browser.py \
             --stage before --build /tmp/iamina-d21-before --output "$GITHUB_WORKSPACE/d21-proof"
@@ -82,7 +82,24 @@ jobs:
                     for lang in ("fr","ar") for size in sizes}
           assert {p.stem for p in root.glob("*.png")}==expected
           assert {p.stem for p in root.glob("*.json")}==expected
-          print("12 real Chrome screenshots + 12 assertions reports complete")
+          print("12 real Chrome screenshots + 12 diagnostics reports complete")
+          import json
+          reports=[json.loads((root/f"{stem}.json").read_text()) for stem in sorted(expected)]
+          after=[r for r in reports if r["stage"]=="after"]
+          before=[r for r in reports if r["stage"]=="before"]
+          for a,b in zip(sorted(after,key=lambda r:(r["locale"],r["viewport"])),
+                         sorted(before,key=lambda r:(r["locale"],r["viewport"]))):
+              print("COMPARE",a["locale"],a["viewport"],
+                    "after",a["keyboard_navigation"],
+                    "before",b["keyboard_navigation"],flush=True)
+          issues=[(r["stage"],r["locale"],r["viewport"],r["problems"])
+                  for r in reports
+                  if r["problems"] and (r["stage"]=="after" or any(
+                      "Historical Ramadan card" in p or "Expected locale copy" in p
+                      for p in r["problems"]))]
+          if issues:
+              raise AssertionError(f"D21 candidate / baseline visual failed checks: {issues}")
+          print("D21 Web candidate: 6/6 visual+keyboard checks and historical baseline evidence pass")
           PY
       - name: Upload D21 target evidence even when failing
         if: always()

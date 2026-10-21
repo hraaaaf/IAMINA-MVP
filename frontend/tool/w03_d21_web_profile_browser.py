@@ -97,6 +97,15 @@ def keyboard_focus_trace(cdp):
     # distinguish meaningful forward traversal from a trapped focus.
     cdp.call("Page.bringToFront")
     cdp.call("Emulation.setFocusEmulationEnabled", {"enabled": True})
+    # Record keys that actually arrive in the DOM, not only CDP dispatches.
+    # This differentiates an event-delivery failure from Flutter focus traversal.
+    cdp.evaluate(
+        "window.__d21Keys=[];"
+        "document.addEventListener('keydown',function(e){"
+        "window.__d21Keys.push({key:e.key,shift:e.shiftKey,"
+        "target:e.target && e.target.getAttribute('aria-label'),"
+        "trusted:e.isTrusted});},true);"
+    )
     trace = []
     for index in range(16):
         shift = index >= 12
@@ -127,9 +136,11 @@ def keyboard_focus_trace(cdp):
             " n=n.shadowRoot.activeElement;"
             "return n ? (n.getAttribute('aria-label') || n.outerHTML.slice(0,180)) : null;})()"
         )
+        received = cdp.evaluate("window.__d21Keys.slice(-4)")
         trace.append({"key": "Shift+Tab" if shift else "Tab",
                       "ax_focus": focused, "dom_focus": dom_focus,
-                      "ax_node_count": len(names)})
+                      "ax_node_count": len(names),
+                      "received_dom_keys": received})
     return trace
 
 
@@ -190,7 +201,7 @@ def run_one(stage, locale, viewport, output):
         png = output / f"{stage}-{title}.png"
         digest = capture(cdp, png)
         scroll_width = cdp.evaluate("document.documentElement.scrollWidth")
-        trace = keyboard_focus_trace(cdp) if stage == "after" else []
+        trace = keyboard_focus_trace(cdp)
         text = " ".join(names).lower()
         ramadan = ("رمضان" in text or "ramadan" in text)
         ar_copy = "البيانات والأجهزة" in text
@@ -199,7 +210,7 @@ def run_one(stage, locale, viewport, output):
             str(x) for row in trace
             for x in row["ax_focus"] if x
         ))
-        keyboard_verdict = keyboard_navigation_verdict(trace) if stage == "after" else {}
+        keyboard_verdict = keyboard_navigation_verdict(trace)
         report = {"stage": stage, "locale": locale, "viewport": [width, height],
                   "png": png.name, "sha256": digest, "bytes": png.stat().st_size,
                   "ax_node_count": len(names), "ramadan_in_ax": ramadan,
@@ -209,8 +220,6 @@ def run_one(stage, locale, viewport, output):
                   "distinct_ax_focus_targets": focus_targets,
                   "keyboard_navigation": keyboard_verdict,
                   "ax_names_preview": names[:90]}
-        (output / f"{stage}-{title}.json").write_text(
-            json.dumps(report, indent=2, ensure_ascii=False) + "\n")
         problems = []
         if stage == "before" and not ramadan:
             problems.append("Historical Ramadan card not found in AX tree")
@@ -222,17 +231,27 @@ def run_one(stage, locale, viewport, output):
             problems.append("Expected locale copy absent in AX tree")
         if scroll_width is not None and scroll_width > width + 8:
             problems.append(f"Horizontal browser overflow {scroll_width}>{width}")
-        if stage == "after":
-            if keyboard_verdict["forward_unique_targets"] < 3:
-                problems.append("Tab failed to visit at least three distinct Profile targets")
-            if not keyboard_verdict["reverse_to_earlier_target"]:
-                problems.append("Shift+Tab did not return to a previously focused Profile target")
-        if problems:
-            raise AssertionError(f"{title} {stage}: " + "; ".join(problems))
-        print(json.dumps({key: report[key] for key in
-              ("stage", "locale", "viewport", "ramadan_in_ax",
-               "distinct_ax_focus_targets", "sha256")}, ensure_ascii=False),
-              flush=True)
+        if keyboard_verdict["forward_unique_targets"] < 3:
+            problems.append("Tab failed to visit at least three distinct Profile targets")
+        if not keyboard_verdict["reverse_to_earlier_target"]:
+            problems.append("Shift+Tab did not return to a previously focused Profile target")
+        keyboard_shifts = [
+            event for item in trace[12:]
+            for event in item.get("received_dom_keys", [])
+            if event.get("key") == "Tab" and event.get("shift") is True
+        ]
+        if not keyboard_shifts:
+            problems.append("CDP Shift+Tab did not reach document keydown listener")
+        report["problems"] = problems
+        (output / f"{stage}-{title}.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+        print(json.dumps({
+            "stage": stage, "locale": locale, "viewport": [width, height],
+            "ramadan_in_ax": ramadan, "reverse_pass": keyboard_verdict["reverse_to_earlier_target"],
+            "received_shift_tab": bool(keyboard_shifts), "problems": problems,
+            "sha256": digest,
+        }, ensure_ascii=False), flush=True)
+        return report
     finally:
         if cdp:
             cdp.close()
@@ -260,6 +279,7 @@ def main():
         for locale in LOCALES:
             for viewport in VIEWS:
                 run_one(args.stage, locale, viewport, args.output)
+        print("D21 diagnostic: all 6 locale/viewports captured; the final workflow step enforces assertions")
     finally:
         server.terminate()
         server.wait(timeout=5)

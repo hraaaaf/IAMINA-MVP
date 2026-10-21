@@ -41,6 +41,9 @@ void main() {
     expect(audit, contains('SemanticsBinding.instance.ensureSemantics()'));
     expect(harness, contains('keyboard_focus_trace'));
     expect(harness, contains('keyboard_navigation_verdict'));
+    expect(harness, contains('received_dom_keys'));
+    expect(harness, contains('report["problems"] = problems'));
+    expect(harness, contains('trace = keyboard_focus_trace(cdp)'));
     expect(harness, contains('reverse_to_earlier_target'));
     expect(harness, contains('Shift+Tab did not return to a previously focused Profile target'));
     expect(harness, contains('if stage == "after" and ramadan:'));
