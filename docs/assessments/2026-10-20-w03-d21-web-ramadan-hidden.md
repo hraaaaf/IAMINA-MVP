@@ -2,7 +2,7 @@
 
 Date : 2026-10-20. Périmètre : **Flutter Web uniquement**. Décision source : D21, `docs/ROADMAP.md` (W03), `docs/assessments/2026-10-15-w00-web-inventory.md` et le registre Notion des 29 décisions.
 
-**Statut au 21/10/2026 : VALIDATION TECHNIQUE WEB SYNTHÉTIQUE ACQUISE (9/9 workflows SUCCESS) ; REVUE INDÉPENDANTE ET CLOSEOUT FINAL OUVERTS ; PR DRAFT, NON MERGÉE/NON DÉPLOYÉE.** SHA de code et tests vérifié `f0e565f977cc15154b57616f2e3cfced0a4d4072`. W01 reste NO-GO, W02 gelé. Ce quick win est indépendant de W01/W02 selon la roadmap et ne touche ni la sécurité Production ni les notifications D2 (PR #1135). Les sections historiques ci-dessous constituent un journal daté, non le verdict actuel.
+**Statut au 21/10/2026 : VALIDATION TECHNIQUE WEB SYNTHÉTIQUE 9/9 SUCCESS sur `db314db6bf61c501984b5a3e016d279629707c2a` ; `FUE_NO_GO` (FIRST USER EXPERIENCE de D21 incomplet), CLOSEOUT FINAL OUVERT ; PR prête pour revue au sens GitHub, NON MERGÉE/NON DÉPLOYÉE.** La nouvelle décision propriétaire **supprime le reviewer indépendant comme gate systématique** : le FUE doit couvrir toutes les fonctionnalités D21 avec preuves réelles, pas seulement le changement visuel. Voir la section FUE en fin de document et [PR gouvernance #1138](https://github.com/hraaaaf/IAMINA-MVP/pull/1138), non encore fusionnée. W01 NO-GO, W02 gelé ; le code et les données historiques Ramadan sont conservés. Les anciennes sections ci-dessous sont des jalons datés, non la règle de clôture actuelle.
 
 ## Goal → Succès → Preuve
 
@@ -92,3 +92,22 @@ D2 notifications demeure sur PR #1135 distincte. D3 rappels sur PR #1085 DRAFT a
 4. **Intégration/Release** : ne pas merger automatiquement. Après revue APPROVED et nouveaux tests si corrections, synchroniser PR/documents/Notion, décider merge explicitement selon politique projet, vérifier post-merge avant fermeture. Aucun déploiement Vercel sans autorisation du propriétaire. W01 NO-GO et W02 gelé restent inchangés.
 
 **Next exact** : solliciter un reviewer humain éligible indépendant avec accès au repository (identité absente des métadonnées PR), qui doit contrôler les artefacts #12341954912 et la lenteur du focus inverse (jusqu'à 10 touches). Après approbation effective, revalider le HEAD exact, closeout final et intégration autorisée ; aucun avancement global chiffré sans méthode.
+
+## Décision propriétaire — 21/10/2026 : FUE remplace le gate de reviewer indépendant
+
+**Règle applicable à D21 et aux autres décisions D :** le FUE (FIRST USER EXPERIENCE) doit couvrir **l'ensemble des fonctionnalités et comportements de la décision**, pas seulement le widget modifié. Le gate « reviewer indépendant » anciennement décrit dans ce document est **supersédé**. Source normative en cours d'intégration : [AGENTS.md / PR gouvernance #1138](https://github.com/hraaaaf/IAMINA-MVP/pull/1138), commit `b873f67dc4e38b24ed76119ce10c837c92f13b1d`. Les validations de sécurité, clinique et privacy spécifiquement nécessaires restent obligatoires.
+
+**FUE Goal** : pour un premier utilisateur dans Flutter Web, D21 masque Ramadan sans laisser ses commandes ni effet non voulu accessibles ; les autres fonctions du Profil restent utilisables et les données antérieures ne sont pas détruites. **Succès** : 100 % des scénarios FUE requis `PASS` avec résultats observés et preuves sur les 3 viewports et FR/AR RTL. **Preuve** : interactions réelles navigateur et matrice FUE, complétées par captures, traces, tests et CI exact SHA.
+
+| Cas D21 | Parcours utilisateur couvrant la fonctionnalité | Preuve actuelle | Verdict FUE |
+| --- | --- | --- | --- |
+| FUE-01 | Première ouverture Profil dans Flutter Web, absence de Ramadan et de ses commandes date/enregistrement en FR/AR, 390×844 / 768×1024 / 1280×900 | 12 PNG/JSON BEFORE/AFTER, [artefact #12345128620](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39599479683/artifacts/12345128620) | PARTIEL : rendu/AX, pas test interactif complet |
+| FUE-02 | Depuis Profil, ouvrir/fermer Médical, IAmina, Données, Compte ; scroller, naviguer ailleurs puis revenir sans régression | Sections et ordre visibles aux trois viewports | NOT_RUN : parcours interactif |
+| FUE-03 | Parcours clavier Tab/Shift+Tab, activation des sections, focus visible, RTL AR ; qualifier les focus internes et la lenteur jusqu'à 10 touches | Trace AX synthétique 6/6 après ; pas de test d'activation de toutes les commandes | PARTIEL |
+| FUE-04 | Profil vierge puis profil existant (synthétiques), recharger, changer FR↔AR : aucune donnée Ramadan historique perdue ou écrasée | Garde source, tests Flutter unitaires ; sauvegarde réelle non testée | NOT_RUN |
+| FUE-05 | Tentative d'accès aux commandes Ramadan Web et vérification des effets saisonniers dans **tout le périmètre D21**, y compris le cas historique persistant | Carte masquée et code conservé ; `docs/ROADMAP.md` demande « Ramadan masqué, code et effets neutralisés » | NOT_RUN : neutralisation des effets Web hors Profil non démontrée |
+| FUE-06 | Vérifier états vides/erreur, nav/touch, absence d'overflow, autres réglages Profil, ressaisie et retour selon fonctions concernées | Layout FR/AR et absence d'overflow synthétiques ; autres parcours non prouvés | PARTIEL |
+
+**Couverture actuelle : 0/6 cas FUE intégralement PASS.** Des sous-assertions CI/visuelles sont vertes, mais cela ne suffit pas pour convertir les lignes en PASS. **Verdict : `FUE_NO_GO`**, sans prétendre constater 6 bugs : les cases non exécutées sont un manque de preuve, pas des échecs produit démontrés.
+
+**Next exact :** construire/exécuter les parcours FUE manquants en navigateur réel avec données synthétiques et des oracles action/état, documenter les preuves et corriger les vrais défauts si détectés ; relancer les CI du HEAD final, calculer les scores et effectuer le Perfection Pass. Puis closeout et décision d'intégration. **Pas de reviewer humain générique à solliciter, aucun merge/Vercel automatique.**
