@@ -37,7 +37,14 @@ def click_section(page,cdp,word):
     locator.first.scroll_into_view_if_needed(timeout=4500)
     locator.first.click(timeout=4500)
     page.wait_for_timeout(500)
-    return names(cdp)!=before
+    expanded = names(cdp)
+    if expanded == before:
+        return False
+    # FUE must prove both directions of the real expansion control.
+    locator.first.click(timeout=4500)
+    page.wait_for_timeout(500)
+    collapsed = names(cdp)
+    return collapsed != expanded
 
 def keyboard(page,cdp):
     fw=[];rev=[]
@@ -83,13 +90,23 @@ def run(browser,lang,size,out):
         page.reload(wait_until="domcontentloaded");page.wait_for_timeout(12000)
         check("FUE-04",has(names(cdp),"FUE_HISTORY_PRESENT=true"),
               "Historic Ramadan profile lost on browser reload")
+        # First-user browser Back must lead to a usable Profile after history.
+        page.go_back(wait_until="domcontentloaded")
+        page.wait_for_timeout(12000)
+        back_names = names(cdp)
+        proof["after_browser_back"] = back_names[:30]
+        check("FUE-02", all(has(back_names, x) for x in LABELS[lang]),
+              "Browser back did not return to functional Profile")
 
         load(page,lang,"add-log-meal")
         meal=names(cdp);proof["meal_ax"]=meal[:85]
         banned=("ramadan","رمضان","suhoor","iftar","السحور","الإفطار")
-        check("FUE-05",len(meal)>10 and not any(any(token in n.lower() for token in banned)
-                                      for n in meal),
-              "Old Ramadan dates still activate seasonal Web meal choices or meal UI empty")
+        regular = ("Petit-déjeuner","Déjeuner","Dîner","Collation") if lang == "fr" else (
+            "الفطور","الغداء","العشاء","وجبة خفيفة")
+        check("FUE-05",len(meal)>10
+              and not any(any(token in n.lower() for token in banned) for n in meal)
+              and all(has(meal,choice) for choice in regular),
+              "Web meal choices must show four regular types and no Ramadan vocabulary")
         shot=out/f"meal-history-{id}.png";page.screenshot(path=str(shot))
         proof["meal_screenshot"]=shot.name
 
