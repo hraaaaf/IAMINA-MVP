@@ -92,16 +92,34 @@ def capture(cdp, target):
 
 
 def keyboard_focus_trace(cdp):
+    # A populated AX tree does not prove working keyboard navigation.
+    # Explicit shift key events and a settling delay are required to
+    # distinguish meaningful forward traversal from a trapped focus.
+    cdp.call("Page.bringToFront")
+    cdp.call("Emulation.setFocusEmulationEnabled", {"enabled": True})
     trace = []
     for index in range(16):
         shift = index >= 12
         modifiers = 8 if shift else 0
+        if shift:
+            cdp.call("Input.dispatchKeyEvent", {
+                "type": "rawKeyDown", "key": "Shift", "code": "ShiftLeft",
+                "windowsVirtualKeyCode": 16, "nativeVirtualKeyCode": 16,
+                "modifiers": 8,
+            })
         for kind in ("rawKeyDown", "keyUp"):
             cdp.call("Input.dispatchKeyEvent", {
                 "type": kind, "key": "Tab", "code": "Tab",
                 "windowsVirtualKeyCode": 9, "nativeVirtualKeyCode": 9,
                 "modifiers": modifiers,
             })
+        if shift:
+            cdp.call("Input.dispatchKeyEvent", {
+                "type": "keyUp", "key": "Shift", "code": "ShiftLeft",
+                "windowsVirtualKeyCode": 16, "nativeVirtualKeyCode": 16,
+                "modifiers": 0,
+            })
+        time.sleep(0.18)
         names, focused = ax_snapshot(cdp)
         dom_focus = cdp.evaluate(
             "(function(){let n=document.activeElement;"
@@ -113,6 +131,29 @@ def keyboard_focus_trace(cdp):
                       "ax_focus": focused, "dom_focus": dom_focus,
                       "ax_node_count": len(names)})
     return trace
+
+
+def keyboard_navigation_verdict(trace):
+    # Chromium may retain the root IAMINA label in the focused AX list.
+    def target(entry):
+        selected = [x for x in entry["ax_focus"] if x and x != "IAMINA"]
+        return selected[-1] if selected else None
+
+    forward = [target(x) for x in trace[:12]]
+    backward = [target(x) for x in trace[12:]]
+    forward_names = {name for name in forward if name is not None}
+    reversed_to_earlier = any(
+        name is not None
+        and name != forward[-1]
+        and name in forward_names
+        for name in backward
+    )
+    return {
+        "forward_unique_targets": len(forward_names),
+        "reverse_to_earlier_target": reversed_to_earlier,
+        "forward_target_sequence": forward,
+        "reverse_target_sequence": backward,
+    }
 
 
 def run_one(stage, locale, viewport, output):
@@ -158,6 +199,7 @@ def run_one(stage, locale, viewport, output):
             str(x) for row in trace
             for x in row["ax_focus"] if x
         ))
+        keyboard_verdict = keyboard_navigation_verdict(trace) if stage == "after" else {}
         report = {"stage": stage, "locale": locale, "viewport": [width, height],
                   "png": png.name, "sha256": digest, "bytes": png.stat().st_size,
                   "ax_node_count": len(names), "ramadan_in_ax": ramadan,
@@ -165,6 +207,7 @@ def run_one(stage, locale, viewport, output):
                   "document_scroll_width": scroll_width,
                   "focused_before": focused, "keyboard_trace": trace,
                   "distinct_ax_focus_targets": focus_targets,
+                  "keyboard_navigation": keyboard_verdict,
                   "ax_names_preview": names[:90]}
         (output / f"{stage}-{title}.json").write_text(
             json.dumps(report, indent=2, ensure_ascii=False) + "\n")
@@ -179,8 +222,11 @@ def run_one(stage, locale, viewport, output):
             problems.append("Expected locale copy absent in AX tree")
         if scroll_width is not None and scroll_width > width + 8:
             problems.append(f"Horizontal browser overflow {scroll_width}>{width}")
-        if stage == "after" and not focus_targets:
-            problems.append("Tab/Shift+Tab never reached an AX focus target")
+        if stage == "after":
+            if keyboard_verdict["forward_unique_targets"] < 3:
+                problems.append("Tab failed to visit at least three distinct Profile targets")
+            if not keyboard_verdict["reverse_to_earlier_target"]:
+                problems.append("Shift+Tab did not return to a previously focused Profile target")
         if problems:
             raise AssertionError(f"{title} {stage}: " + "; ".join(problems))
         print(json.dumps({key: report[key] for key in
