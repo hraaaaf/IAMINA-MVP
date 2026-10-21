@@ -478,9 +478,10 @@ class _D21HistoryAuditScreen extends StatelessWidget {
           final p = snapshot.data!;
           return Center(
             child: Text(
-              'FUE_HISTORY_PRESENT='${p.ramadanStartDate != null && p.ramadanEndDate != null}'
-              ';START=${p.ramadanStartDate?.year}'
-              ';END=${p.ramadanEndDate?.year}',
+              'FUE_HISTORY_PRESENT=' +
+              (p.ramadanStartDate != null && p.ramadanEndDate != null).toString() +
+              ';START=' + (p.ramadanStartDate?.year).toString() +
+              ';END=' + (p.ramadanEndDate?.year).toString(),
               key: const Key('fue-history-readback'),
             ),
           );
