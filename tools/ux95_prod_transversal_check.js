@@ -19,6 +19,16 @@ checks['Journal: importer shortcut'] = text('04-mesures').includes('Importer un 
 checks['Journal: CGM shortcut'] = text('04-mesures').includes('Connecter un CGM');
 checks['Reports: descriptive title'] = text('05-rapports').includes('Rapport de vos mesures');
 checks['Chat: governed role'] = text('07-iamina-chat').includes('Conversation gouvernée');
+for (const [name, route] of [
+  ['16-navigation-mesures', '#/journal'],
+  ['17-navigation-mesures-clavier', '#/journal'],
+  ['18-navigation-mesures-tactile', '#/journal'],
+  ['19-navigation-rapports-tactile', '#/summary'],
+]) {
+  checks[name + ': landed'] = Boolean(
+    byName[name] && !byName[name].error && byName[name].observedUrl?.includes(route),
+  );
+}
 const result = {
   site: report.base,
   viewport: report.viewport,
