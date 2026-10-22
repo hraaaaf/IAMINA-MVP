@@ -6,6 +6,14 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../services/cgm_service.dart';
 
+String _cgmLocalOnlyCopy(BuildContext context) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'en' => 'Connected CGM is unavailable in this local-only version. No sensor data is sent.',
+    'ar' => 'اتصال مستشعر السكر غير متاح في هذه النسخة المحلية. لا تُرسل بيانات المستشعر.',
+    _ => 'La connexion CGM est indisponible dans cette version locale. Aucune donnée du capteur n’est transmise.',
+  };
+}
+
 class CgmConnectionsSection extends StatefulWidget {
   final CgmService? service;
   final String? sourceFilter;
@@ -79,12 +87,15 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
     } on CgmServiceException catch (error) {
       if (!mounted) return;
       final authRequired = error.code == 'authentication_required';
+      final localOnly = error.code == 'clinical_transport_disabled_local_only';
       setState(() {
         _loading = false;
-        _configurationAvailable = !authRequired;
-        _error = authRequired
-            ? AppLocalizations.of(context)!.cgmAuthenticationRequired
-            : AppLocalizations.of(context)!.cgmUnavailable;
+        _configurationAvailable = !authRequired && !localOnly;
+        _error = localOnly
+            ? _cgmLocalOnlyCopy(context)
+            : authRequired
+                ? AppLocalizations.of(context)!.cgmAuthenticationRequired
+                : AppLocalizations.of(context)!.cgmUnavailable;
       });
     } catch (_) {
       if (!mounted) return;

@@ -64,6 +64,40 @@ async function sendSyntheticQuestion(page, width, height) {
     JSON.stringify({width,height,delivery,names:names.slice(-30)}));
 }
 
+async function assertDisabledWebChat(page, width, height) {
+  // The source-before still proves the synthetic model-selection response.
+  // The local-only release AFTER must not present an apparently functional
+  // medical chat, and must not issue any clinical HTTP.
+  let labels = [];
+  let body = '';
+  for (let attempt=0; attempt<24; attempt++) {
+    labels = await getSemanticNames(page);
+    body = await page.locator('body').innerText().catch(()=> '');
+    const visible = labels.join(' ') + ' ' + body;
+    if (visible.includes('Le chat et la voix IAmina sont indisponibles') &&
+        visible.includes('Ce service ne surveille pas les urgences')) break;
+    await page.waitForTimeout(300);
+  }
+  const visible = labels.join(' ') + ' ' + body;
+  if (!visible.includes('Le chat et la voix IAmina sont indisponibles') ||
+      !visible.includes('Ce service ne surveille pas les urgences')) {
+    throw new Error('Local-only disabled state or emergency non-monitoring disclosure missing: ' +
+      JSON.stringify({width,height,labels:labels.slice(-30),text:body.slice(-600)}));
+  }
+  const chatInput = await page.locator('input:visible, textarea:visible, [contenteditable=true]:visible').count();
+  const sendAction = await page.getByRole('button',{name:/Envoyer le message|Send message/i}).count();
+  if (chatInput || sendAction) {
+    throw new Error('Patient-facing Web RELEASE still exposes a chat input/send action: '+
+      JSON.stringify({chatInput,sendAction,width,height}));
+  }
+  const outbound = await page.evaluate(() => performance.getEntriesByType('resource')
+    .map(r => r.name).filter(u => u.includes('/api/v1/')));
+  if (outbound.length) {
+    throw new Error('Local-only disabled Web UI triggered clinical network requests: '+JSON.stringify(outbound));
+  }
+  return true;
+}
+
 (async () => {
   const browser = await chromium.launch({headless:true,args:['--force-renderer-accessibility']});
   try {
@@ -83,7 +117,11 @@ async function sendSyntheticQuestion(page, width, height) {
         await page.waitForTimeout(4500);
         await activateSemantics(page);
         try {
-          await sendSyntheticQuestion(page,width,height);
+          if (phase === 'before') {
+            await sendSyntheticQuestion(page,width,height);
+          } else {
+            await assertDisabledWebChat(page,width,height);
+          }
         } catch (error) {
           const diagnostic = path.join(root,'debug-'+phase+'-'+width+'x'+height);
           await page.screenshot({path:diagnostic+'.png',fullPage:false}).catch(()=>{});
@@ -102,7 +140,9 @@ async function sendSyntheticQuestion(page, width, height) {
         await page.screenshot({path:base+'.png',fullPage:false});
         const labels=await getSemanticNames(page);
         fs.writeFileSync(base+'.json',JSON.stringify({
-          viewport:{width,height},phase,replyObserved:true,
+          viewport:{width,height},phase,
+          replyObserved:phase==='before',
+          disabledStateObserved:phase==='after',
           semanticLabels:labels.slice(0,120),errors:problems,url:page.url()
         },null,2));
         observations.push({phase,width,height,errorCount:problems.length});
@@ -113,7 +153,7 @@ async function sendSyntheticQuestion(page, width, height) {
     }
     const hasErrors = observations.some(o => o.errorCount > 0);
     fs.writeFileSync(path.join(root,'result.json'),JSON.stringify({
-      source:'synthetic_companion_governance_fallback',patientData:false,
+      source:'synthetic_before_local_only_disabled_after',patientData:false,
       viewports:observations,success:!hasErrors,
     },null,2));
     console.log(JSON.stringify(observations));
