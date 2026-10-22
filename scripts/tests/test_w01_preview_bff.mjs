@@ -585,3 +585,129 @@ test('W01 slash-terminated documents route keeps bearer-only 401, never HTML', a
     assert.deepEqual(JSON.parse(output.text()),{detail:'Unauthorized'});
   });
 });
+
+
+test('W01 G5 synthetic Web BFF PATCH A-B-A remains account-scoped and rejects anonymous mutation', async () => {
+  // This is a proxy contract against an explicit synthetic upstream, not proof
+  // of IAMINA identity on hosted Vercel / Neon.
+  await withEnv(async () => {
+    const state = {A: 'fr', B: 'ar'};
+    const principals = {'Bearer fixture-A': 'A', 'Bearer fixture-B': 'B'};
+    let upstreamCalls = 0;
+    globalThis.fetch = async (url, options) => {
+      upstreamCalls++;
+      assert.equal(url, apiOrigin + '/api/v1/profile');
+      assert.equal(options.headers.get('cookie'), null);
+      assert.equal(options.headers.get('x-csrftoken'), null);
+      assert.equal(options.headers.get('x-vercel-trusted-oidc-idp-token'), 'synthetic-oidc');
+      const who = principals[options.headers.get('authorization')];
+      if (!who) return new Response(JSON.stringify({detail:'Unauthorized'}), {
+        status:401,headers:{'content-type':'application/json'},
+      });
+      if (options.method === 'PATCH') {
+        const data = JSON.parse(options.body.toString());
+        state[who] = data.preferred_language;
+      }
+      return new Response(JSON.stringify({patient: who, preferred_language: state[who]}), {
+        status:200,headers:{'content-type':'application/json','set-cookie':'sessionid=not-forwarded'},
+      });
+    };
+    async function mutation(authorization, preferred_language) {
+      const incoming = Readable.from([Buffer.from(JSON.stringify({preferred_language}))]);
+      Object.assign(incoming, req('profile', {method:'PATCH',headers:{
+        origin,authorization,'content-type':'application/json',
+        cookie:'_vercel_jwt=never-patient-identity',
+        'x-csrftoken':'forged-browser-session-csrf',
+      }}));
+      const output = streamingResponse();
+      await proxy(incoming,output,async()=> 'synthetic-oidc');
+      assert.equal(output.headers['set-cookie'],undefined);
+      return {status:output.statusCode,body:JSON.parse(output.text())};
+    }
+    for (const [bearer,patient,language] of [
+      ['Bearer fixture-A','A','ar'],
+      ['Bearer fixture-B','B','fr'],
+      ['Bearer fixture-A','A','fr'],
+    ]) {
+      const result = await mutation(bearer,language);
+      assert.equal(result.status,200);
+      assert.deepEqual(result.body,{patient,preferred_language:language});
+    }
+    const forged = await mutation('Bearer tampered-A','en');
+    assert.equal(forged.status,401);
+    assert.equal(forged.body.detail,'Unauthorized');
+    const blank = await mutation(undefined,'en');
+    assert.equal(blank.status,401);
+    assert.deepEqual(state,{A:'fr',B:'fr'});
+    const before = upstreamCalls;
+    const hostile = Readable.from([Buffer.from('{"preferred_language":"en"}')]);
+    Object.assign(hostile, req('profile', {method:'PATCH',headers:{
+      origin:'https://attacker.example',authorization:'Bearer fixture-A',
+      'content-type':'application/json',
+    }}));
+    const denied = streamingResponse();
+    await proxy(hostile,denied,async()=> 'synthetic-oidc');
+    assert.equal(denied.statusCode,403);
+    assert.equal(upstreamCalls,before);
+    assert.deepEqual(state,{A:'fr',B:'fr'});
+  });
+});
+
+test('W01 G5 Web body-size boundary: 4 MiB exact, +1 and 15 MiB fail closed', async () => {
+  await withEnv(async () => {
+    const limit = 4 * 1024 * 1024;
+    let calls = 0;
+    globalThis.fetch = async (url,opts) => {
+      calls++;
+      assert.equal(url,apiOrigin + '/api/v1/documents/');
+      assert.equal(opts.body.length,limit);
+      assert.equal(opts.headers.get('cookie'),null);
+      return new Response('{"ok":true}',{
+        status:200,headers:{'content-type':'application/json'},
+      });
+    };
+    async function upload(bytes) {
+      const incoming = Readable.from([Buffer.alloc(bytes,65)]);
+      Object.assign(incoming,req('documents/',{method:'POST',headers:{
+        origin,'content-type':'application/octet-stream',
+        authorization:'Bearer fixture-A',
+        cookie:'_vercel_jwt=do-not-forward',
+      }}));
+      const output=streamingResponse();
+      await proxy(incoming,output,async()=> 'synthetic-oidc');
+      return output;
+    }
+    const exact=await upload(limit);
+    assert.equal(exact.statusCode,200);
+    assert.equal(JSON.parse(exact.text()).ok,true);
+    assert.equal(calls,1);
+    const tooLarge=await upload(limit+1);
+    assert.equal(tooLarge.statusCode,413);
+    const clinicalMax=await upload(15*1024*1024);
+    assert.equal(clinicalMax.statusCode,413);
+    assert.equal(calls,1); // no upstream clinical egress on oversize.
+  });
+});
+
+test('W01 G5 unavailable API and leaked SSO challenge never confirm a mutation', async () => {
+  await withEnv(async () => {
+    const input=req('profile',{headers:{authorization:'Bearer fixture-A',
+      cookie:'_vercel_jwt=SSO',origin}});
+    const upstreams=[
+      async ()=>new Response('{"detail":"Service Unavailable"}',{status:503,
+        headers:{'content-type':'application/json','set-cookie':'sessionid=secret'}}),
+      async ()=>new Response('<html>SSO login</html>',{status:200,
+        headers:{'content-type':'text/html','set-cookie':'_vercel_jwt=secret'}}),
+      async ()=>{throw Error('synthetic upstream outage with a secret token');},
+    ];
+    for (const [idx,server] of upstreams.entries()) {
+      globalThis.fetch=server;
+      const output=streamingResponse();
+      await proxy(input,output,async()=> 'synthetic-oidc');
+      assert.equal(output.statusCode,idx===0?503:502);
+      assert.equal(output.headers['set-cookie'],undefined);
+      assert.ok(!output.text().includes('synthetic upstream outage'));
+      assert.ok(!output.text().includes('_vercel_jwt'));
+    }
+  });
+});
