@@ -711,3 +711,41 @@ test('W01 G5 unavailable API and leaked SSO challenge never confirm a mutation',
     }
   });
 });
+
+
+test('W01 G5 must not relay forged client IP assertions to the protected API', async () => {
+  // This deliberately does NOT solve client attribution across two Vercel
+  // proxies. A trusted end-user rate-limit identity needs separately
+  // authenticated design and hosted negative proofs. Raw forwarded IP
+  // headers from the Web visitor must never become Django identity.
+  await withEnv(async () => {
+    let calls=0;
+    globalThis.fetch=async (_url,init)=>{
+      calls++;
+      for (const header of [
+        'x-forwarded-for','x-real-ip','x-vercel-forwarded-for',
+        'x-iamina-client-ip','x-iamina-client-ip-hash',
+      ]) {
+        assert.equal(init.headers.get(header),null,header);
+      }
+      assert.equal(init.headers.get('cookie'),null);
+      assert.equal(init.headers.get('authorization'),'Bearer synthetic');
+      return new Response('{"detail":"accepted"}',{
+        status:200,headers:{'content-type':'application/json'},
+      });
+    };
+    const output=streamingResponse();
+    await proxy(req('auth/me',{headers:{
+      authorization:'Bearer synthetic',
+      cookie:'_vercel_jwt=not-an-iamina-identity',
+      'x-forwarded-for':'203.0.113.66',
+      'x-real-ip':'198.51.100.77',
+      'x-vercel-forwarded-for':'198.51.100.88',
+      'x-iamina-client-ip':'spoofed-by-visitor',
+      'x-iamina-client-ip-hash':'attacker',
+    }}),output,async()=> 'synthetic-oidc');
+    assert.equal(output.statusCode,200);
+    assert.equal(JSON.parse(output.text()).detail,'accepted');
+    assert.equal(calls,1);
+  });
+});
