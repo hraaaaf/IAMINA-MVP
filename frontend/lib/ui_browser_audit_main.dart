@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -158,6 +159,8 @@ class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // D21 synthetic Chrome probe: expose Flutter's accessibility semantics tree.
+  SemanticsBinding.instance.ensureSemantics();
 
   try {
     await Firebase.initializeApp(
@@ -207,6 +210,16 @@ Future<void> main() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await db.seedDemoData();
+        // Audit-only FUE fixture: a real historical period spanning today.
+        // Never enabled in the normal patient entrypoint.
+        if (Uri.base.queryParameters['fue_ramadan_history'] == '1') {
+          final now = DateTime.now();
+          final stored = await db.setRamadanPeriod(
+            start: now.subtract(const Duration(days: 2)),
+            end: now.add(const Duration(days: 2)),
+          );
+          if (!stored) throw StateError('FUE history fixture not stored');
+        }
       } catch (error) {
         debugPrint('Browser audit demo seed unavailable: $error');
       }
@@ -269,6 +282,11 @@ class _BrowserAuditApp extends StatelessWidget {
         GoRoute(
           path: '/document-import',
           builder: (context, state) => const DocumentImportPremiumScreen(),
+        ),
+        // FUE-only route in this isolated audit entrypoint, never in patient main.
+        GoRoute(
+          path: '/fue-d21-history',
+          builder: (context, state) => const _D21HistoryAuditScreen(),
         ),
         GoRoute(
           path: '/add-log',
@@ -347,7 +365,10 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      // Capture harness only; normal Web entrypoint and patient locale untouched.
+      locale: Uri.base.queryParameters['locale'] == 'ar'
+          ? const Locale('ar')
+          : const Locale('fr'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -421,6 +442,8 @@ String _pathForSurface(String surface) => switch (surface) {
   'summary' => '/summary',
   'reports-local' => '/reports-local',
   'profile' => '/profile',
+  // Audit-only readback surface must resolve to its registered route.
+  'fue-d21-history' => '/fue-d21-history',
   'importer' => '/importer',
   'document-import' => '/document-import',
   'add-log' => '/add-log',
@@ -439,6 +462,36 @@ String _pathForSurface(String surface) => switch (surface) {
   'next-action' => '/next-action',
   _ => '/dashboard',
 };
+
+// Test-only history readback: validates Web Drift continuity after navigation.
+class _D21HistoryAuditScreen extends StatelessWidget {
+  const _D21HistoryAuditScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final db = context.read<AppDatabase>();
+    return Scaffold(
+      body: FutureBuilder<PatientProfileData?>(
+        future: db.getProfileForLocalUserId(db.activeProfileRowId),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: Text('FUE_HISTORY_MISSING'));
+          }
+          final p = snapshot.data!;
+          return Center(
+            child: Text(
+              'FUE_HISTORY_PRESENT=' +
+              (p.ramadanStartDate != null && p.ramadanEndDate != null).toString() +
+              ';START=' + (p.ramadanStartDate?.toIso8601String().split('T').first).toString() +
+              ';END=' + (p.ramadanEndDate?.toIso8601String().split('T').first).toString(),
+              key: const Key('fue-history-readback'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class _BrowserMealPickerSurface extends StatefulWidget {
   const _BrowserMealPickerSurface();
