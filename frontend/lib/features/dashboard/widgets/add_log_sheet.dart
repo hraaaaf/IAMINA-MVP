@@ -638,6 +638,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Future<bool> _confirmLeave(AppLocalizations l10n) async {
+    // A pending Drift write is not a discardable draft. Never navigate away
+    // while an actual measurement insertion may still be completing.
+    if (_saving) return false;
     if (_mealVoiceBusy) {
       _message(
         _voiceCopy(
