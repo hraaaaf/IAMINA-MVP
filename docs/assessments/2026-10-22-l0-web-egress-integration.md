@@ -1,3 +1,14 @@
+## 22/10/2026 — L0 Web RELEASE : étape 0 du wizard CGM auparavant trompeuse
+
+**BEFORE (preuve image)** : [artifact CGM #12459412459](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39854645209/artifacts/12459412459) capturé 390×844, 768×1024, 1280×900 : « Quel capteur utilisez-vous ? » avec Dexcom/Libre/LinX cliquables et schéma Nightscout→IAMINA, alors que `CgmService` refuse en Web RELEASE tout transport CGM. Le panneau des connexions avait bien été désactivé, mais pas ce wizard principal.
+
+**Goal** : l'utilisateur Web RELEASE voit immédiatement l'indisponibilité CGM et ne peut ni initier le parcours sensor ni saisir des credentials Nightscout. Aucun changement de transport, pas de stockage de secret. **Mockup** : en-tête `Connecter mon CGM` conservé, surface centrale compacte avec verrou et texte explicite dans la langue locale (FR/EN/AR), sans cartes de capteurs, sans boutons de connexion.
+
+**Implémentation candidate** : `CgmScreen` verrouillé sur `kIsWeb && kReleaseMode`, mode de test `forceLocalOnlyDisabledForTests` **ne pouvant forcer que le verrouillage**, jamais activer un transport. Guide d'origine conservé pour builds DEBUG et ses tests éducatifs. Ajout de 9 tests widget couvrant FR/EN/AR × 390/768/1280 et absence de commandes Dexcom/Libre/LinX/Nightscout.
+
+**AFTER exigé** : CI et browser cert exact-HEAD sur 390×844/768×1024/1280×900 ; captures visuelles, comparées au BEFORE, preuve du retrait d'affordances trompeuses ; ne pas présenter un simple changement attendu de maquette comme un score pixel 10/10. **Statut CANDIDAT, non livré**, revue clinique/UX humaine encore manquante pour textes et secours ; PR #1140 DRAFT, W01 NO-GO/W02 gelée, zéro Vercel.
+
+---
 ## 22/10/2026 — CURRENT INTEGRATION / UI BLOCKER REMEDIATION
 
 **PR #1140** source `main@8ada5aab8e8006bbbdc275eabbabf014a4714e0b`. Initial HEAD `5111d3c4`: 9 workflows, **8/9 SUCCESS**, le seul rouge est [UI desktop Chrome CDP #39797088586](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39797088586) : `127.0.0.1:9222` refused connection avant assertions, mobile/tablette de ce workflow SUCCESS. **Les huit autres workflows dont Companion no-egress sont SUCCESS**, pas une certification clinique.
