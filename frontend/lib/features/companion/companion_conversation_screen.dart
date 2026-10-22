@@ -25,6 +25,12 @@ String _chatText(BuildContext context, String fr, String en, String ar) {
 
 String _failureText(BuildContext context, ProviderApiException failure) {
   return switch (failure.code) {
+    'clinical_transport_disabled_local_only' => _chatText(
+      context,
+      'Vos données restent sur cet appareil. Le chat et la voix via serveur sont désactivés dans cette version.',
+      'Your data stays on this device. Server-based chat and voice are disabled in this version.',
+      'تبقى بياناتك على هذا الجهاز. المحادثة والصوت عبر الخادم معطّلان في هذا الإصدار.',
+    ),
     'provider_timeout' => _chatText(
       context,
       'IAmina met trop de temps à répondre. Réessaie dans un instant.',
