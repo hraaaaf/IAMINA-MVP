@@ -22,7 +22,10 @@ void main() {
       expect(source, contains('ExpansionTile('));
       expect(source, contains('maintainState: true'));
       expect(source, contains('ProfileFocusSafeExpansionTile('));
-      expect(source, contains('ExcludeFocus(excluding: !_expanded'));
+      // Widget tests exercise the focus contract; avoid hardcoding one
+      // formatting/expression shape of the production predicate.
+      expect(source, contains('ExcludeFocus('));
+      expect(source, contains('webFocusExclusion = kIsWeb'));
       expect(source, contains('subtitle: _medicalSummary(l10n)'));
       expect(source, isNot(contains('_ProfileCompletionHeader')));
     },
