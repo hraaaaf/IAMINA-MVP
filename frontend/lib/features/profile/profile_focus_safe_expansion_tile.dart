@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 /// Keeps a Profile section's unsaved controls mounted while its panel is
@@ -17,6 +18,7 @@ class ProfileFocusSafeExpansionTile extends StatefulWidget {
     required this.initiallyExpanded,
     this.tilePadding,
     this.childrenPadding,
+    this.webFocusExclusion = kIsWeb,
   });
 
   final Widget title;
@@ -26,6 +28,8 @@ class ProfileFocusSafeExpansionTile extends StatefulWidget {
   final bool initiallyExpanded;
   final EdgeInsetsGeometry? tilePadding;
   final EdgeInsetsGeometry? childrenPadding;
+  // Native widgets keep their historical focus behavior: D21 changes Web only.
+  final bool webFocusExclusion;
 
   @override
   State<ProfileFocusSafeExpansionTile> createState() =>
@@ -59,7 +63,7 @@ class _ProfileFocusSafeExpansionTileState
       subtitle: widget.subtitle,
       children: [
         for (final child in widget.children)
-          ExcludeFocus(excluding: !_expanded, child: child),
+          ExcludeFocus(excluding: widget.webFocusExclusion && !_expanded, child: child),
       ],
     );
   }

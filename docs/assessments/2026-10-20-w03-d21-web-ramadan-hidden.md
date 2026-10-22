@@ -1,3 +1,12 @@
+## 22/10/2026 — D21 FUE-03 : test de contrat obsolète détecté + portée Web resserrée
+
+- **CI du candidat `f3bf31e`** : [#39760828074](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39760828074) FAIL **801 tests PASS, 1 FAIL, 1 SKIP**, seul `test/p1_ux_12_progressive_profile_contract_test.dart` échoue parce que sa recherche de chaîne `maintainState: true` concatène les fichiers Profil historiques sans lire le nouveau `profile_focus_safe_expansion_tile.dart`. Les **3 nouveaux tests widget sont PASS** dans ce même run. Aucun défaut produit supplémentaire démontré par cette CI.
+- **Correctif préparé** : faire lire au test historique le composant extrait **et** exiger `ProfileFocusSafeExpansionTile` + `ExcludeFocus`, sans supprimer l'assertion `maintainState: true`. Restreindre la désactivation du focus des enfants repliés au **Web uniquement** (`kIsWeb`), avec paramètre explicite en tests VM : impact natif inchangé par défaut.
+- **Nouveau SHA/test/CI** : à renseigner seulement après publication et conclusion. Le FUE #39760828159 sur SHA `f3bf31e` restait IN_PROGRESS au contrôle précédent ; aucun 6/6 affirmé.
+- **Qualité** : comparer les captures 18 PNG aux mêmes viewports avant toute conclusion visuelle ; ne pas fusionner ni déployer Vercel avant les preuves exigées. W01 NO-GO ; W02 gelé.
+
+---
+
 ## 22/10/2026 — D21 FUE-03 : candidat correction du piège de focus dans les sections repliées
 
 **BEFORE prouvé sur SHA `1945da588b9ba2cb3597712922faeadd1d749f68` :** [FUE #39701003352](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39701003352) FAIL 5/6 profils FR/AR × 390/768/1280 ; les 5 échecs exclusivement `FUE-03`, le reste PASS. Artefact #12393561090 téléchargé : `Shift` DOM trusted vrai, mais Tab reste sur l'en-tête « Confidentialité & compte » jusqu'à 11 fois ; ancien harnais `page.keyboard.press()` du run #39693543949 échouait identiquement : ce n'est **pas** seulement une mauvaise injection CDP.

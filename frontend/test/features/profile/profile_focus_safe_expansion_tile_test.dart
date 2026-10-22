@@ -14,6 +14,7 @@ void main() {
           subtitle: const Text('Synthetic only'),
           leading: const Icon(Icons.tune),
           initiallyExpanded: true,
+          webFocusExclusion: true,
           children: [
             TextField(focusNode: fieldFocus),
           ],
@@ -53,6 +54,7 @@ void main() {
           subtitle: const Text('Synthetic form'),
           leading: const Icon(Icons.info_outline),
           initiallyExpanded: true,
+          webFocusExclusion: true,
           children: [TextFormField(initialValue: 'original')],
         ),
       ),
@@ -78,6 +80,7 @@ void main() {
           subtitle: const Text('Consent'),
           leading: const Icon(Icons.lock),
           initiallyExpanded: false,
+          webFocusExclusion: true,
           children: [TextField(focusNode: focus)],
         ),
       ),
