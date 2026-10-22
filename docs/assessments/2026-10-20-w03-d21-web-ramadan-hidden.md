@@ -1,3 +1,16 @@
+## 22/10/2026 — D21 FUE-03 : candidat correction du piège de focus dans les sections repliées
+
+**BEFORE prouvé sur SHA `1945da588b9ba2cb3597712922faeadd1d749f68` :** [FUE #39701003352](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39701003352) FAIL 5/6 profils FR/AR × 390/768/1280 ; les 5 échecs exclusivement `FUE-03`, le reste PASS. Artefact #12393561090 téléchargé : `Shift` DOM trusted vrai, mais Tab reste sur l'en-tête « Confidentialité & compte » jusqu'à 11 fois ; ancien harnais `page.keyboard.press()` du run #39693543949 échouait identiquement : ce n'est **pas** seulement une mauvaise injection CDP.
+
+**Hypothèse technique à éprouver** : `ExpansionTile(maintainState:true)` garde les descendants repliés sous `Offstage`, qui n'interdit pas leur focus clavier ; plusieurs champs invisibles peuvent absorber le parcours sans changer le focus AX/DOM visible. Ce problème n'est pas définitivement prouvé avant nouveau test réel.
+
+**Goal UI/UX (aucune modification visuelle attendue)** : conserver l'état des champs non sauvegardés lors de la fermeture, mais exclure immédiatement du focus les descendants des sections repliées ; la section réouverte rétablit leur focus. Pas de `unfocus()`, pas de relâchement du FUE (trois cibles visibles distinctes + Shift+Tab arrière + Shift trusted) et pas de données patient.
+
+**Mockup/référence** : profils du FUE #39701003352, FR/AR aux mêmes viewports 390×844, 768×1024, 1280×900. **Candidat** : `ProfileFocusSafeExpansionTile` conserve `maintainState:true`, observe `onExpansionChanged` et enveloppe chaque enfant dans `ExcludeFocus(excluding: !expanded)` (proxy sans dimensions). `frontend/test/features/profile/profile_focus_safe_expansion_tile_test.dart` vérifie refus du focus invisible, restauration à la réouverture et maintien des saisies.
+
+**AFTER requis** : exécuter tests Flutter + CI exacte et FUE Chromium 6/6 aux mêmes viewports ; comparer les 18 PNG BEFORE/AFTER et le trace AX/DOM/Shift ; vérifier que les sections visuelles restent identiques, calculer le score et corriger tout échec. **Statut candidat/non certifié ; pas de merge/Vercel ; W01 toujours NO-GO.**
+
+---
 # IAMINA Web — W03 / D21 : masquer Ramadan dans le Profil
 
 Date : 2026-10-20. Périmètre : **Flutter Web uniquement**. Décision source : D21, `docs/ROADMAP.md` (W03), `docs/assessments/2026-10-15-w00-web-inventory.md` et le registre Notion des 29 décisions.

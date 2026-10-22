@@ -616,8 +616,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          maintainState: true,
+        child: ProfileFocusSafeExpansionTile(
           initiallyExpanded: initiallyExpanded,
           tilePadding: const EdgeInsetsDirectional.fromSTEB(18, 10, 14, 10),
           childrenPadding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 20),

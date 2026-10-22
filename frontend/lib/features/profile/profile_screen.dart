@@ -20,6 +20,7 @@ import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 import '../../services/sync_service.dart';
+import 'profile_focus_safe_expansion_tile.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
