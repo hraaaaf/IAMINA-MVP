@@ -723,6 +723,101 @@
         ]
       }
     },
+    "/api/v1/profile/weight-observations": {
+      "get": {
+        "operationId": "diabetes_api_v1_profile_list_patient_weights",
+        "summary": "List Patient Weights",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PatientWeightReadSchema"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Read this authenticated patient's history only, most recent first.",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "diabetes_api_v1_profile_add_patient_weight",
+        "summary": "Add Patient Weight",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientWeightReadSchema"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientWeightReadSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Append; a matching retry is a read, never an update of history.",
+        "tags": [
+          "profile"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientWeightWriteSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/profile": {
       "get": {
         "operationId": "diabetes_api_v1_profile_get_profile",
@@ -3254,6 +3349,106 @@
         "title": "Error",
         "type": "object"
       },
+      "PatientWeightReadSchema": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "client_uuid": {
+            "format": "uuid",
+            "title": "Client Uuid",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "provenance": {
+            "title": "Provenance",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "client_uuid",
+          "value",
+          "unit",
+          "weight_kg",
+          "measured_at",
+          "provenance",
+          "created_at"
+        ],
+        "title": "PatientWeightReadSchema",
+        "type": "object"
+      },
+      "PatientWeightWriteSchema": {
+        "additionalProperties": false,
+        "description": "One explicitly dated patient declaration; never inferred from profile.",
+        "properties": {
+          "client_uuid": {
+            "format": "uuid",
+            "title": "Client Uuid",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "enum": [
+              "kg",
+              "lb"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "provenance": {
+            "const": "patient_declared",
+            "default": "patient_declared",
+            "title": "Provenance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_uuid",
+          "value",
+          "unit",
+          "measured_at"
+        ],
+        "title": "PatientWeightWriteSchema",
+        "type": "object"
+      },
       "PatientProfileSchema": {
         "properties": {
           "diabetes_type": {
@@ -3349,6 +3544,28 @@
               }
             ],
             "title": "Gender"
+          },
+          "gender_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender Identity"
+          },
+          "birth_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Year"
           },
           "date_of_birth": {
             "anyOf": [
@@ -3547,6 +3764,28 @@
               }
             ],
             "title": "Gender"
+          },
+          "gender_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender Identity"
+          },
+          "birth_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Year"
           },
           "date_of_birth": {
             "anyOf": [
