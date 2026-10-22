@@ -1,3 +1,27 @@
+## 22/10/2026 — CURRENT INTEGRATION / UI BLOCKER REMEDIATION
+
+**PR #1140** source `main@8ada5aab8e8006bbbdc275eabbabf014a4714e0b`. Initial HEAD `5111d3c4`: 9 workflows, **8/9 SUCCESS**, le seul rouge est [UI desktop Chrome CDP #39797088586](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39797088586) : `127.0.0.1:9222` refused connection avant assertions, mobile/tablette de ce workflow SUCCESS. **Les huit autres workflows dont Companion no-egress sont SUCCESS**, pas une certification clinique.
+
+**Remédiation UX** : `CgmConnectionsSection` détecte `clinical_transport_disabled_local_only` et **désactive** configuration en montrant l'indisponibilité FR/EN/AR. `CompanionConversationScreen` en Web RELEASE masque entièrement saisie/suggestions/enregistrement audio, évite initialization providers/TTS, montre indisponibilité + non-surveillance des urgences et renvoi aux services locaux (message générique à revue clinique/linguistique). Un booléen test-only peut **forcer la désactivation**, jamais l'activation réseau en release. Deux suites widget vérifient CGM disabled FR/EN/AR et Companion aucun input/send FR/EN/AR × 390/768/1280. Workflow CDP mise à jour pour capturer l'écran réellement désactivé plutôt que prétendre envoyer une requête via champ inexistant. **Candidate seulement tant que la nouvelle CI n'a pas PASS.**
+
+**BEFORE / GOAL / mockup / AFTER** : BEFORE repo source et anciens artefacts de l'UI Companion accessible/CGM configuration trompeuse ; Goal = aucune fausse interaction clinique disponible en pilote local-only ; référence = en-tête inchangé + carte explicite + informations d'urgence non personnalisées sans chat ; AFTER = captures Chrome 390/768/1280 FR/AR et comparaison/score *encore à faire*.
+
+**Gates cliniques/risques** : [#1134](https://github.com/hraaaaf/IAMINA-MVP/issues/1134) OPEN pour triage d'urgence local et traduction, revue indépendante privacy/clinique ouverte. Aucune mise en Production, aucune activation CGM ni chat; L0 statut NO-GO/score plafonné 5.9 pour blocage risque clinique, ne pas merger sans preuves/reviews nécessaires.
+
+---
+
+## 22/10/2026 — L0-HARDENING-UI-01 : affordances fail-closed locales (candidat non certifié)
+
+**BEFORE observé dans le code main/PR #1140 :** `CgmConnectionsSection` transforme `clinical_transport_disabled_local_only` en erreur `cgmUnavailable` tout en laissant le bouton Configurer activé. `CompanionConversationScreen` affiche encore une zone de saisie, des suggestions et un micro malgré le refus `kReleaseMode` côté services ; il n'existe aucun parcours d'urgence local qualifié (issue #1134).
+
+**Goal visuel et fonctionnel :** Web RELEASE local-only n'offre aucune fausse capacité CGM/chat/voix ; affiche FR/EN/AR l'indisponibilité, avec avis non prescriptif que le chat ne traite pas les urgences. Boutons CGM configuration désactivés ; aucun champ texte/micro/envoyer sur l'écran chat RELEASE. Aucun changement backend/auth/vault ni transport clinique. Les callbacks de test peuvent uniquement forcer le mode désactivé, pas activer le réseau.
+
+**Mockup texte** : écran chat → en-tête IAmina inchangé → surface centrée icône verrou + explication indisponibilité + urgence locale ; pas de composer. Écran CGM → message d'indisponibilité déjà dans le slot d'erreur + boutons Configurer disabled, cartes d'information conservées.
+
+**Tests ajoutés** : 3 locales CGM (bouton disabled), 3 langues × 390/768/1280 chat (aucun champ/bouton, message explicite). **AFTER Chrome RELEASE vrai aux mêmes viewports, captures, RTL/keyboard/escape et zéro réseau à prouver**. Les scénarios Chat E2E antérieurs qui simulent l'envoi de patient dans une UI RELEASE doivent être mis à jour à l'oracle honest-disabled, sans effacer leurs tests de service. **Ne pas déclarer GO avant CI/AFTER et revue de traduction/clinique humaine.**
+
+**Statut** : candidat DETACHED, aucune nouvelle CI/déploiement initiée pendant les 9 jobs de la PR #1140. La revue #1134 reste ouverte pour une future expérience locale cliniquement qualifiée, cet écran étant une simple désactivation honnête.
+
 # IAMINA WEB — L0 : intégration candidat des barrières réseau Companion + CGM — 22 octobre 2026
 
 ## Goal → succès → preuve

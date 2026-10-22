@@ -322,14 +322,14 @@ jobs:
           })
           call('Page.reload', {'ignoreCache': True})
           time.sleep(10)
-          screenshot('chat-empty-390x844.png')
+          screenshot('chat-disabled-390x844.png')
 
           message = "Est-ce que tu peux me dire quelle dose d'insuline prendre ?"
           click(155, 793)
           time.sleep(0.7)
           call('Input.insertText', {'text': message})
           time.sleep(1)
-          screenshot('chat-typed-390x844.png')
+          screenshot('chat-disabled-after-interaction-390x844.png')
           click(354, 793)
 
           # A production web build MUST NOT contact clinical chat endpoints.
@@ -344,7 +344,7 @@ jobs:
           outbound = json.loads(resources['result'].get('value', '[]'))
           if outbound:
               raise RuntimeError(f'Local-only web build initiated clinical API requests: {outbound}')
-          screenshot('chat-local-only-390x844.png')
+          screenshot('chat-disabled-no-egress-390x844.png')
           call('Page.navigate', {'url': 'http://127.0.0.1:7358/?p1-proof=1'})
           time.sleep(8)
           click(155, 793)
@@ -365,14 +365,14 @@ jobs:
           assert not Path('companion-chat-e2e/chat-request.json').exists()
           assert not Path('companion-chat-e2e/chat-response.json').exists()
           for name in (
-              'chat-empty-390x844.png',
-              'chat-typed-390x844.png',
-              'chat-local-only-390x844.png',
+              'chat-disabled-390x844.png',
+              'chat-disabled-after-interaction-390x844.png',
+              'chat-disabled-no-egress-390x844.png',
               'p1-after-390x844.png',
           ):
               path = Path('companion-chat-e2e') / name
               assert path.stat().st_size > 10000, (name, path.stat().st_size)
-          print('Local-only web build: blocked clinical HTTP with synthetic input; browser capture verified.')
+          print('Local-only Web build: disabled chat screen and zero clinical HTTP with synthetic click attempts; browser capture verified.')
           PY
 
           cleanup_process "$CHROME_PID"

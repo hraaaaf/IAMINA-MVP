@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -73,10 +73,14 @@ class CompanionConversationScreen extends StatefulWidget {
   /// Production reads Drift from the existing AppDatabase provider.
   final Future<double?> Function()? latestLocalReading;
 
+  /// Tests can only force the closed UI; they cannot re-enable release chat.
+  final bool forceLocalOnlyDisabledForTests;
+
   const CompanionConversationScreen({
     super.key,
     this.service,
     this.latestLocalReading,
+    this.forceLocalOnlyDisabledForTests = false,
   });
 
   @override
@@ -104,6 +108,9 @@ class _CompanionConversationScreenState
   late final AnimationController _voicePulseController;
   _VoiceState _voiceState = _VoiceState.idle;
 
+  bool get _localOnlyWebUnavailable =>
+      (kIsWeb && kReleaseMode) || widget.forceLocalOnlyDisabledForTests;
+
   @override
   void initState() {
     super.initState();
@@ -111,14 +118,14 @@ class _CompanionConversationScreenState
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    unawaited(_initializeTts());
+    if (!_localOnlyWebUnavailable) unawaited(_initializeTts());
   }
 
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_serviceInitialized) return;
+    if (_localOnlyWebUnavailable || _serviceInitialized) return;
     final injected = widget.service;
     if (injected != null) {
       _service = injected;
@@ -449,6 +456,70 @@ class _CompanionConversationScreenState
   @override
   Widget build(BuildContext context) {
     final dark = AminaTheme.isDark(context);
+    // A release Web build has no approved local emergency/chat engine. Do not
+    // present an active composer whose network transport is prohibited.
+    if (_localOnlyWebUnavailable) {
+      return Scaffold(
+        backgroundColor: dark ? AminaTheme.bg(context) : const Color(0xFFF4FBF9),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _ConversationHeader(
+                onClose: () {
+                  final router = GoRouter.of(context);
+                  if (router.canPop()) {
+                    router.pop();
+                  } else {
+                    router.go('/dashboard');
+                  }
+                },
+              ),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lock_outline, size: 40),
+                            const SizedBox(height: 16),
+                            Text(
+                              _chatText(
+                                context,
+                                'Le chat et la voix IAmina sont indisponibles dans cette version locale. Aucun message médical n’est envoyé.',
+                                'IAmina chat and voice are unavailable in this local-only version. No medical message is sent.',
+                                'المحادثة والصوت في IAmina غير متاحين في هذه النسخة المحلية. لا تُرسل رسائل طبية.',
+                              ),
+                              key: const Key('companion-local-only-disabled-notice'),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _chatText(
+                                context,
+                                'Ce service ne surveille pas les urgences. En cas d’urgence médicale, contactez immédiatement les services d’urgence de votre région.',
+                                'Emergency messages are not monitored here. For a medical emergency, contact your local emergency services immediately.',
+                                'لا تتم مراقبة رسائل الطوارئ هنا. عند حدوث طارئ طبي، اتصل فورًا بخدمات الطوارئ المحلية.',
+                              ),
+                              key: const Key('companion-local-only-emergency-notice'),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: dark ? AminaTheme.bg(context) : const Color(0xFFF4FBF9),
       body: SafeArea(
