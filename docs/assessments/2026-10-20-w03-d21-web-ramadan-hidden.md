@@ -1,3 +1,30 @@
+## ÉTAT COURANT VÉRIFIÉ — 22/10/2026 — D21 FUE Web
+
+**Résultat du correctif focus** : **validé dans le navigateur synthétique Chromium**, sans déclaration de certification clinique ou de livraison. Le [HEAD fonctionnel `71f8b6363287bd92ad374b300cdb2f1348fd0dc7`](https://github.com/hraaaaf/IAMINA-MVP/commit/71f8b6363287bd92ad374b300cdb2f1348fd0dc7) a **13/13 GitHub Actions SUCCESS**, aucun run non terminé : [CI #39766027150](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39766027150), [FUE #39766027165](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39766027165), [RTL clavier #39766027225](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39766027225), UI/RTL/PWA inclus. Les jobs backend ne sont pas assimilés à des tests réussis lorsqu'ils sont SKIPPED sur frontend-only.
+
+**Preuve primaire relue et non seulement CI verte** : [artefact FUE #12421241131](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39766027165/artifacts/12421241131) ouvert : 6 fichiers de scénario JSON, tous **PASS sans issue**, 18 PNG ; France/arabe × mobile 390×844, tablette 768×1024, desktop 1280×900. `FUE-03` : 5–10 cibles de focus avant, Shift+Tab revient en 1 ou 2 événements, `Shift` reçu dans les six. `FUE-04` : **START=2026-10-20 et END=2026-10-24** identiques avant/après reload dans les six scénarios (valeurs fictives) ; `FUE-06` : **fresh_history_missing=true** dans les six contextes Web isolés.
+
+| FUE | Contrôle effectif en Chromium sur les six configurations | Verdict observable |
+| --- | --- | --- |
+| **FUE-01** | Profil FR/AR : quatre sections attendues, vocabulaire et commandes Ramadan absents de l'arbre AX | **PASS synthétique 6/6** |
+| **FUE-02** | Activation puis repli des quatre sections, retour navigateur vers Profil | **PASS synthétique 6/6** |
+| **FUE-03** | Navigation avant/arrière après interactions, `Shift` trusted et retour vers une cible déjà visitée | **PASS synthétique 6/6** |
+| **FUE-04** | Intervalle Ramadan artificiel conservé **jour par jour** après navigation/reload | **PASS synthétique 6/6** |
+| **FUE-05** | Choix des quatre repas usuels dans la surface d'ajout, sans lexique Ramadan malgré intervalle historique | **PASS synthétique 6/6** |
+| **FUE-06** | Profil neuf sans Ramadan ni overflow, recharge stable, contexte isolé sans héritage de période | **PASS synthétique 6/6** |
+
+**BEFORE → AFTER (mêmes viewports et états)** : avant [FUE rouge #39701003352](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39701003352), après [#39766027165](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39766027165) ; comparaison locale des 18 PNG via Pillow : **12/12 captures Profile historiées/vierges pixel pour pixel identiques**, sur 6 captures `meal-history`, RGB MAE maximale **0,017614 / 255** (écarts localisés mineurs). **Note visuelle : 10/10 pour la seule conservation des rendus Profile de cette série**, pas un score produit ou clinique global.
+
+**Perfection Pass exécuté** : l'oracle FUE-04 qui ne vérifiait que l'année a été remplacé par la comparaison exacte `YYYY-MM-DD` ; FUE-06 exige désormais l'absence d'historique dans un nouveau stockage Web. Ces nouvelles assertions ont PASS sur le HEAD fonctionnel. Les trois tests widget de l'exclusion du focus passent en CI. Le contrôle statique de profil lit maintenant le nouveau composant et maintient la vérification de l'état retenu, `ExcludeFocus` et du garde `kIsWeb`. **Aucune mutation Backend, Neon, Vercel Production ni donnée patient.**
+
+**Review critique et limites** : le FUE est exécuté via `ui_browser_audit_main.dart` (vrai rendu Flutter Web + Chromium, mais **entrypoint synthétique**), sur clics Playwright et non une campagne tactile sur appareil physique ; la preuve ne couvre ni toute la chaîne d'identification Django W01, ni un compte patient réel, ni une mise en Production. Les historiques plus bas datent d'anciens HEAD et de tests précédemment manquants et ne remplacent pas cette preuve plus récente.
+
+**Évaluation raisonnée, lot D21 prémerge** : `EXECUTION_SCORE=9.1/10` (13/13 CI, 6/6 scénarios, états et copies conservés), `ADVERSARIAL_SCORE=8.8/10` (entrée synthétique et gestes physiques non éprouvés), écart 0,3 ; `RETAINED_SCORE=8.8/10`, sous le seuil institutionnel 9,0 pour `VERIFIED`. Ces scores sont des évaluations internes, non une expertise externe. **État : FUE automatisé PASS sur le périmètre testé ; D21 PAS ENCORE VERIFIED / PR #1136 OPEN, sans merge/déploiement.**
+
+**Human gate réel / suite** : aucun déploiement Vercel n'a été autorisé ; fusionner `main` peut déclencher une mise en ligne Vercel. Ne pas fusionner sans garde vérifié empêchant le déploiement ou autorisation distincte. Avant `VERIFIED`, qualifier les interactions tactiles de première utilisation dans la vraie PWA, résoudre la limite de score et effectuer closeout postmerge après autorisation de livraison. **W01 NO-GO / W02 GELÉ** restent séparés.
+
+---
+
 ## 22/10/2026 — D21 Perfection Pass : dates historiques exactes et compte vierge
 
 **Contrôle avant Perfection Pass** : sur HEAD `f80a98c93195555f7cb41584e7232a14edd82f91`, **13/13 workflows GitHub SUCCESS** ([CI #39762981916](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981916), [FUE #39762981968](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981968), [RTL #39762981953](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981953)), **FUE 6/6 PASS** FR/AR × 390×844, 768×1024, 1280×900 ; [artefact final #12419153858](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981968/artifacts/12419153858) téléchargé, 5–10 focus distincts, retour Shift+Tab en 1–2 étapes, Shift trusted vrai. [BEFORE #12393561090](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39701003352/artifacts/12393561090) : 5/6 FAIL exclusivement FUE-03. **18/18 captures mêmes viewports comparées** : 12 profils strictement identiques pixel par pixel ; six repas écart moyen RGB maximal 0,01395/255.
