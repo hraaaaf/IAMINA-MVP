@@ -19,6 +19,10 @@ def names(cdp):
 def has(seq,s):
     return any(s.casefold() in n.casefold() for n in seq)
 
+_HISTORY = re.compile(r'^FUE_HISTORY_PRESENT=true;START=(\d{4}-\d{2}-\d{2});END=(\d{4}-\d{2}-\d{2})$')
+def historical_interval(cdp):
+    return next((m.group(0) for v in names(cdp) if (m := _HISTORY.fullmatch(v))), None)
+
 def active(cdp):
     return next((label(n) for n in reversed(nodes(cdp))
                  if label(n) and label(n)!="IAMINA"
@@ -120,12 +124,16 @@ def run(browser,lang,size,out):
               "Tab/Shift+Tab after section interactions: focus traversal or Shift delivery failed")
 
         load(page,lang,"fue-d21-history")
+        history_before=historical_interval(cdp)
         proof["history_before_reload"]=names(cdp)[:30]
-        check("FUE-04",has(names(cdp),"FUE_HISTORY_PRESENT=true"),
-              "Saved historic profile interval missing across navigation")
+        proof["history_exact_before"]=history_before
+        check("FUE-04",history_before is not None,
+              "Saved interval missing exact start/end calendar days")
         page.reload(wait_until="domcontentloaded");page.wait_for_timeout(12000)
-        check("FUE-04",has(names(cdp),"FUE_HISTORY_PRESENT=true"),
-              "Historic Ramadan profile lost on browser reload")
+        history_after=historical_interval(cdp)
+        proof["history_exact_after"]=history_after
+        check("FUE-04",history_before is not None and history_after==history_before,
+              "Historical start/end calendar days changed on reload")
         # First-user browser Back must lead to a usable Profile after history.
         page.go_back(wait_until="domcontentloaded")
         page.wait_for_timeout(12000)
@@ -159,6 +167,13 @@ def run(browser,lang,size,out):
         f.reload(wait_until="domcontentloaded");f.wait_for_timeout(12000)
         check("FUE-06",not any("ramadan" in n.lower() or "رمضان" in n
                              for n in names(fcdp)), "Ramadan reappears after reload")
+        # Negative state: a fresh browser context must not inherit history.
+        load(f,lang,"fue-d21-history",seed="0")
+        clean_history=names(fcdp)
+        proof["fresh_history_missing"]=has(clean_history,"FUE_HISTORY_MISSING")
+        check("FUE-06",proof["fresh_history_missing"] and
+              not any("FUE_HISTORY_PRESENT=true" in n for n in clean_history),
+              "Fresh Web context inherited historical patient data")
         fresh.close()
     except Exception as e:
         issues.append({"id":"RUNNER","reason":str(e)[:450]})

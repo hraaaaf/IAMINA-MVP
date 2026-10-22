@@ -1,3 +1,13 @@
+## 22/10/2026 — D21 Perfection Pass : dates historiques exactes et compte vierge
+
+**Contrôle avant Perfection Pass** : sur HEAD `f80a98c93195555f7cb41584e7232a14edd82f91`, **13/13 workflows GitHub SUCCESS** ([CI #39762981916](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981916), [FUE #39762981968](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981968), [RTL #39762981953](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981953)), **FUE 6/6 PASS** FR/AR × 390×844, 768×1024, 1280×900 ; [artefact final #12419153858](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39762981968/artifacts/12419153858) téléchargé, 5–10 focus distincts, retour Shift+Tab en 1–2 étapes, Shift trusted vrai. [BEFORE #12393561090](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39701003352/artifacts/12393561090) : 5/6 FAIL exclusivement FUE-03. **18/18 captures mêmes viewports comparées** : 12 profils strictement identiques pixel par pixel ; six repas écart moyen RGB maximal 0,01395/255.
+
+**Failles de preuve trouvées au Perfection Pass** : FUE-04 ne vérifiait que les **années**, donc pouvait masquer une date historique modifiée ; FUE-06 ne vérifiait pas explicitement l'absence de cet historique sur un compte totalement neuf. **Candidat de correction** : l'écran d'audit Web renvoie dates calendaires YYYY-MM-DD (au lieu des années), le harnais compare l'intervalle **exact** avant/après reload, puis teste `FUE_HISTORY_MISSING` dans un contexte de stockage indépendant. Tests de contrat de source ajoutés. **Aucun code clinique de production, backend, données patient ou déploiement** modifié. Limites : cette preuve synthétique reste une preuve Web d'audit, pas une certification de comptes patients/Production.
+
+**Gates et scoring** : exiger une nouvelle CI exacte + 6/6 FUE + même comparaison PNG avant verdict final. Scores Execution/Adversarial et Perfection Pass retenus seulement après ces preuves ; même-exécuteur plafonné 9,4/10. Pour l'instant D21 reste **FUE_NO_GO / NOT_VERIFIED** sur le nouveau candidat. W01 NO-GO/W02 gelé, aucun Vercel.
+
+---
+
 ## 22/10/2026 — D21 FUE-03 : test de contrat obsolète détecté + portée Web resserrée
 
 - **CI du candidat `f3bf31e`** : [#39760828074](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39760828074) FAIL **801 tests PASS, 1 FAIL, 1 SKIP**, seul `test/p1_ux_12_progressive_profile_contract_test.dart` échoue parce que sa recherche de chaîne `maintainState: true` concatène les fichiers Profil historiques sans lire le nouveau `profile_focus_safe_expansion_tile.dart`. Les **3 nouveaux tests widget sont PASS** dans ce même run. Aucun défaut produit supplémentaire démontré par cette CI.

@@ -62,6 +62,11 @@ void main() {
     expect(audit, contains('SemanticsBinding.instance.ensureSemantics()'));
     expect(audit, contains("'fue-d21-history' => '/fue-d21-history'"));
     expect(audit, contains("path: '/fue-d21-history'"));
+    expect(audit, contains("toIso8601String().split('T').first"));
+    final fue = File('tool/w03_d21_fue_browser.py').readAsStringSync();
+    expect(fue, contains('historical_interval(cdp)'));
+    expect(fue, contains('history_after==history_before'));
+    expect(fue, contains('fresh_history_missing'));
     expect(harness, contains('keyboard_focus_trace'));
     expect(harness, contains('keyboard_navigation_verdict'));
     expect(harness, contains('received_dom_keys'));
