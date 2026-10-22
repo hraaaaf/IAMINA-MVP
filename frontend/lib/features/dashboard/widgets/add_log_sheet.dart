@@ -27,6 +27,24 @@ import 'add_log_view.dart';
 /// prescribe, or calculate treatment.
 enum GlucoseEntrySafety { level2Low, level1Low, nonLow }
 
+/// Accept only a finite, explicitly entered, strictly positive measurement.
+/// Never infer or prefill a patient glucose value.
+double? parsePositiveFiniteGlucoseInput(String raw) {
+  final number = double.tryParse(raw.trim().replaceAll(',', '.'));
+  if (number == null || !number.isFinite || number <= 0) return null;
+  return number;
+}
+
+/// Normalize only the two existing user-selectable glucose units.
+/// The conversion factor is unchanged; overflow/unsupported units fail closed.
+double? normalizeFiniteGlucoseMgdl(String raw, String unit) {
+  if (unit != 'mg/dL' && unit != 'mmol/L') return null;
+  final value = parsePositiveFiniteGlucoseInput(raw);
+  if (value == null) return null;
+  final converted = unit == 'mmol/L' ? value * 18.0 : value;
+  return converted.isFinite && converted > 0 ? converted : null;
+}
+
 GlucoseEntrySafety classifyGlucoseEntrySafety(double mgdl) {
   if (mgdl < 54) return GlucoseEntrySafety.level2Low;
   if (mgdl < 70) return GlucoseEntrySafety.level1Low;
@@ -123,13 +141,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
   bool get _mealVoiceBusy => _mealVoiceRecording || _mealVoiceTranscribing;
 
   double? _displayGlucose() =>
-      double.tryParse(_glucoseController.text.trim().replaceAll(',', '.'));
+      parsePositiveFiniteGlucoseInput(_glucoseController.text);
 
-  double? _mgdlGlucose(String unit) {
-    final value = _displayGlucose();
-    if (value == null) return null;
-    return unit == 'mmol/L' ? value * 18.0 : value;
-  }
+  double? _mgdlGlucose(String unit) =>
+      normalizeFiniteGlucoseMgdl(_glucoseController.text, unit);
 
   bool get _hasValidGlucose {
     final value = _displayGlucose();
@@ -544,7 +559,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     final glucose = _displayGlucose();
     final mgdl = _mgdlGlucose(unit);
-    if (glucose == null || mgdl == null || glucose <= 0) {
+    if (glucose == null || mgdl == null || !mgdl.isFinite) {
       _message(l10n.journalInvalidGlucose);
       return;
     }
