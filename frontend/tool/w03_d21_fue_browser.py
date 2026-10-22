@@ -47,15 +47,50 @@ def click_section(page,cdp,word):
     return collapsed != expanded
 
 def keyboard(page,cdp):
-    fw=[];rev=[]
-    for _ in range(12):
-        page.keyboard.press("Tab");page.wait_for_timeout(180);fw.append(active(cdp))
-    for _ in range(16):
-        page.keyboard.press("Shift+Tab");page.wait_for_timeout(180);rev.append(active(cdp))
+    # Mirror the separately certified RTL/keyboard Chrome harness: CDP
+    # keydown/up and real Shift events, with DOM receipts and AX/DOM focus.
+    # Run AFTER all four sections have been opened and closed; never reset
+    # focus to conceal an interaction-induced keyboard trap.
+    page.bring_to_front()
+    cdp.send("Page.bringToFront")
+    cdp.send("Emulation.setFocusEmulationEnabled", {"enabled": True})
+    page.evaluate("""() => {
+      window.__d21FUEKeys = [];
+      document.addEventListener('keydown', e => window.__d21FUEKeys.push(
+        {key:e.key, shift:e.shiftKey, trusted:e.isTrusted}), true);
+    }""")
+    fw=[];rev=[];dom=[];received=[]
+    for index in range(28):
+        shift=index>=12
+        if shift:
+            cdp.send("Input.dispatchKeyEvent", {
+                "type":"rawKeyDown","key":"Shift","code":"ShiftLeft",
+                "windowsVirtualKeyCode":16,"nativeVirtualKeyCode":16,"modifiers":8})
+        for kind in ("rawKeyDown","keyUp"):
+            cdp.send("Input.dispatchKeyEvent", {
+                "type":kind,"key":"Tab","code":"Tab",
+                "windowsVirtualKeyCode":9,"nativeVirtualKeyCode":9,
+                "modifiers":8 if shift else 0})
+        if shift:
+            cdp.send("Input.dispatchKeyEvent", {
+                "type":"keyUp","key":"Shift","code":"ShiftLeft",
+                "windowsVirtualKeyCode":16,"nativeVirtualKeyCode":16,"modifiers":0})
+        page.wait_for_timeout(180)
+        (rev if shift else fw).append(active(cdp))
+        dom.append(page.evaluate("""() => {
+          let n=document.activeElement;
+          while(n && n.shadowRoot && n.shadowRoot.activeElement)
+            n=n.shadowRoot.activeElement;
+          return n ? (n.getAttribute('aria-label') || n.outerHTML.slice(0,180)) : null;
+        }"""))
+        received=page.evaluate("window.__d21FUEKeys.slice(-6)")
     distinct={x for x in fw if x}
     step=next((i+1 for i,x in enumerate(rev) if x in distinct and x!=fw[-1]),None)
+    shift_received=any(e.get("key")=="Shift" and e.get("shift") is True
+                       for e in page.evaluate("window.__d21FUEKeys"))
     return {"forward_distinct":len(distinct),"reverse_return_step":step,
-            "forward":fw,"reverse":rev}
+            "received_shift_keydown":shift_received,
+            "forward":fw,"reverse":rev,"dom_focus":dom,"recent_dom_keys":received}
 
 def run(browser,lang,size,out):
     w,h=size;id=f"{lang}-{w}x{h}";issues=[];proof={}
@@ -80,8 +115,9 @@ def run(browser,lang,size,out):
               "An actual expansion/touch activation did not change visible AX state")
         keys=keyboard(page,cdp);proof["keyboard"]=keys
         check("FUE-03",keys["forward_distinct"]>=3 and
-              keys["reverse_return_step"] is not None,
-              "Tab/Shift+Tab real browser navigation cannot reverse")
+              keys["reverse_return_step"] is not None and
+              keys["received_shift_keydown"],
+              "Tab/Shift+Tab after section interactions: focus traversal or Shift delivery failed")
 
         load(page,lang,"fue-d21-history")
         proof["history_before_reload"]=names(cdp)[:30]
