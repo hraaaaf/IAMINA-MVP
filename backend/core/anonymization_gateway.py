@@ -49,7 +49,7 @@ class AnonymizationResult:
 
 
 _EMAIL = re.compile(
-    r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])",
+    r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w-])",
     re.IGNORECASE,
 )
 _PHONE = re.compile(

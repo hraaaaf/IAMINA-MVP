@@ -14,6 +14,7 @@ from core.anonymization_gateway import (
 from core.tests.consent_helpers import grant_current_ai_consent
 from llm.base import BaseLLMProvider, LLMResponse
 from llm.factory import _enforce_text_payload_policy
+from llm.pseudonymizer import PHIPseudonymizer
 
 
 class RecordingProvider(BaseLLMProvider):
@@ -201,3 +202,20 @@ def test_local_fallback_path_does_not_mutate_prompt(monkeypatch):
 
     assert response.content == "ok"
     assert provider.calls == 1
+
+
+def test_email_before_sentence_punctuation_is_redacted_at_all_text_privacy_layers():
+    raw = "Contact alice@example.com. Merci."
+
+    minimized, transformations = minimize_external_text(raw)
+    pseudonymized = PHIPseudonymizer().mask(raw)
+
+    assert "alice@example.com" not in minimized
+    assert "alice@example.com" not in pseudonymized
+    assert "direct_identifier" in transformations
+
+
+def test_dlp_detects_email_before_sentence_punctuation():
+    from core.ai_egress import _detect_sensitive_text
+
+    assert "email" in _detect_sensitive_text("Contact alice@example.com. Merci.")
