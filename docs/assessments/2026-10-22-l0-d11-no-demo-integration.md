@@ -1,3 +1,13 @@
+## 23/10/2026 — D11 P0 indépendamment durci (candidat non publié)
+
+**Faiblesse préexistante** : `setup_demo` acceptait `DEBUG=True` plus `--confirm-synthetic-only`, sans vérifier le moteur SQL. Une instance PostgreSQL accidentellement démarrée en DEBUG pourrait donc recevoir des profils, lectures fictives et des comptes démo.
+
+**Correction candidate** : ajouter **refus explicite si moteur DATABASES['default'].ENGINE différent de `django.db.backends.sqlite3`**, en plus des deux gates existants. Test négatif avec PostgreSQL simulé et DEBUG/flag pourtant valides ; test de non-création des utilisateurs. Pas de manipulation DB réelle. Restriction au moteur SQLite = réduction du risque, **ne certifie pas à elle seule la nature isolée de toute base SQLite**, qui reste un prérequis d'exploitation.
+
+**Goal** : interdiction démontrable d'écriture de données fictives dans PostgreSQL depuis la commande, y compris un environnement mal configuré en DEBUG. **Preuve requise** : exécuter le nouveau test et la suite D11 avant d'exposer cette candidate en PR, puis contrôle indépendant du raccordement API/vault A→B→A. En attendant D11 est **NON LIVRÉ**, W01 NO-GO.
+
+---
+
 # IAMINA WEB — D11 P0 No-Demo real accounts, préparé pour intégration — 22/10/2026
 
 **GOAL :** récupérer le code déjà écrit dans [PR #1021](https://github.com/hraaaaf/IAMINA-MVP/pull/1021) pour qu'un utilisateur médical réel ne reçoive jamais de glycémies, repas ou profils artificiels.

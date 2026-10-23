@@ -1,4 +1,7 @@
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+
+from django.conf import settings
 
 import pytest
 from django.contrib.auth.models import User
@@ -62,6 +65,19 @@ def test_setup_demo_rejects_production_even_with_explicit_fixture_flag():
     with pytest.raises(CommandError, match="Synthetic demo setup is disabled"):
         call_command("setup_demo", confirm_synthetic_only=True)
     assert not User.objects.filter(username__in=["admin", "patient1"]).exists()
+
+
+@pytest.mark.django_db
+@override_settings(DEBUG=True)
+def test_setup_demo_rejects_postgres_even_in_debug_with_explicit_flag():
+    # No backend mutation must occur when pointed at a hosted relational DB.
+    with patch.dict(
+        settings.DATABASES['default'],
+        {'ENGINE': 'django.db.backends.postgresql'},
+    ):
+        with pytest.raises(CommandError, match='isolated local SQLite'):
+            call_command('setup_demo', confirm_synthetic_only=True)
+    assert not User.objects.filter(username__in=['admin', 'patient1']).exists()
 
 
 @pytest.mark.django_db

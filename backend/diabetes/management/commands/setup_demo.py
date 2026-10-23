@@ -97,10 +97,17 @@ class Command(BaseCommand):
         # D11: never provision default demo credentials or fabricated medical
         # history under a production settings configuration. An explicit CLI
         # acknowledgement AND DEBUG-only environment are both mandatory.
-        if not settings.DEBUG or not options['confirm_synthetic_only']:
+        # An accidentally enabled DEBUG flag on a hosted PostgreSQL database
+        # must NEVER be sufficient to permit synthetic medical writes.
+        db_engine = settings.DATABASES['default'].get('ENGINE', '')
+        if (
+            not settings.DEBUG
+            or not options['confirm_synthetic_only']
+            or db_engine != 'django.db.backends.sqlite3'
+        ):
             raise CommandError(
-                'Synthetic demo setup is disabled. Use a local DEBUG database '
-                'and pass --confirm-synthetic-only explicitly.'
+                'Synthetic demo setup is disabled. Use an isolated local SQLite '
+                'DEBUG database and pass --confirm-synthetic-only explicitly.'
             )
         reset = options['reset']
 
