@@ -175,6 +175,21 @@ jobs:
                       },
                   )
                   response = conn.getresponse()
+                  if self.path == '/api/v1/ai/chat/stream':
+                      # Keep SSE incremental: do not buffer the entire response
+                      # before giving it to the synthetic browser.
+                      self.send_response(response.status)
+                      self.send_header('Content-Type', response.getheader('Content-Type', 'text/event-stream'))
+                      self.send_header('Cache-Control', response.getheader('Cache-Control', 'no-store'))
+                      self.end_headers()
+                      while True:
+                          piece = response.read(1)
+                          if not piece:
+                              break
+                          self.wfile.write(piece)
+                          self.wfile.flush()
+                      conn.close()
+                      return
                   payload = response.read()
                   self.send_response(response.status)
                   self.send_header(
@@ -323,6 +338,111 @@ jobs:
           call('Page.reload', {'ignoreCache': True})
           time.sleep(10)
           screenshot('chat-empty-390x844.png')
+
+          # A genuinely empty Chrome profile proves the first PWA registration
+          # and current-release shell cache, not just an isolated SW mock.
+          pwa_probe_js = """
+          (async () => {
+            if (!('serviceWorker' in navigator)) {
+              return { error: 'serviceWorker API missing' };
+            }
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            const registration = registrations.find(
+              item => item.scope === location.origin + '/'
+            );
+            if (!registration) return { error: 'no IAMINA scope registration' };
+            const ready = await Promise.race([
+              navigator.serviceWorker.ready.then(() => true),
+              new Promise(resolve => setTimeout(() => resolve(false), 7000))
+            ]);
+            const activeScript = registration.active?.scriptURL || '';
+            const release = activeScript
+              ? new URL(activeScript).searchParams.get('release') : null;
+            const names = await caches.keys();
+            return {
+              ready, release, activeScript, names,
+              currentCache: release && names.includes('iamina-app-shell-' + release),
+              noStaleShell: names.every(
+                name => !name.startsWith('iamina-app-shell-') ||
+                  name === 'iamina-app-shell-' + release
+              )
+            };
+          })()
+          """
+          pwa_probe = call('Runtime.evaluate', {
+              'expression': pwa_probe_js,
+              'awaitPromise': True,
+              'returnByValue': True,
+          })
+          if 'exceptionDetails' in pwa_probe:
+              raise RuntimeError('Synthetic Chrome first PWA install threw')
+          pwa = pwa_probe.get('result', {}).get('value', {})
+          if not (pwa.get('ready') and pwa.get('release') and
+                  pwa.get('currentCache') and pwa.get('noStaleShell')):
+              raise RuntimeError(f'Synthetic Chrome first PWA install failed: {pwa}')
+          print('Synthetic Chrome first SW registration: current shell cached, no stale caches.')
+
+          # Exercise real Chrome fetch → local proxy → Django SSE, not just
+          # static Dart request-construction tests or the regular /ai/chat UI.
+          browser_sse_js = """
+          (async () => {
+            const canary = 'synthetic_browser_sse_body_canary_925';
+            const path = '/api/v1/ai/chat/stream';
+            const response = await fetch(path, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+              },
+              body: JSON.stringify({
+                message: 'ma glycémie est à 32 ' + canary,
+                context_days: 14
+              })
+            });
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let body = '';
+            let reads = 0;
+            while (true) {
+              const part = await reader.read();
+              if (part.done) break;
+              reads += 1;
+              body += decoder.decode(part.value, {stream: true});
+            }
+            body += decoder.decode();
+            return {
+              status: response.status,
+              contentType: response.headers.get('content-type'),
+              cacheControl: response.headers.get('cache-control'),
+              body, url: path, reads
+            };
+          })()
+          """
+          browser_sse = call('Runtime.evaluate', {
+              'expression': browser_sse_js,
+              'awaitPromise': True,
+              'returnByValue': True,
+          })
+          if 'exceptionDetails' in browser_sse:
+              raise RuntimeError(f'Chrome POST SSE threw: {browser_sse["exceptionDetails"]}')
+          sse = browser_sse.get('result', {}).get('value', {})
+          if (
+              sse.get('status') != 200
+              or 'text/event-stream' not in str(sse.get('contentType'))
+              or sse.get('cacheControl') != 'no-store'
+              or 'data: [DONE]' not in sse.get('body', '')
+              or '"is_emergency": true' not in sse.get('body', '')
+              or 'synthetic_browser_sse_body_canary_925' in sse.get('url', '')
+              or not sse.get('reads')
+          ):
+              raise RuntimeError(f'Chrome real POST SSE contract failed: {sse}')
+          print('Synthetic Chrome POST SSE → proxy → Django: event/DONE, no URL canary.')
+
+          # Request-line/access-log canary must remain body-only on local ingress.
+          backend_log = Path('/tmp/iamina-chat-backend.log').read_text()
+          if 'synthetic_browser_sse_body_canary_925' in backend_log:
+              raise RuntimeError('Synthetic SSE medical canary leaked into backend access log')
+
 
           message = "Est-ce que tu peux me dire quelle dose d'insuline prendre ?"
           click(155, 793)
