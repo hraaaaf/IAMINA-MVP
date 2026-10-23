@@ -38,6 +38,7 @@ from diabetes.api.v1.logs import router as logs_router  # noqa: E402
 from diabetes.api.v1.personal_response import router as personal_response_router  # noqa: E402
 from diabetes.api.v1.proactive import router as proactive_router  # noqa: E402
 from diabetes.api.v1.profile import router as profile_router  # noqa: E402
+from diabetes.api.v1.w01_synthetic_cleanup import router as w01_synthetic_cleanup_router  # noqa: E402
 
 # Main API
 api = NinjaAPI(
@@ -76,6 +77,7 @@ def provider_error_handler(request, exc: LLMProviderError):
 api.add_router("/v1", auth_router)
 api.add_router("/v1", demo_router)
 api.add_router("/v1", health_router)
+api.add_router("/v1", w01_synthetic_cleanup_router)
 api.add_router("/v1", compatibility_router)
 api.add_router("/v1", country_suggestion_router)
 
