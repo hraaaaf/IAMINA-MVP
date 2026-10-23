@@ -7,6 +7,7 @@ String _read(String path) => File(path).readAsStringSync();
 String _readProfileLibrary() => [
   _read('lib/features/profile/profile_screen.dart'),
   _read('lib/features/profile/profile_screen_presentation.dart'),
+  _read('lib/features/profile/profile_focus_safe_expansion_tile.dart'),
 ].join('\n');
 
 void main() {
@@ -20,6 +21,11 @@ void main() {
       expect(source, contains("ValueKey('profile-account-section')"));
       expect(source, contains('ExpansionTile('));
       expect(source, contains('maintainState: true'));
+      expect(source, contains('ProfileFocusSafeExpansionTile('));
+      // Widget tests exercise the focus contract; avoid hardcoding one
+      // formatting/expression shape of the production predicate.
+      expect(source, contains('ExcludeFocus('));
+      expect(source, contains('webFocusExclusion = kIsWeb'));
       expect(source, contains('subtitle: _medicalSummary(l10n)'));
       expect(source, isNot(contains('_ProfileCompletionHeader')));
     },

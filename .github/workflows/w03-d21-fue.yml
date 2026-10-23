@@ -1,0 +1,47 @@
+name: W03 D21 Complete FUE First User Experience
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/profile/**'
+      - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
+      - 'frontend/lib/core/data/ramadan_context.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/tool/w03_d21_fue_browser.py'
+      - 'frontend/test/features/profile/w03_d21_ramadan_visibility_test.dart'
+      - '.github/workflows/w03-d21-fue.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  complete-fue:
+    name: D21 six FUE journeys FR/AR mobile/tablet/desktop
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Install browser FUE dependency
+        run: python3 -m pip install --quiet playwright
+      - name: Focused Flutter tests + synthetic browser build
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart lib/core/data/ramadan_context.dart lib/features/dashboard/widgets/add_log_sheet.dart
+          flutter test test/features/profile/w03_d21_ramadan_visibility_test.dart
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+      - name: Execute full six-case D21 FUE in Chromium
+        run: |
+          python3 frontend/tool/w03_d21_fue_browser.py \
+            --build frontend/build/web --output "$GITHUB_WORKSPACE/d21-fue"
+      - name: Upload FUE proof even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-d21-complete-fue-fr-ar
+          path: d21-fue/*
+          retention-days: 7
+          if-no-files-found: warn
