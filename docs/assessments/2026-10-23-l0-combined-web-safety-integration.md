@@ -1,3 +1,11 @@
+## 23/10/2026 — Schéma OpenAPI combiné : format exact restauré
+
+**Rouge CI combinée initiale** [run #39940752700](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39940752700) : backend pytest/PostgreSQL/Flutter PASS mais l'étape d'égalité **`export_openapi` ↔ `docs/api/openapi.json`** a échoué, car la première fusion JSON via `JSON.stringify` avait modifié **les échappements Unicode** et les valeurs Python flottantes `70.0→70`, sans changement sémantique. **Correctif probatoire** : repartir du texte OpenAPI D11 exactement issu du générateur Django et remplacer **uniquement** le bloc `/api/v1/ai/chat/stream` par le bloc texte exact de la PR SSE #1144 (POST JSON). Tous les octets hors de ce bloc restent identiques au schéma D11 auparavant validé ; sa description 403 de `/demo/seed` demeure. Nouveau blob exact `48a82da0c54744257aed11431daf400f37413a78`. Le prochain run doit prouver l'égalité exacte via la CI, pas seulement JSON.parse.
+
+**Statut** : changement candidat non certifié sur ce SHA jusqu'à nouvelle CI. D11 garde le refus PostgreSQL et HTTP 403, Web local-only garde chat et CGM désactivés.
+
+---
+
 ## 23/10/2026 — Dashboard responsive: écart D11 détecté et corrigé dans le candidat
 
 **Rouge vérifié CI combinée initiale** : [Dashboard responsive #39940752580](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39940752580) tentait toujours `POST /api/v1/demo/seed` avec une identité synthétique pour créer des logs et attendait HTTP 200, alors que D11 interdit désormais tous les seeds par API patient. Le serveur a correctement rendu **HTTP 403** ; le test obsolète était rouge. **La correction garde le 403 obligatoire**, n'assouplit pas le code backend. Le workflow affirme le 403 et l'absence de toute donnée de log rattachée à cet utilisateur PostgreSQL après rendu Chrome.
