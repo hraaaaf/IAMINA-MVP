@@ -1,8 +1,6 @@
 {{flutter_js}}
 {{flutter_build_config}}
 
-_flutter.loader.load();
-
 const IAMINA_HOSTED_REVIEW =
   window.location.hostname === 'iamina-review.vercel.app' ||
   (window.location.hostname.startsWith('iamina-review-') &&
@@ -34,12 +32,40 @@ const cleanupHostedReviewCaches = async () => {
   }
 };
 
-if ('serviceWorker' in navigator) {
-  if (IAMINA_HOSTED_REVIEW) {
-    // Hosted Vercel is the dev/test surface. Do not preserve an offline shell
-    // between deployments because it can hide the current candidate.
-    cleanupHostedReviewCaches();
-  } else {
+// D11 lab hotfix: an already-controlling service worker may serve a stale
+// Flutter bootstrap/main.dart.js while Vercel has deployed a new release.
+// Cleanup MUST complete before Flutter starts. If the current document is
+// still controlled, reload it once to release that worker before booting.
+// This only deletes app-shell caches, NEVER clinical IndexedDB vaults.
+const IAMINA_REVIEW_RESET_MARKER = 'iamina-review-sw-reset-v1';
+
+async function startHostedReview() {
+  await cleanupHostedReviewCaches();
+  const stillControlled = navigator.serviceWorker?.controller != null;
+  try {
+    if (stillControlled &&
+        sessionStorage.getItem(IAMINA_REVIEW_RESET_MARKER) !== 'attempted') {
+      sessionStorage.setItem(IAMINA_REVIEW_RESET_MARKER, 'attempted');
+      window.location.reload();
+      return;
+    }
+    sessionStorage.removeItem(IAMINA_REVIEW_RESET_MARKER);
+  } catch (error) {
+    console.warn('IAMINA review reload marker unavailable', error);
+    // Storage denied: do not reload repeatedly. Continue rendering safely.
+  }
+  _flutter.loader.load();
+}
+
+if (IAMINA_HOSTED_REVIEW) {
+  startHostedReview().catch((error) => {
+    console.warn('IAMINA hosted-review bootstrap recovery failed', error);
+    _flutter.loader.load();
+  });
+} else {
+  // Unhosted/offline PWA uses the existing release-aware service worker.
+  _flutter.loader.load();
+  if ('serviceWorker' in navigator) {
     const IAMINA_FALLBACK_RELEASE = '0.1.0+1';
 
     const readCurrentIaminaRelease = async () => {
