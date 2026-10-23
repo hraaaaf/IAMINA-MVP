@@ -9,8 +9,9 @@ import random
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from core.models import BasePatientProfile
@@ -82,12 +83,32 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            '--confirm-synthetic-only',
+            action='store_true',
+            help='Explicitly acknowledge that only a local synthetic DB may be seeded',
+        )
+        parser.add_argument(
             '--reset',
             action='store_true',
             help='Supprimer les données existantes avant de recréer',
         )
 
     def handle(self, *args, **options):
+        # D11: never provision default demo credentials or fabricated medical
+        # history under a production settings configuration. An explicit CLI
+        # acknowledgement AND DEBUG-only environment are both mandatory.
+        # An accidentally enabled DEBUG flag on a hosted PostgreSQL database
+        # must NEVER be sufficient to permit synthetic medical writes.
+        db_engine = settings.DATABASES['default'].get('ENGINE', '')
+        if (
+            not settings.DEBUG
+            or not options['confirm_synthetic_only']
+            or db_engine != 'django.db.backends.sqlite3'
+        ):
+            raise CommandError(
+                'Synthetic demo setup is disabled. Use an isolated local SQLite '
+                'DEBUG database and pass --confirm-synthetic-only explicitly.'
+            )
         reset = options['reset']
 
         # --- Admin ---

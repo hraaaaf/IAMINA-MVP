@@ -14,6 +14,7 @@ class _Authenticated extends AuthService {
 void main() {
   Future<CompanionChatReply?> callWithMode(String? mode) async {
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _Authenticated(),
       httpClient: MockClient((request) async {
         final body = jsonDecode(request.body) as Map<String, dynamic>;

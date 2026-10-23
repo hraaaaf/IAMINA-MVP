@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -69,6 +70,12 @@ class CompanionService {
   final AuthService _authService;
   final http.Client _http;
   final String baseUrl;
+  final bool Function()? _allowClinicalTransportForSyntheticTests;
+
+  // Strict local-only patient pilot: only isolated debug synthetic tests may
+  // opt into remote transport. Compiled Flutter web release always denies.
+  bool get _clinicalTransportAllowed =>
+      !kReleaseMode && _allowClinicalTransportForSyntheticTests?.call() == true;
   final String demoLanguage;
   final String demoSessionId;
   final CompanionFailureLogger _failureLogger;
@@ -80,12 +87,14 @@ class CompanionService {
   CompanionService({
     AuthService? authService,
     http.Client? httpClient,
+    bool Function()? allowClinicalTransportForSyntheticTests,
     this.baseUrl = companionApiBaseUrl,
     this.demoLanguage = 'fr',
     String? demoSessionId,
     CompanionFailureLogger? failureLogger,
   }) : _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client(),
+       _allowClinicalTransportForSyntheticTests = allowClinicalTransportForSyntheticTests,
        demoSessionId = demoSessionId ?? _newDemoSessionId(),
        _failureLogger = failureLogger ?? _defaultFailureLogger;
 
@@ -108,6 +117,7 @@ class CompanionService {
   }
 
   Future<CompanionOverview?> fetchOverview() async {
+    if (!_clinicalTransportAllowed) return null;
     try {
       final token = await _authService.getIdToken();
       if (token == null || token.isEmpty) return null;
@@ -132,6 +142,7 @@ class CompanionService {
   }
 
   Future<ProactivePreview?> fetchProactivePreview() async {
+    if (!_clinicalTransportAllowed) return null;
     try {
       final token = await _authService.getIdToken();
       if (token == null || token.isEmpty) return null;
@@ -156,6 +167,7 @@ class CompanionService {
   }
 
   Future<CompanionNextAction?> evaluateNextAction() async {
+    if (!_clinicalTransportAllowed) return null;
     try {
       final token = await _authService.getIdToken();
       if (token == null || token.isEmpty) return null;
@@ -188,6 +200,16 @@ class CompanionService {
 
     if (_authService.isAuditSession) {
       return _sendDemoChat(trimmed);
+    }
+
+    // Do not send a patient prompt or even read a token in local-only mode.
+    if (!_clinicalTransportAllowed) {
+      throw const ProviderApiException(
+        code: 'clinical_transport_disabled_local_only',
+        message: 'Remote companion chat is disabled in the local-only pilot.',
+        retryable: false,
+        statusCode: 403,
+      );
     }
 
     final token = await _authService.getIdToken();
@@ -292,6 +314,14 @@ class CompanionService {
         statusCode: 401,
       );
     }
+    if (!_clinicalTransportAllowed) {
+      throw const ProviderApiException(
+        code: 'clinical_transport_disabled_local_only',
+        message: 'Remote voice upload is disabled in the local-only pilot.',
+        retryable: false,
+        statusCode: 403,
+      );
+    }
 
     String? token;
     try {
@@ -394,6 +424,9 @@ class CompanionService {
   }
 
   Future<CompanionChatReply> _sendDemoChat(String message) async {
+    // No unauthenticated user message/history to the public demo endpoint
+    // from a real local-only web build; use the existing local fallback.
+    if (!_clinicalTransportAllowed) return _demoReply(message);
     try {
       final response = await _http
           .post(
