@@ -36,6 +36,16 @@ class _W03VisualFixtureDb extends AppDatabase {
 }
 
 void main() {
+  // Ordinary CI runs all *_test.dart files but has no committed golden PNGs.
+  // Keep golden generation exclusive to the explicit W03 visual workflow.
+  const enabled = bool.fromEnvironment('IAMINA_W03_D3_GOLDEN_PROOF');
+  if (!enabled) {
+    test('W03 D3 golden capture is an opt-in visual harness', () {
+      expect(enabled, isFalse);
+    });
+    return;
+  }
+
   // Widget tests otherwise render opaque Ahem glyph blocks.
   // Use the runner's real system font for readable FR/AR evidence.
   setUpAll(() async {
@@ -45,6 +55,22 @@ void main() {
     final loader = FontLoader('Roboto')
       ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
     await loader.load();
+    // The widget renderer also needs the MaterialIcons font for real symbols.
+    // Unlike this test font setup, the production Flutter asset is unchanged.
+    final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+    if (flutterRoot != null) {
+      final iconFile = File(
+        '${flutterRoot}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+      );
+      if (iconFile.existsSync()) {
+        final iconBytes = await iconFile.readAsBytes();
+        final icons = FontLoader('MaterialIcons')
+          ..addFont(
+            Future<ByteData>.value(ByteData.sublistView(iconBytes)),
+          );
+        await icons.load();
+      }
+    }
   });
 
   for (final locale in const [Locale('fr'), Locale('ar')]) {

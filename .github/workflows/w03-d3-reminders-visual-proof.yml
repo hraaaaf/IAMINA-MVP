@@ -38,13 +38,13 @@ jobs:
         working-directory: baseline/frontend
         run: |
           flutter pub get
-          flutter test --no-pub --update-goldens test/features/dashboard_reminders_visual_proof_test.dart
+          flutter test --no-pub --update-goldens --dart-define=IAMINA_W03_D3_GOLDEN_PROOF=true test/features/dashboard_reminders_visual_proof_test.dart
           cp test/features/goldens/w03-d3-*.png "$GITHUB_WORKSPACE/w03-d3-visual-proof/before/"
       - name: AFTER candidate W03 screenshot set
         working-directory: candidate/frontend
         run: |
           flutter pub get
-          flutter test --no-pub --update-goldens test/features/dashboard_reminders_visual_proof_test.dart
+          flutter test --no-pub --update-goldens --dart-define=IAMINA_W03_D3_GOLDEN_PROOF=true test/features/dashboard_reminders_visual_proof_test.dart
           cp test/features/goldens/w03-d3-*.png "$GITHUB_WORKSPACE/w03-d3-visual-proof/after/"
       - name: Compare the exact same eight locale and viewport fixtures
         run: |
