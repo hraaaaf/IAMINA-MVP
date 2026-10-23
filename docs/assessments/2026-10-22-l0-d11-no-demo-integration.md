@@ -1,3 +1,15 @@
+## 23/10/2026 — D11 L0 : candidat d'intégration prêt pour CI exacte
+
+**GOAL** : aucun faux historique médical dans un compte réel (API, coffre Drift, bootstrap Web). **CRITÈRE de succès** : tentatives synthétiques A/B authentifiées et hors-auth renvoient 401/403 sans création ni mutation de profil/log ; aucun seed sur un coffre de patient ; seule la base explicitement d'audit peut contenir les fixtures ; les chemins visuels Web restent fonctionnels sans altérer IndexedDB patient.
+
+**Code repris** : 11 fichiers de l'ancienne PR #1021 recopiés blob pour blob sur `main@8ada5aab`, sans écrasement d'autres modifications de ces chemins. L'API `POST /demo/seed` refuse systématiquement 403 ; le coffre médical interdit `seedDemoData` ; le script bootstrap nettoie seulement service-workers/cache applicatif de Preview. **Durcissement supplémentaire** : commande `setup_demo` refuse PostgreSQL, même si DEBUG et le drapeau `--confirm-synthetic-only` sont présents. Un test négatif simule le moteur PostgreSQL.
+
+**Preuves disponibles** : ancienne #1021 = 6/6 CI SUCCESS sur son ancien HEAD. **AUCUNE validation encore au HEAD d'intégration** ; attendre CI backend/Flutter, tests Web first-use et authentification negative. **Limites** : SQLite autorisé n'est pas une preuve automatique que la base est strictement synthétique ; audits indépendants sécurité/clinique et intégration W01 A→B→A restent requis.
+
+**Statut : PR DRAFT d'intégration à publier, NO-GO merge et Vercel, pas d'écriture Neon/Production.**
+
+---
+
 ## 23/10/2026 — D11 P0 indépendamment durci (candidat non publié)
 
 **Faiblesse préexistante** : `setup_demo` acceptait `DEBUG=True` plus `--confirm-synthetic-only`, sans vérifier le moteur SQL. Une instance PostgreSQL accidentellement démarrée en DEBUG pourrait donc recevoir des profils, lectures fictives et des comptes démo.
