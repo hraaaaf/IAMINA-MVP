@@ -1,12 +1,12 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-from django.conf import settings
-
 import pytest
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
 from django.test import override_settings
 
 from diabetes.models import LogEntry
@@ -15,6 +15,11 @@ from diabetes.models import LogEntry
 @pytest.mark.django_db
 @override_settings(DEBUG=True)
 def test_setup_demo_keeps_fresh_data_then_refreshes_stale_history(monkeypatch, capsys):
+    # The seed feature is explicitly restricted to SQLite. Never modify the
+    # temporary PostgreSQL database used for the source-of-truth CI suite.
+    if connection.vendor != 'sqlite':
+        pytest.skip('Synthetic demo fixture generation requires local SQLite')
+
     from diabetes.management.commands import setup_demo
 
     initial_now = datetime(2026, 9, 1, 23, 0, tzinfo=UTC)

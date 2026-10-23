@@ -1,3 +1,11 @@
+## 23/10/2026 — CI correction D11 : isolation des suites de test SQL
+
+**Premier HEAD CI `724c70d3`** : jobs Backend Ruff FAIL sur tri d'import dans `test_setup_demo_command.py` ; Backend PostgreSQL full suite FAIL **1/2877 cas**, uniquement l'ancien test `test_setup_demo_keeps_fresh_data_then_refreshes_stale_history` qui tentait encore de générer le jeu fictif sur la base PostgreSQL éphémère CI. Les autres **2876 tests PostgreSQL PASS** (plus 1 skipped/3 xfail) ; la barrière D11 PostgreSQL a fait son travail en refusant `setup_demo`.
+
+**Correctif sans régression de sécurité** : imports Ruff réordonnés ; test de *création positive de fixtures* exécutable **uniquement si `connection.vendor=='sqlite'`**, ignoré sur PostgreSQL. Les tests négatifs de refus explicite en DEBUG/PostgreSQL restent actifs sur PostgreSQL, et aucune variable/engine ne peut être patchée pour masquer le moteur réel pendant une écriture. **Succès à établir sur un nouveau SHA** : Ruff PASS, tout PostgreSQL PASS avec un skip supplémentaire déclaré, Flutter/PWA PASS, tests SQLite fixtures PASS. Ce correctif n'ajoute aucune possibilité de seed clinique.
+
+---
+
 ## 23/10/2026 — D11 L0 : candidat d'intégration prêt pour CI exacte
 
 **GOAL** : aucun faux historique médical dans un compte réel (API, coffre Drift, bootstrap Web). **CRITÈRE de succès** : tentatives synthétiques A/B authentifiées et hors-auth renvoient 401/403 sans création ni mutation de profil/log ; aucun seed sur un coffre de patient ; seule la base explicitement d'audit peut contenir les fixtures ; les chemins visuels Web restent fonctionnels sans altérer IndexedDB patient.
