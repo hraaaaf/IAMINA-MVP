@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
+import 'data/drift/patient_vault_scope.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
 import 'features/navigation/main_shell.dart';
 import 'l10n/app_localizations.dart';
@@ -36,7 +37,9 @@ Future<void> main() async {
     throw StateError('Certification credentials are required');
   }
 
-  final db = AppDatabase.defaults();
+  // D11: synthetic browser screenshot data belongs to an audit-only vault,
+  // never to the legacy or a patient-scoped IndexedDB database.
+  final db = AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
   await db.seedDemoData();
 
   final auth = AuthService();

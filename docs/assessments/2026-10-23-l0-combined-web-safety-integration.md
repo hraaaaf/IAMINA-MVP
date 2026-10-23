@@ -1,3 +1,15 @@
+## 23/10/2026 — Dashboard responsive: écart D11 détecté et corrigé dans le candidat
+
+**Rouge vérifié CI combinée initiale** : [Dashboard responsive #39940752580](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39940752580) tentait toujours `POST /api/v1/demo/seed` avec une identité synthétique pour créer des logs et attendait HTTP 200, alors que D11 interdit désormais tous les seeds par API patient. Le serveur a correctement rendu **HTTP 403** ; le test obsolète était rouge. **La correction garde le 403 obligatoire**, n'assouplit pas le code backend. Le workflow affirme le 403 et l'absence de toute donnée de log rattachée à cet utilisateur PostgreSQL après rendu Chrome.
+
+**Coffre navigateur** : l'entrypoint de capture Dashboard utilisait le coffre legacy `AppDatabase.defaults()` pour la fixture synthétique. Il utilise désormais **`AppDatabase.forPatientVault(PatientVaultScope.auditOnly())`**, ce qui isole physiquement les données d'audit. Les captures restent synthétiques, la synchro clinique réelle est désactivée par défaut `ApiClient.canSyncClinicalData=false`. Le test backend post-capture établira qu'aucune entrée artificielle n'a été créée dans son utilisateur PostgreSQL.
+
+**Autre rouge initial** : [PWA update/recovery #39940752732](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39940752732) a eu un **Chrome CDP 9225 inaccessible** avant assertions, symptôme de démarrage de navigateur en runner CI (aucune régression PWA démontrée). À vérifier sur nouveau SHA ; si échec répété, changer le démarrage/diagnostic Chrome plutôt que rerun indéfini.
+
+**Preuves à obtenir** : CI 16 workflows sur HEAD final plus nouveau Chrome SSE séparé ; Dashboard 9/9 captures correctement distinctes et backend zéro logs, PWA update/rollback complet, scores UI. Ces correctifs sont uniquement pour le harnais et l'entrypoint synthétique Web, pas une ouverture des API cliniques ni une mutation Prod.
+
+---
+
 ## 23/10/2026 — Épreuve Chrome SSE POST autonome, sans chat patient réactivé
 
 Candidat de nouveau workflow `.github/workflows/sse-post-synthetic-browser-proof.yml` : réutilise le backend synthétique et Chromium de #1144 pour contrôler vrai `POST /api/v1/ai/chat/stream`, 200 SSE, `[DONE]`, canari absent URL/log d'accès local, no-store et cache PWA initial correct ; **retire** les anciens gestes chat/saisie et l'attente de réponse UI, incompatibles avec Web RELEASE local-only. Capture l'état du navigateur sans interpréter la messagerie comme ouverte. Conserve en parallèle, sans changement, le workflow `companion-chat-e2e-screenshot.yml` issu de #1140 qui certifie le refus de l'egress clinique dans l'UI. Le proxy test peut conserver un enregistrement temporaire de réponse synthétique, mais aucune capture/message réel n'est attendu ou publié.

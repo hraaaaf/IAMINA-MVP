@@ -102,7 +102,7 @@ jobs:
           cat /tmp/iamina-dashboard-backend.log >&2 || true
           exit 1
 
-      - name: Create and seed synthetic certification identity
+      - name: Create synthetic identity and prove demo HTTP endpoint refuses seeding
         shell: bash
         run: |
           set -euo pipefail
@@ -122,7 +122,10 @@ jobs:
           open('/tmp/dashboard-token','w').write(token)
           PY
           TOKEN="$(cat /tmp/dashboard-token)"
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' >/tmp/demo-seed.json
+          # A release candidate must fail closed: authenticating as a synthetic
+          # user NEVER authorizes data fabrication via the patient API.
+          CODE="$(curl -sS -o /tmp/demo-seed.json -w '%{http_code}' -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}')"
+          test "$CODE" = 403 || { echo "D11 breach: demo seeding returned $CODE" >&2; exit 1; }
 
       - name: Validate responsive and truthfulness contracts
         working-directory: frontend
@@ -202,6 +205,26 @@ jobs:
           if failures:
               raise SystemExit('pixel-identical responsive captures: ' + '; '.join(failures))
           print('9/9 responsive captures are pixel-distinct')
+          PY
+
+      - name: Verify Dashboard audit did not write synthetic medical logs to backend
+        working-directory: backend
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import django
+
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'amina.settings')
+          django.setup()
+          from django.contrib.auth.models import User
+          from diabetes.models import LogEntry
+
+          user = User.objects.get(email=os.environ['CERT_EMAIL'])
+          assert not LogEntry.objects.filter(patient=user).exists(), (
+              'Synthetic dashboard audit escaped to authenticated patient PostgreSQL'
+          )
+          print('D11 backend confirmed: 0 synthetic patient log entries after browser audit')
           PY
 
       - name: Upload visual proof
