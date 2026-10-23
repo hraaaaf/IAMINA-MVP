@@ -1,3 +1,19 @@
+## W01-G5 — 23 octobre 2026 : Work DevTools indisponible, interface Web E2E préparée (NON déployée)
+
+**Résultat Work** : Chrome cloud atteint IAMINA via SSO Vercel mais DevTools/console inaccessibles. Le ZIP précédent n'était pas joint à la session Work ; même joint, il n'aurait pas débloqué DevTools. Aucune sonde BFF exécutée, aucun compte créé lors de cette reprise. Work rapporte le nettoyage indépendant Neon auth_user=0.
+
+**Solution préparée** : nouvelle route GET /api/w01-g5-e2e sur la Preview Web exclusivement (frontend/api/w01-g5-e2e.js), page à boutons et consentement explicite, sans console ni ZIP. Limites serveur fail-closed : GET, VERCEL=1, VERCEL_ENV=preview, VERCEL_PROJECT_ID Web exact, VERCEL_GIT_COMMIT_REF branche W01 exacte, VERCEL_URL égal à l'Host de déploiement conforme. Vercel SSO existant reste obligatoire, CSP nonce, cache no-store, aucun secret journalisé. Appels métier uniquement via /api/v1/* même origine, puis BFF Preview ; contrôles programmés : quatre empreintes DB avant inscription, deux comptes fictifs A→B→A, Bearer invalide, journal synthétique A refusé à B, logout/révocation, suppression API des comptes en finally, contrôle SQL Neon auth_user=0 indépendant.
+
+**Goal** : obtenir BFF Web E2E avec codes HTTP réels sans DevTools. **Succès** : résultats observés sur Preview SSO avec A→B→A, isolation, révocation et preuve de suppression SQL Neon ; pas de PASS des gates Redis/IP/429/CSRF session/DR/revue indépendante sans test.
+
+**Preuves disponibles avant CI nouvelle** : node --check et 4/4 tests Node de route/guard/CSP/consentement PASS locaux ; mockup 390/430/768/1280 sans overflow et texte 200% idem. Captures HORS LIGNE, non des captures de la Preview. Pour chaque viewport : BEFORE sur l'ancienne Preview, objectif écrit, référence mockup, AFTER sur la nouvelle Preview, comparaison et score visuel sur preuve.
+
+**GATE** : PR #1128 DRAFT. Commit unique après revue/CI. **AUCUN NOUVEAU DÉPLOIEMENT VERCEL sans autorisation explicite DISTINCTE pour cette interface**, même en Preview. Après autorisation, déployer Web ET API sur le même SHA et raccorder seulement la variable Preview branch-scoped. Aucun Production ni merge. Si 404 sur la page ou preuve DB différente, STOP avant comptes.
+
+**Etat chantier** : W01 NO-GO / W02 gelé. Séquence : CI nouvelle → autorisation déploiement Preview → SSO/UI BFF → A→B→A/isolation/révocation → suppression API + Neon → IP/429/cache Redis/PITR/revue indépendante → certification si toutes preuves.
+
+---
+
 ## W01 G5 — 23 octobre 2026 : preuve SQL réelle Preview en cours
 
 Goal : identifier la branche PostgreSQL effectivement utilisée par la Preview API AVANT toute inscription distante.
