@@ -102,7 +102,7 @@ jobs:
           cat /tmp/iamina-dashboard-backend.log >&2 || true
           exit 1
 
-      - name: Create and seed synthetic certification identity
+      - name: Create empty synthetic identity and assert D11 seed endpoint is denied
         shell: bash
         run: |
           set -euo pipefail
@@ -122,7 +122,19 @@ jobs:
           open('/tmp/dashboard-token','w').write(token)
           PY
           TOKEN="$(cat /tmp/dashboard-token)"
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' >/tmp/demo-seed.json
+          # D11 deliberately forbids medical demo seeding in *all* patient
+          # accounts, including this ephemeral synthetic CI account. The local
+          # Flutter visual harness keeps its own fixture data in an unscoped,
+          # throwaway browser vault. Never bypass /demo/seed or weaken auth.
+          STATUS="$(curl -sS -o /tmp/demo-seed-denied.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:8000/api/v1/demo/seed \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' -d '{}')"
+          test "$STATUS" = "403" || {
+            echo "D11 violation: demo seeding returned HTTP $STATUS, expected 403" >&2
+            exit 1
+          }
+          echo "D11 patient demo seeding correctly rejected (HTTP 403)"
 
       - name: Validate responsive and truthfulness contracts
         working-directory: frontend
