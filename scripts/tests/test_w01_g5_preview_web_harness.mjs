@@ -75,4 +75,9 @@ test('nonce changes every GET, rendering is deterministic for same nonce',()=>{
   const a=call(),b=call();
   assert.notEqual(a.headers['Content-Security-Policy'],b.headers['Content-Security-Policy']);
   assert.ok(renderPreviewHtml('test-nonce').includes('nonce="test-nonce"'));
+  const newCommit = '0123456789abcdef0123456789abcdef01234567';
+  assert.ok(renderPreviewHtml('test-nonce',newCommit).includes('"deployment_head"') === false);
+  assert.ok(renderPreviewHtml('test-nonce',newCommit).includes("deployment_head: '"+newCommit+"'"));
+  assert.ok(renderPreviewHtml('test-nonce','invalid').includes("deployment_head: 'unavailable'"));
+  assert.ok(!renderPreviewHtml('test-nonce',newCommit).includes('source_head'));
 });

@@ -2,9 +2,27 @@ from django.apps import AppConfig
 
 
 def _purge_pending_documents(patient_id: int, _firebase_uid: str) -> None:
+    import logging
+
+    from redis.exceptions import ConnectionError as RedisConnectionError
+    from redis.exceptions import TimeoutError as RedisTimeoutError
+
     from media.documents.pending_cache import purge_patient_pending_extractions
 
-    purge_patient_pending_extractions(patient_id)
+    try:
+        purge_patient_pending_extractions(patient_id)
+    except (RedisConnectionError, RedisTimeoutError):
+        # Normal and patient-bearing deployments remain fail-closed. This
+        # exception applies only to W01's synthetic, Redis-less Preview where
+        # pending extraction batches cannot be persisted in the first place.
+        from diabetes.synthetic_preview_erasure import can_erase_synthetic_without_cache
+
+        if not can_erase_synthetic_without_cache(patient_id, _firebase_uid):
+            raise
+        logging.getLogger(__name__).warning(
+            "w01_synthetic_preview_cache_purge_not_applicable patient=%s",
+            patient_id,
+        )
 
 
 class DiabetesConfig(AppConfig):
