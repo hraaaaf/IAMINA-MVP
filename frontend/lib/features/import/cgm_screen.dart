@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -10,10 +11,25 @@ import 'cgm_connections_section.dart';
 class CgmScreen extends StatefulWidget {
   final CgmService? service;
 
-  const CgmScreen({super.key, this.service});
+  /// Can force a closed UI for widget tests, never enable network in RELEASE.
+  final bool forceLocalOnlyDisabledForTests;
+
+  const CgmScreen({
+    super.key,
+    this.service,
+    this.forceLocalOnlyDisabledForTests = false,
+  });
 
   @override
   State<CgmScreen> createState() => _CgmScreenState();
+}
+
+String _cgmUnavailableCopy(BuildContext context) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'en' => 'Connected CGM is not available in this local-only version. Sensor setup is disabled and no CGM data is transmitted.',
+    'ar' => 'اتصال مستشعر السكر غير متاح في هذه النسخة المحلية. إعداد المستشعر معطّل ولا تُرسل أي بيانات منه.',
+    _ => 'La connexion CGM est indisponible dans cette version locale. La configuration est désactivée et aucune donnée du capteur n’est transmise.',
+  };
 }
 
 class _CgmScreenState extends State<CgmScreen> {
@@ -30,6 +46,51 @@ class _CgmScreenState extends State<CgmScreen> {
   @override
   Widget build(BuildContext context) {
     final copy = _CgmGuideCopy.of(context);
+
+    // Web RELEASE: a sensor-setup wizard would falsely promise a connector
+    // whose transport is intentionally denied in CgmService.
+    if ((kIsWeb && kReleaseMode) || widget.forceLocalOnlyDisabledForTests) {
+      return Scaffold(
+        backgroundColor: AminaTheme.paper,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _CgmHeader(copy: copy),
+              Expanded(
+                child: ResponsiveContentSurface(
+                  maxWidth: 760,
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lock_outline, size: 42),
+                            const SizedBox(height: 16),
+                            Text(
+                              _cgmUnavailableCopy(context),
+                              key: const ValueKey('cgm-wizard-local-only-disabled'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                height: 1.4,
+                                color: AminaTheme.ink900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AminaTheme.paper,

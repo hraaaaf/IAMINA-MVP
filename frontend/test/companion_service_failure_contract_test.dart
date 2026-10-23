@@ -15,6 +15,7 @@ class _TokenAuthService extends AuthService {
 void main() {
   test('chat propagates canonical retryable provider timeout', () async {
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: MockClient(
         (_) async => http.Response(
@@ -45,6 +46,7 @@ void main() {
 
   test('malformed provider error body fails closed without leaking it', () async {
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: MockClient(
         (_) async => http.Response('vendor-secret-detail', 503),
@@ -68,6 +70,7 @@ void main() {
   test('overview transport failure is observable and still returns null', () async {
     final failures = <String>[];
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: MockClient(
         (_) async => throw StateError('synthetic-sensitive-overview'),
@@ -89,6 +92,7 @@ void main() {
   test('proactive transport failure is observable and still returns null', () async {
     final failures = <String>[];
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: MockClient(
         (_) async => throw StateError('synthetic-sensitive-proactive'),
@@ -110,6 +114,7 @@ void main() {
   test('next-action transport failure is observable and still returns null', () async {
     final failures = <String>[];
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: MockClient(
         (_) async => throw StateError('synthetic-sensitive-next-action'),
@@ -131,6 +136,7 @@ void main() {
   test('ordinary overview non-success remains null without failure log', () async {
     final failures = <String>[];
     final service = CompanionService(
+      allowClinicalTransportForSyntheticTests: () => true,
       authService: _TokenAuthService(),
       httpClient: MockClient((_) async => http.Response('{}', 503)),
       baseUrl: 'http://127.0.0.1:8000',

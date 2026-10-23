@@ -124,6 +124,38 @@ void main() {
     });
   }
 
+  final localOnlyCopy = <(Locale, String)>[
+    (const Locale('fr'), 'Vos données restent sur cet appareil. Le chat et la voix via serveur sont désactivés dans cette version.'),
+    (const Locale('en'), 'Your data stays on this device. Server-based chat and voice are disabled in this version.'),
+    (const Locale('ar'), 'تبقى بياناتك على هذا الجهاز. المحادثة والصوت عبر الخادم معطّلان في هذا الإصدار.'),
+  ];
+
+  for (final (locale, copy) in localOnlyCopy) {
+    for (final width in <double>[390, 768, 1280]) {
+      testWidgets('local-only notice is truthful at ${width.toInt()}px / ${locale.languageCode}', (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(width, 900);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        await tester.pumpWidget(
+          _harness(
+            const ProviderApiException(
+              code: 'clinical_transport_disabled_local_only',
+              message: 'Remote companion service disabled',
+              retryable: false,
+              statusCode: 403,
+            ),
+            locale: locale,
+          ),
+        );
+        await _submit(tester);
+        expect(find.byKey(const Key('companion-chat-failure')), findsOneWidget);
+        expect(find.text(copy), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets('quota failure uses distinct English copy', (tester) async {
     await tester.pumpWidget(
       _harness(

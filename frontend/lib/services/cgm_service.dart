@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:http/http.dart' as http;
 
 import 'auth_service.dart';
@@ -116,15 +117,29 @@ class CgmService {
   final AuthService _authService;
   final http.Client _http;
   final String baseUrl;
+  final bool Function()? _allowClinicalTransportForSyntheticTests;
 
   CgmService({
     AuthService? authService,
     http.Client? httpClient,
     this.baseUrl = cgmApiBaseUrl,
+    // The only opt-in is for isolated synthetic transport tests. Never set
+    // this in the patient-facing CGM screen or a real-patient runtime.
+    bool Function()? allowClinicalTransportForSyntheticTests,
   }) : _authService = authService ?? AuthService(),
-       _http = httpClient ?? http.Client();
+       _http = httpClient ?? http.Client(),
+       _allowClinicalTransportForSyntheticTests =
+           allowClinicalTransportForSyntheticTests;
 
   Future<Map<String, String>> _headers({bool json = false}) async {
+    // CgmService owns a separate package:http transport and does NOT pass
+    // through ApiClient's local-only interceptor. Apply the same fail-closed
+    // default before resolving credentials or sending ANY CGM API request.
+    // kReleaseMode is compile-time: even accidentally injecting a synthetic
+    // callback into a web release build can never enable remote CGM transport.
+    if (kReleaseMode || _allowClinicalTransportForSyntheticTests?.call() != true) {
+      throw const CgmServiceException('clinical_transport_disabled_local_only', 403);
+    }
     final token = await _authService.getIdToken();
     if (token == null || token.isEmpty) {
       throw const CgmServiceException('authentication_required', 401);
