@@ -53,19 +53,21 @@ const minScreenshotBytes = 15000;
       const screenshotBytes = {};
 
       for (const [position, offset] of Object.entries(positions)) {
-        const dashboardReady = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/companion/overview') &&
-            r.status() >= 200 &&
-            r.status() < 300,
-          { timeout: 45000 },
-        );
+        // In a Web RELEASE local-only build the Companion overview is
+        // intentionally NOT requested. Waiting for its HTTP response would
+        // contradict the no-clinical-egress invariant of L0.
         await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
           waitUntil: 'domcontentloaded',
           timeout: 120000,
         });
-        await dashboardReady;
-        await page.waitForTimeout(1600);
+        await page.waitForFunction(
+          () => Boolean(
+            document.querySelector('flutter-view') ||
+            document.querySelector('flt-glass-pane')
+          ),
+          { timeout: 45000 },
+        );
+        await page.waitForTimeout(2100);
         const screenshotPath = path.join(
           'dashboard-visual-cert',
           `${name}-${position}-${width}x${height}.png`,
@@ -96,6 +98,12 @@ const minScreenshotBytes = 15000;
       }
       if (api.some((x) => x.status >= 500)) {
         throw new Error(`${name}: backend 5xx`);
+      }
+      const clinicalCalls = api.filter(
+        (x) => x.url.includes('/api/v1/companion/'),
+      );
+      if (clinicalCalls.length) {
+        throw new Error(`${name}: Companion Web RELEASE sent clinical HTTP ${JSON.stringify(clinicalCalls)}`);
       }
       if (
         Object.values(screenshotBytes).some(

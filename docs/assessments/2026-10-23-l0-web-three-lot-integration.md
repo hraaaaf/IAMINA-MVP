@@ -1,3 +1,19 @@
+### 23/10/2026 — additional cross-lot mismatch, found before rerun
+
+The same old Dashboard browser tool `tools/dashboard_capture.js` awaited an HTTP 2xx from `/api/v1/companion/overview`. On the combined Web RELEASE build, [Companion #1140] prohibits this network request: `CompanionService.fetchOverview` returns `null` without HTTP when `kReleaseMode`. The old browser oracle would **time out even with a healthy Flutter dashboard**.
+
+Patch candidate also replaces the impossible HTTP wait with an explicit Flutter Web mounting check (`flutter-view` or `flt-glass-pane`), then inspects the screenshots as before (9 distinct captures, no blank/JS errors, 5xx). It adds an **assertion that zero `/api/v1/companion/*` HTTP requests were issued** in the local-only build. This strengthens the no-egress requirement rather than weakening it. It does not bypass authentication, seed a backend patient, or change production code. **No CI PASS claimed until new shared-HEAD run.**
+
+## 23/10/2026 — Cross-lot CI fail found: Dashboard visual must respect D11
+
+**BEFORE**: on combined HEAD `9d557ff9` [Dashboard responsive visual #39968326382](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/39968326382) FAILED at step « Create and seed synthetic certification identity » because it uses `curl -f POST /api/v1/demo/seed` and gets **HTTP 403**, exactly the fail-closed behavior introduced in D11. Backend, migrations and account registration succeeded beforehand. **This is a harness contradiction between two already-green isolated PRs, not evidence to roll back D11**.
+
+**Corrective candidate (harness-only)**: retain synthetic registration in ephemeral PostgreSQL CI but replace the disallowed seed call with an **assertion that authenticated /demo/seed returns exactly 403**. The frontend audit entrypoint seeds its own ephemeral unscoped browser-only database via `AppDatabase.defaults().seedDemoData()`; it does not seed a real patient vault. Dashboard screenshots retain their responsive contract; backend overview now has an *empty synthetic account*, and this empty-state must be genuinely tested. Do **not** reintroduce HTTP demo seeding, loosen D11 or fabricate patient data.
+
+**Goal/tests**: Dashboard responsive workflow SUCCESS on integration SHA, 9 screenshots pixel-distinct and no JS errors, API overview HTTP okay on empty account, D11 negative 403 test PASS, other 15 workflows PASS. If dashboard visualization requires remote fixture data, redesign audit harness strictly inside synthetic browser context; no production endpoint workaround. **Current patch only prepared; CI not yet run.**
+
+---
+
 # IAMINA WEB — L0 INTEGRATION COMPLETE (CANDIDAT PRÉMERGE) — 23 octobre 2026
 
 ## Objectif / succès / preuve
