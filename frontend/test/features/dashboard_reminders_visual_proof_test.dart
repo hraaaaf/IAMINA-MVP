@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_reminders_summary_card.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +36,17 @@ class _W03VisualFixtureDb extends AppDatabase {
 }
 
 void main() {
+  // Widget tests otherwise render opaque Ahem glyph blocks.
+  // Use the runner's real system font for readable FR/AR evidence.
+  setUpAll(() async {
+    final fontPath = Platform.environment['IAMINA_W03_GOLDEN_FONT'] ??
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+    final bytes = await File(fontPath).readAsBytes();
+    final loader = FontLoader('Roboto')
+      ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
+    await loader.load();
+  });
+
   for (final locale in const [Locale('fr'), Locale('ar')]) {
     for (final size in const [
       Size(390, 844),
