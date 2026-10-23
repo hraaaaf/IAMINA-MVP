@@ -48,8 +48,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                         ],
                         _buildMedicalSection(l10n),
                         const SizedBox(height: 14),
-                        _buildRamadanSection(l10n),
-                        const SizedBox(height: 14),
+                        // D21 Web: hide seasonal settings and their save actions
+                        // without deleting historical/native Ramadan code.
+                        if (shouldShowRamadanProfileSection(isWeb: kIsWeb)) ...[
+                          _buildRamadanSection(l10n),
+                          const SizedBox(height: 14),
+                        ],
                         _buildProfileSection(
                           key: const ValueKey('profile-iamina-section'),
                           icon: Icons.auto_awesome_outlined,
@@ -612,8 +616,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          maintainState: true,
+        child: ProfileFocusSafeExpansionTile(
           initiallyExpanded: initiallyExpanded,
           tilePadding: const EdgeInsetsDirectional.fromSTEB(18, 10, 14, 10),
           childrenPadding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 20),
