@@ -18,7 +18,10 @@ import logging
 
 from django.core.cache import cache
 from django.db import OperationalError, connection
+from django.http import JsonResponse
 from ninja import Router, Schema
+
+from amina.preview_db_identity import preview_identity_allowed, read_synthetic_identity
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +76,6 @@ def _check_cache() -> str:
 
 
 # W01 G5: actual SQL session proof, behind Vercel SSO on exact API Preview.
-from django.http import JsonResponse
-from amina.preview_db_identity import preview_identity_allowed, read_synthetic_identity
-
-
 def _identity_response(data: dict[str, str], status: int) -> JsonResponse:
     response = JsonResponse(data, status=status)
     response["Cache-Control"] = "private, no-store"
@@ -84,7 +83,7 @@ def _identity_response(data: dict[str, str], status: int) -> JsonResponse:
     return response
 
 
-@router.get("/ops/preview-db-identity", auth=None, tags=["ops"])
+@router.get("/ops/preview-db-identity", auth=None, tags=["ops"], include_in_schema=False)
 def preview_db_identity(request):
     """Preview-only live Neon identity; 404 before SQL outside approved scope."""
     if not preview_identity_allowed(request.headers.get("host", "")):

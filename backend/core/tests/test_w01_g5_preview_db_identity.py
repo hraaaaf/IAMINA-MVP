@@ -2,8 +2,12 @@
 from unittest.mock import Mock
 
 from amina.preview_db_identity import (
-    IDENTITY_SQL, PREVIEW_API_PROJECT, SYNTHETIC_NEON_PROJECT,
-    SYNTHETIC_NEON_BRANCH, preview_identity_allowed, read_synthetic_identity,
+    IDENTITY_SQL,
+    PREVIEW_API_PROJECT,
+    SYNTHETIC_NEON_BRANCH,
+    SYNTHETIC_NEON_PROJECT,
+    preview_identity_allowed,
+    read_synthetic_identity,
 )
 
 HOST = "iamina-certified-example123-achraf-benmoussa-s-projects.vercel.app"

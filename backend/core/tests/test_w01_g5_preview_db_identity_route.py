@@ -1,8 +1,14 @@
 """Route contract: no SQL for non-Preview; no metadata leakage on mismatch."""
 import json
 from unittest.mock import Mock, patch
+
 from django.test import RequestFactory
-from amina.preview_db_identity import PREVIEW_API_PROJECT, SYNTHETIC_NEON_BRANCH, SYNTHETIC_NEON_PROJECT
+
+from amina.preview_db_identity import (
+    PREVIEW_API_PROJECT,
+    SYNTHETIC_NEON_BRANCH,
+    SYNTHETIC_NEON_PROJECT,
+)
 from core.api.v1.health import preview_db_identity
 
 HOST = "iamina-certified-exact123-achraf-benmoussa-s-projects.vercel.app"
