@@ -27,3 +27,9 @@
 - **Human gate** : revue indépendante/score ≥9.0 et test tactile réel, sécurité+clinique et autorisation explicite de toute mise en ligne.
 
 **Next exact :** publier une PR DRAFT unique, lire ses workflows sans attente passive, inspecter échecs et captures, corriger puis refaire tests exact SHA ; finaliser doc/score/gates ; seulement ensuite évaluer une fusion et ses effets Vercel.
+
+## W03 D3 — preuve visuelle ciblée à confirmer au nouveau SHA
+
+**BEFORE unique** : W03 combiné `130161c6` (carte compteur seul). **AFTER** : nouveau HEAD D3 avec jusqu'à trois échéances. **Même mockup** : carte dans son conteneur clair à 16px de marge, maxWidth 600px, même police/theme, données synthétiques identiques, FR et AR aux viewports 390×844, 430×932, 768×1024, 1280×900. Une fixture de quatre dates futures, un rappel désactivé et des titres fictifs sensibles est fournie par `dashboard_reminders_visual_proof_test.dart`. Les titres sont absents du rendu. Workflow `w03-d3-reminders-visual-proof.yml` compare huit captures AVANT et huit APRÈS et échoue si elles sont identiques, tailles différentes, scénario manquant ou test Flutter rouge. Ces images sont **des captures du renderer widget Flutter en CI**, non des captures Chromium d'une Preview patient. Les captures Chromium existantes utilisent un scénario sans échéances ; **ne pas prétendre que les dates y ont été vues**.
+
+À renseigner seulement à réception : run/artefact, comparaison visuelle effective, score, éventuelles régressions. **Aucun merge ni Vercel.**
