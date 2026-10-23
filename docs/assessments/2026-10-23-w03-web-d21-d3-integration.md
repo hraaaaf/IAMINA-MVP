@@ -20,7 +20,7 @@
 
 ## Dépendances et vrai gate
 
-- **D3 décision complète** : la carte ne montre que **le nombre** de rappels actifs ; la liste des 2–3 prochaines échéances reste non codée. Ne pas déclarer D3 entière livrée.
+- **D3 complétion UI (candidat)** : la carte affiche désormais, en plus du compteur 0/1/N, jusqu'à **3 vraies prochaines échéances locales** : dates futures et activées uniquement, triées chronologiquement. Les intitulés sensibles ne sont pas rendus sur l'Accueil ; rien ne quitte le coffre local, aucune notification OS n'est simulée. Reference UI : « Tendance [inchangée] → Rappels : compteur + Prochaines échéances (1–3 lignes dd/MM/yyyy HH:mm) → Outils ». En l'absence d'échéances futures, conserver seulement le compteur. Les vues FR/EN/AR, RTL, A→B→A et les largeurs 390/768/1280 sont couvertes par tests ciblés à exécuter sur le nouveau SHA. Statut **candidat en attente CI/captures AFTER** ; ne pas prononcer VERIFIED sans preuve physique/visuelle.
 - **D2 #1135** modifie aussi `dashboard_premium_screen.dart` ; une intégration ultérieure doit conserver l'ordre Tendance→Rappels→Outils et résoudre ce chevauchement. Le D21 `add_log_sheet.dart` croise les correctifs de glycémie [L0 #1141](https://github.com/hraaaaf/IAMINA-MVP/pull/1141) : pas de merge simultané non réconcilié.
 - **W01 #1128** NO-GO et W02 gelée : pas de preuve de l'authentification hébergée, de l'isolation de comptes A→B→A sous SSO/Neon/Redis/DR sur cette branche. Aucune donnée médicale réelle.
 - **Vercel** : aucun nouveau déploiement Preview, Production, promotion ni fusion implicitement autorisés ici. La Preview D21 précédemment autorisée est distincte de ce candidat intégré.

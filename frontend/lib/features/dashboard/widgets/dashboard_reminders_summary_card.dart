@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +12,20 @@ String _copy(BuildContext context, String fr, String en, String ar) {
     'en' => en,
     _ => fr,
   };
+}
+
+/// Never show private medical reminder titles on Home. Return only the
+/// first three upcoming enabled local dates, ordered chronologically.
+List<DateTime> nextThreeUpcomingReminderTimes(
+  List<ReminderData> reminders,
+  DateTime now,
+) {
+  final dates = reminders
+      .where((item) => item.enabled && item.dueAt.isAfter(now))
+      .map((item) => item.dueAt)
+      .toList()
+    ..sort();
+  return dates.take(3).toList(growable: false);
 }
 
 /// Read-only local reminders preview. No OS push or network calls.
@@ -53,6 +68,9 @@ class _DashboardRemindersSummaryCardState
         final activeCount = snapshot.hasData
             ? snapshot.data!.where((item) => item.enabled).length
             : null;
+        final upcoming = snapshot.hasData
+            ? nextThreeUpcomingReminderTimes(snapshot.data!, DateTime.now())
+            : const <DateTime>[];
         final status = snapshot.hasError
             ? _copy(context, 'Rappels indisponibles', 'Reminders unavailable',
                 'التذكيرات غير متاحة')
@@ -114,6 +132,32 @@ class _DashboardRemindersSummaryCardState
                               color: AminaVisualLanguage.secondary(context),
                             ),
                           ),
+                          if (upcoming.isNotEmpty) ...[
+                            const SizedBox(height: 9),
+                            Text(
+                              _copy(context, 'Prochaines échéances',
+                                  'Upcoming reminders', 'المواعيد القادمة'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AminaVisualLanguage.secondary(context),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            for (var i = 0; i < upcoming.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  DateFormat('dd/MM/yyyy HH:mm')
+                                      .format(upcoming[i]),
+                                  key: ValueKey('dashboard-reminder-due-${i + 1}'),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AminaVisualLanguage.primaryText(context),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ],
                       ),
                     ),
