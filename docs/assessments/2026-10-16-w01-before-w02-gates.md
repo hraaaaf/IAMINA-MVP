@@ -1,3 +1,14 @@
+## W01 G5 — 23 octobre 2026 : preuve SQL réelle Preview en cours
+
+Goal : identifier la branche PostgreSQL effectivement utilisée par la Preview API AVANT toute inscription distante.
+Accord propriétaire explicite : préparer, tester et déployer uniquement en Preview ; aucune Production.
+
+Nouvelle route GET /api/v1/ops/preview-db-identity (API Django) : SQL SELECT read-only de current_database(), current_user, current_setting('neon.project_id',true), current_setting('neon.branch_id',true). L'identité est divulguée seulement si elle correspond exactement à la cible synthétique noisy-truth-00115950 / br-sweet-frog-b9ok6ptp / iamina925_empty / iamina_preview_app. Garde-fous : VERCEL=1, VERCEL_ENV=preview, IAMINA_ENV=development, VERCEL_PROJECT_ID API exact, host égal au VERCEL_URL de déploiement et conforme à la regex de déploiement protégé par SSO Vercel. Hors périmètre : 404 sans SQL ; mismatch/échec SQL : 503 sans identité. Cache-Control private,no-store ; aucune trace de DATABASE_URL, cookie, token, secret ou donnée patient.
+
+Tests unitaires purs et tests d'intégration route ajoutés. Etat de certification jusqu'aux résultats hébergés : **W01 NO-GO / W02 gelé**. Prochaine séquence : CI verte → Preview API et Web READY sur même HEAD → preuve identité DB via endpoint SSO → comptes A→B→A fictifs sous contrôle Work → nettoyage A/B → Neon auth_user=0 → autres gates IP/429/Redis/DR. Ne pas confondre succès build et E2E.
+
+---
+
 ## W01 — 22 octobre 2026 : G5 IP de confiance / G6 rétention Neon
 
 **Preuves sources et contrôle cloud en lecture seule** : le BFF `frontend/api/preview-proxy.js` ne transmet que `authorization`, `accept`, `content-type`, `if-match`, `if-none-match` et son OIDC serveur, jamais `X-Forwarded-For`, `X-Real-IP` ou les en-têtes `x-*` fournis par le navigateur. Django `backend/core/auth_abuse.py::_client_ip` utilise d'abord `HTTP_X_FORWARDED_FOR`, puis `REMOTE_ADDR`; le limiter utilise des buckets PG partagés (`auth/login`: 20 requêtes par IP/10 min et 10 par compte/10 min par défaut).

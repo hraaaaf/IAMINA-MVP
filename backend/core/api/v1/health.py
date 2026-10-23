@@ -70,3 +70,31 @@ def _check_cache() -> str:
     except Exception as exc:
         logger.warning("Health: Cache unavailable — %s", exc)
         return "unavailable"
+
+
+# W01 G5: actual SQL session proof, behind Vercel SSO on exact API Preview.
+from django.http import JsonResponse
+from amina.preview_db_identity import preview_identity_allowed, read_synthetic_identity
+
+
+def _identity_response(data: dict[str, str], status: int) -> JsonResponse:
+    response = JsonResponse(data, status=status)
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@router.get("/ops/preview-db-identity", auth=None, tags=["ops"])
+def preview_db_identity(request):
+    """Preview-only live Neon identity; 404 before SQL outside approved scope."""
+    if not preview_identity_allowed(request.headers.get("host", "")):
+        return _identity_response({"detail": "Not Found"}, 404)
+    try:
+        with connection.cursor() as cursor:
+            identity = read_synthetic_identity(cursor)
+    except Exception:
+        # Do not disclose DB errors, credentials, or wrong DB metadata.
+        return _identity_response({"detail": "Unavailable"}, 503)
+    if identity is None:
+        return _identity_response({"detail": "Unavailable"}, 503)
+    return _identity_response(identity, 200)
