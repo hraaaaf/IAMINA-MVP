@@ -1,0 +1,482 @@
+name: SSE POST synthetic Chromium proof
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/companion/**'
+      - 'frontend/lib/services/companion_service.dart'
+      - 'frontend/lib/ui_companion_chat_e2e_main.dart'
+      - 'frontend/lib/modules/diabetes_module.dart'
+      - 'frontend/test/services/companion_service_chat_test.dart'
+      - 'backend/ai/api/v1/ai.py'
+      - 'backend/companion/**'
+      - 'backend/core/companion/clinical.py'
+      - 'backend/core/engine/base.py'
+      - 'backend/diabetes/services/clinical/engine.py'
+      - 'backend/diabetes/services/clinical/clinical_validation.py'
+      - '.github/workflows/sse-post-synthetic-browser-proof.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  real-chat-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: iamina-companion-chat-e2e-nonproduction
+      DEBUG: 'True'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///iamina-companion-chat-e2e.db
+      IAMINA_CONVERSATION_NETWORK_AUTHORIZED: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Prepare proof directory
+        run: mkdir -p companion-chat-e2e
+
+      - name: Validate current Flutter chat implementation
+        working-directory: frontend
+        run: |
+          flutter pub get
+          dart format \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/features/companion/local_reading_context.dart \
+            lib/services/companion_service.dart \
+            lib/ui_companion_chat_e2e_main.dart \
+            test/services/companion_service_chat_test.dart \
+            test/services/companion_service_governance_mode_test.dart \
+            test/features/chat/local_reading_context_test.dart \
+            test/features/chat/companion_continuity_widget_test.dart
+          git diff -- \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/services/companion_service.dart \
+            lib/ui_companion_chat_e2e_main.dart \
+            test/services/companion_service_chat_test.dart
+          flutter analyze --no-fatal-infos \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/services/companion_service.dart \
+            lib/ui_companion_chat_e2e_main.dart \
+            lib/modules/diabetes_module.dart
+          flutter test \
+            test/services/companion_service_chat_test.dart \
+            test/services/companion_service_governance_mode_test.dart \
+            test/features/chat/local_reading_context_test.dart \
+            test/features/chat/companion_continuity_widget_test.dart
+
+      - name: Start local IAMINA backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install -r requirements.txt
+          python manage.py migrate --noinput
+          python manage.py runserver 127.0.0.1:8000 >/tmp/iamina-chat-backend.log 2>&1 &
+          echo $! >/tmp/iamina-chat-backend.pid
+          READY=0
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/api/docs >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" != '1' ]; then
+            cat /tmp/iamina-chat-backend.log >&2 || true
+            exit 1
+          fi
+
+      - name: Register synthetic IAMINA identity
+        shell: bash
+        env:
+          E2E_EMAIL: e2e-chat-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
+          E2E_PASSWORD: IAMINA-E2E-2026!Synthetic#42
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/register-payload.json
+          import json
+          import os
+          print(json.dumps({
+              'email': os.environ['E2E_EMAIL'],
+              'password': os.environ['E2E_PASSWORD'],
+              'first_name': 'Synthetic',
+              'last_name': 'E2E',
+          }))
+          PY
+          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/register-payload.json > /tmp/register-response.json
+          python3 - <<'PY'
+          import json
+          payload = json.load(open('/tmp/register-response.json'))
+          token = payload.get('access_token', '')
+          assert token.startswith('iamina.'), 'synthetic native token missing'
+          open('/tmp/iamina-e2e-token', 'w').write(token)
+          print('Synthetic IAMINA identity created; token retained on runner only.')
+          PY
+
+      - name: Build current real chat browser entrypoint
+        working-directory: frontend
+        run: |
+          flutter build web --release -t lib/ui_companion_chat_e2e_main.dart \
+            --dart-define=API_BASE_URL=http://127.0.0.1:7358
+
+      - name: Run Chrome POST SSE synthetic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet websocket-client
+
+          cat > /tmp/iamina_proxy.py <<'PY'
+          import http.client
+          import http.server
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ['STATIC_ROOT'])
+          proof = Path(os.environ['PROOF_DIR'])
+          token = Path('/tmp/iamina-e2e-token').read_text().strip()
+
+          class Handler(http.server.SimpleHTTPRequestHandler):
+              def __init__(self, *args, **kwargs):
+                  super().__init__(*args, directory=str(root), **kwargs)
+
+              def do_POST(self):
+                  if not self.path.startswith('/api/'):
+                      self.send_error(404)
+                      return
+                  length = int(self.headers.get('content-length', '0'))
+                  body = self.rfile.read(length)
+                  conn = http.client.HTTPConnection('127.0.0.1', 8000, timeout=30)
+                  conn.request(
+                      'POST',
+                      self.path,
+                      body=body,
+                      headers={
+                          'Authorization': f'Bearer {token}',
+                          'Content-Type': self.headers.get('content-type', 'application/json'),
+                      },
+                  )
+                  response = conn.getresponse()
+                  if self.path == '/api/v1/ai/chat/stream':
+                      # Keep SSE incremental: do not buffer the entire response
+                      # before giving it to the synthetic browser.
+                      self.send_response(response.status)
+                      self.send_header('Content-Type', response.getheader('Content-Type', 'text/event-stream'))
+                      self.send_header('Cache-Control', response.getheader('Cache-Control', 'no-store'))
+                      self.end_headers()
+                      while True:
+                          piece = response.read(1)
+                          if not piece:
+                              break
+                          self.wfile.write(piece)
+                          self.wfile.flush()
+                      conn.close()
+                      return
+                  payload = response.read()
+                  self.send_response(response.status)
+                  self.send_header(
+                      'Content-Type',
+                      response.getheader('Content-Type', 'application/json'),
+                  )
+                  self.send_header('Content-Length', str(len(payload)))
+                  self.end_headers()
+                  self.wfile.write(payload)
+                  if self.path == '/api/v1/ai/chat':
+                      proof.mkdir(parents=True, exist_ok=True)
+                      (proof / 'chat-request.json').write_bytes(body)
+                      (proof / 'chat-response.json').write_bytes(payload)
+                  conn.close()
+
+              def log_message(self, fmt, *args):
+                  return
+
+          http.server.ThreadingHTTPServer(('127.0.0.1', 7358), Handler).serve_forever()
+          PY
+
+          STATIC_ROOT="$GITHUB_WORKSPACE/frontend/build/web" \
+          PROOF_DIR="$GITHUB_WORKSPACE/companion-chat-e2e" \
+            python3 /tmp/iamina_proxy.py >/tmp/iamina-e2e-proxy.log 2>&1 &
+          PROXY_PID=$!
+
+          cleanup_process() {
+            local pid="$1"
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 1 10); do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                break
+              fi
+              sleep 0.2
+            done
+            kill -9 "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+
+          cleanup_all() {
+            if [ -n "${CHROME_PID:-}" ]; then cleanup_process "$CHROME_PID"; fi
+            if [ -n "${PROXY_PID:-}" ]; then cleanup_process "$PROXY_PID"; fi
+            if [ -f /tmp/iamina-chat-backend.pid ]; then
+              cleanup_process "$(cat /tmp/iamina-chat-backend.pid)"
+            fi
+          }
+          trap cleanup_all EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7358 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" != '1' ]; then
+            cat /tmp/iamina-e2e-proxy.log >&2 || true
+            exit 1
+          fi
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          PROFILE="$(mktemp -d)"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --enable-unsafe-swiftshader \
+            --hide-scrollbars \
+            --force-renderer-accessibility \
+            --remote-allow-origins='*' \
+            --remote-debugging-port=9222 \
+            --user-data-dir="$PROFILE" \
+            --window-size=390,844 \
+            http://127.0.0.1:7358/ \
+            >/tmp/iamina-chat-chrome.log 2>&1 &
+          CHROME_PID=$!
+
+          DEVTOOLS=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
+              DEVTOOLS=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$DEVTOOLS" != '1' ]; then
+            cat /tmp/iamina-chat-chrome.log >&2 || true
+            exit 1
+          fi
+
+          cat > /tmp/chat_cdp.py <<'PY'
+          import base64
+          import json
+          import time
+          import urllib.request
+          from pathlib import Path
+          from websocket import create_connection
+
+          proof = Path('companion-chat-e2e')
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9222/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      if 'error' in response:
+                          raise RuntimeError(response['error'])
+                      return response.get('result', {})
+
+          def screenshot(name):
+              shot = call('Page.captureScreenshot', {
+                  'format': 'png',
+                  'captureBeyondViewport': False,
+                  'fromSurface': True,
+              })
+              data = shot.get('data')
+              if not data:
+                  raise RuntimeError(f'No screenshot payload for {name}')
+              (proof / name).write_bytes(base64.b64decode(data))
+
+          def click(x, y):
+              call('Input.dispatchMouseEvent', {
+                  'type': 'mousePressed', 'x': x, 'y': y,
+                  'button': 'left', 'clickCount': 1,
+              })
+              call('Input.dispatchMouseEvent', {
+                  'type': 'mouseReleased', 'x': x, 'y': y,
+                  'button': 'left', 'clickCount': 1,
+              })
+
+          call('Page.enable')
+          call('Runtime.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': 390,
+              'height': 844,
+              'deviceScaleFactor': 1,
+              'mobile': True,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(10)
+          screenshot('chat-empty-390x844.png')
+
+          # A genuinely empty Chrome profile proves the first PWA registration
+          # and current-release shell cache, not just an isolated SW mock.
+          pwa_probe_js = """
+          (async () => {
+            if (!('serviceWorker' in navigator)) {
+              return { error: 'serviceWorker API missing' };
+            }
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            const registration = registrations.find(
+              item => item.scope === location.origin + '/'
+            );
+            if (!registration) return { error: 'no IAMINA scope registration' };
+            const ready = await Promise.race([
+              navigator.serviceWorker.ready.then(() => true),
+              new Promise(resolve => setTimeout(() => resolve(false), 7000))
+            ]);
+            const activeScript = registration.active?.scriptURL || '';
+            const release = activeScript
+              ? new URL(activeScript).searchParams.get('release') : null;
+            const names = await caches.keys();
+            return {
+              ready, release, activeScript, names,
+              currentCache: release && names.includes('iamina-app-shell-' + release),
+              noStaleShell: names.every(
+                name => !name.startsWith('iamina-app-shell-') ||
+                  name === 'iamina-app-shell-' + release
+              )
+            };
+          })()
+          """
+          pwa_probe = call('Runtime.evaluate', {
+              'expression': pwa_probe_js,
+              'awaitPromise': True,
+              'returnByValue': True,
+          })
+          if 'exceptionDetails' in pwa_probe:
+              raise RuntimeError('Synthetic Chrome first PWA install threw')
+          pwa = pwa_probe.get('result', {}).get('value', {})
+          if not (pwa.get('ready') and pwa.get('release') and
+                  pwa.get('currentCache') and pwa.get('noStaleShell')):
+              raise RuntimeError(f'Synthetic Chrome first PWA install failed: {pwa}')
+          print('Synthetic Chrome first SW registration: current shell cached, no stale caches.')
+
+          # Exercise real Chrome fetch → local proxy → Django SSE, not just
+          # static Dart request-construction tests or the regular /ai/chat UI.
+          browser_sse_js = """
+          (async () => {
+            const canary = 'synthetic_browser_sse_body_canary_925';
+            const path = '/api/v1/ai/chat/stream';
+            const response = await fetch(path, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+              },
+              body: JSON.stringify({
+                message: 'ma glycémie est à 32 ' + canary,
+                context_days: 14
+              })
+            });
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let body = '';
+            let reads = 0;
+            while (true) {
+              const part = await reader.read();
+              if (part.done) break;
+              reads += 1;
+              body += decoder.decode(part.value, {stream: true});
+            }
+            body += decoder.decode();
+            return {
+              status: response.status,
+              contentType: response.headers.get('content-type'),
+              cacheControl: response.headers.get('cache-control'),
+              body, url: path, reads
+            };
+          })()
+          """
+          browser_sse = call('Runtime.evaluate', {
+              'expression': browser_sse_js,
+              'awaitPromise': True,
+              'returnByValue': True,
+          })
+          if 'exceptionDetails' in browser_sse:
+              raise RuntimeError(f'Chrome POST SSE threw: {browser_sse["exceptionDetails"]}')
+          sse = browser_sse.get('result', {}).get('value', {})
+          if (
+              sse.get('status') != 200
+              or 'text/event-stream' not in str(sse.get('contentType'))
+              or sse.get('cacheControl') != 'no-store'
+              or 'data: [DONE]' not in sse.get('body', '')
+              or '"is_emergency": true' not in sse.get('body', '')
+              or 'synthetic_browser_sse_body_canary_925' in sse.get('url', '')
+              or not sse.get('reads')
+          ):
+              raise RuntimeError(f'Chrome real POST SSE contract failed: {sse}')
+          print('Synthetic Chrome POST SSE → proxy → Django: event/DONE, no URL canary.')
+
+          # Request-line/access-log canary must remain body-only on local ingress.
+          backend_log = Path('/tmp/iamina-chat-backend.log').read_text()
+          if 'synthetic_browser_sse_body_canary_925' in backend_log:
+              raise RuntimeError('Synthetic SSE medical canary leaked into backend access log')
+
+
+          # L0 Web RELEASE patient chat is deliberately inactive. Keep only
+          # the independent synthetic POST SSE transport proof.
+          screenshot('sse-post-synthetic-390x844.png')
+          ws.close()
+          PY
+
+          python3 /tmp/chat_cdp.py
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          for name in ('chat-empty-390x844.png', 'sse-post-synthetic-390x844.png'):
+              proof = Path('companion-chat-e2e') / name
+              assert proof.exists() and proof.stat().st_size > 10000, (name, str(proof))
+          print('Synthetic Chrome POST SSE accepted; Web patient chat remains disabled.')
+          PY
+
+          cleanup_process "$CHROME_PID"
+          CHROME_PID=''
+          rm -rf "$PROFILE" 2>/dev/null || true
+          cleanup_process "$PROXY_PID"
+          PROXY_PID=''
+          cleanup_process "$(cat /tmp/iamina-chat-backend.pid)"
+          rm -f /tmp/iamina-chat-backend.pid
+          trap - EXIT
+
+      - name: Upload synthetic SSE POST browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-sse-post-chromium-proof
+          path: |
+            companion-chat-e2e/*.png
+            companion-chat-e2e/sse-post-synthetic-390x844.png
+          if-no-files-found: warn
+          retention-days: 7

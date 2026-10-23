@@ -1,3 +1,11 @@
+## 23/10/2026 — Épreuve Chrome SSE POST autonome, sans chat patient réactivé
+
+Candidat de nouveau workflow `.github/workflows/sse-post-synthetic-browser-proof.yml` : réutilise le backend synthétique et Chromium de #1144 pour contrôler vrai `POST /api/v1/ai/chat/stream`, 200 SSE, `[DONE]`, canari absent URL/log d'accès local, no-store et cache PWA initial correct ; **retire** les anciens gestes chat/saisie et l'attente de réponse UI, incompatibles avec Web RELEASE local-only. Capture l'état du navigateur sans interpréter la messagerie comme ouverte. Conserve en parallèle, sans changement, le workflow `companion-chat-e2e-screenshot.yml` issu de #1140 qui certifie le refus de l'egress clinique dans l'UI. Le proxy test peut conserver un enregistrement temporaire de réponse synthétique, mais aucune capture/message réel n'est attendu ou publié.
+
+**Preuve : non exécuté sur ce nouveau SHA avant CI**. À vérifier avant CLOSEOUT. Aucun patient réel, aucune activation serveur ni déploiement Vercel.
+
+---
+
 # IAMINA Web — L0 Release Candidate Integration — 23 octobre 2026
 
 ## Goal / Succès / Preuve
