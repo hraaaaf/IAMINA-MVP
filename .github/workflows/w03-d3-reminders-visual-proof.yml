@@ -1,0 +1,81 @@
+name: W03 D3 private-safe reminder BEFORE AFTER widget visuals
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/dashboard/widgets/dashboard_reminders_summary_card.dart'
+      - 'frontend/test/features/dashboard_reminders_summary_card_test.dart'
+      - 'frontend/test/features/dashboard_reminders_visual_proof_test.dart'
+      - '.github/workflows/w03-d3-reminders-visual-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d3-render-comparison:
+    name: FR AR 390 430 768 1280 widget golden evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: 130161c6c6d024a4eef50811bcd4387b55e2ebe7
+          path: baseline
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Use identical synthetic visual fixture on baseline
+        run: |
+          cp candidate/frontend/test/features/dashboard_reminders_visual_proof_test.dart \
+             baseline/frontend/test/features/dashboard_reminders_visual_proof_test.dart
+          mkdir -p w03-d3-visual-proof/before w03-d3-visual-proof/after
+      - name: BEFORE baseline W03 screenshot set
+        working-directory: baseline/frontend
+        run: |
+          flutter pub get
+          flutter test --no-pub --update-goldens --dart-define=IAMINA_W03_D3_GOLDEN_PROOF=true test/features/dashboard_reminders_visual_proof_test.dart
+          cp test/features/goldens/w03-d3-*.png "$GITHUB_WORKSPACE/w03-d3-visual-proof/before/"
+      - name: AFTER candidate W03 screenshot set
+        working-directory: candidate/frontend
+        run: |
+          flutter pub get
+          flutter test --no-pub --update-goldens --dart-define=IAMINA_W03_D3_GOLDEN_PROOF=true test/features/dashboard_reminders_visual_proof_test.dart
+          cp test/features/goldens/w03-d3-*.png "$GITHUB_WORKSPACE/w03-d3-visual-proof/after/"
+      - name: Compare the exact same eight locale and viewport fixtures
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageChops
+          root = Path('w03-d3-visual-proof')
+          names = {
+              f'w03-d3-{lang}-{size}.png'
+              for lang in ('fr', 'ar')
+              for size in ('390x844', '430x932', '768x1024', '1280x900')
+          }
+          for stage in ('before', 'after'):
+              observed = {p.name for p in (root / stage).glob('*.png')}
+              assert observed == names, (stage, sorted(observed ^ names))
+          for name in sorted(names):
+              old = Image.open(root / 'before' / name).convert('RGB')
+              new = Image.open(root / 'after' / name).convert('RGB')
+              expected = tuple(int(v) for v in name.split('-')[-1].removesuffix('.png').split('x'))
+              assert old.size == new.size == expected, (name, old.size, new.size)
+              bbox = ImageChops.difference(old, new).getbbox()
+              assert bbox is not None, (name, 'D3 reminder date extension invisible')
+              print('W03 D3 VISUAL CHANGED', name, 'bbox', bbox)
+          print('8/8 deterministic BEFORE and AFTER screenshots differ at exact same sizes')
+          PY
+      - name: Upload W03 visual evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-d3-reminders-before-after-fr-ar
+          path: w03-d3-visual-proof/**
+          if-no-files-found: warn
+          retention-days: 7

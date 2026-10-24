@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../core/theme/amina_visual_language.dart';
+import '../../core/data/ramadan_context.dart' show shouldApplyRamadanProfileContext;
+export '../../core/data/ramadan_context.dart' show kWebRamadanUiEnabled;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
@@ -17,10 +20,17 @@ import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 import '../../services/sync_service.dart';
+import 'profile_focus_safe_expansion_tile.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
 part 'profile_screen_presentation.dart';
+
+// W03-D21: Web Ramadan settings and derivative meal vocabulary are disabled
+// together by the same compile-time flag; historical/native data is intact.
+bool shouldShowRamadanProfileSection({required bool isWeb}) =>
+    shouldApplyRamadanProfileContext(isWeb: isWeb);
+
 
 String _profileUiText(
   BuildContext context, {
