@@ -5,7 +5,6 @@ on:
     paths:
       - 'frontend/api/preview-proxy.js'
       - 'frontend/api/w01-g5-e2e.js'
-      - 'frontend/api/w01-g5-cleanup.js'
       - 'frontend/vercel.json'
       - 'frontend/vercel_build.sh'
       - 'frontend/lib/services/api_client.dart'
@@ -15,7 +14,6 @@ on:
       - 'scripts/tests/test_w01_web_topology_contract.py'
       - 'scripts/tests/test_w01_preview_bff.mjs'
       - 'scripts/tests/test_w01_g5_preview_web_harness.mjs'
-      - 'scripts/tests/test_w01_g5_cleanup_ui.mjs'
       - 'docs/assessments/2026-10-17-w01-preview-bff-adversarial-review.md'
       - 'docs/assessments/2026-10-16-w01-before-w02-gates.md'
       - '.github/workflows/w01-preview-bff-contract.yml'
@@ -37,8 +35,7 @@ jobs:
         run: |
           node --check frontend/api/preview-proxy.js
           node --check frontend/api/w01-g5-e2e.js
-          node --check frontend/api/w01-g5-cleanup.js
-          node --test scripts/tests/test_w01_preview_bff.mjs scripts/tests/test_w01_g5_preview_web_harness.mjs scripts/tests/test_w01_g5_cleanup_ui.mjs
+          node --test scripts/tests/test_w01_preview_bff.mjs scripts/tests/test_w01_g5_preview_web_harness.mjs
       - name: Reject topology, bypass and Flutter Preview regressions
         run: |
           python scripts/check_web_topology_contract.py

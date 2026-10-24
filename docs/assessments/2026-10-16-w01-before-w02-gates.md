@@ -1,3 +1,21 @@
+## W01-G5 — 24 octobre 2026 : effacement synthétique prouvé, retrait du dispositif temporaire
+
+**Résultat Work rapporté** : GET prévol du nettoyage one-shot HTTP 200 ; POST confirmé HTTP 200, deleted_accounts=2 et remaining_accounts=0. Aucune capture du navigateur jointe. Ces codes HTTP proviennent du rapport Work et ne sont pas certifiés par un enregistrement HTTP indépendant dans ce lot.
+
+**Preuve SQL indépendante du 24/10/2026** : requête lecture seule dans Neon project noisy-truth-00115950, branch br-sweet-frog-b9ok6ptp, DB iamina925_empty, rôle iamina_preview_app. auth_user=0 ; **deux** core_erasurerecord complétés pour les IDs 3 et 4 ; zéro core_basepatientprofile, diabetes_labreport et diabetes_logentry liés aux IDs 3 et 4. Ce résultat valide la disparition des deux comptes fictifs, et non la qualité complète des gates sécurité/Redis/PITR.
+
+**GitHub vérifié** : PR #1128 DRAFT non fusionnée, Web/API en ligne au SHA cd4378b294e95e0714665d21995a152d4d551bab ; 20/20 workflows COMPLETED SUCCESS, 0 actif, 0 échec.
+
+**Neutralisation de configuration** : le flag IAMINA_W01_G5_CLEANUP_ENABLED a été mis à false UNIQUEMENT sur le projet API Vercel, target=[preview], branche feat/w01-preview-same-origin-bff-20261017 (readback vérifié). **IMPORTANT** : les variables Vercel sont figées à la création du déploiement ; changer la variable ne neutralise PAS rétroactivement l'ancienne Preview cd4378b2. C'est une protection pour tout PROCHAIN build, pas un certificat de révocation des anciennes fonctions déployées.
+
+**Nettoyage de code dans la PR** : retrait prévu des routes one-shot backend/diabetes/api/v1/w01_synthetic_cleanup.py et frontend/api/w01-g5-cleanup.js ; des 2 suites de tests dédiées ; du helper d'effacement exceptionnel backend/diabetes/synthetic_preview_erasure.py et sa suite de tests ; restauration exacte du hook diabetes/apps.py, du routeur diabetes/api/main.py et du workflow BFF à leur état de référence sur 00955e4e. Le parcours normal RGPD reste fail-closed si Redis ne répond pas. Le diagnostic original et l'interface E2E W01 sont conservés pour les gates restantes, mais doivent faire l'objet d'une revue avant tout merge.
+
+**Gate de clôture du retrait** : exécuter la CI du HEAD nettoyé puis, sous UNE NOUVELLE autorisation explicite Vercel, déployer une nouvelle paire Web/API Preview sans routes one-shot et avec IAMINA_W01_G5_CLEANUP_ENABLED=false (ou absent), contrôler le statut 404 des URL de nettoyage et la continuité de auth_user=0. Sans nouveau déploiement, l'ancienne Preview cd4378b2 continue de contenir le code à usage unique même si la paire cible n'existe plus. Ne pas déclarer cette route inaccessible avant un test hébergé.
+
+**Reste W01** : Redis réellement disponible en hébergé et suppression ordinaire, IP/429 et limites BFF, sessions expirées et CSRF de session, restauration Neon/PITR non vide et revue indépendante. Tant que ces gates ne sont pas prouvés : **W01 NO-GO, W02 gelé**. Aucun changement Production, aucun merge, aucun SQL destructif.
+
+---
+
 ## W01-G5 — 23 octobre 2026 : réparation + nettoyage applicatif des DEUX comptes déjà bloqués (préparé, non déployé)
 
 **Cause** : deux DELETE /api/v1/account sur la Preview 00955e4e retournent 500 à cause de _purge_pending_documents → Redis localhost:6379 Connection refused. Neon synthétique auth_user=2, comptes user_id 3/4, email généré w01g5-bff-hex20@example.invalid et metadata Synthetic/W01-A-B, pas de Firebase UID, 0 LogEntry, 0 LabReport. Les secrets A/B générés en mémoire du navigateur ont été jetés ; il n'est donc pas possible de se reconnecter aux comptes déjà créés via l'interface ordinaire.
