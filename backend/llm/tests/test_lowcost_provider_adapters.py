@@ -117,7 +117,8 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     assert kwargs["max_completion_tokens"] == 384
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
-    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
+    assert kwargs["temperature"] == 0.0
+    assert "extra_body" not in kwargs
     assert kwargs["response_format"] == {
         "type": "json_schema",
         "json_schema": {
@@ -133,6 +134,14 @@ def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     }
 
 
+def test_groq_gpt_oss_complete_text_excludes_reasoning_without_schema():
+    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
+    provider.complete_text("system", "synthetic user")
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["extra_body"] == {"include_reasoning": False}
+    assert "response_format" not in kwargs
+
+
 def test_groq_gpt_oss_stream_does_not_use_structured_outputs():
     provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
     stream_context = MagicMock()
@@ -145,6 +154,7 @@ def test_groq_gpt_oss_stream_does_not_use_structured_outputs():
     assert kwargs["max_completion_tokens"] == 384
     assert kwargs["reasoning_effort"] == "low"
     assert "response_format" not in kwargs
+    assert "temperature" not in kwargs
     assert "extra_body" not in kwargs
 
 
@@ -166,4 +176,34 @@ def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id,
     assert "max_completion_tokens" not in kwargs
     assert "reasoning_effort" not in kwargs
     assert "response_format" not in kwargs
+    assert "temperature" not in kwargs
     assert "extra_body" not in kwargs
+
+def test_groq_strict_schema_400_fails_closed_without_second_billable_call():
+    from llm.errors import LLMProviderInternalFailure
+
+    provider, client = _synthetic_provider(SyntheticHTTPError(400))
+    with pytest.raises(LLMProviderInternalFailure):
+        provider.complete("system", "synthetic medical parser")
+    assert client.chat.completions.create.call_count == 1
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["response_format"]["json_schema"]["strict"] is True
+    assert not hasattr(provider, "strict_json_retry_count")
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "model"),
+    [
+        ("groq", "llama-3.3-70b-versatile"),
+        ("qwen", "qwen-plus"),
+        ("deepseek", "deepseek-chat"),
+    ],
+)
+def test_non_groq_gpt_oss_http_400_not_retried(provider_id, model):
+    from llm.errors import LLMProviderInternalFailure
+
+    provider, client = _successful_provider(provider_id, model)
+    client.chat.completions.create.side_effect = SyntheticHTTPError(400)
+    with pytest.raises(LLMProviderInternalFailure):
+        provider.complete("system", "synthetic document")
+    assert client.chat.completions.create.call_count == 1

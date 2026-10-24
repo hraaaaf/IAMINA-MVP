@@ -4,12 +4,12 @@ Document Pulper API — Phase 12
 POST /api/v1/documents/ingest
   Body: multipart/form-data
     - file     : UploadedFile  (PDF, image, Excel, CSV, DOCX)
-    - confirm  : bool = False  — if True, persist to DB; if False, return preview only
+    - confirm  : bool = False  — legacy True is rejected (no direct persistence)
 
 Two-step flow:
   1. POST with confirm=False → returns PulperPreviewResponse (no DB write)
      Flutter shows the user what was extracted, asks for confirmation.
-  2. POST with confirm=True  → persists and returns PulperConfirmResponse
+  2. POST /documents/confirm/{batch_id} → persists after review
 
 GET /api/v1/documents/
   Returns list of LabReport rows for the current patient.
@@ -86,7 +86,7 @@ class PulperPreviewResponse(Schema):
 
 
 class PulperConfirmResponse(Schema):
-    """Returned on confirm=True — data has been persisted."""
+    """Returned by POST /documents/confirm/{batch_id} after persistence."""
     ok:                       bool
     lab_report_id:            Optional[int]
     glucose_readings_saved:   int
@@ -143,20 +143,44 @@ def _read_upload_with_limit(file: UploadedFile) -> tuple[bytes | None, str | Non
     return file_bytes, None
 
 
+def _consume_pending_batch_once(patient_id: int, batch_id: str):
+    """Claim patient-scoped confirmation atomically before reading the cache.
+
+    The Redis backend implements cache.add as an atomic SET-if-absent.
+    Redis outages (including IGNORE_EXCEPTIONS) fail closed. The claim is
+    time-bounded and contains no PHI.
+    """
+    key = _pending_key(patient_id, batch_id)
+    try:
+        claimed = cache.add(f"{key}:consume", "1", timeout=_PENDING_TTL)
+        if not claimed:
+            return None
+        output = cache.get(key)
+        if output is not None:
+            cache.delete(key)
+        return output
+    except Exception:
+        logger.warning("documents.confirm pending extraction unavailable")
+        return None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict})
+@router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict, 503: dict})
 @patient_ai_egress_scope("document_ingest", TEXT, IMAGE)
 def ingest_document(
     request: HttpRequest,
     file: UploadedFile = File(...),
     confirm: bool = False,
 ):
+    """Stage 1 only: stage extraction for review and return a batch_id.
+    The legacy confirm=True query argument is rejected; clinical persistence
+    requires POST /documents/confirm/{batch_id}.
     """
-    Stage 1 (confirm=False): Extract and validate.  Returns preview.
-    Stage 2 (confirm=True):  Persist from a previously staged batch_id
-                             passed as query param ?batch_id=<uuid>.
-    """
+    # Reject before extracting or caching: ingestion cannot confirm itself.
+    if confirm:
+        return 422, {"detail": "Confirmez le document après sa prévisualisation."}
+
     patient   = request.auth
     mime_type = file.content_type or ''
     filename  = file.name or 'upload'
@@ -171,7 +195,19 @@ def ingest_document(
     # ── Extract ────────────────────────────────────────────────────────────────
     output    = ingest(file_bytes, filename, mime_type)
     batch_id  = str(uuid.uuid4())
-    cache.set(_pending_key(patient.id, batch_id), output, timeout=_PENDING_TTL)
+    key = _pending_key(patient.id, batch_id)
+    try:
+        cache.set(key, output, timeout=_PENDING_TTL)
+        # django-redis IGNORE_EXCEPTIONS=True can swallow a failed write.
+        # Never issue a confirmable batch ID unless it can be read back.
+        staged = cache.get(key)
+    except Exception:
+        staged = None
+    if staged is None:
+        logger.warning("documents.ingest pending extraction unavailable")
+        return 503, {
+            "detail": "Prévisualisation temporairement indisponible. Réessayez."
+        }
 
     preview = PulperPreviewResponse(
         batch_id=batch_id,
@@ -208,17 +244,12 @@ def ingest_document(
         errors=output.errors,
     )
 
-    if not confirm:
-        logger.info(
-            "documents.ingest preview patient=%s type=%s confidence=%.0f%% readings=%d",
-            getattr(patient, 'id', '?'), output.document_type,
-            output.confidence * 100, len(output.glucose_readings),
-        )
-        return 200, preview
-
-    # ── Confirm & persist ──────────────────────────────────────────────────────
-    cache.delete(_pending_key(patient.id, batch_id))
-    return _do_persist(output, patient, batch_id)
+    logger.info(
+        "documents.ingest preview patient=%s type=%s confidence=%.0f%% readings=%d",
+        getattr(patient, 'id', '?'), output.document_type,
+        output.confidence * 100, len(output.glucose_readings),
+    )
+    return 200, preview
 
 
 @router.post("/documents/confirm/{batch_id}", response=PulperConfirmResponse)
@@ -228,9 +259,7 @@ def confirm_import(request: HttpRequest, batch_id: str):
     Called when the user taps "Confirmer" in the Flutter UI.
     """
     patient = request.auth
-    output = cache.get(_pending_key(patient.id, batch_id))
-    if output is not None:
-        cache.delete(_pending_key(patient.id, batch_id))   # consume once — no replay attacks
+    output = _consume_pending_batch_once(patient.id, batch_id)
     if output is None:
         return PulperConfirmResponse(
             ok=False,

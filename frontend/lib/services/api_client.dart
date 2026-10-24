@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'auth_epoch.dart';
 import 'auth_service.dart';
+import 'preview_api_origin.dart';
 import 'document_ingest_minimizer.dart';
 import 'sync_api_contract.dart';
 import '../data/models/ai_models.dart';
@@ -89,19 +90,27 @@ Future<T> readForStableAuthEpoch<T>(Future<T> Function() read) async {
   return value;
 }
 
+/// Public, read-only country estimate used only to prefill onboarding UI.
+/// No clinical data is sent or received by this route.
+bool isPublicCountrySuggestion(Uri url, String method) =>
+    method.toUpperCase() == 'GET' &&
+    url.path == '/api/v1/country/suggestion' &&
+    !url.hasQuery && url.fragment.isEmpty;
+
 /// Patient-owned sync must not leave the device after the app-lock closes,
 /// including while a bearer or retry timer is resolving asynchronously.
 /// Public login/enrollment endpoints are deliberately excluded.
 void requireUnlockedPatientSyncTransport(
   Uri url,
-  bool Function()? canUsePatientSyncTransport,
-) {
+  bool Function()? canUsePatientSyncTransport, {
+  String method = '',
+}) {
   // All API v1 routes other than public credential/recovery endpoints can
   // carry or mutate medical state (including AI, documents and consent).
   // The demo route is also protected outside explicit local audit sessions.
   final protected = url.path.startsWith('/api/v1/') &&
       !url.path.startsWith('/api/v1/auth/');
-  if (protected &&
+  if (protected && !isPublicCountrySuggestion(url, method) &&
       canUsePatientSyncTransport != null &&
       !canUsePatientSyncTransport()) {
     throw StateError('Patient sync blocked while device is locked');
@@ -109,8 +118,9 @@ void requireUnlockedPatientSyncTransport(
 }
 
 /// Pilot A: deny all clinical API routes except public authentication.
-void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
+void requirePilotClinicalTransport(Uri url, bool Function()? allowed, {String method = ''}) {
   if (allowed != null && !allowed() &&
+      !isPublicCountrySuggestion(url, method) &&
       url.path.startsWith('/api/v1/') &&
       !url.path.startsWith('/api/v1/auth/')) {
     throw StateError('Clinical transport disabled: local-only pilot');
@@ -130,13 +140,19 @@ class AuthInterceptor implements Interceptor {
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
-    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport, method: chain.request.method);
+    // Public, read-only Web geolocation has no patient identity. Do not let
+    // a slow or failing browser credential lookup stall its 4-second UI
+    // deadline. All other clinical requests still resolve and guard bearer.
+    if (isPublicCountrySuggestion(chain.request.url, chain.request.method)) {
+      return chain.proceed(chain.request);
+    }
     final token = await readForStableAuthEpoch(authService.getIdToken);
-    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport, method: chain.request.method);
     // This executes AFTER any async credential lookup and immediately before
     // the Chopper chain is allowed to dispatch the medical request.
     requireUnlockedPatientSyncTransport(
-      chain.request.url, canUsePatientSyncTransport,
+      chain.request.url, canUsePatientSyncTransport, method: chain.request.method,
     );
     Request request = chain.request;
     if (token != null && token.isNotEmpty) {
@@ -164,6 +180,11 @@ class TimeoutInterceptor implements Interceptor {
   }
 }
 
+/// A server 5xx may mean a medical mutation was committed but its response
+/// was lost. Only safe reads can be resent without a per-operation receipt.
+bool mayRetryAfterServerError(String method) =>
+    method.toUpperCase() == 'GET' || method.toUpperCase() == 'HEAD';
+
 class RetryInterceptor implements Interceptor {
   final AuthService authService;
   final bool Function()? canUsePatientSyncTransport;
@@ -180,9 +201,9 @@ class RetryInterceptor implements Interceptor {
     Chain<BodyType> chain,
   ) async {
     final epoch = AuthEpoch.value;
-    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport, method: chain.request.method);
     requireUnlockedPatientSyncTransport(
-      chain.request.url, canUsePatientSyncTransport,
+      chain.request.url, canUsePatientSyncTransport, method: chain.request.method,
     );
     Response<BodyType> response = await chain.proceed(chain.request);
     requireCurrentAuthEpoch(epoch);
@@ -198,9 +219,9 @@ class RetryInterceptor implements Interceptor {
           'Bearer $newToken',
           override: true,
         );
-        requirePilotClinicalTransport(retryRequest.url, canUseClinicalTransport);
+        requirePilotClinicalTransport(retryRequest.url, canUseClinicalTransport, method: retryRequest.method);
         requireUnlockedPatientSyncTransport(
-          retryRequest.url, canUsePatientSyncTransport,
+          retryRequest.url, canUsePatientSyncTransport, method: retryRequest.method,
         );
         response = await chain.proceed(retryRequest);
         requireCurrentAuthEpoch(epoch);
@@ -208,14 +229,16 @@ class RetryInterceptor implements Interceptor {
       return response;
     }
 
-    // 5xx — exponential backoff (1s, 2s, 4s)
+    // 5xx: retry safe reads only. POST/PATCH/PUT/DELETE may have committed
+    // before the upstream 502/503, so the caller must reconcile their status.
+    if (!mayRetryAfterServerError(chain.request.method)) return response;
     int attempt = 0;
     while (_isServerError(response.statusCode) && attempt < _maxRetries) {
       await Future.delayed(Duration(seconds: 1 << attempt));
       requireCurrentAuthEpoch(epoch);
-      requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+      requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport, method: chain.request.method);
       requireUnlockedPatientSyncTransport(
-        chain.request.url, canUsePatientSyncTransport,
+        chain.request.url, canUsePatientSyncTransport, method: chain.request.method,
       );
       response = await chain.proceed(chain.request);
       requireCurrentAuthEpoch(epoch);
@@ -283,11 +306,12 @@ class ApiClient {
       PendingDocumentDeduplicator<PulperPreview>();
 
   ApiClient({
-    this.baseUrl = kBaseUrl,
+    String? baseUrl,
     AuthService? authService,
     bool Function()? canUsePatientSyncTransport,
     bool Function()? allowClinicalTransportForSyntheticTests,
-  }) : _authService = authService ?? AuthService(),
+  }) : baseUrl = baseUrl ?? resolveIaminaApiOrigin(kBaseUrl),
+       _authService = authService ?? AuthService(),
        _canUsePatientSyncTransport = canUsePatientSyncTransport,
        _allowClinicalTransportForSyntheticTests =
            allowClinicalTransportForSyntheticTests;

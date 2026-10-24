@@ -19,8 +19,10 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
 from ninja.errors import HttpError
+from ninja.security import HttpBearer
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from amina.vercel_session_auth import SessionAuth
 from core.auth_migration import (
     FirebaseIdentityConflict,
     FirebaseMigrationError,
@@ -28,12 +30,34 @@ from core.auth_migration import (
     verify_firebase_token,
 )
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token, revoke_native_tokens
+from core.native_auth import (
+    NativeTokenError,
+    issue_native_token,
+    revoke_native_tokens,
+    verify_native_token,
+)
 from core.observability import EVT_SESSION_START, track
 
 logger = logging.getLogger(__name__)
 
 router = Router(tags=["auth"])
+
+
+class NativeAccountBearerAuth(HttpBearer):
+    """Core-owned IAMINA native Bearer path, without condition imports."""
+
+    def authenticate(self, request, token: str):
+        try:
+            user = verify_native_token(token)
+        except NativeTokenError:
+            return None
+        request.user = user
+        return user
+
+
+# Account operations use IAMINA native Bearer or Django SessionAuth with CSRF.
+# Firebase migration exchanges issue native tokens before this protected path.
+_patient_auth = [NativeAccountBearerAuth(), SessionAuth()]
 
 
 class FirebaseAuthRequest(BaseModel):
@@ -174,12 +198,12 @@ def login_native(request, data: NativeLoginRequest):
     return _auth_response(user, "Authenticated")
 
 
-@router.get("/auth/me", response=UserResponse)
+@router.get("/auth/me", response=UserResponse, auth=_patient_auth)
 def current_identity(request):
     return _serialize_user(_require_authenticated(request))
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", auth=_patient_auth)
 def logout_native(request):
     user = request.user if request.user.is_authenticated else None
     if user is not None:
@@ -188,7 +212,7 @@ def logout_native(request):
     return {"detail": "Signed out"}
 
 
-@router.post("/auth/password")
+@router.post("/auth/password", auth=_patient_auth)
 @transaction.atomic
 def set_native_password(request, data: SetPasswordRequest):
     """Establish or rotate the native credential without weakening ownership."""
@@ -292,7 +316,7 @@ def firebase_auth(request, data: FirebaseAuthRequest):
     return _auth_response(user, "Authenticated through migration bridge")
 
 
-@router.post("/auth/firebase/link")
+@router.post("/auth/firebase/link", auth=_patient_auth)
 @transaction.atomic
 def link_firebase_identity(request, data: FirebaseAuthRequest):
     """Explicitly attach a verified Firebase UID to the current Django account."""
@@ -324,7 +348,7 @@ def link_firebase_identity(request, data: FirebaseAuthRequest):
     return {"detail": "Firebase identity linked"}
 
 
-@router.delete("/auth/firebase/link")
+@router.delete("/auth/firebase/link", auth=_patient_auth)
 @transaction.atomic
 def unlink_firebase_identity(request):
     """Remove the migration credential only when native recovery is available."""

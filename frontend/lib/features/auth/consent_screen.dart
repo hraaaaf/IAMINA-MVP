@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/consent_api_extension.dart';
 import '../../services/consent_evidence_store.dart';
 import '../../services/consent_notice_contract.dart';
@@ -25,9 +26,21 @@ class ConsentScreen extends StatefulWidget {
 
 class _ConsentScreenState extends State<ConsentScreen> {
   bool _isLoading = false;
+  String? _error;
 
   Future<void> _accept() async {
-    setState(() => _isLoading = true);
+    if (_isLoading) return;
+    final l10n = AppLocalizations.of(context)!;
+    // W01 Preview uses local device enrollment, which is not server identity.
+    // A server-bound consent receipt must never be fabricated locally.
+    if (!context.read<AuthService>().hasRemoteApiCredential) {
+      setState(() => _error = l10n.consentRemoteAccountRequired);
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     final api = context.read<ApiClient>();
     final db = context.read<AppDatabase>();
     final evidenceStore = context.read<ConsentEvidenceStore>();
@@ -37,7 +50,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
     );
     try {
       final accepted = await api.giveVersionedConsent(claim);
-      if (!accepted) return;
+      if (!accepted) {
+        if (mounted) setState(() => _error = l10n.consentConfirmationFailed);
+        return;
+      }
 
       // The UI gate only opens after the exact server response is verified and
       // the same evidence is durably persisted locally.
@@ -46,7 +62,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
       consent.markVerifiedConsent();
       if (mounted) context.go('/dashboard');
     } catch (_) {
-      // Fail closed. The explicit "Continue without AI" route remains usable.
+      // Do not expose server exception details or pretend consent was granted.
+      if (mounted) setState(() => _error = l10n.consentConfirmationFailed);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -180,6 +197,41 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ),
                       ),
+                      if (_error != null) ...[
+                        SizedBox(height: compactHeight ? 12 : 16),
+                        Semantics(
+                          liveRegion: true,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AminaTheme.surface(context),
+                              border: Border.all(
+                                color: AminaTheme.divider(context),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 20,
+                                  color: AminaTheme.textSecondary(context),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: TextStyle(
+                                      fontSize: compactHeight ? 12 : 13,
+                                      color: AminaTheme.textPrimary(context),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       SizedBox(height: compactHeight ? 14 : 24),
                       Align(
                         alignment: Alignment.center,

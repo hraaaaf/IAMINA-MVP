@@ -50,6 +50,34 @@ void main() {
     expect(retry.dispatched, 0);
   });
 
+  test('W01 public country GET never waits for credentials or patient unlock',
+      () async {
+    final auth = _Auth();
+    final country = _Chain('GET', '/api/v1/country/suggestion');
+    final response = await AuthInterceptor(
+      auth,
+      canUseClinicalTransport: () => false,
+      canUsePatientSyncTransport: () => false,
+    ).intercept<Object?>(country);
+    expect(response.statusCode, 200);
+    expect(country.dispatched, 1);
+    verifyNever(() => auth.getIdToken());
+
+    for (final method in ['POST', 'HEAD']) {
+      final disallowed = _Chain(method, '/api/v1/country/suggestion');
+      await expectLater(
+        Future<Response<Object?>>.value(AuthInterceptor(
+          auth,
+          canUseClinicalTransport: () => false,
+          canUsePatientSyncTransport: () => false,
+        ).intercept<Object?>(disallowed)),
+        throwsStateError,
+      );
+      expect(disallowed.dispatched, 0);
+    }
+    verifyNever(() => auth.getIdToken());
+  });
+
   test('Pilot A keeps public login transport working', () async {
     final auth = _Auth();
     when(() => auth.getIdToken()).thenAnswer((_) async => null);
@@ -109,10 +137,27 @@ void main() {
     expect(chain.dispatched, 1); // only initial authorized request
   });
 
-  test('D7 actual RetryInterceptor cannot re-send a 5xx after locking', () async {
+  test('W01 medical mutations never retry after an ambiguous 502 or 503', () async {
+    final auth = _Auth();
+    for (final method in ['POST', 'PATCH', 'PUT', 'DELETE']) {
+      for (final failure in [502, 503]) {
+        final chain = _Chain(method, '/api/v1/logs/batch', statusCode: failure);
+        final response = await RetryInterceptor(
+          auth, canUsePatientSyncTransport: () => true,
+        ).intercept<Object?>(chain);
+        expect(response.statusCode, failure);
+        expect(chain.dispatched, 1, reason: '$method must have one effect maximum');
+        expect(mayRetryAfterServerError(method), isFalse);
+      }
+    }
+    expect(mayRetryAfterServerError('GET'), isTrue);
+    expect(mayRetryAfterServerError('HEAD'), isTrue);
+  });
+
+  test('D7 safe GET retry cannot dispatch after the app-lock closes', () async {
     final auth = _Auth();
     var unlocked = true;
-    final chain = _Chain('POST', '/api/v1/logs/batch', statusCode: 503);
+    final chain = _Chain('GET', '/api/v1/logs', statusCode: 503);
     final result = Future<Response<Object?>>.value(
       RetryInterceptor(
         auth, canUsePatientSyncTransport: () => unlocked,

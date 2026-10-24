@@ -12,7 +12,11 @@ from core.models import BasePatientProfile
 
 _TOKEN_PREFIX = "iamina."
 _TOKEN_SALT = "iamina.native-auth.v1"
-_DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+# A copied medical bearer must not retain server access for a month if logout
+# cannot reach Django. Reauthentication uses the existing password login:
+# NO long-lived refresh secret is minted or silently replayed from a device.
+_MAX_ACCESS_AGE_SECONDS = 60 * 60
+_DEFAULT_MAX_AGE_SECONDS = _MAX_ACCESS_AGE_SECONDS
 
 
 class NativeTokenError(Exception):
@@ -47,6 +51,11 @@ def verify_native_token(token: str):
         "NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS",
         _DEFAULT_MAX_AGE_SECONDS,
     )
+    # A misconfigured runtime cannot silently restore the legacy 30-day
+    # lifetime. An invalid value fails closed instead of bypassing expiry.
+    if isinstance(max_age, bool) or not isinstance(max_age, int) or max_age <= 0:
+        raise NativeTokenError("invalid_native_token_lifetime")
+    max_age = min(max_age, _MAX_ACCESS_AGE_SECONDS)
     try:
         payload = signer.unsign_object(token[len(_TOKEN_PREFIX):], max_age=max_age)
     except (signing.BadSignature, signing.SignatureExpired, TypeError, ValueError) as exc:

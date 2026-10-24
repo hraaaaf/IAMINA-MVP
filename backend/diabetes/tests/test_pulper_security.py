@@ -99,7 +99,7 @@ class PulperSecurityBoundaryTest(SimpleTestCase):
         self.assertEqual(_EXTRACTOR_VERSION, "2")
         self.assertEqual(
             _PARSE_PROMPT_VERSION,
-            "pulper-parse-v4-sparse-output",
+            "pulper-parse-v5-fasting-lab-routing",
         )
 
     def test_mime_content_mismatch_fails_before_extraction(self):
