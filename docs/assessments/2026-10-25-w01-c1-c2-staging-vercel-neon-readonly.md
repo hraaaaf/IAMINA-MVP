@@ -64,6 +64,12 @@ Date de preuve : **25 octobre 2026**. Périmètre **Web/PWA + API Django + Neon 
 
 Le commit [`3851f4082a35f7fd08c210be96912330559abbfa`](https://github.com/hraaaaf/IAMINA-MVP/commit/3851f4082a35f7fd08c210be96912330559abbfa) étend le garde du stockage SQL temporaire aux cibles Vercel, même `DEBUG=True`, et exige un contexte de tests locaux pytest. La route refuse désormais le flag expérimental avant lecture du fichier ou extraction. Les tests de refus runtime/egress et la contention PostgreSQL deux connexions sont étendus. [Nouvelle CI générale #40242157736](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157736) à vérifier sur ce SHA ; **ne pas transférer 20/20 de `62ca7aad`**. La confidentialité WAL/PITR, le risque de faux contenu « synthétique », et l'interdiction patient demeurent inchangés. Prototype toujours Draft, non fusionné, non déployé.
 
+## 3.3 Vérification GitHub finale et pré-revue C1 (25/10/2026)
+
+À la lecture GitHub, **PR W01 #1128 HEAD `e1763530` et PR Pulper #1151 HEAD `ed0714f3` : 20/20 workflows COMPLETED/SUCCESS chacune**. Le rouge de l'ancien SHA `3851f408` n'est pas transféré à la candidate corrigée ; l'assertion du test a été alignée sur l'erreur attendue sans désactiver les gardes. La PR temporaire #1150 (base `main`) a été **fermée sans merge** ; la PR #1151 reste ouverte et Draft.
+
+Une [matrice de pré-revue sécurité C1](2026-10-25-w01-c1-pulper-safety-gate.md) précise les scénarios d'échec et preuves nécessaires avant de sélectionner une architecture de stockage documentaire. Il ne s'agit **ni** d'une revue indépendante **ni** d'une certification privacy de l'option AEAD. **Statut inchangé W01 NO-GO**, G1–G7 non fermés, W02 gelé.
+
 ## 4. Next exact / gate humain
 
 **Next immédiat exécutable sans permission :** revue source/tests du mécanisme proposé Option A, préparation des oracles négatifs et de concurrence, comparaison documentaire des providers d'enveloppe chiffrée ; conserver le staging SQL #1151 isolé, sans activation clinique. Pour C2, cartographier seulement les aliases et métadonnées sans casser de déploiement.

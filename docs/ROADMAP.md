@@ -41,6 +41,17 @@
 
 **CI exacte après ce changement :** [CI #40242157736](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157736), [BFF #40242157713](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157713), [migrations #40242157641](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157641) déclenchées ; **aucune certification verte sur `3851f408` avant résultat**. Le contrôle `PYTEST_CURRENT_TEST` est une barrière de sûreté contre activation accidentelle, **pas** une preuve d'identité fictive ni un mécanisme de confidentialité patient. Aucun merge, Vercel deploy, activation ni mutation Neon. Le design Option A (jeton opaque AEAD) reste **proposition à auditer**, pas décision de conformité.
 
+### W01-G7 — GREEN exact SHA et closeout PR temporaire (25/10/2026)
+
+**Preuve finale lue directement dans GitHub :**
+- [PR W01 #1128](https://github.com/hraaaaf/IAMINA-MVP/pull/1128), HEAD `e176353054f48b44f062f81c76aed203f66f8e3c` : **20/20 workflows COMPLETED/SUCCESS**, aucun run actif ni échec à la lecture ; [CI générale #40242292213](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242292213), [BFF #40242292220](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242292220), [migrations #40242292223](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242292223) SUCCESS.
+- [PR Pulper #1151](https://github.com/hraaaaf/IAMINA-MVP/pull/1151), HEAD `ed0714f3152eefaeece83564a14f1a34c8b9dcdd` : **20/20 workflows COMPLETED/SUCCESS**, aucun run actif ni échec ; [CI générale #40242929130](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242929130), [BFF #40242929110](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242929110), [migrations #40242929058](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242929058) SUCCESS. Deux jobs rouges à l'ancien SHA `3851f408` provenaient **uniquement** du test `match="disabled"` devenu incompatible avec le diagnostic fail-closed `"restricted to synthetic local tests"` ; [correctif `ed0714f3`](https://github.com/hraaaaf/IAMINA-MVP/commit/ed0714f3152eefaeece83564a14f1a34c8b9dcdd) = mise à jour de l'assertion, pas relâchement du contrôle.
+- [PR temporaire CI #1150](https://github.com/hraaaaf/IAMINA-MVP/pull/1150) ciblant `main` : **CLOSED sans merge**, une fois son SHA devenu vert ; #1151 conserve le code sur la base W01 et reste OPEN/DRAFT. **Pas de déploiement Vercel ni mutation Production.**
+
+**Effet sur les gates :** certification **CI du code au SHA susmentionné PASS**, mais W01 **NO-GO** : données cliniques transitoires dans WAL/PITR du spike, suppression normale dépendante de Redis, IP/429 multi-réseau, DR distant Neon non vide, anciens artefacts immuables et configuration/protection Production restent non prouvés. Les deux PR actives restent Draft ; la CI propre au prochain **commit documentaire** devra être revalidée.
+
+**Next sans nouveau service :** [matrice C1 de pré-revue sécurité](assessments/2026-10-25-w01-c1-pulper-safety-gate.md), puis preuves G5/G6 hébergées sous autorisations distinctes. L'option AEAD est **une proposition**, aucune activation clinique ou donnée patient autorisée.
+
 ### 3. Chemin critique : lots exécutables, succès et preuves
 
 **W01-C1 — Décision technique sur le cache Pulper, sans nouveau déploiement.**  
