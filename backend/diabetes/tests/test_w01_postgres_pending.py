@@ -18,10 +18,16 @@ from django.utils import timezone
 
 from diabetes.models import PendingDocumentExtraction
 from diabetes.services.documents.schema import (
-    FieldEvidence, GlucoseReading, LabValues, PulperOutput,
+    FieldEvidence,
+    GlucoseReading,
+    LabValues,
+    PulperOutput,
 )
 from diabetes.services.documents.w01_postgres_pending import (
-    confirm_once, prune_expired, purge_patient, stage_pending,
+    confirm_once,
+    prune_expired,
+    purge_patient,
+    stage_pending,
 )
 
 SPIKE = {"W01_PG_PENDING_SYNTHETIC_ONLY": True, "DEBUG": True}

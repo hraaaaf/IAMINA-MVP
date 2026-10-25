@@ -2,9 +2,8 @@ from django.apps import AppConfig
 
 
 def _purge_pending_documents(patient_id: int, _firebase_uid: str) -> None:
-    from media.documents.pending_cache import purge_patient_pending_extractions
-
     from django.conf import settings
+    from media.documents.pending_cache import purge_patient_pending_extractions
 
     if getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False):
         from diabetes.services.documents.w01_postgres_pending import purge_patient

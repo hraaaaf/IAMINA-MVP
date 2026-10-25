@@ -36,6 +36,8 @@ from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
 from diabetes.services.documents.w01_postgres_pending import (
     confirm_once as postgres_confirm_once,
+)
+from diabetes.services.documents.w01_postgres_pending import (
     stage_pending as postgres_stage_pending,
 )
 from llm.usage_telemetry import record_media_bytes
