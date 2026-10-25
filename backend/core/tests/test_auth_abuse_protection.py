@@ -240,7 +240,7 @@ def test_two_accounts_share_a_429_when_their_proxy_source_is_identical():
     assert middleware(first).status_code == 202
     denied = middleware(second)
     assert denied.status_code == 429
-    assert denied.json()["error"]["code"] == "auth_rate_limited"
+    assert json.loads(denied.content)["error"]["code"] == "auth_rate_limited"
     assert 1 <= int(denied["Retry-After"]) <= 60
     assert middleware(genuinely_distinct).status_code == 202
     assert AuthAbuseBucket.objects.filter(scope="login_ip").count() == 2
