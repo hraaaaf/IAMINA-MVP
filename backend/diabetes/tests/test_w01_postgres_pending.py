@@ -4,10 +4,10 @@ They do NOT certify patient production retention or Neon PITR erasure.
 """
 from __future__ import annotations
 
-from datetime import timedelta
-from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from threading import Event
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
