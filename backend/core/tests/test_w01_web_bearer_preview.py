@@ -386,3 +386,32 @@ def test_bearer_a_b_a_clinical_logs_resource_scope():
         anonymous = client.get("/api/v1/logs")
         assert anonymous.status_code in (401, 403)
         assert "blood_sugar" not in anonymous.content.decode()
+
+
+@pytest.mark.django_db
+def test_deleted_identity_stays_denied_with_two_not_yet_expired_session_cookies():
+    """Revoke identity without assuming Session rows are removed automatically.
+
+    Synthetic local deletion, not the hosted RGPD DELETE endpoint: the latter
+    intentionally fails closed if Redis-backed document cleanup is unavailable.
+    """
+    from django.contrib.sessions.models import Session
+
+    user, token = _patient("w01-two-device-erasure")
+    user_id = user.pk
+    devices = [Client(enforce_csrf_checks=True), Client(enforce_csrf_checks=True)]
+    for client in devices:
+        client.force_login(user)
+        assert client.get("/api/v1/auth/me").status_code == 200
+
+    session_keys = [client.session.session_key for client in devices]
+    assert len(set(session_keys)) == 2
+    assert Session.objects.filter(session_key__in=session_keys).count() == 2
+
+    user.delete()
+    assert not User.objects.filter(pk=user_id).exists()
+    # Unexpired session rows alone must never resurrect a deleted Django user.
+    assert Session.objects.filter(session_key__in=session_keys).count() == 2
+    for client in devices:
+        assert client.get("/api/v1/auth/me").status_code == 401
+        assert client.get("/api/v1/auth/me", **_bearer(token)).status_code == 401

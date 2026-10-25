@@ -1,3 +1,11 @@
+## W01 — 25 octobre 2026 : couverture anti-abus IP mutualisée et sessions post-effacement (CI synthétique)
+
+**Goal** : vérifier localement deux risques révélés par la Preview sans provisionner Redis et sans appel mutateur vers les données hébergées. **Succès observable** : (1) la même identité IP `X-Forwarded-For` simulée pour deux comptes différents mène à un refus 429 du second, tandis qu'une troisième IP simulée conserve son propre bucket ; (2) deux sessions Django enregistrées et encore présentes après suppression ORM de leur utilisateur fictif ne permettent plus d'obtenir une identité via cookie ni via Bearer signé antérieurement. **Preuve** : tests `test_two_accounts_share_a_429_when_their_proxy_source_is_identical` dans `backend/core/tests/test_auth_abuse_protection.py` et `test_deleted_identity_stays_denied_with_two_not_yet_expired_session_cookies` dans `backend/core/tests/test_w01_web_bearer_preview.py`. `pytest` CI PostgreSQL requis avant PASS ; aucune conclusion tirée du simple ajout de code.
+
+**Limites strictes :** test transport simulé, **pas** test réseau hébergé à deux clients ni garantie que Vercel attribue correctement `X-Forwarded-For` à travers BFF→API ; suppression ORM locale, **pas** preuve que le parcours applicatif RGPD fonctionne sans Redis. Les six `django_session` observées en Neon (0 utilisateurs, 2 effacements) ne sont ni décodées ni effacées et ne peuvent pas être attribuées sans examen supplémentaire. Le flux BFF refuse les cookies et ne relaie aucune IP fournie par le navigateur. Pas de Vercel deploy sans autorisation, de correction de sécurité à l'aveugle, de mutation clinique, ni de remise en service d'Upstash. Le verdict **W01 NO-GO / W02 gelé** ne change pas.
+
+---
+
 ## W01 — 25 octobre 2026 : preuves hébergées GET, IP/429 et contrôle PITR lecture seule
 
 **Portée / sécurité :** reprise W01 à la demande du propriétaire sans Upstash, sans Redis nouveau, sans déploiement, sans mutation Vercel ou Production, sans compte fictif nouveau, sans restauration en écriture. Les Previews immuables SHA `cd4378b2` demeurent `READY` (surface de nettoyage héritée), retrait humain distinct nécessaire. PR #1128 DRAFT, baseline revue au HEAD `63a0835a71c0611a9ef04eeebf17050debd52d59` ; **20/20 workflows SUCCESS à ce SHA seulement**. La CI de la présente modification documentaire est à vérifier séparément.
