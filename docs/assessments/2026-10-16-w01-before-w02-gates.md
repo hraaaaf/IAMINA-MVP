@@ -1,3 +1,15 @@
+## W01-G5 — 25 octobre 2026 : preuve HTTP 404 hébergée et anciens déploiements sans alias
+
+**Gate retrait de route API — PASS (preuve hébergée)** : Vercel Runtime Logs de la nouvelle API Preview `dpl_3ZK13h6n214Y46pwVPJJDSGM8ePw` au SHA `042f28df29a2c8ed0e3ddb56aabcf3520dbde269` : `GET /api/v1/ops/w01-g5-synthetic-cleanup?utm_source=chatgpt.com` a répondu **404** aux deux requêtes de 2026-10-25 **17:08:32.307 UTC** (request `fp9nx-1792948105322-4aa00d96b151`) et **17:12:03.265 UTC** (request `ffb87-1792948323123-04fbf3b1d2cf`). Preuves : logs Django `"GET ... HTTP/1.1" 404 -` + `Not Found`. BFF Web `frontend/api/preview-proxy.js` transmet le statut upstream ; la capture iOS « données — Zéro ko » ne l'exposait pas. La première capture utilisateur montrait Vercel `404 NOT_FOUND`, mais l'URL était tronquée. Ne pas prétendre que le statut du BFF a été directement capturé.
+
+**Gates de données — PASS** : Neon SQL indépendant sur `noisy-truth-00115950 / br-sweet-frog-b9ok6ptp / iamina925_empty` sous rôle `iamina_preview_app` : `auth_user=0`, deux `ErasureRecord` terminés pour IDs 3/4. GitHub PR #1128 DRAFT, SHA `042f28df`, CI 20/20 SUCCESS, zéro run actif au contrôle ; les deux nouvelles Previews Web/API READY à ce SHA.
+
+**Anciens déploiements — À retirer (HUMAN GATE)** : Vercel confirme `READY` pour l'ancien Web `dpl_4bFp2CehZwoK4RhsAGLrCLtZy7o2` et l'ancienne API `dpl_7LZboieiBvfrgp3DCBxLKzsnrscm`, tous deux SHA `cd4378b2`. `list_deployment_aliases` retourne **[]** pour chacun ; les deux nouveaux déploiements `dpl_5rsqzp4s35VXNmPBrP6ZpGXhBPeL` et `dpl_3ZK13h6n214Y46pwVPJJDSGM8ePw` détiennent les alias de branche. Les URLs immuables anciennes peuvent rester accessibles malgré l'absence d'alias. Suppression Vercel exige accord explicite car elle supprime la possibilité de rollback ; le connecteur ne dispose pas d'action `delete_deployment`. Aucune suppression ou action Production réalisée.
+
+**W01 reste NO-GO / W02 gelé** tant que retrait/révocation des anciennes URLs, Redis opérationnel, IP/429 hébergé, sessions expirées/CSRF, PITR non vide et revue indépendante ne sont pas prouvés.
+
+---
+
 ## W01-G5 — 24 octobre 2026 : effacement synthétique prouvé, retrait du dispositif temporaire
 
 **Résultat Work rapporté** : GET prévol du nettoyage one-shot HTTP 200 ; POST confirmé HTTP 200, deleted_accounts=2 et remaining_accounts=0. Aucune capture du navigateur jointe. Ces codes HTTP proviennent du rapport Work et ne sont pas certifiés par un enregistrement HTTP indépendant dans ce lot.
