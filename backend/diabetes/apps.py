@@ -3,6 +3,7 @@ from django.apps import AppConfig
 
 def _purge_pending_documents(patient_id: int, _firebase_uid: str) -> None:
     from django.conf import settings
+
     from media.documents.pending_cache import purge_patient_pending_extractions
 
     if getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False):
