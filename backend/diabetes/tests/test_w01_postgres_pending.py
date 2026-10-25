@@ -6,10 +6,13 @@ from __future__ import annotations
 
 from datetime import timedelta
 from types import SimpleNamespace
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from unittest.mock import Mock, patch
 
 import pytest
 from django.contrib.auth.models import User
+from django.db import close_old_connections, connection
 from django.test import override_settings
 from django.utils import timezone
 
@@ -130,3 +133,45 @@ def test_staging_is_off_by_default():
     patient = User.objects.create_user(username="synthetic-pg-off")
     with pytest.raises(PermissionError):
         stage_pending(patient.id, PulperOutput())
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**SPIKE)
+def test_postgresql_two_connections_cannot_confirm_same_batch_twice():
+    """Separate database connections: SELECT FOR UPDATE serializes the claims."""
+    if connection.vendor != "postgresql":
+        pytest.skip("real PostgreSQL row-lock guarantee requires PostgreSQL")
+    patient = User.objects.create_user(username="synthetic-pg-concurrent")
+    batch = stage_pending(patient.id, PulperOutput())
+    first_locked = Event()
+    release_first = Event()
+    saves = []
+
+    def first_persist(value, user, name):
+        saves.append("first")
+        first_locked.set()
+        assert release_first.wait(timeout=15)
+        return SimpleNamespace(ok=True)
+
+    def second_persist(value, user, name):
+        saves.append("second")
+        return SimpleNamespace(ok=True)
+
+    def work(callback):
+        close_old_connections()
+        try:
+            # Reload from this worker's independent PostgreSQL connection.
+            actor = User.objects.get(pk=patient.pk)
+            return confirm_once(actor, batch, callback)
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(work, first_persist)
+        assert first_locked.wait(timeout=15)
+        second = pool.submit(work, second_persist)
+        release_first.set()
+        assert first.result(timeout=20).ok
+        assert second.result(timeout=20) is None
+    assert saves == ["first"]
+    assert not PendingDocumentExtraction.objects.filter(batch_id=batch).exists()
