@@ -60,6 +60,10 @@ Date de preuve : **25 octobre 2026**. Périmètre **Web/PWA + API Django + Neon 
 - **G6 PARTIEL/BLOQUANT :** snapshots/branches existent ; restore synthétique **non vide** et SQL comparatifs manquent.
 - **G7 OUVERT :** décision d'architecture C1 non ratifiée, G1–G6 incomplets, PR W01 encore Draft ; CI exacte et postmerge nécessaires.
 
+## 3.2 Mise à jour de sécurité du spike #1151 (25 octobre 2026)
+
+Le commit [`3851f4082a35f7fd08c210be96912330559abbfa`](https://github.com/hraaaaf/IAMINA-MVP/commit/3851f4082a35f7fd08c210be96912330559abbfa) étend le garde du stockage SQL temporaire aux cibles Vercel, même `DEBUG=True`, et exige un contexte de tests locaux pytest. La route refuse désormais le flag expérimental avant lecture du fichier ou extraction. Les tests de refus runtime/egress et la contention PostgreSQL deux connexions sont étendus. [Nouvelle CI générale #40242157736](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157736) à vérifier sur ce SHA ; **ne pas transférer 20/20 de `62ca7aad`**. La confidentialité WAL/PITR, le risque de faux contenu « synthétique », et l'interdiction patient demeurent inchangés. Prototype toujours Draft, non fusionné, non déployé.
+
 ## 4. Next exact / gate humain
 
 **Next immédiat exécutable sans permission :** revue source/tests du mécanisme proposé Option A, préparation des oracles négatifs et de concurrence, comparaison documentaire des providers d'enveloppe chiffrée ; conserver le staging SQL #1151 isolé, sans activation clinique. Pour C2, cartographier seulement les aliases et métadonnées sans casser de déploiement.
