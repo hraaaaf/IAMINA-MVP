@@ -38,6 +38,9 @@ from diabetes.services.documents.w01_postgres_pending import (
     confirm_once as postgres_confirm_once,
 )
 from diabetes.services.documents.w01_postgres_pending import (
+    ensure_synthetic_debug_only,
+)
+from diabetes.services.documents.w01_postgres_pending import (
     stage_pending as postgres_stage_pending,
 )
 from llm.usage_telemetry import record_media_bytes
@@ -187,6 +190,15 @@ def ingest_document(
     # Reject before extracting or caching: ingestion cannot confirm itself.
     if confirm:
         return 422, {"detail": "Confirmez le document après sa prévisualisation."}
+    if getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False):
+        # A misconfigured test flag must not reach the extraction/AI boundary.
+        try:
+            ensure_synthetic_debug_only()
+        except PermissionError:
+            logger.warning("documents.ingest synthetic SQL staging guard denied")
+            return 503, {
+                "detail": "Prévisualisation temporairement indisponible. Réessayez."
+            }
 
     patient   = request.auth
     mime_type = file.content_type or ''

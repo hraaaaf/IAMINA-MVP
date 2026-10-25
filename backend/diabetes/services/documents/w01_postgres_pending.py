@@ -7,6 +7,7 @@ enable for patients without a separate privacy, backup, and deletion design.
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from dataclasses import asdict
 from datetime import timedelta
@@ -29,9 +30,21 @@ PENDING_TTL_SECONDS = 3600
 
 
 def ensure_synthetic_debug_only() -> None:
-    """Never activate the prototype in Vercel or any non-debug environment."""
-    if not getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False) or not settings.DEBUG:
-        raise PermissionError("PostgreSQL pending staging is disabled outside synthetic DEBUG tests")
+    """Only active inside explicit, DEBUG-enabled, non-Vercel pytest runs.
+
+    This is a safety fence against accidental activation, not proof that input
+    accounts or extracted content are synthetic; never store patient data here.
+    """
+    if (
+        not getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False)
+        or not settings.DEBUG
+        or os.environ.get("VERCEL") == "1"
+        or os.environ.get("VERCEL_ENV") in {"development", "preview", "production"}
+        or not os.environ.get("PYTEST_CURRENT_TEST")
+    ):
+        raise PermissionError(
+            "PostgreSQL pending staging is restricted to synthetic local tests"
+        )
 
 
 def _evidence(values: dict) -> dict[str, FieldEvidence]:

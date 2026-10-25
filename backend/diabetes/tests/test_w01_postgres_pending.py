@@ -4,6 +4,7 @@ They do NOT certify patient production retention or Neon PITR erasure.
 """
 from __future__ import annotations
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from threading import Event
@@ -12,10 +13,13 @@ from unittest.mock import Mock, patch
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import close_old_connections, connection
+from django.http import HttpRequest
 from django.test import override_settings
 from django.utils import timezone
 
+from diabetes.api.v1.documents import ingest_document
 from diabetes.models import PendingDocumentExtraction
 from diabetes.services.documents.schema import (
     FieldEvidence,
@@ -141,6 +145,45 @@ def test_staging_is_off_by_default():
         stage_pending(patient.id, PulperOutput())
 
 
+@pytest.mark.django_db
+@override_settings(**SPIKE)
+def test_staging_denied_on_vercel_even_with_debug_and_flag():
+    patient = User.objects.create_user(username="synthetic-pg-vercel-block")
+    with patch.dict(os.environ, {"VERCEL": "1", "VERCEL_ENV": "preview"}):
+        with pytest.raises(PermissionError, match="restricted"):
+            stage_pending(patient.id, PulperOutput())
+    assert PendingDocumentExtraction.objects.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(**SPIKE)
+def test_staging_denied_outside_pytest_even_if_debug_and_flag():
+    patient = User.objects.create_user(username="synthetic-pg-no-runner")
+    with patch.dict(os.environ):
+        os.environ.pop("PYTEST_CURRENT_TEST", None)
+        with pytest.raises(PermissionError, match="restricted"):
+            stage_pending(patient.id, PulperOutput())
+    assert PendingDocumentExtraction.objects.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(W01_PG_PENDING_SYNTHETIC_ONLY=True, DEBUG=False)
+def test_misconfigured_route_fails_before_upload_read_or_ai_egress():
+    patient = User.objects.create_user(username="synthetic-pg-route-block")
+    request = HttpRequest()
+    request.user = patient
+    request.auth = patient
+    upload = SimpleUploadedFile("synthetic.pdf", b"%PDF-1.7 fake", content_type="application/pdf")
+    with patch("diabetes.api.v1.documents.ingest") as extract:
+        with patch("diabetes.api.v1.documents._read_upload_with_limit") as read:
+            status, response = ingest_document(request, file=upload)
+    assert status == 503
+    assert "indisponible" in response["detail"]
+    read.assert_not_called()
+    extract.assert_not_called()
+    assert PendingDocumentExtraction.objects.count() == 0
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(**SPIKE)
 def test_postgresql_two_connections_cannot_confirm_same_batch_twice():
@@ -150,6 +193,8 @@ def test_postgresql_two_connections_cannot_confirm_same_batch_twice():
     patient = User.objects.create_user(username="synthetic-pg-concurrent")
     batch = stage_pending(patient.id, PulperOutput())
     first_locked = Event()
+    second_lock_query = Event()
+    second_finished = Event()
     release_first = Event()
     saves = []
 
@@ -163,20 +208,36 @@ def test_postgresql_two_connections_cannot_confirm_same_batch_twice():
         saves.append("second")
         return SimpleNamespace(ok=True)
 
-    def work(callback):
+    def work(callback, observe_lock=False):
         close_old_connections()
         try:
             # Reload from this worker's independent PostgreSQL connection.
             actor = User.objects.get(pk=patient.pk)
+            if observe_lock:
+                def observe(execute, sql, params, many, context):
+                    if "FOR UPDATE" in sql.upper():
+                        second_lock_query.set()
+                    return execute(sql, params, many, context)
+
+                with connection.execute_wrapper(observe):
+                    return confirm_once(actor, batch, callback)
             return confirm_once(actor, batch, callback)
         finally:
+            if observe_lock:
+                second_finished.set()
             close_old_connections()
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         first = pool.submit(work, first_persist)
-        assert first_locked.wait(timeout=15)
-        second = pool.submit(work, second_persist)
-        release_first.set()
+        try:
+            assert first_locked.wait(timeout=15)
+            second = pool.submit(work, second_persist, True)
+            # The second connection must actually reach SELECT FOR UPDATE
+            # while the first transaction still holds its row lock.
+            assert second_lock_query.wait(timeout=15)
+            assert not second_finished.wait(timeout=0.25)
+        finally:
+            release_first.set()
         assert first.result(timeout=20).ok
         assert second.result(timeout=20) is None
     assert saves == ["first"]
