@@ -25,6 +25,7 @@ import logging
 import uuid
 from typing import List, Optional
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest
 from ninja import File, Router, Schema, UploadedFile
@@ -33,6 +34,10 @@ from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from diabetes.models import LabReport
 from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
+from diabetes.services.documents.w01_postgres_pending import (
+    confirm_once as postgres_confirm_once,
+    stage_pending as postgres_stage_pending,
+)
 from llm.usage_telemetry import record_media_bytes
 from media.documents.retention import PENDING_EXTRACTION_POLICY
 
@@ -194,16 +199,23 @@ def ingest_document(
 
     # ── Extract ────────────────────────────────────────────────────────────────
     output    = ingest(file_bytes, filename, mime_type)
-    batch_id  = str(uuid.uuid4())
-    key = _pending_key(patient.id, batch_id)
-    try:
-        cache.set(key, output, timeout=_PENDING_TTL)
-        # django-redis IGNORE_EXCEPTIONS=True can swallow a failed write.
-        # Never issue a confirmable batch ID unless it can be read back.
-        staged = cache.get(key)
-    except Exception:
-        staged = None
-    if staged is None:
+    if getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False):
+        try:
+            batch_id = postgres_stage_pending(patient.id, output)
+            staged = True
+        except Exception:
+            logger.warning("documents.ingest synthetic SQL staging unavailable")
+            staged = False
+    else:
+        batch_id = str(uuid.uuid4())
+        key = _pending_key(patient.id, batch_id)
+        try:
+            cache.set(key, output, timeout=_PENDING_TTL)
+            # django-redis IGNORE_EXCEPTIONS=True may swallow failed writes.
+            staged = cache.get(key)
+        except Exception:
+            staged = None
+    if not staged:
         logger.warning("documents.ingest pending extraction unavailable")
         return 503, {
             "detail": "Prévisualisation temporairement indisponible. Réessayez."
@@ -259,7 +271,17 @@ def confirm_import(request: HttpRequest, batch_id: str):
     Called when the user taps "Confirmer" in the Flutter UI.
     """
     patient = request.auth
-    output = _consume_pending_batch_once(patient.id, batch_id)
+    if getattr(settings, "W01_PG_PENDING_SYNTHETIC_ONLY", False):
+        try:
+            result = postgres_confirm_once(patient, batch_id, _do_persist)
+        except Exception:
+            logger.warning("documents.confirm synthetic SQL staging unavailable")
+            result = None
+        if result is not None:
+            return result
+        output = None
+    else:
+        output = _consume_pending_batch_once(patient.id, batch_id)
     if output is None:
         return PulperConfirmResponse(
             ok=False,
