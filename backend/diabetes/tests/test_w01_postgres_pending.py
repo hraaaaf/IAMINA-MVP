@@ -132,7 +132,7 @@ def test_purge_only_matches_one_patient():
 @override_settings(W01_PG_PENDING_SYNTHETIC_ONLY=True, DEBUG=False)
 def test_postgres_staging_refuses_any_non_debug_runtime():
     patient = User.objects.create_user(username="synthetic-pg-prod-guard")
-    with pytest.raises(PermissionError, match="disabled"):
+    with pytest.raises(PermissionError, match="restricted to synthetic local tests"):
         stage_pending(patient.id, PulperOutput())
     assert PendingDocumentExtraction.objects.count() == 0
 
