@@ -63,11 +63,12 @@ def test_firebase_identity_already_absent_is_idempotent(monkeypatch, isolated_er
         raise firebase_admin.auth.UserNotFoundError("synthetic uid not found")
     monkeypatch.setattr(account.firebase_admin.auth, "delete_user", already_gone)
 
+    patient_id = user.pk
     result = account.delete_account(_request(user), account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"))
 
     assert result["detail"] == "Account and all associated data deleted."
-    assert not User.objects.filter(pk=user.pk).exists()
-    receipt = ErasureRecord.objects.get(patient_id_snapshot=user.pk)
+    assert not User.objects.filter(pk=patient_id).exists()
+    receipt = ErasureRecord.objects.get(patient_id_snapshot=patient_id)
     assert receipt.completed_at is not None
     assert isolated_erasure == ["hooks", "firebase", "audit", "logout"]
 
@@ -79,11 +80,12 @@ def test_native_user_requires_no_firebase_admin_call(monkeypatch, isolated_erasu
         pytest.fail("Native identity must not invoke Firebase")
     monkeypatch.setattr(account.firebase_admin.auth, "delete_user", never_firebase)
 
+    patient_id = user.pk
     result = account.delete_account(_request(user), account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"))
 
     assert result["detail"] == "Account and all associated data deleted."
-    assert not User.objects.filter(pk=user.pk).exists()
-    receipt = ErasureRecord.objects.get(patient_id_snapshot=user.pk)
+    assert not User.objects.filter(pk=patient_id).exists()
+    receipt = ErasureRecord.objects.get(patient_id_snapshot=patient_id)
     assert receipt.completed_at is not None
     assert isolated_erasure == ["hooks", "audit", "logout"]
 

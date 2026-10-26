@@ -1,5 +1,13 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3/CI — régression tests et fiabilité capture mobile (26/10/2026)
+
+**État rouge vérifié au HEAD `e6446137` :** 22 workflows terminés, **19 PASS / 3 FAIL** : CI #40403248346, Chrome mobile 390×844 #40403248489, W01 hosted OIDC #40403248330 (différé sur ordre propriétaire). **CI Backend** : 2 échecs parmi `2946 passed` dans `test_w01_g3_account_erasure_fail_closed.py`, car les assertions cherchaient le reçu avec `user.pk` **après** `user.delete()` (Django remet l'attribut à `None`), et non avec l'identifiant patient initial ; aucune erreur d'effacement applicatif prouvée par ces deux tests. **Correctif candidat :** capturer `patient_id = user.pk` avant l'appel de suppression, utiliser la valeur conservée pour certifier absence User et receipt final avec `completed_at`.
+
+**Chrome UI 390×844 :** le job a échoué pendant le préflight du port DevTools `127.0.0.1:9222` après 30 tentatives, sans screenshot généré ; les jobs Chrome 768×1024 et 1280×900 sont **SUCCESS**. Le log montre le lancement tardif de Chrome et ne démontre aucune régression UI. **Correctif de robustesse candidat** : attendre au maximum 75 s la disponibilité DevTools, interrompre si le process Chrome meurt, conserver toutes les assertions de capture réelle intactes ; aucune modification à l'interface ni faux PASS. Ne certifier Chrome mobile qu'après CI verte et vérification des artefacts.
+
+**Test au nouveau HEAD :** toujours PENDING jusqu'à preuve CI GitHub. W01 NO-GO ; G5/OIDC en attente ; G3 transaction interservices et G2/G6 ouverts. Aucune production, Vercel Preview ou Neon mutés.
+
 ## W01-G3 — suppression de compte Firebase : correctif fail-closed candidat (26/10/2026)
 
 **Goal :** ne jamais annoncer `account deleted` si `firebase_admin.auth.delete_user` échoue de façon non vérifiable. **Portée Web/code seulement, sans déploiement, SQL cloud, ni changement de secret.** Modification dans `backend/core/api/v1/account.py` : échec Firebase hors `UserNotFoundError` ⇒ `HTTP 503`, sans suppression de `auth_user` ni création de `ErasureRecord` ; `UserNotFoundError` est traité comme identité déjà supprimée ; compte purement natif inchangé. Régressions synthétiques `backend/core/tests/test_w01_g3_account_erasure_fail_closed.py` : panne Firebase, UID absent, compte natif, hook bloquant.
