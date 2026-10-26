@@ -1,18 +1,35 @@
 # IAmina — MENA Diabetes Companion
 
-IAmina is a **diabetes companion designed for the MENA region**. The product combines deterministic clinical logic, longitudinal patient context, offline-first tracking, and multilingual conversation to help people understand and follow their diabetes data more consistently.
+IAmina is a **diabetes companion designed for Morocco and the six Gulf Cooperation Council (GCC) countries**—Saudi Arabia, the United Arab Emirates, Qatar, Bahrain, Kuwait and Oman—within a broader MENA-first product vision. The product combines deterministic clinical logic, longitudinal patient context, offline-first tracking, and multilingual conversation to help people understand and follow their diabetes data more consistently. The seven-country pilot is a **target**, not an authorized or completed launch.
 
 > **Current product scope:** diabetes only. IAmina is a companion, not a diagnostic or prescribing system. It helps the patient understand, follow and prepare; it does not replace the physician. A second condition is explicitly gated behind real retention and payer evidence.
+>
+> **Status distinction (2026-10-15):** the product and privacy decisions below are **intended pilot requirements**, not assertions about the current implementation. The repository still contains Django/PostgreSQL patient-data APIs, offline synchronization pathways and external-service adapters. These must be disabled, replaced, isolated or technically proven compatible with the chosen pilot before any real-patient use.
+
+## Intended pilot and regulatory onboarding (2026-10-15)
+
+The founder's onboarding established the following **target decisions** for CNDP/GCC preparation; none represents a regulatory approval, a launched feature or runtime evidence:
+
+- **Territories and launch:** simultaneous intended launch in **Morocco, Saudi Arabia, UAE, Qatar, Bahrain, Kuwait and Oman**, conditional on separate country-specific privacy, health-data, child-protection and, where applicable, medical-software assessments/approvals. A Moroccan CNDP filing does not cover the GCC.
+- **Future operator:** a **company to be incorporated in Morocco**. No incorporated entity, registration number, registered address or legally appointed controller is evidenced yet. These must be established before completing official controller fields.
+- **Users:** **adults and minors**, using IAmina **directly and independently**. Age-appropriate clinical safeguards, parental/guardian authorization and legal-capacity rules remain to be specified and cleared in each territory; this is not approval for unsupervised minor deployment.
+- **Medical-data residency:** **on the user's own device only**, without medical-record cloud synchronization or remotely held medical history, as an intended pilot design. Local device security, loss/recovery, OS backups, exports, CGM data sources, logs, crash reporting, communications, metadata and infrastructure must be inventoried and verified before claiming this behavior. This requirement is **not yet proven by the current Django/PostgreSQL/offline-sync implementation**.
+- **Requested first-pilot functionality (subject to feasibility and safety/legal gates):** manual glucose logging and local trend views; read-only CGM connectivity; voice entry and interactions; meal photos and medical-document handling; personalized reports and PDF exports; reminders/notifications; and usage statistics/technical diagnostics. These are **requested scope**, not statements that all features work or are approved. A feature requiring transmission of health data to a third party conflicts with the local-only goal until explicitly redesigned or re-scoped.
+- **Generative LLM constraint:** the model may only help produce **generic, non-patient text/templates**. It must receive **no patient measurements, clinical context, messages, identifying or patient-correlatable metadata**. Patient-specific selection/calculation and assembly into reports or replies must occur within governed, non-generative IAmina processing without re-sending personalized output to a model. Full end-to-end egress tests—including prompts, SDKs, headers, URLs, IP/session correlation, tracing and provider logs—remain **required; zero patient-data egress is not yet independently proven**.
+- **Proposed retention:** on-device medical records persist until the patient requests deletion, **subject to applicable legal retention requirements**. This does not settle separate periods for security logs, technical data, OS backups, exports, or minors' records; secure deletion and restore design remain to be verified.
+- **Provisional privacy correspondence:** `lafabriquedapollon@gmail.com` (founder-provided, not verified as an active rights-handling service or a designated DPO). A formal controller and a validated rights-request process remain pending.
+
+These statements feed the restricted [CNDP + GCC preparation register](https://app.notion.com/p/3fa77c66336281298cd6deeba0879ac1), the dated [web local-only egress audit](docs/security/2026-10-19-cndp-web-local-only-transport-audit.md), and the pre-real-patient **P5-6B / issue #320** gate. See `docs/ROADMAP.md` and `docs/architecture/ARCHITECTURE.md` for the **as-built** architecture and its unresolved compliance/technical gates. No CNDP/GCC authorization, independent medical clearance, or patient-production release is claimed.
 
 ## Product doctrine
 
 - **Companion, never physician replacement.** IAmina may observe, compare, explain and propose safe non-prescriptive next steps; the qualified clinician remains the medical decision authority.
 - **MENA-first, not translation-first.** French, Modern Standard Arabic, and English are baseline languages. The technical English baseline is complete across the 16 active patient-facing surfaces; country dialects still require native review and safety-parity validation.
 - **User choice beats geolocation.** Country/location may suggest language, dialect, units, time zone, and emergency resources; it must never silently decide them.
-- **Deterministic engine first.** IAmina's approved clinical/safety logic decides structured outputs. Generative models may verbalize approved minimized context or perform explicitly permitted media tasks.
+- **Deterministic engine first.** IAmina's approved clinical/safety logic decides structured outputs. **Target LLM rule:** generic text only, with no patient data or correlatable context sent to the LLM; personalized response/report assembly must be deterministic within IAmina. Existing generative narration/media adapters and minimized-context permissions in code/contracts are **not proof** that this stricter rule is already enforced.
 - **No diagnosis or prescription.** IAmina does not diagnose, prescribe, calculate doses, optimize/change treatment or present itself as a medical consultation. Emergency handling is deterministic and must never depend on an LLM response.
 - **Suggestions stay non-prescriptive.** Personalized suggestions are limited to understanding data, monitoring, collecting missing context, approved education, preparing clinician discussion and follow-up recording.
-- **Sovereignty and minimization by design.** External model calls require the completed P0-MENA-1 server-side patient/purpose/modality authorization, payload minimization/allowlists, consent and processor-policy boundaries.
+- **Sovereignty and minimization by design.** The existing P0-MENA-1 server-side egress boundary enforces patient/purpose/modality authorization, allowlists, consent and processor policy. The new **no-patient-data-to-LLM** and **medical-data-on-device-only** pilot targets are stricter and require separate end-to-end code, integration, and network verification; consent or de-identification alone does not satisfy them.
 - **Retention before expansion.** The first proof is a safe MENA pilot and measurable D90 retention, not feature count or number of disease modules.
 
 ## Current strategic status
@@ -35,7 +52,7 @@ The repository is in a **MENA pilot-hardening phase** before the first real-pati
 
 1. **Pilot security blocker #30 is closed:** reachable Git history was rewritten and independently fresh-clone verified. Continue with restricted linguistic, compliance/deployment and provider-evidence gates.
 2. Complete P0-MENA-2 native-language safety review, including remaining Darija high-severity variants and multimodal/transliteration parity. The English technical baseline is closed; this item now refers only to the remaining restricted human-language/safety approvals.
-3. Complete restricted pilot consent, processor/subprocessor, privacy/CNDP and Morocco residency/cross-border approvals.
+3. Reconcile the local-only medical-data pilot target against actual backend/sync/CGM/voice/photo/telemetry paths; obtain applicable CNDP and **each GCC country's** health-data, minors', and any actual cross-border/processor approvals before a simultaneous seven-country pilot.
 4. Run the deferred live text, STT and vision/OCR provider benchmarks and approve cutover only from evidence.
 5. Run the real-patient pilot go/no-go only after the safety/compliance gates are legitimately closed.
 6. Measure D90 retention, safety and clinical usefulness, then decide whether to expand.
@@ -51,7 +68,7 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates and [`do
 | Database | PostgreSQL in Docker/staging path; SQLite manual-dev fallback | PostgreSQL authoritative outside lightweight local fallback |
 | Auth | Django-owned auth/token flows with controlled Firebase migration/reconciliation compatibility still present | Remove remaining Firebase dependencies only after the permanent zero-Firebase audit gate passes |
 | AI | Provider-specific adapters behind a central governed egress authorization/minimization boundary | Keep provider-agnostic policy authority and evidence-based provider selection |
-| Local state | Drift / SQLite | Offline-first sync retained |
+| Local state | Drift / SQLite, with existing backend/sync paths | **Target:** medical records stay only on the patient's device; any remote medical sync must be removed or verifiably disabled for the pilot, with safe backup/recovery addressed |
 
 ## Quick start
 
@@ -128,6 +145,7 @@ Dated assessments and deleted legacy plans remain available through git history 
 - Never weaken cookie/session CSRF protection with a blanket API exemption.
 - Never send medical emergencies to a generative model for decision-making.
 - Never call an external model/media provider outside the sanctioned egress authorization boundary.
+- **Pilot target:** never send patient measurements, clinical context, user messages, personal identifiers or correlatable metadata to an external LLM; use generic wording only and deterministic local/first-party patient-specific assembly. **Not yet proven for all current runtime paths.**
 - Never expose names, contact details, identifiers, raw unrelated clinical history, or unapproved media to an external model provider.
 - Never add a locale/dialect to a patient pilot without native-speaker safety parity, emergency-resource validation, RTL/script coverage where applicable, and privacy/compliance readiness.
 - Never commit secrets, provider keys, service-account files, or local agent permission files containing secrets.
