@@ -24,6 +24,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         patient_id = options["patient_id"]
+        # Check the environment before *any* database lookup in execute mode.
+        # Explicit opt-in is insufficient if a local CLI points at a cloud PG DB.
+        if options["execute"] and (
+            not settings.DEBUG
+            or settings.DATABASES["default"]["ENGINE"] != "django.db.backends.sqlite3"
+            or os.environ.get("VERCEL")
+            or os.environ.get("VERCEL_ENV")
+            or os.environ.get("IAMINA_G3_LOCAL_SYNTHETIC_RECOVERY") != "1"
+        ):
+            raise CommandError("Synthetic erasure recovery is disabled here")
         intent = ErasureAttempt.objects.filter(patient_id_snapshot=patient_id).first()
         if intent is None:
             raise CommandError("No erasure intent exists for this account")
@@ -34,13 +44,7 @@ class Command(BaseCommand):
                 "action": "DRY_RUN",
             }))
             return
-        if (
-            not settings.DEBUG
-            or os.environ.get("VERCEL")
-            or os.environ.get("VERCEL_ENV")
-            or os.environ.get("IAMINA_G3_LOCAL_SYNTHETIC_RECOVERY") != "1"
-        ):
-            raise CommandError("Synthetic erasure recovery is disabled here")
+
         if options["confirm"] != f"ERASE-SYNTHETIC-{patient_id}":
             raise CommandError("Explicit synthetic recovery confirmation required")
         if intent.state != ErasureAttempt.State.PENDING:

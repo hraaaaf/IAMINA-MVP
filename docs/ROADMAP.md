@@ -1,5 +1,11 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — commande de reprise synthétique verrouillée SQLite (26/10/2026)
+
+**Goal :** exécution G3 possible exclusivement dans la base synthétique locale, jamais vers Neon/PostgreSQL depuis une commande `DEBUG=True`. **Preuve préalable :** HEAD `eeb8a731`, **21/22 GitHub runs SUCCESS**, CI #40410797675, Django drift #40410797718, E2E local W01-B #40410797641 SUCCESS ; unique échec OIDC #40410797741 délibérément différé. **Risque trouvé :** `reconcile_synthetic_erasure --execute` vérifiait `DEBUG`/environnement et opt-in mais **pas le moteur de DB**, donc aurait pu contacter PostgreSQL/Neon avec un environnement local mal configuré.
+
+**Correctif candidat** : avant toute lecture de base en mode exécution, ajouter garde `settings.DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3'` en plus des gardes existants DEBUG, VERCEL/VERCEL_ENV absents, `IAMINA_G3_LOCAL_SYNTHETIC_RECOVERY=1` et confirmation exacte. **Six nouveaux tests purement synthétiques** : dry-run sans fuite d'UID, refus sans opt-in **avant DB query**, refus PostgreSQL même opt-in **avant DB query**, refus Vercel, refus confirmation invalide, chemin autorisé SQLite opt-in avec suppression réelle interceptée. Aucune modification API, migration, visuel, Vercel, Neon ou Production. **CI du nouveau HEAD exigée ; code seul ≠ certification.** G3 encore OPEN : revue indépendante, concurrence/atomicité interservices et stratégie cloud séparée.
+
 ## W01-G3 — 26/10/2026 — OpenAPI contract drift identifié, correctif non fonctionnel
 
 **Preuve CI au HEAD `a7316765`** : run [#40410229977](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40410229977), étape `OpenAPI schema is current` en FAILURE après succès de Ruff, import-linter, bandit et egress checks. Unique diff observé au log `docs/api/openapi.json` : description `DELETE /account` ancienne « Delete the authenticated patient's account and associated patient data. » contre nouveau docstring « Delete only after cleanup and SQL receipt both succeed. ». **Correction ciblée :** restaurer le docstring historique de l'endpoint pour respecter le schéma OpenAPI canonique sans toucher à la signature, aux payloads, à la logique de suppression ni au fichier `docs/api/openapi.json`. Résultat CI exact nouveau HEAD à prouver ; G5/OIDC toujours différé et W01 NO-GO.
