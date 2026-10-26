@@ -9,6 +9,7 @@ from .feedback import DemoFeedback
 from .lab_report import LabReport
 from .memory import IAminaDeepMemorySnapshot, IAminaMemorySnapshot
 from .patient import DiabetesProfile, PatientProfile
+from .pending_document_extraction import PendingDocumentExtraction
 from .proactive_insight import ProactiveInsightState
 from .summary import AISummary
 
@@ -29,6 +30,7 @@ __all__ = [
     'AfterVisitFactRecord',
     'AuditLog',
     'LabReport',
+    'PendingDocumentExtraction',
     'CGMConnection',
     'CGMSensorSession',
     'CGMReadingRecord',
