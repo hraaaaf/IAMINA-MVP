@@ -273,3 +273,39 @@ jobs:
           else
             echo "PR size OK ($CHANGED ≤ $THRESHOLD)."
           fi
+
+  openapi-regenerate-w01-temporary:
+    name: W01 one-shot OpenAPI regeneration
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'feat/w01-preview-same-origin-bff-20261017' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: sqlite:///ci-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/w01-preview-same-origin-bff-20261017
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Generate and commit exact OpenAPI
+        run: |
+          set -euo pipefail
+          pip install -r backend/requirements.txt
+          (cd backend && python manage.py export_openapi) > docs/api/openapi.json
+          python -m json.tool docs/api/openapi.json > /dev/null
+          git add docs/api/openapi.json
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(w01): regenerate OpenAPI schema from Django'
+          git push origin HEAD:feat/w01-preview-same-origin-bff-20261017
