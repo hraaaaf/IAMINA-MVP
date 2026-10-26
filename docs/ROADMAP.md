@@ -41,6 +41,14 @@
 
 **CI exacte après ce changement :** [CI #40242157736](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157736), [BFF #40242157713](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157713), [migrations #40242157641](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157641) déclenchées ; **aucune certification verte sur `3851f408` avant résultat**. Le contrôle `PYTEST_CURRENT_TEST` est une barrière de sûreté contre activation accidentelle, **pas** une preuve d'identité fictive ni un mécanisme de confidentialité patient. Aucun merge, Vercel deploy, activation ni mutation Neon. Le design Option A (jeton opaque AEAD) reste **proposition à auditer**, pas décision de conformité.
 
+### W01-G5 — 26/10/2026 : frontière multipart Flutter Web Preview alignée avant émission (nouveau lot)
+
+**CI SHA précédent certifiée :** PR [#1128](https://github.com/hraaaaf/IAMINA-MVP/pull/1128) HEAD `f8374f56425ffb774e907ee06299e5fb1c72ce6a` : **20/20 workflows `completed/success`**, 0 actif/rouge. [CI générale #40253992422](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40253992422), [BFF #40253992612](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40253992612) et [migration drift #40253992503](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40253992503) SUCCESS. Logs du job BFF #121351794758 : **32 tests Node, 32 pass, 0 fail**, y compris `W01 G5 real multipart framing counts toward 4 MiB Web body cap`.
+
+**Goal du nouveau correctif :** ne pas autoriser l'envoi de documents trop gros sur **le seul transport Flutter Web Preview same-origin**, sans modifier les clients natifs ni l'API clinique à 15 Mio. **Implémentation candidate** dans `frontend/lib/services/api_client.dart` : booléen de compilation `IAMINA_PREVIEW_SAME_ORIGIN_API` existant, garde `isDocumentMultipartRequestAllowed` calculée sur `http.MultipartRequest.contentLength` (enveloppe comprise) **avant `request.send()`**. BFF inchangé à 4 Mio, et `isDocumentUploadSizeAllowed` inchangé à 15 Mio pour les autres transports. Tests Flutter supplémentaires : limite multipart exacte / +1 / fichier 4 Mio / fichier 15 Mio, maintien 15 Mio hors Preview, contrôle statique avant egress. Aucun changement de texte, disposition ou code de rendu UI ; aucun déploiement.
+
+**Succès attendu, pas encore revendiqué :** CI Flutter/analyse + contrats Node au **nouveau SHA exact** GREEN ; preuve navigateur SSO/Preview hébergée reste OPEN. Les images potentiellement minimisées peuvent être admises seulement si le corps final est dans la limite. Cette correction n'installe aucun cache Redis et n'autorise aucun stockage Pulper clinique sur PostgreSQL/PITR. **W01 NO-GO / W02 gelé**.
+
 ### W01-G5 — PREUVE CI 20/20 exacte au HEAD fbea0b91 (26/10/2026)
 
 **Goal :** attester les contrôles d'effacement SQL (audit obligatoire, transaction `user.delete` + `ErasureRecord`, HTTP 500 et rollback) sans les confondre avec une certification hébergée.

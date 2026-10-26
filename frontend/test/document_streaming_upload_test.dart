@@ -31,6 +31,15 @@ void main() {
       expect(listened, isFalse);
     });
 
+    test('client rejects Preview multipart oversize before opening stream', () {
+      final source = File('lib/services/api_client.dart').readAsStringSync();
+      expect(source, contains('isDocumentMultipartRequestAllowed(request)'));
+      expect(
+        source.indexOf('isDocumentMultipartRequestAllowed(request)'),
+        lessThan(source.indexOf('final streamed = await request.send()')),
+      );
+    });
+
     test('document picker requests a stream instead of eager bytes', () {
       final source = File(
         'lib/features/documents/document_import_screen.dart',

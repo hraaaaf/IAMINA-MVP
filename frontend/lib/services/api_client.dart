@@ -257,9 +257,22 @@ const String kBaseUrl = String.fromEnvironment(
 );
 
 const int kMaxDocumentUploadBytes = 15 * 1024 * 1024;
+const int kMaxPreviewWebRequestBytes = 4 * 1024 * 1024;
 
 bool isDocumentUploadSizeAllowed(int byteLength) =>
     byteLength > 0 && byteLength <= kMaxDocumentUploadBytes;
+
+/// W01 Preview proxy caps the *entire HTTP body*, including multipart headers.
+/// Check the exact encoded length before opening the network stream, rather
+/// than comparing only file bytes against the proxy's 4 MiB request limit.
+/// Other clients retain the backend's existing 15 MiB file guard.
+bool isDocumentMultipartRequestAllowed(
+  http.MultipartRequest request, {
+  bool sameOriginPreview = kIaminaPreviewSameOriginApi,
+}) =>
+    !sameOriginPreview ||
+    (request.contentLength > 0 &&
+        request.contentLength <= kMaxPreviewWebRequestBytes);
 
 enum TreatmentMirrorStatus { confirmed, conflict, unavailable }
 
@@ -944,6 +957,9 @@ class ApiClient {
           contentType: MediaType.parse(mimeType),
         ),
       );
+      // Preview's 4 MiB BFF limit includes the multipart envelope. Do not
+      // consume fileStream or send a doomed oversized Web request.
+      if (!isDocumentMultipartRequestAllowed(request)) return null;
 
       requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send().timeout(

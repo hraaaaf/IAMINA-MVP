@@ -70,6 +70,14 @@ Le commit [`3851f4082a35f7fd08c210be96912330559abbfa`](https://github.com/hraaaa
 
 Une [matrice de pré-revue sécurité C1](2026-10-25-w01-c1-pulper-safety-gate.md) précise les scénarios d'échec et preuves nécessaires avant de sélectionner une architecture de stockage documentaire. Il ne s'agit **ni** d'une revue indépendante **ni** d'une certification privacy de l'option AEAD. **Statut inchangé W01 NO-GO**, G1–G7 non fermés, W02 gelé.
 
+## 3.6 Limite Preview Web — garde exacte sur corps multipart (26/10/2026)
+
+**Évidence précédente** : HEAD `f8374f56`, **20/20 CI GitHub SUCCESS** ; Node BFF test réel multipart 32/32 PASS, dont rejet 413 avant upstream après dépassement du corps HTTP 4 Mio.
+
+**Code nouveau à certifier** : Flutter `ApiClient` garde `http.MultipartRequest.contentLength <= 4 MiB` si et seulement si `kIaminaPreviewSameOriginApi` est vrai, après construction de la part MIME et avant toute émission `request.send()`. Les autres modes conservent 15 Mio sur fichier. Tests Flutter exact-boundary et non-régression ajoutés. Pas d'effet sur UI, Production ou mobile normal ; la Preview déjà déployée reste à un ancien SHA tant qu'aucun déploiement distinct n'est autorisé. **Nouveau commit = CI à reprendre depuis zéro**.
+
+**Limites G5** : la réduction effective de taille dans Web Preview ne rend pas 4–15 Mio accessibles ; elle refuse proprement avant transport (l'interface affiche encore son état d'erreur existant). Revue UX si un libellé de taille devait être ajouté, avec captures BEFORE/AFTER. G5 hébergé, privacy, Firebase et G6 restent OPEN.
+
 ## 3.5 Clôture preuve CI fbea0b91 / nouvelles frontières upload (26/10/2026)
 
 **Preuve contrôlée sur GitHub :** PR #1128 SHA `fbea0b91572ba97041dd51dd0cdbe13da3d71610` ; 20/20 workflows conclus **SUCCESS**. La dernière certification navigateur [#40250150561](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40250150561) a été initialement CANCELLED au run attempt 1, puis rerun du seul job et SUCCESS en **attempt 2** sur le même SHA ; CI #40250150596, BFF #40250150593 et migration drift #40250150547 SUCCESS. Cette preuve vaut pour ce SHA seulement.
