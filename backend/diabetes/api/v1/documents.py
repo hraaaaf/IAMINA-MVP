@@ -34,6 +34,7 @@ from ninja import File, Router, Schema, UploadedFile
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from core.models import BasePatientProfile
 from diabetes.models import DocumentConfirmationNonce, LabReport
+from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.stateless_preview import (
     PreviewEnvelopeError,
     issue_preview_envelope,
@@ -41,7 +42,6 @@ from diabetes.services.documents.stateless_preview import (
     synthetic_mode_enabled,
     verify_preview_envelope,
 )
-from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
 from llm.usage_telemetry import record_media_bytes
 from media.documents.retention import PENDING_EXTRACTION_POLICY
