@@ -216,6 +216,6 @@ def delete_account(request, data: DeleteConfirmSchema):
 
     except HttpError:
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("delete_account failed for patient=%s", patient_id)
-        return {"detail": "Erasure failed — contact support."}, 500
+        raise HttpError(500, "Erasure failed — contact support.") from exc
