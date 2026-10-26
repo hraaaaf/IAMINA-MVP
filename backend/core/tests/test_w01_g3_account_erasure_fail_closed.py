@@ -119,7 +119,9 @@ def test_cleanup_hook_failure_prevents_firebase_and_sql_deletion(monkeypatch, is
     assert caught.value.status_code == 500
     assert User.objects.filter(pk=user.pk).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=user.pk).exists()
-    assert not ErasureAttempt.objects.filter(patient_id_snapshot=user.pk).exists()
+    intent = ErasureAttempt.objects.get(patient_id_snapshot=user.pk)
+    assert intent.state == ErasureAttempt.State.PENDING
+    assert intent.firebase_uid_snapshot == "firebase-hookfailed"
     assert isolated_erasure == []
 
 
@@ -194,3 +196,58 @@ def test_sql_audit_failure_after_firebase_keeps_pending_intent(monkeypatch, isol
     assert ErasureAttempt.objects.get(patient_id_snapshot=patient_id).state == (
         ErasureAttempt.State.PENDING
     )
+
+
+@pytest.mark.django_db
+def test_mismatched_pending_intent_blocks_before_any_cleanup_hook(
+    monkeypatch, isolated_erasure
+):
+    user = _linked_user("mismatch")
+    patient_id = user.pk
+    ErasureAttempt.objects.create(
+        patient_id_snapshot=patient_id,
+        firebase_uid_snapshot="another-synthetic-identity",
+    )
+    monkeypatch.setattr(
+        account.firebase_admin.auth, "delete_user",
+        lambda uid: pytest.fail("Mismatched identity reached Firebase"),
+    )
+
+    with pytest.raises(HttpError) as denied:
+        account.delete_account(
+            _request(user),
+            account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+        )
+
+    assert denied.value.status_code == 503
+    assert User.objects.filter(pk=patient_id).exists()
+    assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+    assert isolated_erasure == []
+
+
+@pytest.mark.django_db
+def test_completed_intent_blocks_hook_reexecution(
+    monkeypatch, isolated_erasure
+):
+    user = _linked_user("completed")
+    patient_id = user.pk
+    ErasureAttempt.objects.create(
+        patient_id_snapshot=patient_id,
+        firebase_uid_snapshot="",
+        state=ErasureAttempt.State.COMPLETED,
+    )
+    monkeypatch.setattr(
+        account.firebase_admin.auth, "delete_user",
+        lambda uid: pytest.fail("Completed attempt reached Firebase"),
+    )
+
+    with pytest.raises(HttpError) as denied:
+        account.delete_account(
+            _request(user),
+            account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+        )
+
+    assert denied.value.status_code == 503
+    assert User.objects.filter(pk=patient_id).exists()
+    assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+    assert isolated_erasure == []

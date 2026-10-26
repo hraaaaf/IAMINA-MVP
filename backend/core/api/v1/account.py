@@ -176,19 +176,9 @@ def _erase_account_data(user, request=None):
     except BasePatientProfile.DoesNotExist:
         firebase_uid = ""
 
-    try:
-        run_account_delete_hooks(patient_id, firebase_uid)
-    except RuntimeError as hook_error:
-        logger.error(
-            "delete_account blocked by hook failures patient=%s category=cleanup_hook",
-            patient_id,
-        )
-        raise HttpError(
-            500, "Erasure blocked by cleanup hook failure — contact support."
-        ) from hook_error
-
-    # Commit a durable, uniquely keyed intent *before* contacting Firebase.
-    # It remains pending if an external call or the subsequent SQL transaction fails.
+    # Commit recovery intent before *any* cleanup hook or Firebase side effect.
+    # A hook failure must remain traceable; a conflicting intent must block
+    # hooks before they can mutate data belonging to another identity.
     with transaction.atomic():
         attempt, _ = ErasureAttempt.objects.get_or_create(
             patient_id_snapshot=patient_id,
@@ -201,6 +191,17 @@ def _erase_account_data(user, request=None):
             raise HttpError(
                 503, "Erasure requires manual identity reconciliation — contact support."
             )
+
+    try:
+        run_account_delete_hooks(patient_id, firebase_uid)
+    except RuntimeError as hook_error:
+        logger.error(
+            "delete_account blocked by hook failures patient=%s category=cleanup_hook",
+            patient_id,
+        )
+        raise HttpError(
+            500, "Erasure blocked by cleanup hook failure — contact support."
+        ) from hook_error
 
     if firebase_uid:
         try:

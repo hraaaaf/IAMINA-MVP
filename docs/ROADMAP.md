@@ -1,5 +1,13 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — intent avant hooks, sécurité reprise — 26/10/2026
+
+**Bilan certifié au HEAD `4ab2e74b0fc88ae08831b30de7daf6a4f6ed53af`** : 22/22 workflows terminés, **21 SUCCESS / 1 FAILURE** (OIDC/Vercel différé #40413074478). CI [#40413074328](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40413074328), migration drift [#40413074429](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40413074429), Web→API→PG synthétique [#40413074395](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40413074395) sont SUCCESS. Ce vert certifie le code/tests locaux de G3, **pas** l'atomicité Firebase+SQL, le déploiement cloud ni la conformité réglementaire.
+
+**Audit indépendant du code** : malgré le mécanisme `ErasureAttempt`, l'appel `run_account_delete_hooks()` se trouvait avant la création de l'intent. Un hook ayant déjà muté de la donnée puis échouant ne laissait aucun intent durable. Une identité en conflit pouvait donc atteindre les hooks avant d'être refusée. **Correctif candidat** : valider/committer `ErasureAttempt` avant **tous** les hooks et avant Firebase ; après échec de hook, intent `pending` avec User conservé, aucun reçu de succès ; identité Firebase différente ou intent `completed` ⇒ refus HTTP 503 **avant** tout hook. Mise à jour du test hook et deux nouveaux tests de protection. Aucun changement de la signature API ni du schéma OpenAPI. **CI du nouveau SHA non encore certifiée.**
+
+**G3 reste OPEN** : hooks non-idempotents, concurrence entre DELETE, accès patient pendant l'effacement, reprise opérateur cloud, privacy/retenue des UIDs et G7 indépendant restent à traiter ; pas de certification sécurité globale. OIDC/G5 toujours ajourné. Aucun changement Vercel/Neon/Production ni merge.
+
 ## W01-G3 — commande de reprise synthétique verrouillée SQLite (26/10/2026)
 
 **Goal :** exécution G3 possible exclusivement dans la base synthétique locale, jamais vers Neon/PostgreSQL depuis une commande `DEBUG=True`. **Preuve préalable :** HEAD `eeb8a731`, **21/22 GitHub runs SUCCESS**, CI #40410797675, Django drift #40410797718, E2E local W01-B #40410797641 SUCCESS ; unique échec OIDC #40410797741 délibérément différé. **Risque trouvé :** `reconcile_synthetic_erasure --execute` vérifiait `DEBUG`/environnement et opt-in mais **pas le moteur de DB**, donc aurait pu contacter PostgreSQL/Neon avec un environnement local mal configuré.
