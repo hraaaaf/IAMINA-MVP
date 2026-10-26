@@ -1,5 +1,9 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — correction CI Ruff imports, 26/10/2026
+
+**Preuve HEAD 70d828ee :** GitHub Actions CI #40408329673 FAILURE ; job **Backend — PostgreSQL source-of-truth SUCCESS**, job **Backend — ruff + pytest FAILURE** sur étape `ruff check .`, exactement trois `I001` d'import trié dans `backend/core/api/v1/account.py`, `backend/core/models/__init__.py`, `backend/core/tests/test_w01_g3_account_erasure_fail_closed.py` ; pytest non exécuté dans ce job après l'échec du lint. **Correctif candidat :** ordre alphabétique `erasure_attempt` avant `erasure_record` pour les trois importations ; aucun comportement, endpoint, migration ou test modifié. **Succès à prouver :** Ruff et pytest/PostgreSQL verts sur le nouveau HEAD, avec OIDC/G5 conservé OPEN/différé. W01 NO-GO.
+
 ## W01-G3 — intent d'effacement durable et reprise synthétique (26/10/2026)
 
 **Goal :** éviter un état Firebase effacé / SQL non effacé **sans aucune preuve de reprise**, en conservant un intent transactionnel avant l'appel externe. **Implémentation candidate non déployée** : `core.ErasureAttempt` (migration `0020` en code seulement), clé unique du patient, `pending` → `completed`; le nouvel intent reste `pending` si Firebase échoue ou si audit/suppression/reçu SQL rollback après Firebase, permettant un retry avec `UserNotFoundError` traité idempotent. L'UID Firebase est vidé de l'intent après réussite ; reçu d'effacement et audit sont committés dans la même transaction que `completed`. **Test synthétique injecte une panne SQL après Firebase**, vérifie intent pending et récupération via helper, sans service externe réel. Deuxième test injecte panne d'audit après Firebase.

@@ -12,8 +12,8 @@ from ninja.errors import HttpError
 
 from core.api.v1 import account
 from core.models import BasePatientProfile
-from core.models.erasure_record import ErasureRecord
 from core.models.erasure_attempt import ErasureAttempt
+from core.models.erasure_record import ErasureRecord
 
 
 @pytest.fixture
