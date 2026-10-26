@@ -70,6 +70,14 @@ Le commit [`3851f4082a35f7fd08c210be96912330559abbfa`](https://github.com/hraaaa
 
 Une [matrice de pré-revue sécurité C1](2026-10-25-w01-c1-pulper-safety-gate.md) précise les scénarios d'échec et preuves nécessaires avant de sélectionner une architecture de stockage documentaire. Il ne s'agit **ni** d'une revue indépendante **ni** d'une certification privacy de l'option AEAD. **Statut inchangé W01 NO-GO**, G1–G7 non fermés, W02 gelé.
 
+## 3.5 Clôture preuve CI fbea0b91 / nouvelles frontières upload (26/10/2026)
+
+**Preuve contrôlée sur GitHub :** PR #1128 SHA `fbea0b91572ba97041dd51dd0cdbe13da3d71610` ; 20/20 workflows conclus **SUCCESS**. La dernière certification navigateur [#40250150561](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40250150561) a été initialement CANCELLED au run attempt 1, puis rerun du seul job et SUCCESS en **attempt 2** sur le même SHA ; CI #40250150596, BFF #40250150593 et migration drift #40250150547 SUCCESS. Cette preuve vaut pour ce SHA seulement.
+
+**Nouvelle régression test-only de frontière Web préparée dans la même PR :** le BFF limite le corps HTTP complet à 4 MiB, tandis que la prévalidation Flutter accepte 15 MiB de fichier. Un test multipart réel ajoute le coût d'encapsulation et démontre le refus HTTP 413 de tout corps plus grand, zéro fetch API. Le test lui-même doit encore recevoir la CI du commit intégrateur ; aucun changement de plafond/UX ni faux GO clinique.
+
+**Risques majeurs toujours ouverts :** cohérence Firebase / transaction SQL, effacement Redis quand absent, uploads au-delà du plafond Web, séparation patients et tests réseau en Preview, revue sécurité independent et DR Neon non vide. Statut W01 NO-GO / W02 gelé.
+
 ## 3.4 Mise à jour G5 — audit obligatoire vs best-effort (26/10/2026)
 
 **Preuve GitHub reçue :** [CI #40248660852](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40248660852) et les **20/20 workflows** au SHA W01 `ebb864ea9c29c86ef6ef19770d550d131437c5a7` étaient COMPLETED/SUCCESS, avec BFF et migration drift verts. Le crash Django Ninja lors des tests de rollback est corrigé.

@@ -689,6 +689,70 @@ test('W01 G5 Web body-size boundary: 4 MiB exact, +1 and 15 MiB fail closed', as
   });
 });
 
+test('W01 G5 real multipart framing counts toward 4 MiB Web body cap', async () => {
+  await withEnv(async () => {
+    const cap = 4 * 1024 * 1024;
+    const boundary = 'w01-synthetic-boundary';
+    const prefix = Buffer.from(
+      '--' + boundary + '\r\n' +
+      'Content-Disposition: form-data; name="file"; filename="synthetic.pdf"\r\n' +
+      'Content-Type: application/pdf\r\n\r\n'
+    );
+    const suffix = Buffer.from('\r\n--' + boundary + '--\r\n');
+    const framing = prefix.length + suffix.length;
+    assert.ok(framing > 0 && framing < 1024);
+
+    let upstreamCalls = 0;
+    globalThis.fetch = async (url, options) => {
+      upstreamCalls++;
+      assert.equal(url, apiOrigin + '/api/v1/documents/ingest');
+      assert.equal(options.body.length, cap);
+      assert.equal(options.headers.get('authorization'), 'Bearer synthetic-A');
+      assert.equal(options.headers.get('cookie'), null);
+      assert.equal(
+        options.headers.get('content-type'),
+        'multipart/form-data; boundary=' + boundary
+      );
+      return new Response('{"ok":true}', {
+        status: 200,
+        headers: {'content-type': 'application/json'},
+      });
+    };
+
+    async function upload(fileBytes) {
+      const incoming = Readable.from([
+        prefix, Buffer.alloc(fileBytes, 65), suffix,
+      ]);
+      Object.assign(incoming, req('documents/ingest', {
+        method: 'POST',
+        headers: {
+          origin,
+          'content-type': 'multipart/form-data; boundary=' + boundary,
+          authorization: 'Bearer synthetic-A',
+          cookie: '_vercel_jwt=private-not-forwarded',
+        },
+      }));
+      const output = streamingResponse();
+      await proxy(incoming, output, async () => 'synthetic-oidc');
+      return output;
+    }
+
+    // The 4 MiB cap applies to *whole multipart body*, not just file bytes.
+    const fitting = await upload(cap - framing);
+    assert.equal(fitting.statusCode, 200);
+    assert.deepEqual(JSON.parse(fitting.text()), {ok:true});
+    assert.equal(upstreamCalls, 1);
+
+    const oneByteOver = await upload(cap - framing + 1);
+    assert.equal(oneByteOver.statusCode, 413);
+    const fileExactlyCap = await upload(cap);
+    assert.equal(fileExactlyCap.statusCode, 413);
+    const clinical15MiB = await upload(15 * 1024 * 1024);
+    assert.equal(clinical15MiB.statusCode, 413);
+    assert.equal(upstreamCalls, 1, 'Oversized multipart never reaches Django');
+  });
+});
+
 test('W01 G5 unavailable API and leaked SSO challenge never confirm a mutation', async () => {
   await withEnv(async () => {
     const input=req('profile',{headers:{authorization:'Bearer fixture-A',
