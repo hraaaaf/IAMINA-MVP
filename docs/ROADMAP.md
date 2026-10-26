@@ -1,6 +1,17 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
-> [W01 — contrat de preuve parallèle C1/G2/G3/G5/G6](assessments/2026-10-26-w01-parallel-gates.md) : prototype synthétique local, pas de GO cloud, CI du nouveau SHA à vérifier.\n\n### W01 — 26/10/2026 — directive propriétaire : GH Actions E2E, ZÉRO REDIS, G2/G6/C1 parallélisés
+
+## W01 — 26/10/2026 — contrôle CI et nettoyage de régénération OpenAPI
+
+**Goal technique de ce lot :** supprimer la dérive du schéma OpenAPI sans conserver d'automatisation d'écriture GitHub dans les workflows de release. **Preuve vérifiée :** PR [#1128](https://github.com/hraaaaf/IAMINA-MVP/pull/1128) au SHA `83cb4a7d1de7418a4dabcc51342813b1e459a230` : **21/21 workflows SUCCESS**, dont [CI générale #40354987984](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40354987984) ; job de génération OpenAPI SUCCESS, Backend Ruff/pytest SUCCESS (`2939 passed, 6 skipped, 3 xfailed`), Backend PostgreSQL SUCCESS, W01-B Chrome/PostgreSQL synthétique SUCCESS. Le JSON `docs/api/openapi.json` enregistré contient la représentation échappée Unicode attendue par Django ; son contrôle OpenAPI était SUCCESS.
+
+**Closeout du correctif :** retrait du job temporaire `openapi-regenerate-w01-temporary` dans `.github/workflows/ci.yml` au commit `529f2c69e4bedd2945254409a59e317af6c81fc7`, puis suppression du workflow temporaire `.github/workflows/w01-openapi-regenerate.yml` au commit `7ea9b10252cfd1d68896060fd42999185cf0530c`. **Les 21 workflows du HEAD nettoyé #7ea9b102 ont été relancés ; état initial QUEUED/PENDING, aucune certification GREEN sur ce SHA à cette heure.** Ce rapport documentaire déclenche également sa propre CI, à vérifier au nouveau HEAD avant toute clôture.
+
+**Portée limitée :** vert GitHub Actions = validité du code et du parcours de synthèse **local**, pas un GO W01. G2 protection Production Neon `protected=false`, G3 secrets/isolement, G5 authentification/E2E hébergé normal, G6 restauration Neon distante non vide et G7 audit indépendant restent ouverts selon leur matrice. **Aucune intervention Vercel/Neon Production, aucun merge**. W01 NO-GO, W02 gelé. **Next exact :** CI du HEAD documentaire → résoudre tout rouge → gates G2/G3/C1/G5/G6 et GO explicites pour opérations cloud → G7 → autorisation merge et postmerge.
+
+> [W01 — contrat de preuve parallèle C1/G2/G3/G5/G6](assessments/2026-10-26-w01-parallel-gates.md) : prototype synthétique local, pas de GO cloud, CI du nouveau SHA à vérifier.
+
+### W01 — 26/10/2026 — directive propriétaire : GH Actions E2E, ZÉRO REDIS, G2/G6/C1 parallélisés
 
 **Contrainte actuelle confirmée par le propriétaire :** aucune donnée médicale n'est présente actuellement, y compris Pulper. Tests strictement **synthétiques**. Cela ne garantit pas automatiquement que le futur chemin soit sans PHI ; ne jamais autoriser le staging document clinique en PostgreSQL brut ou cache inter-processus non protégé.
 
