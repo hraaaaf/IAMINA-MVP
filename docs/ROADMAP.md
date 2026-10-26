@@ -1,5 +1,9 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — 26/10/2026 — OpenAPI contract drift identifié, correctif non fonctionnel
+
+**Preuve CI au HEAD `a7316765`** : run [#40410229977](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40410229977), étape `OpenAPI schema is current` en FAILURE après succès de Ruff, import-linter, bandit et egress checks. Unique diff observé au log `docs/api/openapi.json` : description `DELETE /account` ancienne « Delete the authenticated patient's account and associated patient data. » contre nouveau docstring « Delete only after cleanup and SQL receipt both succeed. ». **Correction ciblée :** restaurer le docstring historique de l'endpoint pour respecter le schéma OpenAPI canonique sans toucher à la signature, aux payloads, à la logique de suppression ni au fichier `docs/api/openapi.json`. Résultat CI exact nouveau HEAD à prouver ; G5/OIDC toujours différé et W01 NO-GO.
+
 ## W01-G3 — correction CI Ruff imports, 26/10/2026
 
 **Preuve HEAD 70d828ee :** GitHub Actions CI #40408329673 FAILURE ; job **Backend — PostgreSQL source-of-truth SUCCESS**, job **Backend — ruff + pytest FAILURE** sur étape `ruff check .`, exactement trois `I001` d'import trié dans `backend/core/api/v1/account.py`, `backend/core/models/__init__.py`, `backend/core/tests/test_w01_g3_account_erasure_fail_closed.py` ; pytest non exécuté dans ce job après l'échec du lint. **Correctif candidat :** ordre alphabétique `erasure_attempt` avant `erasure_record` pour les trois importations ; aucun comportement, endpoint, migration ou test modifié. **Succès à prouver :** Ruff et pytest/PostgreSQL verts sur le nouveau HEAD, avec OIDC/G5 conservé OPEN/différé. W01 NO-GO.

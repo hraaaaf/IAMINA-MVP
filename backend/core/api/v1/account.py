@@ -237,7 +237,7 @@ def _erase_account_data(user, request=None):
 
 @router.delete("/account")
 def delete_account(request, data: DeleteConfirmSchema):
-    """Delete only after cleanup and SQL receipt both succeed."""
+    """Delete the authenticated patient's account and associated patient data."""
     if data.confirm != "DELETE MY ACCOUNT":
         raise HttpError(400, "Confirmation string mismatch. Send: DELETE MY ACCOUNT")
     patient_id = request.user.pk
