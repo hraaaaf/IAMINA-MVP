@@ -93,6 +93,8 @@ def test_execute_rejects_vercel_even_on_sqlite(monkeypatch):
 
 @pytest.mark.django_db
 def test_execute_needs_exact_confirmation(monkeypatch):
+    if settings.DATABASES["default"]["ENGINE"] != "django.db.backends.sqlite3":
+        pytest.skip("SQLite-only positive path; PostgreSQL is covered by deny test")
     user = User.objects.create_user(username="cli-confirm", password="SyntheticOnly!1")
     ErasureAttempt.objects.create(patient_id_snapshot=user.pk)
     monkeypatch.setenv("IAMINA_G3_LOCAL_SYNTHETIC_RECOVERY", "1")
@@ -110,6 +112,8 @@ def test_execute_needs_exact_confirmation(monkeypatch):
 
 @pytest.mark.django_db
 def test_execute_local_sqlite_calls_only_explicit_synthetic_recovery(monkeypatch):
+    if settings.DATABASES["default"]["ENGINE"] != "django.db.backends.sqlite3":
+        pytest.skip("SQLite-only positive path; PostgreSQL is covered by deny test")
     user = User.objects.create_user(username="cli-execute", password="SyntheticOnly!1")
     ErasureAttempt.objects.create(patient_id_snapshot=user.pk)
     monkeypatch.setenv("IAMINA_G3_LOCAL_SYNTHETIC_RECOVERY", "1")
