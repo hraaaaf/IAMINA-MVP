@@ -33,11 +33,22 @@ void main() {
 
     test('client rejects Preview multipart oversize before opening stream', () {
       final source = File('lib/services/api_client.dart').readAsStringSync();
-      expect(source, contains('isDocumentMultipartRequestAllowed(request)'));
-      expect(
-        source.indexOf('isDocumentMultipartRequestAllowed(request)'),
-        lessThan(source.indexOf('final streamed = await request.send()')),
+      final methodStart = source.indexOf(
+        'Future<PulperPreview?> _ingestDocumentStreamRaw(',
       );
+      expect(methodStart, greaterThanOrEqualTo(0));
+      final methodEnd = source.indexOf('/// Stage 2:', methodStart);
+      expect(methodEnd, greaterThan(methodStart));
+      final methodBody = source.substring(methodStart, methodEnd);
+
+      final multipartAdded = methodBody.indexOf('request.files.add(');
+      final guard = methodBody.indexOf(
+        'if (!isDocumentMultipartRequestAllowed(request)) return null;',
+      );
+      final send = methodBody.indexOf('final streamed = await request.send()');
+      expect(multipartAdded, greaterThanOrEqualTo(0));
+      expect(guard, greaterThan(multipartAdded));
+      expect(send, greaterThan(guard));
     });
 
     test('document picker requests a stream instead of eager bytes', () {
