@@ -184,14 +184,37 @@ def _erase_account_data(user, request=None):
             patient_id_snapshot=patient_id,
             defaults={"firebase_uid_snapshot": firebase_uid},
         )
-        if (
-            attempt.state != ErasureAttempt.State.PENDING
-            or attempt.firebase_uid_snapshot != firebase_uid
-        ):
+        if attempt.firebase_uid_snapshot != firebase_uid:
+            raise HttpError(
+                503, "Erasure requires manual identity reconciliation — contact support."
+            )
+        # A compare-and-swap claim commits before any external side effect.
+        # Only one concurrent request can change PENDING -> IN_PROGRESS.
+        claimed = ErasureAttempt.objects.filter(
+            pk=attempt.pk, state=ErasureAttempt.State.PENDING
+        ).update(state=ErasureAttempt.State.IN_PROGRESS)
+        if claimed != 1:
             raise HttpError(
                 503, "Erasure requires manual identity reconciliation — contact support."
             )
 
+    try:
+        _perform_claimed_erasure(user, request, attempt, firebase_uid, username)
+    except Exception:
+        # Hooks and Firebase may have already performed irreversible actions.
+        # Never silently replay them; manual review must authorize recovery.
+        updated = ErasureAttempt.objects.filter(
+            pk=attempt.pk, state=ErasureAttempt.State.IN_PROGRESS
+        ).update(state=ErasureAttempt.State.REVIEW_REQUIRED)
+        if updated != 1:
+            logger.error("erasure_review_mark_failed patient=%s", patient_id)
+        raise
+    logger.info("RGPD erasure complete for patient_id=%s", patient_id)
+
+
+def _perform_claimed_erasure(user, request, attempt, firebase_uid, username):
+    """Run effects only after an exclusive durable erasure claim exists."""
+    patient_id = user.pk
     try:
         run_account_delete_hooks(patient_id, firebase_uid)
     except RuntimeError as hook_error:
@@ -214,8 +237,8 @@ def _erase_account_data(user, request=None):
                 503, "Erasure blocked by identity cleanup failure — contact support."
             ) from firebase_error
 
-    # A rollback after successful Firebase deletion leaves ErasureAttempt pending.
-    # Recovery may replay the idempotent Firebase "already absent" branch.
+    # A failure after Firebase triggers REVIEW_REQUIRED: never auto-replay
+    # partially completed hooks or an uncertain external deletion.
     with transaction.atomic():
         record_audit_required(user, "account_deleted", request, username=username)
         user.delete()
@@ -225,7 +248,7 @@ def _erase_account_data(user, request=None):
             completed_at=timezone.now(),
         )
         completed = ErasureAttempt.objects.filter(
-            pk=attempt.pk, state=ErasureAttempt.State.PENDING
+            pk=attempt.pk, state=ErasureAttempt.State.IN_PROGRESS
         ).update(
             state=ErasureAttempt.State.COMPLETED,
             firebase_uid_snapshot="",
@@ -233,7 +256,6 @@ def _erase_account_data(user, request=None):
         )
         if completed != 1:
             raise RuntimeError("Erasure reconciliation state changed unexpectedly")
-    logger.info("RGPD erasure complete for patient_id=%s", patient_id)
 
 
 @router.delete("/account")

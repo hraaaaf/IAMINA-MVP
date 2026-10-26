@@ -1,5 +1,13 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — défense contre DELETE concurrents (26/10/2026)
+
+**Constat exact HEAD précédent `249de57a` :** 21/22 CI workflows SUCCESS, seul OIDC #40416472281 FAILURE différé. CI principale [#40416472528](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40416472528) SUCCESS ; migration drift [#40416472352](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40416472352) SUCCESS ; W01-B local [#40416472324](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40416472324) SUCCESS.
+
+**Risque identifié** : deux DELETE simultanés pouvaient valider `pending` avant les hooks, puis déclencher deux fois les effets externes Firebase. **Correctif candidat** : transition conditionnelle et transactionnelle `pending → in_progress` à une seule ligne (CAS) **avant** tout effet ; second concurrent reçoit HTTP 503 sans hooks/Firebase ; réussite `in_progress → completed` dans la même transaction SQL que User.delete/audit/reçu ; en cas d'exception attrapée (hook, Firebase, SQL), `in_progress → review_required`, donc PAS de retry automatique d'effets partiels. Si le processus meurt avant ce marquage, `in_progress` demeure verrouillé et nécessite examen humain. Migration de choix `core.0021_erasure_attempt_claim_states` **dans code uniquement**, aucun SQL Neon. Tests G3 existants adaptés + refus `in_progress` + second appel réentrant (simulation d'interleaving **pas** une preuve de stress 2 connexions PostgreSQL). La reprise après `review_required` exige jugement opérateur hors app : une réinitialisation de l'état dans le test est synthétique uniquement, non une procédure Production.
+
+**Limites** : sérialisation réelle sur PostgreSQL à vérifier avec 2 connexions, cas DB indisponible lors du marquage `review_required`, hooks non idempotents, exposition santé pendant `in_progress`, rétention UID, procédure cloud d'examen/reprise, G7 indépendante. Statut **G3 OPEN**, aucun déploiement ni mutation cloud autorisée ; OIDC/G5 différé.
+
 ## W01-G3 — intent avant hooks, sécurité reprise — 26/10/2026
 
 **Bilan certifié au HEAD `4ab2e74b0fc88ae08831b30de7daf6a4f6ed53af`** : 22/22 workflows terminés, **21 SUCCESS / 1 FAILURE** (OIDC/Vercel différé #40413074478). CI [#40413074328](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40413074328), migration drift [#40413074429](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40413074429), Web→API→PG synthétique [#40413074395](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40413074395) sont SUCCESS. Ce vert certifie le code/tests locaux de G3, **pas** l'atomicité Firebase+SQL, le déploiement cloud ni la conformité réglementaire.

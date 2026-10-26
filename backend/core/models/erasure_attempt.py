@@ -7,6 +7,8 @@ class ErasureAttempt(models.Model):
 
     class State(models.TextChoices):
         PENDING = "pending", "Pending"
+        IN_PROGRESS = "in_progress", "In progress"
+        REVIEW_REQUIRED = "review_required", "Review required"
         COMPLETED = "completed", "Completed"
 
     patient_id_snapshot = models.IntegerField(unique=True)

@@ -54,7 +54,7 @@ def test_firebase_transport_failure_blocks_success_and_keeps_sql_user(monkeypatc
     assert BasePatientProfile.objects.filter(patient_id=user.pk).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=user.pk).exists()
     intent = ErasureAttempt.objects.get(patient_id_snapshot=user.pk)
-    assert intent.state == ErasureAttempt.State.PENDING
+    assert intent.state == ErasureAttempt.State.REVIEW_REQUIRED
     assert intent.firebase_uid_snapshot == "firebase-failed"
     assert isolated_erasure == ["hooks", "firebase"]
 
@@ -120,7 +120,7 @@ def test_cleanup_hook_failure_prevents_firebase_and_sql_deletion(monkeypatch, is
     assert User.objects.filter(pk=user.pk).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=user.pk).exists()
     intent = ErasureAttempt.objects.get(patient_id_snapshot=user.pk)
-    assert intent.state == ErasureAttempt.State.PENDING
+    assert intent.state == ErasureAttempt.State.REVIEW_REQUIRED
     assert intent.firebase_uid_snapshot == "firebase-hookfailed"
     assert isolated_erasure == []
 
@@ -152,10 +152,24 @@ def test_sql_receipt_failure_keeps_durable_intent_and_retry_recovers(
     assert User.objects.filter(pk=patient_id).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
     intent = ErasureAttempt.objects.get(patient_id_snapshot=patient_id)
-    assert intent.state == ErasureAttempt.State.PENDING
+    assert intent.state == ErasureAttempt.State.REVIEW_REQUIRED
     assert intent.firebase_uid_snapshot == "firebase-sqlrollback"
 
-    # Recovery can replay without relying on a deleted Firebase credential.
+    # An ordinary retry must NOT execute hooks or Firebase twice.
+    with pytest.raises(HttpError) as denied:
+        account.delete_account(
+            _request(User.objects.get(pk=patient_id)),
+            account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+        )
+    assert denied.value.status_code == 503
+    assert remote_calls == ["firebase-sqlrollback"]
+
+    # Synthetic-only test simulates explicit off-line operator adjudication.
+    # There is deliberately no automatic recovery or hosted unlock endpoint.
+    ErasureAttempt.objects.filter(
+        patient_id_snapshot=patient_id,
+        state=ErasureAttempt.State.REVIEW_REQUIRED,
+    ).update(state=ErasureAttempt.State.PENDING)
     monkeypatch.setattr(ErasureRecord.objects, "create", create_receipt)
     def already_removed(uid):
         raise firebase_admin.auth.UserNotFoundError("synthetic already absent")
@@ -194,7 +208,7 @@ def test_sql_audit_failure_after_firebase_keeps_pending_intent(monkeypatch, isol
     assert User.objects.filter(pk=patient_id).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
     assert ErasureAttempt.objects.get(patient_id_snapshot=patient_id).state == (
-        ErasureAttempt.State.PENDING
+        ErasureAttempt.State.REVIEW_REQUIRED
     )
 
 
@@ -251,3 +265,61 @@ def test_completed_intent_blocks_hook_reexecution(
     assert User.objects.filter(pk=patient_id).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
     assert isolated_erasure == []
+
+
+@pytest.mark.django_db
+def test_in_progress_intent_blocks_duplicate_before_hooks_and_firebase(
+    monkeypatch, isolated_erasure
+):
+    user = _linked_user("inflight")
+    patient_id = user.pk
+    ErasureAttempt.objects.create(
+        patient_id_snapshot=patient_id,
+        firebase_uid_snapshot="firebase-inflight",
+        state=ErasureAttempt.State.IN_PROGRESS,
+    )
+    monkeypatch.setattr(
+        account.firebase_admin.auth, "delete_user",
+        lambda uid: pytest.fail("In-progress claim reached Firebase"),
+    )
+    with pytest.raises(HttpError) as denied:
+        account.delete_account(
+            _request(user),
+            account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+        )
+    assert denied.value.status_code == 503
+    assert isolated_erasure == []
+    assert User.objects.filter(pk=patient_id).exists()
+
+
+@pytest.mark.django_db
+def test_reentrant_second_delete_is_rejected_before_external_effects(
+    monkeypatch, isolated_erasure
+):
+    """Deterministic interleaving, not a two-connection PostgreSQL stress test."""
+    user = _linked_user("reentrant")
+    patient_id = user.pk
+    external_calls = []
+    attempted_second = []
+    def hook_with_second_delete(pk, uid):
+        isolated_erasure.append("hook")
+        with pytest.raises(HttpError) as denied:
+            account._erase_account_data(User.objects.get(pk=pk))
+        attempted_second.append(denied.value.status_code)
+    monkeypatch.setattr(account, "run_account_delete_hooks", hook_with_second_delete)
+    monkeypatch.setattr(
+        account.firebase_admin.auth, "delete_user",
+        lambda uid: external_calls.append(uid),
+    )
+    result = account.delete_account(
+        _request(user),
+        account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+    )
+    assert result["detail"] == "Account and all associated data deleted."
+    assert attempted_second == [503]
+    assert external_calls == ["firebase-reentrant"]
+    assert isolated_erasure == ["hook", "audit", "logout"]
+    assert not User.objects.filter(pk=patient_id).exists()
+    assert ErasureAttempt.objects.get(
+        patient_id_snapshot=patient_id
+    ).state == ErasureAttempt.State.COMPLETED
