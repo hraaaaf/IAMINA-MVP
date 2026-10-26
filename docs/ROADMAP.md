@@ -41,6 +41,14 @@
 
 **CI exacte après ce changement :** [CI #40242157736](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157736), [BFF #40242157713](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157713), [migrations #40242157641](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40242157641) déclenchées ; **aucune certification verte sur `3851f408` avant résultat**. Le contrôle `PYTEST_CURRENT_TEST` est une barrière de sûreté contre activation accidentelle, **pas** une preuve d'identité fictive ni un mécanisme de confidentialité patient. Aucun merge, Vercel deploy, activation ni mutation Neon. Le design Option A (jeton opaque AEAD) reste **proposition à auditer**, pas décision de conformité.
 
+### W01-G5 — CI du correctif HTTP 500 et sécurité du port d'audit (26/10/2026)
+
+**Preuve exacte déjà verte :** PR [#1128](https://github.com/hraaaaf/IAMINA-MVP/pull/1128), commit [`ebb864ea9c29c86ef6ef19770d550d131437c5a7`](https://github.com/hraaaaf/IAMINA-MVP/commit/ebb864ea9c29c86ef6ef19770d550d131437c5a7), **20/20 workflows COMPLETED/SUCCESS**, zéro échec ni actif à la lecture. [CI générale #40248660852](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40248660852), [BFF #40248660832](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40248660832), [drift #40248660850](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40248660850) tous SUCCESS. Deux régressions de rollback `DELETE /account` passent sur SQLite et PostgreSQL ; le correctif `raise HttpError(500,...)` évite la précédente erreur `unhashable type: 'dict'`.
+
+**Travail G5 supplémentaire initié, résultat encore à valider par CI du SHA suivant :** le port `core/audit.py::record_audit` est historiquement **best-effort** (erreurs du sink avalées et absence de sink acceptée). Ce comportement permettait de committer un effacement sans audit de succès, même sous `transaction.atomic()`. Introduire une voie distincte `record_audit_required` qui lève lorsque le sink est absent/défaillant **pour `DELETE /account` seulement**, sans modifier les usages best-effort du consentement. Deux tests exigent 500, compte conservé, aucun reçu ni faux audit lors d'une panne du sink. Tests existants couvrent le refus Redis, l'échec de `user.delete`, l'échec du reçu et le succès nominal. **Ne jamais attribuer le GREEN `ebb864ea` au nouveau HEAD.**
+
+**Limites persistantes :** Redis indisponible interdit toujours la suppression normale ; Firebase/auth externe, caches et logout restent hors transaction SQL ; aucun produit n'est autorisé pour PHI sur la voie expérimentale Pulper PostgreSQL. **W01 NO-GO**. Pas de déploiement Vercel, merge ni mutation Neon. **Next :** valider CI exacte, consigner SHA final, poursuivre C1 et G5/G6 hébergés uniquement sous leurs autorisations.
+
 ### W01-G7 — GREEN exact SHA et closeout PR temporaire (25/10/2026)
 
 **Preuve finale lue directement dans GitHub :**

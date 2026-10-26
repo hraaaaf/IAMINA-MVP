@@ -18,7 +18,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from core.account_hooks import run_account_delete_hooks
-from core.audit import record_audit
+from core.audit import record_audit, record_audit_required
 from core.consent_notice import profile_has_current_consent, validate_notice_claim
 from core.models import AIConsentReceipt, AIMediaConsentGrant, BasePatientProfile
 from core.models.erasure_record import ErasureRecord
@@ -204,7 +204,7 @@ def delete_account(request, data: DeleteConfirmSchema):
         # Commit the audit, user erasure and erasure receipt together:
         # none may report success if a later database write fails.
         with transaction.atomic():
-            record_audit(user, "account_deleted", request, username=username)
+            record_audit_required(user, "account_deleted", request, username=username)
             user.delete()
             ErasureRecord.objects.create(
                 patient_id_snapshot=patient_id,

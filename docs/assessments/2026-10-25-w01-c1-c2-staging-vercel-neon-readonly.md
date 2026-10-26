@@ -70,6 +70,14 @@ Le commit [`3851f4082a35f7fd08c210be96912330559abbfa`](https://github.com/hraaaa
 
 Une [matrice de pré-revue sécurité C1](2026-10-25-w01-c1-pulper-safety-gate.md) précise les scénarios d'échec et preuves nécessaires avant de sélectionner une architecture de stockage documentaire. Il ne s'agit **ni** d'une revue indépendante **ni** d'une certification privacy de l'option AEAD. **Statut inchangé W01 NO-GO**, G1–G7 non fermés, W02 gelé.
 
+## 3.4 Mise à jour G5 — audit obligatoire vs best-effort (26/10/2026)
+
+**Preuve GitHub reçue :** [CI #40248660852](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40248660852) et les **20/20 workflows** au SHA W01 `ebb864ea9c29c86ef6ef19770d550d131437c5a7` étaient COMPLETED/SUCCESS, avec BFF et migration drift verts. Le crash Django Ninja lors des tests de rollback est corrigé.
+
+**Nouvelle régression source :** `record_audit` dans `backend/core/audit.py` avalait un échec de son sink. Une transaction SQL n'impose pas l'audit si la fonction ne lève pas ; une suppression pouvait ainsi réussir sans preuve d'audit correspondante. Une variante fail-closed `record_audit_required` est désormais destinée exclusivement à `DELETE /account`, appelée dans la même transaction SQL que la suppression et le reçu ; deux tests négatifs couvrent sink absent et sink défaillant. La voie de consentement best-effort reste inchangée. **CI du nouveau SHA : en attente de verdict.**
+
+**Risque hors périmètre :** le hook Redis et Firebase sont des effets externes hors transaction ; aucun exactly-once distribué n'est démontré. W01 NO-GO malgré le GREEN précédent.
+
 ## 4. Next exact / gate humain
 
 **Next immédiat exécutable sans permission :** revue source/tests du mécanisme proposé Option A, préparation des oracles négatifs et de concurrence, comparaison documentaire des providers d'enveloppe chiffrée ; conserver le staging SQL #1151 isolé, sans activation clinique. Pour C2, cartographier seulement les aliases et métadonnées sans casser de déploiement.
