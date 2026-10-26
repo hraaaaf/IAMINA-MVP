@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from core.consent_notice import expected_notice_claim
 from core.models import BasePatientProfile
+from core.models.erasure_record import ErasureRecord
 from core.tests.consent_helpers import grant_current_ai_consent
 from diabetes.models import AuditLog, DiabetesProfile
 
@@ -270,6 +271,13 @@ class DeleteAccountTest(TestCase):
                 patient_id=patient_id,
                 raw_text="SYNTHETIC_RETAINED_RAW_TEXT",
             ).exists()
+        )
+        # A failed purge must not be reported as an accomplished erasure.
+        self.assertFalse(
+            AuditLog.objects.filter(patient_id=patient_id, action="account_deleted").exists()
+        )
+        self.assertFalse(
+            ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
         )
 
     def test_audit_log_preserved_after_erasure(self):

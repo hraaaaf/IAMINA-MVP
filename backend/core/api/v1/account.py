@@ -178,8 +178,6 @@ def delete_account(request, data: DeleteConfirmSchema):
         firebase_uid = ""
 
     try:
-        record_audit(user, "account_deleted", request, username=username)
-
         try:
             run_account_delete_hooks(patient_id, firebase_uid)
         except RuntimeError as hook_error:
@@ -191,6 +189,10 @@ def delete_account(request, data: DeleteConfirmSchema):
                 500,
                 "Erasure blocked by cleanup hook failure — contact support.",
             ) from hook_error
+
+        # Do not emit a successful erasure audit before all cleanup hooks pass.
+        # In particular, an unavailable pending-document cache blocks deletion.
+        record_audit(user, "account_deleted", request, username=username)
 
         if firebase_uid:
             try:
