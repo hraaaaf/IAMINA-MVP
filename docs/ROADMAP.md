@@ -1,6 +1,6 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
-### W01 — 26/10/2026 — directive propriétaire : GH Actions E2E, ZÉRO REDIS, G2/G6/C1 parallélisés
+> [W01 — contrat de preuve parallèle C1/G2/G3/G5/G6](assessments/2026-10-26-w01-parallel-gates.md) : prototype synthétique local, pas de GO cloud, CI du nouveau SHA à vérifier.\n\n### W01 — 26/10/2026 — directive propriétaire : GH Actions E2E, ZÉRO REDIS, G2/G6/C1 parallélisés
 
 **Contrainte actuelle confirmée par le propriétaire :** aucune donnée médicale n'est présente actuellement, y compris Pulper. Tests strictement **synthétiques**. Cela ne garantit pas automatiquement que le futur chemin soit sans PHI ; ne jamais autoriser le staging document clinique en PostgreSQL brut ou cache inter-processus non protégé.
 

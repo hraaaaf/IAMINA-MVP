@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+
+from django.db import IntegrityError, transaction
 from typing import List, Optional
 
 from django.conf import settings
@@ -31,7 +33,15 @@ from django.http import HttpRequest
 from ninja import File, Router, Schema, UploadedFile
 
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
-from diabetes.models import LabReport
+from core.models import BasePatientProfile
+from diabetes.models import DocumentConfirmationNonce, LabReport
+from diabetes.services.documents.stateless_preview import (
+    PreviewEnvelopeError,
+    issue_preview_envelope,
+    preview_nonce_digest,
+    synthetic_mode_enabled,
+    verify_preview_envelope,
+)
 from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
 from llm.usage_telemetry import record_media_bytes
@@ -74,6 +84,7 @@ class MedicationOut(Schema):
 class PulperPreviewResponse(Schema):
     """Returned on confirm=False — nothing persisted yet."""
     batch_id:         str
+    preview_token:    Optional[str] = None
     document_type:    str
     source_format:    str
     confidence:       float
@@ -84,6 +95,10 @@ class PulperPreviewResponse(Schema):
     clinical_notes:   str
     warnings:         List[str]
     errors:           List[str]
+
+
+class PulperConfirmRequest(Schema):
+    preview_token: Optional[str] = None
 
 
 class PulperConfirmResponse(Schema):
@@ -181,7 +196,8 @@ def ingest_document(
     # W01 synthetic-only Redis-free mode deliberately pauses two-step Pulper.
     # Per-worker memory is not a valid handoff for sensitive or clinical data.
     # Reject before reading uploaded bytes or invoking extraction/AI egress.
-    if getattr(settings, "IAMINA_NO_REDIS", False):
+    stateless = synthetic_mode_enabled()
+    if getattr(settings, "IAMINA_NO_REDIS", False) and not stateless:
         return 503, {"detail": "Import documentaire temporairement indisponible."}
 
     # Reject before extracting or caching: ingestion cannot confirm itself.
@@ -202,22 +218,32 @@ def ingest_document(
     # ── Extract ────────────────────────────────────────────────────────────────
     output    = ingest(file_bytes, filename, mime_type)
     batch_id  = str(uuid.uuid4())
-    key = _pending_key(patient.id, batch_id)
-    try:
-        cache.set(key, output, timeout=_PENDING_TTL)
-        # django-redis IGNORE_EXCEPTIONS=True can swallow a failed write.
-        # Never issue a confirmable batch ID unless it can be read back.
-        staged = cache.get(key)
-    except Exception:
-        staged = None
-    if staged is None:
-        logger.warning("documents.ingest pending extraction unavailable")
-        return 503, {
-            "detail": "Prévisualisation temporairement indisponible. Réessayez."
-        }
+    preview_token = None
+    if stateless:
+        try:
+            profile = BasePatientProfile.objects.get(patient=patient)
+            preview_token = issue_preview_envelope(
+                output, patient_id=patient.id, batch_id=batch_id,
+                auth_version=profile.auth_token_version,
+            )
+        except (BasePatientProfile.DoesNotExist, PreviewEnvelopeError):
+            return 503, {"detail": "Prévisualisation temporairement indisponible."}
+    else:
+        key = _pending_key(patient.id, batch_id)
+        try:
+            cache.set(key, output, timeout=_PENDING_TTL)
+            staged = cache.get(key)
+        except Exception:
+            staged = None
+        if staged is None:
+            logger.warning("documents.ingest pending extraction unavailable")
+            return 503, {
+                "detail": "Prévisualisation temporairement indisponible. Réessayez."
+            }
 
     preview = PulperPreviewResponse(
         batch_id=batch_id,
+        preview_token=preview_token,
         document_type=output.document_type,
         source_format=output.source_format,
         confidence=output.confidence,
@@ -260,11 +286,42 @@ def ingest_document(
 
 
 @router.post("/documents/confirm/{batch_id}", response=PulperConfirmResponse)
-def confirm_import(request: HttpRequest, batch_id: str):
+def confirm_import(
+    request: HttpRequest, batch_id: str,
+    data: Optional[PulperConfirmRequest] = None,
+):
     """
     Persist a previously staged extraction (batch_id from /ingest response).
     Called when the user taps "Confirmer" in the Flutter UI.
     """
+    if synthetic_mode_enabled():
+        patient = request.auth
+        try:
+            if data is None or not data.preview_token:
+                raise PreviewEnvelopeError("missing proof")
+            profile = BasePatientProfile.objects.get(patient=patient)
+            output = verify_preview_envelope(
+                data.preview_token, patient_id=patient.id, batch_id=batch_id,
+                auth_version=profile.auth_token_version,
+            )
+            # One ACID transaction owns both nonce consumption and persistence.
+            with transaction.atomic():
+                DocumentConfirmationNonce.objects.create(
+                    patient=patient, nonce_digest=preview_nonce_digest(batch_id),
+                )
+                result = _do_persist(output, patient, batch_id)
+                if not result.ok:
+                    raise PreviewEnvelopeError("persistence rollback")
+                return result
+        except (
+            PreviewEnvelopeError, BasePatientProfile.DoesNotExist,
+            IntegrityError, ValueError,
+        ):
+            return PulperConfirmResponse(
+                ok=False, lab_report_id=None, glucose_readings_saved=0,
+                glucose_duplicates=0,
+                errors=["Session expirée ou confirmation déjà utilisée."],
+            )
     if getattr(settings, "IAMINA_NO_REDIS", False):
         return PulperConfirmResponse(
             ok=False, lab_report_id=None, glucose_readings_saved=0,

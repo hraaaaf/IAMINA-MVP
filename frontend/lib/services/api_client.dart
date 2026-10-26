@@ -980,11 +980,13 @@ class ApiClient {
   }
 
   /// Stage 2: confirm extraction → persists to DB.
-  Future<PulperConfirmResult?> confirmDocumentImport(String batchId) async {
+  Future<PulperConfirmResult?> confirmDocumentImport(String batchId, {String? previewToken}) async {
     try {
       final response = await _client.post(
         Uri.parse('/api/v1/documents/confirm/$batchId'),
-        body: <String, dynamic>{},
+        body: <String, dynamic>{
+          if (previewToken != null) 'preview_token': previewToken,
+        },
       );
       if (response.isSuccessful && response.body != null) {
         final result = PulperConfirmResult.fromJson(

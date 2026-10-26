@@ -86,6 +86,8 @@ class MedicationPreview {
 /// Nothing is persisted yet — this is the preview for user confirmation.
 class PulperPreview {
   final String   batchId;
+  /// Holds encrypted preview only in volatile browser memory.
+  final String?  previewToken;
   final String   documentType;
   final String   sourceFormat;
   final double   confidence;
@@ -99,6 +101,7 @@ class PulperPreview {
 
   const PulperPreview({
     required this.batchId,
+    this.previewToken,
     required this.documentType,
     required this.sourceFormat,
     required this.confidence,
@@ -121,6 +124,7 @@ class PulperPreview {
 
   factory PulperPreview.fromJson(Map<String, dynamic> j) => PulperPreview(
         batchId:       j['batch_id']      as String,
+        previewToken:  j['preview_token'] as String?,
         documentType:  j['document_type'] as String,
         sourceFormat:  j['source_format'] as String,
         confidence:    (j['confidence']   as num).toDouble(),

@@ -187,6 +187,16 @@ KIMI_API_KEY = os.environ.get('KIMI_API_KEY', '')
 # cross-worker document handoff. The Pulper two-step route is disabled while
 # this mode is active, before extraction or clinical write.
 IAMINA_NO_REDIS = os.environ.get("IAMINA_NO_REDIS", "False").lower() == "true"
+# Triple-gated local synthetic prototype. Never serve patients or Vercel.
+IAMINA_PULPER_STATELESS_SYNTHETIC = (
+    os.environ.get("IAMINA_PULPER_STATELESS_SYNTHETIC", "False").lower() == "true"
+)
+VERCEL = os.environ.get("VERCEL", "").lower() == "1"
+VERCEL_ENV = os.environ.get("VERCEL_ENV", "")
+if IAMINA_PULPER_STATELESS_SYNTHETIC and (
+    not IAMINA_NO_REDIS or not DEBUG or VERCEL or VERCEL_ENV
+):
+    raise ValueError("Stateless Pulper prototype is CI-local synthetic only")
 if IAMINA_NO_REDIS and os.environ.get("VERCEL_ENV") == "production":
     raise ValueError("IAMINA_NO_REDIS synthetic-only mode cannot serve Production")
 
