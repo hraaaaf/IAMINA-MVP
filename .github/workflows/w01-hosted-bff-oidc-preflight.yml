@@ -58,6 +58,17 @@ jobs:
           const token = process.env.W01_GITHUB_OIDC;
           assert.ok(typeof token === 'string' && token.length > 30, 'GITHUB_OIDC_MISSING');
 
+          // Diagnostic: print only the allowlisted *public workload claims*.
+          // Never print the JWT, signature, full payload, or any credential.
+          const publicFields = ['aud', 'sub', 'repository', 'ref', 'workflow_ref', 'job_workflow_ref', 'event_name'];
+          const jwtParts = token.split('.');
+          assert.equal(jwtParts.length, 3, 'OIDC_JWT_SHAPE_INVALID');
+          const claims = JSON.parse(Buffer.from(jwtParts[1], 'base64url').toString('utf8'));
+          const publicClaims = Object.fromEntries(publicFields
+            .filter(key => Object.hasOwn(claims, key))
+            .map(key => [key, claims[key]]));
+          console.log('W01_OIDC_PUBLIC_CLAIMS', JSON.stringify(publicClaims));
+
           // Never print response bodies, JWTs, cookies or credentials.
           async function get(path) {
             const result = await fetch(base + path, {
