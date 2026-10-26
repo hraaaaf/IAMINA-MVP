@@ -104,6 +104,17 @@ def main() -> int:
                 "A_RELOGIN")
         users["A"]["token"] = body["access_token"]
         require(count_users() == 2, "NO_UNEXPECTED_USERS")
+
+        # HTTP contract: Redis-free mode never confirms transient Pulper batches.
+        # There is no ingestion/upload of medical or synthetic document bytes.
+        status, body = http(
+            "/api/v1/documents/confirm/w01-synthetic-nonexistent",
+            "POST", token=users["B"]["token"],
+        )
+        require(status == 200 and body.get("ok") is False and
+                body.get("lab_report_id") is None and
+                body.get("glucose_readings_saved") == 0,
+                "PULPER_CONFIRM_DISABLED_WITHOUT_REDIS")
     finally:
         # Always attempt app-level cleanup. NEVER use a direct SQL DELETE here.
         for label in ("A", "B"):
