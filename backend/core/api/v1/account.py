@@ -192,8 +192,6 @@ def delete_account(request, data: DeleteConfirmSchema):
 
         # Do not emit a successful erasure audit before all cleanup hooks pass.
         # In particular, an unavailable pending-document cache blocks deletion.
-        record_audit(user, "account_deleted", request, username=username)
-
         if firebase_uid:
             try:
                 firebase_admin.auth.delete_user(firebase_uid)
@@ -203,11 +201,15 @@ def delete_account(request, data: DeleteConfirmSchema):
                     patient_id,
                 )
 
-        user.delete()
-        ErasureRecord.objects.create(
-            patient_id_snapshot=patient_id,
-            firebase_uid_snapshot=firebase_uid,
-        )
+        # Commit the audit, user erasure and erasure receipt together:
+        # none may report success if a later database write fails.
+        with transaction.atomic():
+            record_audit(user, "account_deleted", request, username=username)
+            user.delete()
+            ErasureRecord.objects.create(
+                patient_id_snapshot=patient_id,
+                firebase_uid_snapshot=firebase_uid,
+            )
         logout(request)
         logger.info("RGPD erasure complete for patient_id=%s", patient_id)
         return {"detail": "Account and all associated data deleted."}
