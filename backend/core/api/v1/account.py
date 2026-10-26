@@ -195,11 +195,17 @@ def delete_account(request, data: DeleteConfirmSchema):
         if firebase_uid:
             try:
                 firebase_admin.auth.delete_user(firebase_uid)
-            except Exception:
-                logger.exception(
-                    "firebase_delete_failed patient=%s",
-                    patient_id,
-                )
+            except firebase_admin.auth.UserNotFoundError:
+                # An identity already removed is an idempotent erasure outcome.
+                logger.info("firebase_identity_already_absent patient=%s", patient_id)
+            except Exception as firebase_error:
+                # Never report full erasure after an unverified Firebase failure.
+                # Do not emit the exception text (which may contain identifiers).
+                logger.error("firebase_delete_blocked patient=%s", patient_id)
+                raise HttpError(
+                    503,
+                    "Erasure blocked by identity cleanup failure — contact support.",
+                ) from firebase_error
 
         # Commit the audit, user erasure and erasure receipt together:
         # none may report success if a later database write fails.

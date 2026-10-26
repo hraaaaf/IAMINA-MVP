@@ -1,5 +1,11 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — suppression de compte Firebase : correctif fail-closed candidat (26/10/2026)
+
+**Goal :** ne jamais annoncer `account deleted` si `firebase_admin.auth.delete_user` échoue de façon non vérifiable. **Portée Web/code seulement, sans déploiement, SQL cloud, ni changement de secret.** Modification dans `backend/core/api/v1/account.py` : échec Firebase hors `UserNotFoundError` ⇒ `HTTP 503`, sans suppression de `auth_user` ni création de `ErasureRecord` ; `UserNotFoundError` est traité comme identité déjà supprimée ; compte purement natif inchangé. Régressions synthétiques `backend/core/tests/test_w01_g3_account_erasure_fail_closed.py` : panne Firebase, UID absent, compte natif, hook bloquant.
+
+**État : CANDIDAT, CI et comportements à vérifier au SHA du commit.** Ce patch évite le **faux succès** mais **ne garantit pas une transaction distribuée** : hooks exécutés avant Firebase peuvent avoir leurs propres effets partiels ; si Firebase réussit et que la transaction SQL échoue ensuite, les deux systèmes peuvent encore diverger. G3 reste **OPEN** jusqu'à décision outbox/réconciliation durable, tests d'injection de panne SQL, revue privacy/security indépendante et correction des variables Vercel multi-environnements (`IAMINA_ENV` partagé Preview/Production). W01 NO-GO ; OIDC/G5 laissé en attente sur instruction propriétaire.
+
 ## W01-G5 — migration 0036 Neon sandbox appliquée et vérifiée (26/10/2026)
 
 **Goal :** matérialiser exclusivement `diabetes.0036_document_confirmation_nonce` dans la base **synthétique** Preview, sans écrire dans IAMINA Production. **Autorisation explicite reçue** : GO utilisateur pour cette migration, et seulement celle-ci.
