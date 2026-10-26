@@ -25,6 +25,7 @@ import logging
 import uuid
 from typing import List, Optional
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest
 from ninja import File, Router, Schema, UploadedFile
@@ -177,6 +178,12 @@ def ingest_document(
     The legacy confirm=True query argument is rejected; clinical persistence
     requires POST /documents/confirm/{batch_id}.
     """
+    # W01 synthetic-only Redis-free mode deliberately pauses two-step Pulper.
+    # Per-worker memory is not a valid handoff for sensitive or clinical data.
+    # Reject before reading uploaded bytes or invoking extraction/AI egress.
+    if getattr(settings, "IAMINA_NO_REDIS", False):
+        return 503, {"detail": "Import documentaire temporairement indisponible."}
+
     # Reject before extracting or caching: ingestion cannot confirm itself.
     if confirm:
         return 422, {"detail": "Confirmez le document après sa prévisualisation."}
@@ -258,6 +265,12 @@ def confirm_import(request: HttpRequest, batch_id: str):
     Persist a previously staged extraction (batch_id from /ingest response).
     Called when the user taps "Confirmer" in the Flutter UI.
     """
+    if getattr(settings, "IAMINA_NO_REDIS", False):
+        return PulperConfirmResponse(
+            ok=False, lab_report_id=None, glucose_readings_saved=0,
+            glucose_duplicates=0,
+            errors=["Session indisponible — import documentaire suspendu."],
+        )
     patient = request.auth
     output = _consume_pending_batch_once(patient.id, batch_id)
     if output is None:

@@ -1,5 +1,15 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+### W01 — 26/10/2026 — directive propriétaire : GH Actions E2E, ZÉRO REDIS, G2/G6/C1 parallélisés
+
+**Contrainte actuelle confirmée par le propriétaire :** aucune donnée médicale n'est présente actuellement, y compris Pulper. Tests strictement **synthétiques**. Cela ne garantit pas automatiquement que le futur chemin soit sans PHI ; ne jamais autoriser le staging document clinique en PostgreSQL brut ou cache inter-processus non protégé.
+
+**Lot code candidat :** `IAMINA_NO_REDIS=true` uniquement pour GitHub Actions / Preview de synthèse, `LocMemCache` seulement pour les dérivés jetables sans garantie multi-worker, **ingest Pulper refuse 503 avant lecture du fichier ou extraction**, confirmation ne persiste rien, suppression du compte ne contacte pas Redis puisque aucun nouveau lot temporaire n'est admissible. En revanche, ne **jamais** activer cette option en Production (`ValueError` garde), et le mode par défaut reste inchangé en attendant la bascule contrôlée. La migration de clés héritées nécessite preuve distincte d'absence/expiration.
+
+**Nouvelle preuve GitHub Actions exigée :** le workflow déjà autorisé `.github/workflows/w01b-web-api-pg-browser.yml` exécute Chrome réel Flutter→Django→PG16 local puis un vrai parcours HTTP natif A→B→A (inscription, Bearer invalide, isolation identité, révocation, reconnexion, effacement applicatif et contrôle SQL indépendant `auth_user=0`), **sans Redis et sans Neon/Vercel ni identifiants réels**. Deux nouveaux tests Django couvrent purge sans Redis et DELETE normal. Cette preuve est locale CI : ne pas l'appeler E2E hébergé SSO. BFF Node contract testé via workflow séparé.
+
+**G2/G6 et C1 en parallèle** : protection Production `square-sun-82359137/br-fragrant-frost-b1lbdfzs` encore `protected=false`; pas d'écriture sans accord, G6 restore distant non vide requiert autorisation de mutation sur sandbox synthétique ; design AEAD/no-PHI pour Pulper après preuve de suppression sans Redis. **G7 attend tous les gates.** Nouveau SHA non validé tant que CI exacte verte. Aucun Vercel deployment, merge ou SQL cloud.
+
 ## W01-G5 — Déploiements PREVIEW READY au SHA certifié (26/10/2026)
 
 **GO propriétaire reçu le 26/10 :** déployer **seulement** les deux projets Vercel Preview `iamina-review` (Web) et `iamina-certified` (API), SHA `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad`, conserver SSO et données purement synthétiques, ne pas toucher à Production.
