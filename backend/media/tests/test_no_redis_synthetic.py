@@ -1,5 +1,6 @@
 """W01 no-Redis synthetic-only gate; fail-closed document import and safe erasure."""
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -7,6 +8,7 @@ from django.test import TestCase, override_settings
 
 from core.models import BasePatientProfile
 from core.models.erasure_record import ErasureRecord
+from diabetes.api.v1.documents import confirm_import, ingest_document
 from media.documents.pending_cache import purge_patient_pending_extractions
 
 
@@ -41,9 +43,6 @@ class SyntheticNoRedisErasureTest(TestCase):
 @override_settings(IAMINA_NO_REDIS=True)
 class SyntheticNoRedisPulperDisabledTest(TestCase):
     def test_ingest_never_reads_file_or_stages_extracts_or_calls_ai(self):
-        from types import SimpleNamespace
-        from diabetes.api.v1.documents import ingest_document
-
         class NoReadUpload:
             name = "synthetic.pdf"
             content_type = "application/pdf"
@@ -71,9 +70,6 @@ class SyntheticNoRedisPulperDisabledTest(TestCase):
         self.assertNotIn("batch_id", payload)
 
     def test_confirm_never_consumes_cache_or_persists(self):
-        from types import SimpleNamespace
-        from diabetes.api.v1.documents import confirm_import
-
         request = SimpleNamespace(auth=SimpleNamespace(id=17))
         with (
             patch("diabetes.api.v1.documents._consume_pending_batch_once",
