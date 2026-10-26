@@ -13,6 +13,7 @@ from ninja.errors import HttpError
 from core.api.v1 import account
 from core.models import BasePatientProfile
 from core.models.erasure_record import ErasureRecord
+from core.models.erasure_attempt import ErasureAttempt
 
 
 @pytest.fixture
@@ -52,6 +53,9 @@ def test_firebase_transport_failure_blocks_success_and_keeps_sql_user(monkeypatc
     assert User.objects.filter(pk=user.pk).exists()
     assert BasePatientProfile.objects.filter(patient_id=user.pk).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=user.pk).exists()
+    intent = ErasureAttempt.objects.get(patient_id_snapshot=user.pk)
+    assert intent.state == ErasureAttempt.State.PENDING
+    assert intent.firebase_uid_snapshot == "firebase-failed"
     assert isolated_erasure == ["hooks", "firebase"]
 
 
@@ -70,6 +74,10 @@ def test_firebase_identity_already_absent_is_idempotent(monkeypatch, isolated_er
     assert not User.objects.filter(pk=patient_id).exists()
     receipt = ErasureRecord.objects.get(patient_id_snapshot=patient_id)
     assert receipt.completed_at is not None
+    intent = ErasureAttempt.objects.get(patient_id_snapshot=patient_id)
+    assert intent.state == ErasureAttempt.State.COMPLETED
+    assert intent.firebase_uid_snapshot == ""
+    assert intent.completed_at is not None
     assert isolated_erasure == ["hooks", "firebase", "audit", "logout"]
 
 
@@ -87,6 +95,10 @@ def test_native_user_requires_no_firebase_admin_call(monkeypatch, isolated_erasu
     assert not User.objects.filter(pk=patient_id).exists()
     receipt = ErasureRecord.objects.get(patient_id_snapshot=patient_id)
     assert receipt.completed_at is not None
+    intent = ErasureAttempt.objects.get(patient_id_snapshot=patient_id)
+    assert intent.state == ErasureAttempt.State.COMPLETED
+    assert intent.firebase_uid_snapshot == ""
+    assert intent.completed_at is not None
     assert isolated_erasure == ["hooks", "audit", "logout"]
 
 
@@ -107,4 +119,78 @@ def test_cleanup_hook_failure_prevents_firebase_and_sql_deletion(monkeypatch, is
     assert caught.value.status_code == 500
     assert User.objects.filter(pk=user.pk).exists()
     assert not ErasureRecord.objects.filter(patient_id_snapshot=user.pk).exists()
+    assert not ErasureAttempt.objects.filter(patient_id_snapshot=user.pk).exists()
     assert isolated_erasure == []
+
+
+@pytest.mark.django_db
+def test_sql_receipt_failure_keeps_durable_intent_and_retry_recovers(
+    monkeypatch, isolated_erasure
+):
+    """Crash after Firebase, before SQL commit: no success, recoverable intent."""
+    user = _linked_user("sqlrollback")
+    patient_id = user.pk
+    remote_calls = []
+    monkeypatch.setattr(
+        account.firebase_admin.auth, "delete_user",
+        lambda uid: remote_calls.append(uid),
+    )
+    create_receipt = ErasureRecord.objects.create
+    def fail_receipt(**kwargs):
+        raise RuntimeError("synthetic SQL receipt failure")
+    monkeypatch.setattr(ErasureRecord.objects, "create", fail_receipt)
+
+    with pytest.raises(HttpError) as failure:
+        account.delete_account(
+            _request(user),
+            account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+        )
+    assert failure.value.status_code == 500
+    assert remote_calls == ["firebase-sqlrollback"]
+    assert User.objects.filter(pk=patient_id).exists()
+    assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+    intent = ErasureAttempt.objects.get(patient_id_snapshot=patient_id)
+    assert intent.state == ErasureAttempt.State.PENDING
+    assert intent.firebase_uid_snapshot == "firebase-sqlrollback"
+
+    # Recovery can replay without relying on a deleted Firebase credential.
+    monkeypatch.setattr(ErasureRecord.objects, "create", create_receipt)
+    def already_removed(uid):
+        raise firebase_admin.auth.UserNotFoundError("synthetic already absent")
+    monkeypatch.setattr(account.firebase_admin.auth, "delete_user", already_removed)
+    recovered_user = User.objects.get(pk=patient_id)
+    account._erase_account_data(recovered_user)
+    assert not User.objects.filter(pk=patient_id).exists()
+    receipt = ErasureRecord.objects.get(patient_id_snapshot=patient_id)
+    assert receipt.completed_at is not None
+    intent.refresh_from_db()
+    assert intent.state == ErasureAttempt.State.COMPLETED
+    assert intent.firebase_uid_snapshot == ""
+    assert intent.completed_at is not None
+
+
+@pytest.mark.django_db
+def test_sql_audit_failure_after_firebase_keeps_pending_intent(monkeypatch, isolated_erasure):
+    user = _linked_user("auditrollback")
+    patient_id = user.pk
+    calls = []
+    monkeypatch.setattr(
+        account.firebase_admin.auth, "delete_user",
+        lambda uid: calls.append(uid),
+    )
+    def fail_audit(*args, **kwargs):
+        raise RuntimeError("synthetic audit unavailable")
+    monkeypatch.setattr(account, "record_audit_required", fail_audit)
+
+    with pytest.raises(HttpError) as failure:
+        account.delete_account(
+            _request(user),
+            account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT"),
+        )
+    assert failure.value.status_code == 500
+    assert calls == ["firebase-auditrollback"]
+    assert User.objects.filter(pk=patient_id).exists()
+    assert not ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+    assert ErasureAttempt.objects.get(patient_id_snapshot=patient_id).state == (
+        ErasureAttempt.State.PENDING
+    )

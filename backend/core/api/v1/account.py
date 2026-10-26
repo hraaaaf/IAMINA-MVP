@@ -22,6 +22,7 @@ from core.audit import record_audit, record_audit_required
 from core.consent_notice import profile_has_current_consent, validate_notice_claim
 from core.models import AIConsentReceipt, AIMediaConsentGrant, BasePatientProfile
 from core.models.erasure_record import ErasureRecord
+from core.models.erasure_attempt import ErasureAttempt
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["account"])
@@ -161,16 +162,14 @@ def withdraw_consent(request):
     return _consent_status(None)
 
 
-@router.delete("/account")
-def delete_account(request, data: DeleteConfirmSchema):
-    """Delete the authenticated patient's account and associated patient data."""
-    if data.confirm != "DELETE MY ACCOUNT":
-        raise HttpError(400, "Confirmation string mismatch. Send: DELETE MY ACCOUNT")
+def _erase_account_data(user, request=None):
+    """Perform deletion with a committed recovery intent before external effects.
 
-    user = request.user
-    patient_id = user.id
+    This is NOT a distributed transaction: the intent records SQL-after-Firebase
+    failures and permits explicit, idempotent local synthetic reconciliation.
+    """
+    patient_id = user.pk
     username = user.username
-
     try:
         base = BasePatientProfile.objects.get(patient=user)
         firebase_uid = base.firebase_uid or ""
@@ -178,51 +177,76 @@ def delete_account(request, data: DeleteConfirmSchema):
         firebase_uid = ""
 
     try:
-        try:
-            run_account_delete_hooks(patient_id, firebase_uid)
-        except RuntimeError as hook_error:
-            logger.error(
-                "delete_account blocked by hook failures patient=%s category=cleanup_hook",
-                patient_id,
-            )
+        run_account_delete_hooks(patient_id, firebase_uid)
+    except RuntimeError as hook_error:
+        logger.error(
+            "delete_account blocked by hook failures patient=%s category=cleanup_hook",
+            patient_id,
+        )
+        raise HttpError(
+            500, "Erasure blocked by cleanup hook failure — contact support."
+        ) from hook_error
+
+    # Commit a durable, uniquely keyed intent *before* contacting Firebase.
+    # It remains pending if an external call or the subsequent SQL transaction fails.
+    with transaction.atomic():
+        attempt, _ = ErasureAttempt.objects.get_or_create(
+            patient_id_snapshot=patient_id,
+            defaults={"firebase_uid_snapshot": firebase_uid},
+        )
+        if (
+            attempt.state != ErasureAttempt.State.PENDING
+            or attempt.firebase_uid_snapshot != firebase_uid
+        ):
             raise HttpError(
-                500,
-                "Erasure blocked by cleanup hook failure — contact support.",
-            ) from hook_error
-
-        # Do not emit a successful erasure audit before all cleanup hooks pass.
-        # In particular, an unavailable pending-document cache blocks deletion.
-        if firebase_uid:
-            try:
-                firebase_admin.auth.delete_user(firebase_uid)
-            except firebase_admin.auth.UserNotFoundError:
-                # An identity already removed is an idempotent erasure outcome.
-                logger.info("firebase_identity_already_absent patient=%s", patient_id)
-            except Exception as firebase_error:
-                # Never report full erasure after an unverified Firebase failure.
-                # Do not emit the exception text (which may contain identifiers).
-                logger.error("firebase_delete_blocked patient=%s", patient_id)
-                raise HttpError(
-                    503,
-                    "Erasure blocked by identity cleanup failure — contact support.",
-                ) from firebase_error
-
-        # Commit the audit, user erasure and erasure receipt together:
-        # none may report success if a later database write fails.
-        with transaction.atomic():
-            record_audit_required(user, "account_deleted", request, username=username)
-            user.delete()
-            ErasureRecord.objects.create(
-                patient_id_snapshot=patient_id,
-                firebase_uid_snapshot=firebase_uid,
-                completed_at=timezone.now(),
+                503, "Erasure requires manual identity reconciliation — contact support."
             )
-        logout(request)
-        logger.info("RGPD erasure complete for patient_id=%s", patient_id)
-        return {"detail": "Account and all associated data deleted."}
 
+    if firebase_uid:
+        try:
+            firebase_admin.auth.delete_user(firebase_uid)
+        except firebase_admin.auth.UserNotFoundError:
+            logger.info("firebase_identity_already_absent patient=%s", patient_id)
+        except Exception as firebase_error:
+            logger.error("firebase_delete_blocked patient=%s", patient_id)
+            raise HttpError(
+                503, "Erasure blocked by identity cleanup failure — contact support."
+            ) from firebase_error
+
+    # A rollback after successful Firebase deletion leaves ErasureAttempt pending.
+    # Recovery may replay the idempotent Firebase "already absent" branch.
+    with transaction.atomic():
+        record_audit_required(user, "account_deleted", request, username=username)
+        user.delete()
+        ErasureRecord.objects.create(
+            patient_id_snapshot=patient_id,
+            firebase_uid_snapshot=firebase_uid,
+            completed_at=timezone.now(),
+        )
+        completed = ErasureAttempt.objects.filter(
+            pk=attempt.pk, state=ErasureAttempt.State.PENDING
+        ).update(
+            state=ErasureAttempt.State.COMPLETED,
+            firebase_uid_snapshot="",
+            completed_at=timezone.now(),
+        )
+        if completed != 1:
+            raise RuntimeError("Erasure reconciliation state changed unexpectedly")
+    logger.info("RGPD erasure complete for patient_id=%s", patient_id)
+
+
+@router.delete("/account")
+def delete_account(request, data: DeleteConfirmSchema):
+    """Delete only after cleanup and SQL receipt both succeed."""
+    if data.confirm != "DELETE MY ACCOUNT":
+        raise HttpError(400, "Confirmation string mismatch. Send: DELETE MY ACCOUNT")
+    patient_id = request.user.pk
+    try:
+        _erase_account_data(request.user, request)
+        logout(request)
+        return {"detail": "Account and all associated data deleted."}
     except HttpError:
         raise
     except Exception as exc:
-        logger.exception("delete_account failed for patient=%s", patient_id)
+        logger.error("delete_account failed patient=%s category=erasure", patient_id)
         raise HttpError(500, "Erasure failed — contact support.") from exc
