@@ -1,5 +1,11 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — preuve concurrente PostgreSQL sur deux connexions (26/10/2026)
+
+**Goal** : prouver au niveau de la vraie base PostgreSQL que deux demandes d'effacement du même compte synthétique ne produisent pas deux appels de hooks ou Firebase. **Test candidat ajouté** : `backend/core/tests/test_w01_g3_concurrent_postgres_claim.py`, sous `pytest.mark.django_db(transaction=True)` avec deux connexions thread-local PostgreSQL et point de synchronisation explicite : premier DELETE revendique `IN_PROGRESS` et bloque au hook fictif, second DELETE reçoit `503` *avant* hooks/Firebase, puis premier est relâché et commit SQL/reçu avec un seul effet externe simulé. Test négatif supplémentaire `REVIEW_REQUIRED` → refus sans effet. Exécution SQLite : seul le test PostgreSQL est marqué SKIP, le test négatif reste exécuté. **Aucun Firebase réel, Neon, migration, Vercel, écriture Production ou déploiement**. Les deux tests sont nouveaux et restent **NON CERTIFIÉS** jusqu'à succès CI sur le SHA contenant le commit. La preuve n'implique pas une transaction distribuée, ne teste pas les crashs machines et ne clôt pas G3/G7.
+
+**Rappel état exact ancien HEAD `25f3c526`** lors du contrôle : CI #40418074520 IN_PROGRESS, E2E Web/PG #40418074524 IN_PROGRESS, migrations Django #40418074483 SUCCESS ; OIDC #40418074622 FAILURE et différé. Ne pas annoncer vert du HEAD nouveau avant CI complète.
+
 ## W01-G3 — défense contre DELETE concurrents (26/10/2026)
 
 **Constat exact HEAD précédent `249de57a` :** 21/22 CI workflows SUCCESS, seul OIDC #40416472281 FAILURE différé. CI principale [#40416472528](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40416472528) SUCCESS ; migration drift [#40416472352](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40416472352) SUCCESS ; W01-B local [#40416472324](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40416472324) SUCCESS.
