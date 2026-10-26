@@ -70,6 +70,14 @@ Le commit [`3851f4082a35f7fd08c210be96912330559abbfa`](https://github.com/hraaaa
 
 Une [matrice de pré-revue sécurité C1](2026-10-25-w01-c1-pulper-safety-gate.md) précise les scénarios d'échec et preuves nécessaires avant de sélectionner une architecture de stockage documentaire. Il ne s'agit **ni** d'une revue indépendante **ni** d'une certification privacy de l'option AEAD. **Statut inchangé W01 NO-GO**, G1–G7 non fermés, W02 gelé.
 
+## 3.7 G5 — CI du correctif Frontend, hébergement et risques résiduels (26/10/2026)
+
+**CI exacte source** : HEAD `88851fd9da7f09c360bbcd20c121bca5ec148ff9` / [PR #1128](https://github.com/hraaaaf/IAMINA-MVP/pull/1128), **20/20 workflow GitHub SUCCESS**, dont [CI #40297053124](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40297053124), [BFF #40297053095](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40297053095), [drift #40297053153](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40297053153), [UI browser #40297053118](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40297053118). L'échec Flutter antérieur sur `5ae8d5e6` était un **test statique non délimité** ; après correction sans changement d'exécution, l'ensemble est vert.
+
+**Contrôle Vercel authentifié, non mutateur :** derniers Web `iamina-review` READY `dpl_5rsqzp4s35VXNmPBrP6ZpGXhBPeL`, API `iamina-certified` READY `dpl_3ZK13h6n214Y46pwVPJJDSGM8ePw`, tous deux `githubCommitSha=042f28df29a2c8ed0e3ddb56aabcf3520dbde269`, **antérieurs au HEAD CI `88851fd9`**. La preuve GitHub ne démontre pas l'exécution de ce correctif sur les Previews existantes. Prochaine preuve = déploiement **Preview uniquement avec accord distinct du propriétaire**, puis audit route SSO, code SHA, navigateur 390/768/1280, multipart ≤4 Mio, A/B, sécurité et nettoyage, avant tout GO.
+
+**Contrôle Neon métadonnée, non mutateur :** `square-sun-82359137` / production `br-fragrant-frost-b1lbdfzs`, `protected=false`, `archived`. G2 est non clos. G5 cache Redis Preview encore absent ; le garde d'effacement fail-closed bloque `DELETE /account`. Retrait/échec Firebase externe non atomique avec SQL. G6 snapshot/restore non vide pas prouvé. **NO-GO W01 ; W02 gelé ; aucune donnée patient, action Vercel, merge ou mutation Neon.**
+
 ## 3.6 Limite Preview Web — garde exacte sur corps multipart (26/10/2026)
 
 **Évidence précédente** : HEAD `f8374f56`, **20/20 CI GitHub SUCCESS** ; Node BFF test réel multipart 32/32 PASS, dont rejet 413 avant upstream après dépassement du corps HTTP 4 Mio.
