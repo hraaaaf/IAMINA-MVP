@@ -67,7 +67,8 @@ def test_firebase_identity_already_absent_is_idempotent(monkeypatch, isolated_er
 
     assert result["detail"] == "Account and all associated data deleted."
     assert not User.objects.filter(pk=user.pk).exists()
-    assert ErasureRecord.objects.filter(patient_id_snapshot=user.pk).count() == 1
+    receipt = ErasureRecord.objects.get(patient_id_snapshot=user.pk)
+    assert receipt.completed_at is not None
     assert isolated_erasure == ["hooks", "firebase", "audit", "logout"]
 
 
@@ -82,7 +83,8 @@ def test_native_user_requires_no_firebase_admin_call(monkeypatch, isolated_erasu
 
     assert result["detail"] == "Account and all associated data deleted."
     assert not User.objects.filter(pk=user.pk).exists()
-    assert ErasureRecord.objects.filter(patient_id_snapshot=user.pk).count() == 1
+    receipt = ErasureRecord.objects.get(patient_id_snapshot=user.pk)
+    assert receipt.completed_at is not None
     assert isolated_erasure == ["hooks", "audit", "logout"]
 
 

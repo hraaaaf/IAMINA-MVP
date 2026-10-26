@@ -215,6 +215,7 @@ def delete_account(request, data: DeleteConfirmSchema):
             ErasureRecord.objects.create(
                 patient_id_snapshot=patient_id,
                 firebase_uid_snapshot=firebase_uid,
+                completed_at=timezone.now(),
             )
         logout(request)
         logger.info("RGPD erasure complete for patient_id=%s", patient_id)
