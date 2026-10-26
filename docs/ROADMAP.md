@@ -1,5 +1,17 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G5 — migration 0036 Neon sandbox appliquée et vérifiée (26/10/2026)
+
+**Goal :** matérialiser exclusivement `diabetes.0036_document_confirmation_nonce` dans la base **synthétique** Preview, sans écrire dans IAMINA Production. **Autorisation explicite reçue** : GO utilisateur pour cette migration, et seulement celle-ci.
+
+**Préflight exact :** Neon projet `noisy-truth-00115950`, branche `br-sweet-frog-b9ok6ptp`, DB `iamina925_empty`, migration owner `iamina925_empty_owner` : `auth_user=0`, `diabetes_labreport=0`, 0035 enregistrée, table nonce/0036 absentes, `auth_user.id` integer. Nouveau snapshot refusé `HTTP 422 snapshots limit exceeded` ; conservation de l'ancien snapshot et création d'une **branche de sauvegarde sans compute** `br-sweet-mountain-b9skxry9` sur `parent_lsn=0/2617088`, READY, source intacte avant DDL.
+
+**Exécution :** transaction SQL atomique gardée par identité DB/owner et préconditions, reproduisant les opérations de `backend/diabetes/migrations/0036_document_confirmation_nonce.py` : création `diabetes_documentconfirmationnonce`, BigAutoField bigint identity, `nonce_digest varchar(64) UNIQUE`, `used_at timestamptz`, FK `patient_id` → `auth_user(id)` DEFERRABLE INITIALLY DEFERRED, index patient et index nommé `pulper_nonce_patient_idx` ; privilèges minimaux table/séquence pour `iamina_preview_app` ; entrée `django_migrations` 0036. **Attention :** opération faite via SQL transactionnel, pas par une commande `manage.py migrate` observée.
+
+**Preuves SQL post-migration indépendantes :** owner `0036=1`, table 4 colonnes types conformes, 1 FK, 1 contrainte UNIQUE, 1 index nommé, `auth_user=0`, `labreport=0`, `nonce=0` ; connexion séparée du rôle Preview `current_user=iamina_preview_app`, `current_database=iamina925_empty`, `auth_user=0`, `nonce=0`, DML sur table `true`, séquence USAGE `true`. Aucun compte créé, aucune donnée patient, aucune mutation Neon Production. Journal Notion mis à jour.
+
+**Sous-lot migration 0036 : PASS** ; **G5 hébergé reste OPEN** : navigateur authentifié SSO indisponible (Opera non connecté, Desktop Commander hors ligne), identité runtime `GET /api/v1/ops/preview-db-identity` via BFF et `/health` non observées, tests A→B→A/suppression/SQL final non joués. W01 NO-GO, W02 gelé ; G2/G3/G6/G7 bloquants indépendants. **Next exact :** accès navigateur SSO puis quatre identifiants DB via Web BFF → santé API → comptes exclusivement synthétiques + DELETE normal → contrôle SQL `auth_user=0` ; restaurabilité cloud G6 à démontrer séparément. CI du HEAD documentaire résultant à vérifier, ne pas supposer automatiquement verte.
+
 
 ## W01 — 26/10/2026 — contrôle CI et nettoyage de régénération OpenAPI
 
