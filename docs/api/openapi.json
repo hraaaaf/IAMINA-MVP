@@ -3,7 +3,7 @@
   "info": {
     "title": "IAmina API",
     "version": "1.0.0",
-    "description": "Diabetes companion API — Flutter web/iOS/Android + 3rd party integrations"
+    "description": "Diabetes companion API \u2014 Flutter web/iOS/Android + 3rd party integrations"
   },
   "paths": {
     "/api/v1/auth/register": {
@@ -376,7 +376,7 @@
             }
           }
         },
-        "description": "Injects 30 days of realistic glucose logs for the current authenticated user.\nIdempotent — skips if the user already has ≥ 20 entries.",
+        "description": "Injects 30 days of realistic glucose logs for the current authenticated user.\nIdempotent \u2014 skips if the user already has \u2265 20 entries.",
         "tags": [
           "demo"
         ],
@@ -414,7 +414,7 @@
             }
           }
         },
-        "description": "Liveness + readiness probe.\n\n- DB unreachable → 503 (blocks gunicorn from receiving traffic)\n- Cache unavailable → 200 degraded (non-fatal: falls back to DB)",
+        "description": "Liveness + readiness probe.\n\n- DB unreachable \u2192 503 (blocks gunicorn from receiving traffic)\n- Cache unavailable \u2192 200 degraded (non-fatal: falls back to DB)",
         "tags": [
           "ops"
         ]
@@ -698,7 +698,7 @@
             }
           }
         },
-        "description": "Partial update — only supplied fields are written.  404 on cross-patient access.",
+        "description": "Partial update \u2014 only supplied fields are written.  404 on cross-patient access.",
         "tags": [
           "logs"
         ],
@@ -1094,7 +1094,7 @@
             "in": "query",
             "name": "target_low",
             "schema": {
-              "default": 70,
+              "default": 70.0,
               "title": "Target Low",
               "type": "number"
             },
@@ -1104,7 +1104,7 @@
             "in": "query",
             "name": "target_high",
             "schema": {
-              "default": 180,
+              "default": 180.0,
               "title": "Target High",
               "type": "number"
             },
@@ -1207,7 +1207,7 @@
             }
           }
         },
-        "description": "Return exact linked pre→post meal episodes and repeated patterns.",
+        "description": "Return exact linked pre\u2192post meal episodes and repeated patterns.",
         "tags": [
           "personal-response"
         ],
@@ -1661,7 +1661,7 @@
             "description": "OK"
           }
         },
-        "description": "Enrol the authenticated patient into *module_name*.\n\nReturns 404 if the module is not registered with the chassis ModuleRegistry.\nIdempotent — calling twice does not create a duplicate row.",
+        "description": "Enrol the authenticated patient into *module_name*.\n\nReturns 404 if the module is not registered with the chassis ModuleRegistry.\nIdempotent \u2014 calling twice does not create a duplicate row.",
         "tags": [
           "modules"
         ],
@@ -1716,7 +1716,7 @@
             }
           }
         },
-        "description": "Import a LibreLink / LibreView CSV file for the authenticated patient.\n\nAccepts multipart/form-data with a single field ``csv_file``.\nIdempotent: re-uploading the same file produces zero new rows.\n\nReturns:\n    imported        — number of new LogEntry rows created\n    duplicates      — rows skipped because client_uuid already existed\n    rejected_values — rows dropped for out-of-physiological-range glucose\n    skipped_rows    — rows dropped for unparseable timestamp or missing value\n    detected_format — \"librelink_detailed\" | \"simple\" | \"unknown\"\n    sample          — first 3 parsed readings (for UI preview)",
+        "description": "Import a LibreLink / LibreView CSV file for the authenticated patient.\n\nAccepts multipart/form-data with a single field ``csv_file``.\nIdempotent: re-uploading the same file produces zero new rows.\n\nReturns:\n    imported        \u2014 number of new LogEntry rows created\n    duplicates      \u2014 rows skipped because client_uuid already existed\n    rejected_values \u2014 rows dropped for out-of-physiological-range glucose\n    skipped_rows    \u2014 rows dropped for unparseable timestamp or missing value\n    detected_format \u2014 \"librelink_detailed\" | \"simple\" | \"unknown\"\n    sample          \u2014 first 3 parsed readings (for UI preview)",
         "tags": [
           "import"
         ],
@@ -1869,6 +1869,23 @@
         "tags": [
           "documents"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PulperConfirmRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
         "security": [
           {
             "HybridBearerAuth": []
@@ -1876,17 +1893,7 @@
           {
             "SessionAuth": []
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PulperConfirmRequest"
-              }
-            }
-          },
-          "required": false
-        }
+        ]
       }
     },
     "/api/v1/documents/": {
@@ -1952,7 +1959,7 @@
             }
           }
         },
-        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: SemanticCompressor → English pivot text.\nStep 4: Groq GPT-OSS-120B formats the governed patient response.",
+        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: SemanticCompressor \u2192 English pivot text.\nStep 4: Groq GPT-OSS-120B formats the governed patient response.",
         "tags": [
           "ai"
         ],
@@ -2035,7 +2042,7 @@
             }
           }
         },
-        "description": "Phase 6 chat with English Pivot Layer.\n\nNote: TriageVitalMiddleware has already screened 'data.message' upstream.\nIf this view is reached, the message is NOT a medical emergency.\n\nSteps:\n  1. Fetch minimal KPIs for context (SQL, lightweight).\n  2. Compress into English pivot chat context.\n  3. Build English system prompt + FR/Darija user message.\n  4. Call LLM → respond in patient language.",
+        "description": "Phase 6 chat with English Pivot Layer.\n\nNote: TriageVitalMiddleware has already screened 'data.message' upstream.\nIf this view is reached, the message is NOT a medical emergency.\n\nSteps:\n  1. Fetch minimal KPIs for context (SQL, lightweight).\n  2. Compress into English pivot chat context.\n  3. Build English system prompt + FR/Darija user message.\n  4. Call LLM \u2192 respond in patient language.",
         "tags": [
           "ai"
         ],
@@ -2076,7 +2083,7 @@
             }
           }
         },
-        "description": "Phase 11-D — Gemini Vision glucometer OCR for web clients.\n\nPOST /api/v1/ai/analyze-glucometer-image\nBody: { \"image_base64\": \"<base64>\", \"mime_type\": \"image/jpeg\" }\n\nMobile uses on-device ML Kit (offline, faster).\nWeb uses this endpoint as fallback.",
+        "description": "Phase 11-D \u2014 Gemini Vision glucometer OCR for web clients.\n\nPOST /api/v1/ai/analyze-glucometer-image\nBody: { \"image_base64\": \"<base64>\", \"mime_type\": \"image/jpeg\" }\n\nMobile uses on-device ML Kit (offline, faster).\nWeb uses this endpoint as fallback.",
         "tags": [
           "ai"
         ],
@@ -2117,7 +2124,7 @@
             }
           }
         },
-        "description": "Phase 11-C — Gemini Vision meal recognition.\n\nPOST /api/v1/ai/analyze-meal-image\nBody: { \"image_base64\": \"<base64>\", \"mime_type\": \"image/jpeg\" }\n\nPipeline:\n  1. MealVisionShield validates input (mime type, size, base64 sanity).\n  2. Gemini Vision identifies visible foods (English Pivot prompt).\n  3. MealVisionShield sanitises output (max 8 French food names).\n  4. Flutter maps returned names to CulinaryItem chips (fuzzy match).\n\nNo patient clinical data is sent to the LLM — only the food image.\nfallback=True in the response means Flutter must ask the user to pick manually.",
+        "description": "Phase 11-C \u2014 Gemini Vision meal recognition.\n\nPOST /api/v1/ai/analyze-meal-image\nBody: { \"image_base64\": \"<base64>\", \"mime_type\": \"image/jpeg\" }\n\nPipeline:\n  1. MealVisionShield validates input (mime type, size, base64 sanity).\n  2. Gemini Vision identifies visible foods (English Pivot prompt).\n  3. MealVisionShield sanitises output (max 8 French food names).\n  4. Flutter maps returned names to CulinaryItem chips (fuzzy match).\n\nNo patient clinical data is sent to the LLM \u2014 only the food image.\nfallback=True in the response means Flutter must ask the user to pick manually.",
         "tags": [
           "ai"
         ],
@@ -2171,7 +2178,7 @@
             "description": "OK"
           }
         },
-        "description": "GET /api/v1/ai/chat/stream?message=...\nReturns Server-Sent Events — one `data:` line per token chunk.\nTerminal event: `data: [DONE]`",
+        "description": "GET /api/v1/ai/chat/stream?message=...\nReturns Server-Sent Events \u2014 one `data:` line per token chunk.\nTerminal event: `data: [DONE]`",
         "tags": [
           "ai"
         ],
@@ -2213,7 +2220,7 @@
             }
           }
         },
-        "description": "POST /api/v1/ai/voice\nContent-Type: multipart/form-data\n\nFields:\n  audio        — audio file (mp4 / m4a / webm / wav / ogg / mpeg / flac)\n  context_days — look-back window for clinical context (default 14)\n\nReturns:\n  transcript   — what IAmina heard (display as subtitle in Flutter)\n  reply        — IAmina's text reply (pass to flutter_tts for playback)\n  is_emergency — if True, Flutter should display the emergency UI immediately",
+        "description": "POST /api/v1/ai/voice\nContent-Type: multipart/form-data\n\nFields:\n  audio        \u2014 audio file (mp4 / m4a / webm / wav / ogg / mpeg / flac)\n  context_days \u2014 look-back window for clinical context (default 14)\n\nReturns:\n  transcript   \u2014 what IAmina heard (display as subtitle in Flutter)\n  reply        \u2014 IAmina's text reply (pass to flutter_tts for playback)\n  is_emergency \u2014 if True, Flutter should display the emergency UI immediately",
         "tags": [
           "voice"
         ],
@@ -2265,7 +2272,7 @@
             }
           }
         },
-        "description": "POST /api/v1/ai/transcribe\nContent-Type: multipart/form-data\n\nSTT-only — no IAmina pipeline.\nUsed for inline dictation on the add-log page (meal note field).\n\nReturns:\n  transcript — verbatim transcription of the audio clip\n  confidence — \"high\" | \"medium\" | \"low\" (length heuristic)",
+        "description": "POST /api/v1/ai/transcribe\nContent-Type: multipart/form-data\n\nSTT-only \u2014 no IAmina pipeline.\nUsed for inline dictation on the add-log page (meal note field).\n\nReturns:\n  transcript \u2014 verbatim transcription of the audio clip\n  confidence \u2014 \"high\" | \"medium\" | \"low\" (length heuristic)",
         "tags": [
           "voice"
         ],
@@ -2927,8 +2934,8 @@
           "grams": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0,
-                "maximum": 3000,
+                "exclusiveMinimum": 0.0,
+                "maximum": 3000.0,
                 "type": "number"
               },
               {
@@ -3013,8 +3020,8 @@
             "title": "Meal Episode Id"
           },
           "blood_sugar": {
-            "maximum": 600,
-            "minimum": 30,
+            "maximum": 600.0,
+            "minimum": 30.0,
             "title": "Blood Sugar",
             "type": "number"
           },
@@ -3044,7 +3051,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -3128,7 +3135,7 @@
         "type": "object"
       },
       "LogEntryUpdateSchema": {
-        "description": "Partial update — all fields optional. Only supplied fields are written.",
+        "description": "Partial update \u2014 all fields optional. Only supplied fields are written.",
         "properties": {
           "logged_at": {
             "anyOf": [
@@ -3179,8 +3186,8 @@
           "blood_sugar": {
             "anyOf": [
               {
-                "maximum": 600,
-                "minimum": 30,
+                "maximum": 600.0,
+                "minimum": 30.0,
                 "type": "number"
               },
               {
@@ -3235,7 +3242,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -5595,11 +5602,22 @@
         "type": "object"
       },
       "PulperPreviewResponse": {
-        "description": "Returned on confirm=False — nothing persisted yet.",
+        "description": "Returned on confirm=False \u2014 nothing persisted yet.",
         "properties": {
           "batch_id": {
             "title": "Batch Id",
             "type": "string"
+          },
+          "preview_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Token"
           },
           "document_type": {
             "title": "Document Type",
@@ -5651,18 +5669,6 @@
             },
             "title": "Errors",
             "type": "array"
-          },
-          "preview_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Preview Token"
           }
         },
         "required": [
@@ -5723,6 +5729,23 @@
           "errors"
         ],
         "title": "PulperConfirmResponse",
+        "type": "object"
+      },
+      "PulperConfirmRequest": {
+        "properties": {
+          "preview_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Token"
+          }
+        },
+        "title": "PulperConfirmRequest",
         "type": "object"
       },
       "LabReportOut": {
@@ -6072,12 +6095,12 @@
             "type": "integer"
           },
           "target_low": {
-            "default": 70,
+            "default": 70.0,
             "title": "Target Low",
             "type": "number"
           },
           "target_high": {
-            "default": 180,
+            "default": 180.0,
             "title": "Target High",
             "type": "number"
           }
@@ -6235,7 +6258,7 @@
         "type": "object"
       },
       "MealImageResponse": {
-        "description": "Phase 11-C: list of identified French food names + confidence level.\nfallback=True means the LLM could not identify foods — UI shows a manual fallback.",
+        "description": "Phase 11-C: list of identified French food names + confidence level.\nfallback=True means the LLM could not identify foods \u2014 UI shows a manual fallback.",
         "properties": {
           "foods": {
             "items": {
@@ -6315,24 +6338,6 @@
           "transcript"
         ],
         "title": "TranscribeResponse",
-        "type": "object"
-      },
-      "PulperConfirmRequest": {
-        "properties": {
-          "preview_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Preview Token"
-          }
-        },
-        "title": "PulperConfirmRequest",
         "type": "object"
       }
     },
