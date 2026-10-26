@@ -2,6 +2,18 @@
 
 Date de preuve : **25 octobre 2026**. Périmètre **Web/PWA + API Django + Neon exclusivement**. Ce document est une revue d'architecture et un inventaire read-only : **aucun Vercel deploy, aucune création/écriture SQL Neon, aucune modification de secrets, aucun compte patient ni merge**. Statut **W01 NO-GO**.
 
+## 0. W01-G5 déploiement synthétique READY (26/10/2026)
+
+**Source :** Vercel API depuis l'équipe `team_NNhXPDOIfjGNBcn253btpyk0`, GO propriétaire restreint aux deux Previews. SHA Git exacte `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad` précédemment 20/20 SUCCESS.
+- API Preview : `dpl_62GH7ZomDRJjEWwDPXjxDkoTYpfv`, `https://iamina-certified-e1i77ysqq-achraf-benmoussa-s-projects.vercel.app`, READY, target null, SHA `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad`, build Python terminé.
+- Web Preview : `dpl_8YFH4NYhzU78FifjUBexVSGBbvvj`, `https://iamina-review-nzh82oztg-achraf-benmoussa-s-projects.vercel.app`, READY, target null, SHA `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad`, `✓ Built build/web`.
+- La variable Web `IAMINA_REVIEW_PREVIEW_API_BASE_URL` a été mise à jour/relue uniquement sur branche W01 Preview pour pointer sur API `e1i77ysqq`; SSO enabled=true sur les deux projets.
+- Les deux deployments Vercel Production READY restent à leur SHA précédent ; zéro déploiement Production.
+- SQL synthétique lecture seule `current_user=iamina_preview_app`, `current_database=iamina925_empty`, `auth_user_count=0`. Runtime HTTP Django et empreintes du backend réellement servi pas encore éprouvés.
+- **Pas de validation de session SSO** : navigateur Opera non connecté ; Desktop Commander quota atteint ; accès HTTP de l'environnement indisponible. Aucun lien de bypass/share créé. Aucun test A/B, endpoint privé, 429, Safari ou DELETE n'est revendiqué.
+- UI/UX : aucun rendu modifié par ce closeout ; captures CI Chrome aux viewports 390/768/1280 étaient vertes au SHA source. Pas de comparaison AFTER **sur les Preview hébergées**.
+- **G5 Preview deployment PASS, G5 hosted E2E OPEN ; W01 NO-GO / W02 frozen**. Redis/cache, Firebase/SQL, C1, G6 DR non vide, G2 Neon Production non protégée et G7 reviewer restent des gates.
+
 ## 1. Goal, succès, preuve
 
 **C1 Goal :** remplacer l'indisponibilité Redis du staging Pulper sans dégrader la suppression ordinaire d'un compte, l'isolation patient ou la rétention d'une extraction transitoire d'une heure. **Succès** : un import inspecté puis confirmé une seule fois, authentifié et patient-scoped, sans PHI documentaire persistée dans Neon sauvegardé, avec suppression normale testée même sans Redis. **Preuves exigées** : schéma de flux, revue de sécurité indépendante, code + SQLite/PostgreSQL/Chrome, course A/B simultanée, échecs 401/403/429/502/503, logs/caches/backups et effacement.

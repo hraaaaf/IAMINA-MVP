@@ -1,5 +1,27 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G5 — Déploiements PREVIEW READY au SHA certifié (26/10/2026)
+
+**GO propriétaire reçu le 26/10 :** déployer **seulement** les deux projets Vercel Preview `iamina-review` (Web) et `iamina-certified` (API), SHA `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad`, conserver SSO et données purement synthétiques, ne pas toucher à Production.
+
+**Goal :** servir le correctif Web BFF/multipart G5 sur les deux projets isolés, sans élargir la surface protégée. **Succès observable et preuve Vercel :**
+- **API `iamina-certified` :** `dpl_62GH7ZomDRJjEWwDPXjxDkoTYpfv`, URL immuable `https://iamina-certified-e1i77ysqq-achraf-benmoussa-s-projects.vercel.app`, **READY**, `target=null` (Preview, aucune alias Production modifiée), métadonnée Git `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad` ; logs `Deployment completed` / Python 3.12 build complete.
+- **Web `iamina-review` :** `dpl_8YFH4NYhzU78FifjUBexVSGBbvvj`, URL immuable `https://iamina-review-nzh82oztg-achraf-benmoussa-s-projects.vercel.app`, **READY**, `target=null` (Preview), métadonnée Git `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad` ; logs `✓ Built build/web`, `Deployment completed`. Build Flutter émet avertissements WASM/font, non bloquants pour cet output.
+- **Lien BFF vers API immuable :** env var Vercel `IAMINA_REVIEW_PREVIEW_API_BASE_URL` **exclusivement sur branche `feat/w01-preview-same-origin-bff-20261017`**, cible `preview`, modifiée/relue vers nouvelle API ci-dessus ; aucune autre branche / env Production modifiée.
+- **Protection :** `iamina-review` `ssoProtection.enabled=true,deploymentType=preview` ; `iamina-certified` `ssoProtection.enabled=true,deploymentType=all_except_custom_domains` après déploiement. Aucun share-link bypass créé, pas de désactivation Trusted Sources/SSO.
+- **Production Vercel lecture seule :** Web `dpl_8eqWcB1cTJudwE9Rw581WenUsy1K` au SHA `60de80ec` ; API `dpl_9tPKqRpMiyEMhCtQ99Jc5QV2ew77` au SHA `9d24cff` ; toujours READY, non remplacés.
+- **Neon :** contrôle SQL SELECT ciblé sur projet synthétique `noisy-truth-00115950` / `br-sweet-frog-b9ok6ptp` / `iamina925_empty` avec `role_name=iamina_preview_app` : `current_database=iamina925_empty`, `current_user=iamina_preview_app`, `auth_user_count=0`. Les env API Vercel Preview déclarent `IAMINA_EXPECTED_DB_ROLE=iamina_preview_app`, `IAMINA_EXPECTED_DB_NAME=iamina925_empty` (ceci ne prouve **pas** la connexion runtime exacte déployée). Production Neon `square-sun-82359137` non mutée.
+
+**Précondition CI démontrée :** PR #1128 sur SHA `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad` : **20/20 workflows GitHub SUCCESS**, dont CI générale #40298493090, BFF #40298492955, drift #40298492957, Chrome UI #40298493226, CTA Chrome #40298493143.
+
+**Tests hébergés NON démontrés :** endpoint /health et navigateur authentifié derrière SSO **non vérifiés** (web direct inaccessible dans environnement ; Opera Browser Connector non connecté ; Desktop Commander quota mensuel atteint). Ne pas utiliser le connecteur `web_fetch_vercel_url` car il génère un **lien de partage temporaire contournant le SSO** ; pas d'autorisation pour élargir l'accès. **Aucune preuve encore de Browser→BFF→API→Neon, comptes A/B, logout/révocation, 401/403/429/IP, Safari, uploads en conditions hébergées ou effacement normal.** Aucun compte fictif créé : compte SQL à zéro ; Redis Preview absent et DELETE fail-closed risquerait d'empêcher la suppression.
+
+**Statut certifié :** **déploiement Vercel Preview G5 PASS / E2E hébergé OPEN**, W01 **NO-GO**, W02 **GELÉ**. **Gates restants :** Redis, Firebase/SQL, C1 PHI/PITR, G6 restauration non vide, Neon Production protected=false, G7 revue indépendante (0 submission), puis merge et CI postmerge. **Next exact :** navigateur réellement authentifié à SSO actif + environnement Redis synthétique sûr + vérification de l'API/DB fingerprint hébergée avant toute création de comptes ; ensuite scénarios A→B→A et cleanup conforme à l'autorisation précédente. Aucun deploy supplémentaire automatique.
+
+**Note de traçabilité Git :** cette mise à jour documentaire crée un **nouveau HEAD non déployé** ; le comportement Web/API déployé correspond au SHA `573eeb0d17748ec2cba2bdf8cb1a60176d4f84ad` et tout HEAD documentaire suivant nécessite sa propre vérification CI avant GREEN.
+
+---
+
 ## W01 — Roadmap de clôture Web / API / Neon — version 25 octobre 2026
 
 > **Contrat inchangé : W01-G1 à G7, sur preuve.** W01 **OPEN / NO-GO** ; W02 **GELÉ** jusqu'à fusion W01 et CI post-merge verte. Cette section est le **plan prospectif W01 de référence** ; les notes plus anciennes ci-dessous sont des archives, même lorsqu'elles utilisent le mot « dernier ». Périmètre **Web/PWA exclusivement**. Aucun traitement de patients réels ni promotion Production.
