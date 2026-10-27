@@ -7,7 +7,7 @@ D2ConsentStatus sample({bool enabled = false}) => D2ConsentStatus(
   optedIn: enabled,
   noticeText: 'Synthetic preview notice — no delivery',
   noticeVersion: '2026-10-20.d2.1',
-  noticeHash: 'a' * 64,
+  noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   locale: 'fr',
 );
 
@@ -44,7 +44,7 @@ void main() {
       'browser_push_enabled': false,
       'notice_text': 'synthetic',
       'notice_version': 'v1',
-      'notice_hash': 'a' * 64,
+      'notice_hash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       'locale': 'fr',
       'granted_at': null,
     };
@@ -70,6 +70,7 @@ void main() {
       find.byKey(const Key('d2-enable-preview-only')),
     );
     expect(enable.onPressed, isNull);
+    await tester.ensureVisible(find.byKey(const Key('d2-acknowledge-notice')));
     await tester.tap(find.byKey(const Key('d2-acknowledge-notice')));
     await tester.pump();
     expect(tester.widget<FilledButton>(
