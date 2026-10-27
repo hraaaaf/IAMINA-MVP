@@ -6,7 +6,7 @@ import { randomBytes } from 'node:crypto';
 
 export const config = { maxDuration: 30 };
 export const TEST_WEB_PROJECT = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';
-export const TEST_BRANCH = 'feat/w01-preview-same-origin-bff-20261017';
+export const TEST_BRANCH = 'integration/w01-d2-preview-only-20261027';
 const EXACT_WEB_HOST = /^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$/;
 
 export function isSyntheticPreview(request, env = process.env) {
