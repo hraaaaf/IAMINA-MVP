@@ -16,6 +16,8 @@ class FakeGateway implements D2ConsentGateway {
   int grants = 0;
   int withdrawals = 0;
   D2ConsentStatus current = sample();
+  int previewReads = 0;
+  D2ObservationPreview? preview;
   @override
   Future<D2ConsentStatus> read(String locale) async {
     if (failRead) throw StateError('offline');
@@ -33,9 +35,15 @@ class FakeGateway implements D2ConsentGateway {
     current = sample();
     return current;
   }
+  @override
+  Future<D2ObservationPreview?> readPreview() async {
+    previewReads++;
+    return preview;
+  }
 }
 
 void main() {
+  d2PreviewContractTests();
   test('reject malformed backend payload or delivery-enabled flag', () {
     final valid = <String, dynamic>{
       'purpose': 'proactive_in_app_preview',
@@ -80,6 +88,7 @@ void main() {
     await tester.tap(find.byKey(const Key('d2-enable-preview-only')));
     await tester.pumpAndSettle();
     expect(gateway.grants, 1);
+    expect(gateway.previewReads, 1);
     expect(find.byKey(const Key('d2-withdraw-consent')), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('d2-withdraw-consent')));
     await tester.tap(find.byKey(const Key('d2-withdraw-consent')));
@@ -98,5 +107,55 @@ void main() {
     expect(find.byKey(const Key('d2-error')), findsOneWidget);
     expect(find.byKey(const Key('d2-enable-preview-only')), findsNothing);
     expect(gateway.grants, 0);
+    expect(gateway.previewReads, 0);
+  });
+
+  testWidgets('governed preview appears only with server opt-in', (tester) async {
+    final gateway = FakeGateway()
+      ..current = sample(enabled: true)
+      ..preview = const D2ObservationPreview(
+        kind: 'meal', state: 'new', allowedNextStep: 'MONITOR');
+    await tester.pumpWidget(MaterialApp(
+      home: D2NotificationCenterScreen(gateway: gateway),
+    ));
+    await tester.pumpAndSettle();
+    expect(gateway.previewReads, 1);
+    expect(find.byKey(const Key('d2-governed-preview')), findsOneWidget);
+  });
+}
+
+
+void d2PreviewContractTests() {
+  test('only governed nonurgent read-only previews may be rendered', () {
+    final valid = <String, dynamic>{
+      'status': 'available',
+      'attention_budget': 'one_non_urgent_item_per_24h',
+      'item': <String, dynamic>{
+        'kind': 'meal',
+        'state': 'monitoring',
+        'allowed_next_step': 'MONITOR',
+        'source_version': 'proactive.personal-response.lifecycle.v1',
+        'surface_now': false,
+        'escalation_class': 'none',
+        'evidence_id': 'synthetic-existing-evidence',
+        'priority': <String, dynamic>{
+          'safety_time_sensitivity': 'non_urgent_observation',
+        },
+      },
+    };
+    expect(D2ObservationPreview.fromResponse(valid)!.kind, 'meal');
+    expect(D2ObservationPreview.fromResponse({
+      ...valid, 'status': 'no_change', 'item': null,
+    }), isNull);
+    expect(() => D2ObservationPreview.fromResponse({
+      ...valid,
+      'item': {...(valid['item'] as Map<String, dynamic>),
+        'escalation_class': 'emergency'},
+    }), throwsStateError);
+    expect(() => D2ObservationPreview.fromResponse({
+      ...valid,
+      'item': {...(valid['item'] as Map<String, dynamic>),
+        'source_version': 'unverified'},
+    }), throwsStateError);
   });
 }

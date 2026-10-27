@@ -7,6 +7,53 @@ abstract class D2ConsentGateway {
   Future<D2ConsentStatus> read(String locale);
   Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice);
   Future<D2ConsentStatus> withdraw(String locale);
+  /// On-demand governed observation only, never a notification or delivery.
+  Future<D2ObservationPreview?> readPreview();
+}
+
+class D2ObservationPreview {
+  final String kind;
+  final String state;
+  final String allowedNextStep;
+
+  const D2ObservationPreview({
+    required this.kind,
+    required this.state,
+    required this.allowedNextStep,
+  });
+
+  static D2ObservationPreview? fromResponse(dynamic raw) {
+    if (raw is! Map<String, dynamic> ||
+        raw['attention_budget'] != 'one_non_urgent_item_per_24h' ||
+        !const ['available', 'cooldown', 'no_change', 'insufficient_data']
+            .contains(raw['status'])) {
+      throw StateError('Unverified governed preview response');
+    }
+    if (raw['status'] != 'available') return null;
+    final item = raw['item'];
+    if (item is! Map<String, dynamic> ||
+        item['source_version'] !=
+            'proactive.personal-response.lifecycle.v1' ||
+        item['surface_now'] != false ||
+        item['escalation_class'] != 'none' ||
+        item['evidence_id'] is! String ||
+        (item['evidence_id'] as String).trim().isEmpty ||
+        !const ['context', 'meal'].contains(item['kind']) ||
+        !const ['new', 'monitoring', 'persisting', 'improving', 'resolved']
+            .contains(item['state']) ||
+        !const ['MONITOR', 'PREPARE_CLINICIAN_DISCUSSION']
+            .contains(item['allowed_next_step']) ||
+        item['priority'] is! Map<String, dynamic> ||
+        item['priority']['safety_time_sensitivity'] !=
+            'non_urgent_observation') {
+      throw StateError('Unverified governed preview authority');
+    }
+    return D2ObservationPreview(
+      kind: item['kind'] as String,
+      state: item['state'] as String,
+      allowedNextStep: item['allowed_next_step'] as String,
+    );
+  }
 }
 
 class D2ConsentStatus {
@@ -91,4 +138,17 @@ class D2ApiConsentGateway implements D2ConsentGateway {
       api.client.delete(
         Uri.parse('/api/v1/account/notification-preview-consent'),
       ));
+
+  @override
+  Future<D2ObservationPreview?> readPreview() async {
+    final originEpoch = AuthEpoch.value;
+    final response = await api.client.get(
+      Uri.parse('/api/v1/proactive-insights/preview/'),
+    );
+    requireCurrentAuthEpoch(originEpoch);
+    if (!response.isSuccessful) {
+      throw StateError('Governed preview unavailable');
+    }
+    return D2ObservationPreview.fromResponse(response.body);
+  }
 }

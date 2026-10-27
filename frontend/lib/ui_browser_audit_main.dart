@@ -74,6 +74,9 @@ class _BrowserAuditD2Gateway implements D2ConsentGateway {
     enabled = false;
     return _status();
   }
+
+  @override
+  Future<D2ObservationPreview?> readPreview() async => null;
 }
 
 class _BrowserAuditCompanionService extends CompanionService {

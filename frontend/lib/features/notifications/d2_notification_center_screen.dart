@@ -27,6 +27,8 @@ class _D2NotificationCenterScreenState
     extends State<D2NotificationCenterScreen> {
   D2ConsentGateway? _gateway;
   D2ConsentStatus? _consent;
+  D2ObservationPreview? _preview;
+  bool _previewUnavailable = false;
   bool _loading = true;
   bool _saving = false;
   bool _acknowledged = false;
@@ -53,11 +55,27 @@ class _D2NotificationCenterScreenState
       _unavailable = false;
       _acknowledged = false;
       _consent = null;
+      _preview = null;
+      _previewUnavailable = false;
     });
     try {
       final result = await _gateway!.read(_locale);
       if (!mounted || !_sameUser) return;
-      setState(() => _consent = result);
+      D2ObservationPreview? preview;
+      var previewUnavailable = false;
+      if (result.optedIn) {
+        try {
+          preview = await _gateway!.readPreview();
+        } catch (_) {
+          previewUnavailable = true;
+        }
+      }
+      if (!mounted || !_sameUser) return;
+      setState(() {
+        _consent = result;
+        _preview = preview;
+        _previewUnavailable = previewUnavailable;
+      });
     } catch (_) {
       if (!mounted || !_sameUser) return;
       setState(() => _unavailable = true);
@@ -75,8 +93,20 @@ class _D2NotificationCenterScreenState
           ? await _gateway!.grant(_consent!)
           : await _gateway!.withdraw(_locale);
       if (!mounted || !_sameUser) return;
+      D2ObservationPreview? preview;
+      var previewUnavailable = false;
+      if (result.optedIn) {
+        try {
+          preview = await _gateway!.readPreview();
+        } catch (_) {
+          previewUnavailable = true;
+        }
+      }
+      if (!mounted || !_sameUser) return;
       setState(() {
         _consent = result;
+        _preview = preview;
+        _previewUnavailable = previewUnavailable;
         _acknowledged = false;
         _unavailable = false;
       });
@@ -84,6 +114,8 @@ class _D2NotificationCenterScreenState
       if (!mounted || !_sameUser) return;
       setState(() {
         _consent = null; // Fail closed: never show a stale approval.
+        _preview = null;
+        _previewUnavailable = false;
         _unavailable = true;
         _acknowledged = false;
       });
@@ -135,6 +167,49 @@ class _D2NotificationCenterScreenState
                     ],
                   ),
                 ),
+                if (consent != null && consent.optedIn) ...[
+                  const SizedBox(height: 16),
+                  _card(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(_copy(context, 'Aperçu non urgent',
+                          'Non-urgent preview', 'معاينة غير عاجلة'),
+                          style: const TextStyle(
+                            fontSize: 19, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      if (_previewUnavailable)
+                        Text(_copy(context,
+                          'Aperçu indisponible pour le moment.',
+                          'Preview unavailable for now.',
+                          'المعاينة غير متاحة حالياً.'))
+                      else if (_preview == null)
+                        Text(_copy(context,
+                          'Aucune nouvelle observation admissible.',
+                          'No new eligible observation.',
+                          'لا توجد ملاحظة جديدة مؤهلة.'))
+                      else ...[
+                        Text(
+                          _copy(context,
+                            _preview!.kind == 'meal'
+                                ? 'Une observation liée aux repas est disponible.'
+                                : 'Une observation de contexte est disponible.',
+                            _preview!.kind == 'meal'
+                                ? 'A meal-related observation is available.'
+                                : 'A contextual observation is available.',
+                            _preview!.kind == 'meal'
+                                ? 'تتوفر ملاحظة متعلقة بالوجبات.'
+                                : 'تتوفر ملاحظة سياقية.'),
+                          key: const Key('d2-governed-preview'),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(_copy(context,
+                          'Information descriptive uniquement : ne diagnostique pas, ne prédit pas et ne recommande aucun changement de traitement.',
+                          'Descriptive information only: no diagnosis, prediction or treatment changes.',
+                          'معلومات وصفية فقط: دون تشخيص أو تنبؤ أو تغيير للعلاج.')),
+                      ],
+                    ],
+                  )),
+                ],
                 const SizedBox(height: 16),
                 _card(
                   child: Column(
