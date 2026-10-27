@@ -1,5 +1,15 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G6 — GO projet Neon jetable : CRÉATION BLOQUÉE PAR OUTIL (27/10/2026)
+
+**Goal :** projet Neon isolé avec branche racine + marqueur synthétique non vide → snapshot neuf → restauration **non finalisée (`finalize=false`)** sur branche de test → comparaison SQL → nettoyage des trois branches scratch précédentes uniquement **après validation réussie**. **GO propriétaire explicite :** « Oui do it » pour la création du projet jetable et le nettoyage conditionnel des trois branches (`br-autumn-violet-b9emp7yl`, `br-autumn-bird-b9r6815r`, `br-young-mud-b9vu252m`).
+
+**Preflight confirmé en lecture seule** : projet source `noisy-truth-00115950`, org `org-broad-moon-95133829`, plan Free, branche par défaut `br-sweet-frog-b9ok6ptp` nom `synthetic-only` à préserver, snapshot manuel historique `snap-orange-mode-b9tjsdd1` conservé. Documentation officielle Neon `https://neon.com/docs/introduction/plans` : **Free = 1 snapshot manuel par projet** ; `https://neon.com/docs/ai/ai-database-versioning` : snapshots root-branch seulement et restauration non finalisée pour inspection ; `https://neon.com/docs/cli/snapshots` : finalisation déplacerait les computes. Snapshot manuel déjà utilisé dans l'ancien projet ; ne ni supprimer ni utiliser les données sources pour libérer le quota.
+
+**Action exécutée** : tentative unique de `mcp__Neon__create_project` sous l'org exacte, nom `iamina-w01-g6-ephemeral-snapshot-proof-20261027`, DB fictive `iamina_g6_synthetic`, rôle fictif `iamina_g6_test_owner`, PG 16 EU central, 0.25 CU. **REJET OUTIL** : « Cet appel d’outil a été bloqué par les contrôles de sécurité d’OpenAI. Veuillez revérifier ce que vous envoyez. » **Aucun projet créé** ; ce n'est pas une erreur quota Neon démontrée. Pas de contournement. **Aucun snapshot frais créé, aucune preuve G6 complète, aucun nettoyage des branches autorisées conditionnellement**, et aucune mutation Production.
+
+**État** : G6 OPEN — HUMAN GATE EXTERNE sur la création projet. Le propriétaire peut créer manuellement le projet jetable (Console Neon) et partager seulement son `project_id`, sans secrets ; reprise ensuite sur projet vérifié, test marqueur→snapshot→restauration finale false, contrôle source et Production, puis nettoyage scratch autorisé si PASS. Ne jamais utiliser `restore_snapshot(finalize=true)` pour ces essais. G5/OIDC différé, G2/G3/G7 ouverts, W01 NO-GO, PR #1128 Draft. Aucun merge/deploy.
+
 ## W01-G6 — 26/10/2026 — restauration Neon sandbox : preuves, incident et rollback vérifié
 
 **GO explicite reçu**, limité à la sandbox Neon (jamais Production). **Préflight réel** : projet `noisy-truth-00115950`, source `br-sweet-frog-b9ok6ptp` initialement primaire/défaut `synthetic-only`, DB `iamina925_empty`, rôle applicatif `iamina_preview_app` vérifié par `SELECT current_database(), current_user`, rôle d'administration de la DB `iamina925_empty_owner`, `auth_user=0`, migration `diabetes.0036_document_confirmation_nonce=1`, pas de table `w01_g6_restore_marker` sur la source. **Production** `square-sun-82359137` exclue et jamais modifiée.
