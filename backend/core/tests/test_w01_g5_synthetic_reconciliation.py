@@ -1,5 +1,6 @@
 """Deny-by-default synthetic W01 G5 reconciliation command tests."""
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from io import StringIO
 from unittest.mock import patch
 
@@ -16,6 +17,7 @@ from core.management.commands.reconcile_w01_g5_synthetic import (
 from core.models import BasePatientProfile
 from core.models.erasure_attempt import ErasureAttempt
 from core.models.erasure_record import ErasureRecord
+
 
 class SyntheticW01ReconciliationTests(TestCase):
     def setUp(self):
