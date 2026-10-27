@@ -1094,7 +1094,7 @@
             "in": "query",
             "name": "target_low",
             "schema": {
-              "default": 70,
+              "default": 70.0,
               "title": "Target Low",
               "type": "number"
             },
@@ -1104,7 +1104,7 @@
             "in": "query",
             "name": "target_high",
             "schema": {
-              "default": 180,
+              "default": 180.0,
               "title": "Target High",
               "type": "number"
             },
@@ -3142,8 +3142,8 @@
           "grams": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0,
-                "maximum": 3000,
+                "exclusiveMinimum": 0.0,
+                "maximum": 3000.0,
                 "type": "number"
               },
               {
@@ -3228,8 +3228,8 @@
             "title": "Meal Episode Id"
           },
           "blood_sugar": {
-            "maximum": 600,
-            "minimum": 30,
+            "maximum": 600.0,
+            "minimum": 30.0,
             "title": "Blood Sugar",
             "type": "number"
           },
@@ -3259,7 +3259,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -3394,8 +3394,8 @@
           "blood_sugar": {
             "anyOf": [
               {
-                "maximum": 600,
-                "minimum": 30,
+                "maximum": 600.0,
+                "minimum": 30.0,
                 "type": "number"
               },
               {
@@ -3450,7 +3450,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -5532,6 +5532,51 @@
         "title": "DeleteConfirmSchema",
         "type": "object"
       },
+      "D2GrantRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "notice_version": {
+            "title": "Notice Version",
+            "type": "string"
+          },
+          "notice_hash": {
+            "title": "Notice Hash",
+            "type": "string"
+          },
+          "acknowledgment": {
+            "const": "ENABLE_PREVIEW_ONLY",
+            "title": "Acknowledgment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "locale",
+          "notice_version",
+          "notice_hash",
+          "acknowledgment"
+        ],
+        "title": "D2GrantRequest",
+        "type": "object"
+      },
+      "SaveNoticeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledgment": {
+            "const": "SAVE_GOVERNED_PREVIEW",
+            "title": "Acknowledgment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "acknowledgment"
+        ],
+        "title": "SaveNoticeRequest",
+        "type": "object"
+      },
       "ImportResultResponse": {
         "properties": {
           "ok": {
@@ -6303,12 +6348,12 @@
             "type": "integer"
           },
           "target_low": {
-            "default": 70,
+            "default": 70.0,
             "title": "Target Low",
             "type": "number"
           },
           "target_high": {
-            "default": 180,
+            "default": 180.0,
             "title": "Target High",
             "type": "number"
           }
@@ -6546,51 +6591,6 @@
           "transcript"
         ],
         "title": "TranscribeResponse",
-        "type": "object"
-      },
-      "D2GrantRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "locale": {
-            "title": "Locale",
-            "type": "string"
-          },
-          "notice_version": {
-            "title": "Notice Version",
-            "type": "string"
-          },
-          "notice_hash": {
-            "title": "Notice Hash",
-            "type": "string"
-          },
-          "acknowledgment": {
-            "const": "ENABLE_PREVIEW_ONLY",
-            "title": "Acknowledgment",
-            "type": "string"
-          }
-        },
-        "required": [
-          "locale",
-          "notice_version",
-          "notice_hash",
-          "acknowledgment"
-        ],
-        "title": "D2GrantRequest",
-        "type": "object"
-      },
-      "SaveNoticeRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "acknowledgment": {
-            "const": "SAVE_GOVERNED_PREVIEW",
-            "title": "Acknowledgment",
-            "type": "string"
-          }
-        },
-        "required": [
-          "acknowledgment"
-        ],
-        "title": "SaveNoticeRequest",
         "type": "object"
       }
     },
