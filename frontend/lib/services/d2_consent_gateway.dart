@@ -181,7 +181,6 @@ class D2ApiConsentGateway implements D2ConsentGateway {
         Uri.parse('/api/v1/account/notification-preview-consent'),
       ));
 
-  @override
   Future<List<D2SavedNotice>> _inboxRequest(
     Future<dynamic> Function() operation,
   ) async {
