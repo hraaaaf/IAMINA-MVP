@@ -66,16 +66,20 @@ function requestPath(request) {
   return { path: rawPath, search: original.search };
 }
 
+// Classification only: never echo the raw Origin/Host, cookies or identities.
+function previewGuardFailure(request) {
+  const host = request.headers.host;
+  if (typeof host !== 'string' || !WEB_HOST.test(host)) return 'host-rejected';
+  const origin = request.headers.origin;
+  if (origin !== undefined && origin !== 'https://' + host) return 'origin-mismatch';
+  // No cookie transport between Vercel SSO and Django. Django uses IAMINA bearer.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin) return 'origin-absent';
+  return null;
+}
 function previewOnlyAndSameOrigin(request) {
   if (process.env.VERCEL_ENV !== 'preview' ||
       process.env.VERCEL_PROJECT_ID !== WEB_PROJECT) return 404;
-  const host = request.headers.host;
-  if (typeof host !== 'string' || !WEB_HOST.test(host)) return 403;
-  const origin = request.headers.origin;
-  if (origin !== undefined && origin !== 'https://' + host) return 403;
-  // No cookie transport between Vercel SSO and Django. Django uses IAMINA bearer.
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin) return 403;
-  return 0;
+  return previewGuardFailure(request) ? 403 : 0;
 }
 
 export const config = {
@@ -87,7 +91,17 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   response.setHeader('Cache-Control', 'private, no-store, max-age=0');
   response.setHeader('X-Content-Type-Options', 'nosniff');
   const gate = previewOnlyAndSameOrigin(request);
-  if (gate) return response.status(gate).end();
+  if (gate) {
+    if (gate === 403) {
+      // Diagnostic-only response headers; security denial remains unchanged.
+      response.setHeader('X-Iamina-Preview-Guard', previewGuardFailure(request) || 'unclassified');
+      const site = request.headers['sec-fetch-site'];
+      response.setHeader('X-Iamina-Fetch-Site',
+        ['same-origin', 'same-site', 'cross-site', 'none'].includes(site)
+          ? site : 'unavailable');
+    }
+    return response.status(gate).end();
+  }
   if (!ALLOWED_METHODS.has(request.method)) return response.status(405).end();
   const route = requestPath(request);
   if (!route) return response.status(400).end();

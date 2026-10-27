@@ -234,6 +234,28 @@ test('production and cross-origin requests are rejected before backend',()=>{
   assert.equal(previewOnlyAndSameOrigin(req('health',{headers:{origin:'https://evil.example'}})),403);
   assert.equal(previewOnlyAndSameOrigin(req('health',{method:'POST'})),403);
 });
+test('Preview forbidden POST returns only classification, preserves rejection and never reaches API', async () => {
+  await withEnv(async () => {
+    let upstream = 0;
+    globalThis.fetch = async () => { upstream++; throw Error('No upstream on guard denial'); };
+    for (const [request, expectedReason, expectedSite] of [
+      [req('auth/register',{method:'POST',headers:{'sec-fetch-site':'same-origin'}}),'origin-absent','same-origin'],
+      [req('auth/register',{method:'POST',headers:{origin:'https://attacker.example','sec-fetch-site':'cross-site'}}),'origin-mismatch','cross-site'],
+      [req('auth/register',{method:'POST',headers:{origin,'host':'attacker.example'}}),'host-rejected','unavailable'],
+    ]) {
+      const output = res();
+      await proxy(request, output, async () => 'synthetic-oidc');
+      assert.equal(output.statusCode, 403);
+      assert.equal(output.headers['x-iamina-preview-guard'], expectedReason);
+      assert.equal(output.headers['x-iamina-fetch-site'], expectedSite);
+      assert.equal(output.headers['access-control-allow-origin'], undefined);
+      assert.equal(output.headers['cache-control'], 'private, no-store, max-age=0');
+      assert.doesNotMatch(JSON.stringify(output.headers), /attacker\.example|Bearer|token/);
+    }
+    assert.equal(upstream, 0);
+  });
+});
+
 test('missing OIDC token returns 503 before any egress',async()=>{
   await withEnv(async()=>{
     delete process.env.VERCEL_OIDC_TOKEN;

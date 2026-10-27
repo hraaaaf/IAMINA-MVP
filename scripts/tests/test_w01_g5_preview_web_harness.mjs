@@ -71,6 +71,9 @@ test('Preview HTML requires explicit consent and is CSP nonce protected',()=>{
   assert.ok(r.body.includes('iamina:w01:safe-summary'));
   assert.ok(r.body.includes("await request('ops/preview-db-identity')"));
   assert.ok(r.body.includes('neon_postcondition_required'));
+  assert.ok(r.body.includes('BFF_INVALID_REGISTER_PREFLIGHT_DJANGO_422'));
+  assert.ok(r.body.includes("method: 'POST', body: {}"));
+  assert.ok(r.body.indexOf('BFF_INVALID_REGISTER_PREFLIGHT_DJANGO_422') < r.body.indexOf("await register('A')"));
   assert.ok(!r.body.includes('DATABASE_URL='));
 });
 
