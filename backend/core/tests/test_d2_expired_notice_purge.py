@@ -1,4 +1,5 @@
 """Synthetic tests for D2 expired-row physical retention, without scheduler."""
+import json
 from datetime import timedelta
 from io import StringIO
 from unittest.mock import patch
@@ -74,4 +75,61 @@ class D2ExpiredNoticePurgeTests(TestCase):
                     "purge_d2_expired_notices", apply=True,
                     batch_size=size, stdout=StringIO(),
                 )
+        self.assertEqual(D2InAppNotice.objects.count(), 1)
+
+    def test_monitor_overdue_fails_closed_without_deleting(self):
+        self._notice(self.a, 7, self.now - timedelta(minutes=91))
+        self._notice(self.b, 8, self.now - timedelta(minutes=10))
+        output = StringIO()
+        with patch(
+            "core.management.commands.purge_d2_expired_notices.timezone.now",
+            return_value=self.now,
+        ):
+            with self.assertRaisesMessage(CommandError, "D2_RETENTION_OVERDUE"):
+                call_command(
+                    "purge_d2_expired_notices", max_overdue_minutes=60,
+                    stdout=output,
+                )
+        metrics = json.loads(output.getvalue().splitlines()[-1])
+        self.assertEqual(metrics["expired_before"], 2)
+        self.assertEqual(metrics["overdue_count"], 1)
+        self.assertEqual(metrics["deleted"], 0)
+        self.assertEqual(D2InAppNotice.objects.count(), 2)
+
+    def test_max_deletes_fails_before_any_mutation(self):
+        self._notice(self.a, 9, self.now - timedelta(days=1))
+        self._notice(self.b, 10, self.now - timedelta(days=1))
+        with self.assertRaisesMessage(CommandError, "D2_RETENTION_LIMIT"):
+            call_command(
+                "purge_d2_expired_notices", apply=True, max_deletes=1,
+                stdout=StringIO(),
+            )
+        self.assertEqual(D2InAppNotice.objects.count(), 2)
+
+    def test_aggregate_json_omits_account_and_clinical_fields(self):
+        self._notice(self.a, 11, self.now - timedelta(days=1))
+        output = StringIO()
+        call_command("purge_d2_expired_notices", apply=True, stdout=output)
+        metrics = json.loads(output.getvalue().splitlines()[-1])
+        self.assertEqual(metrics["mode"], "APPLIED")
+        self.assertEqual(metrics["deleted"], 1)
+        self.assertEqual(metrics["expired_remaining"], 0)
+        self.assertEqual(metrics["schema_version"], "1.0")
+        for forbidden in ("patient", "email", "signature", "blood_sugar"):
+            self.assertNotIn(forbidden, output.getvalue())
+
+    def test_invalid_monitor_or_delete_limits_are_non_destructive(self):
+        self._notice(self.a, 12, self.now - timedelta(days=1))
+        for kwargs in (
+            {"max_deletes": 0, "apply": True},
+            {"max_deletes": 100001, "apply": True},
+            {"max_overdue_minutes": 0},
+            {"max_overdue_minutes": 10081},
+            {"max_overdue_minutes": 60, "apply": True},
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(CommandError):
+                    call_command(
+                        "purge_d2_expired_notices", stdout=StringIO(), **kwargs
+                    )
         self.assertEqual(D2InAppNotice.objects.count(), 1)
