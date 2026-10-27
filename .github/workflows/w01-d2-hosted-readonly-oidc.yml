@@ -31,8 +31,12 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
-          // Immutable code deployment: W01 + D2 12ef1240 on BOTH Web and API.
-          const base = 'https://iamina-review-f9j940c5d-achraf-benmoussa-s-projects.vercel.app';
+          // Compare both immutable Preview Web builds: original integration and iPhone-patched.
+          // Only GET requests. The API behind both is the same immutable 12ef1240 Preview.
+          const targets = [
+            ['ORIGINAL_12EF', 'https://iamina-review-f9j940c5d-achraf-benmoussa-s-projects.vercel.app'],
+            ['WEB_2ED', 'https://iamina-review-djfyzp0xt-achraf-benmoussa-s-projects.vercel.app'],
+          ];
           const expected = Object.freeze({
             database_name: 'iamina925_empty',
             role_name: 'iamina_preview_app',
@@ -41,7 +45,15 @@ jobs:
           });
           const jwt = process.env.IAMINA_OIDC;
           assert.ok(typeof jwt === 'string' && jwt.length > 30, 'OIDC_MISSING');
-          async function read(path) {
+          // JWT signature remains protected; print only trust-policy claim metadata,
+          // never the token, cookies, bearer, secret, or a response body.
+          const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString('utf8'));
+          const safeFields = ['iss','aud','sub','repository','repository_id',
+            'repository_owner','repository_owner_id','ref','workflow_ref','event_name'];
+          console.log('OIDC_PUBLIC_TRUST_CLAIMS', JSON.stringify(
+            Object.fromEntries(safeFields.map(k => [k, payload[k] ?? null]))
+          ));
+          async function read(base, label, path) {
             const r = await fetch(base + path, {
               method: 'GET',
               headers: {
@@ -53,29 +65,39 @@ jobs:
               signal: AbortSignal.timeout(15000),
             });
             const type = (r.headers.get('content-type') || '').toLowerCase();
-            console.log(path, 'HTTP', r.status, 'JSON', type.includes('application/json'));
-            assert.equal(r.status, 200, 'SSO_OR_UPSTREAM_FAIL_CLOSED');
+            // Print only safe, non-secret routing diagnostics. No response bodies.
+            console.log(label, path, 'HTTP', r.status,
+              'JSON', type.includes('application/json'),
+              'HTML', type.includes('text/html'),
+              'VERCEL_ID_PRESENT', !!r.headers.get('x-vercel-id'),
+              'VERCEL_ERROR', (r.headers.get('x-vercel-error') || '').slice(0,80));
+            assert.equal(r.status, 200, label + '_SSO_OR_UPSTREAM_FAIL_CLOSED');
             assert.ok(type.includes('application/json'), 'NON_JSON_DENIED');
             const raw = await r.text();
             assert.ok(raw.length < 16384, 'OVERSIZE_RESPONSE');
             return JSON.parse(raw);
           }
-          try {
-            const actual = await read('/api/v1/ops/preview-db-identity');
-            assert.deepEqual(
-              Object.keys(expected).sort(),
-              Object.keys(actual).sort(),
-              'IDENTITY_RESPONSE_FIELDS_UNEXPECTED',
-            );
-            for (const [field,value] of Object.entries(expected))
-              assert.equal(actual[field],value,'FOUR_FIELD_NEON_IDENTITY_MISMATCH_STOP');
-            console.log('FOUR_FIELD_NEON_BFF_VERIFIED_ON_DEPLOYED_12ef1240');
-            const health = await read('/api/v1/health');
-            assert.equal(health.db, 'ok', 'DATABASE_HEALTH_UNAVAILABLE');
-            console.log('WEB_BFF_API_NEON_READ_ONLY_PROOF_PASS');
-          } catch (error) {
-            // Do not log JWTs, cookies, credentials, query bodies or patient data.
-            console.error('HOSTED_READ_ONLY_BLOCKED:',error?.message||'UNKNOWN');
-            process.exitCode=1;
+          let originalPass = false;
+          let currentPass = false;
+          for (const [label, base] of targets) {
+            try {
+              const actual = await read(base, label, '/api/v1/ops/preview-db-identity');
+              assert.deepEqual(
+                Object.keys(expected).sort(), Object.keys(actual).sort(),
+                'IDENTITY_RESPONSE_FIELDS_UNEXPECTED'
+              );
+              for (const [field, value] of Object.entries(expected))
+                assert.equal(actual[field], value, 'FOUR_FIELD_NEON_IDENTITY_MISMATCH_STOP');
+              const health = await read(base, label, '/api/v1/health');
+              assert.equal(health.db, 'ok', 'DATABASE_HEALTH_UNAVAILABLE');
+              if (label === 'ORIGINAL_12EF') originalPass = true;
+              if (label === 'WEB_2ED') currentPass = true;
+              console.log(label, 'WEB_BFF_API_NEON_READ_ONLY_PROOF_PASS');
+            } catch (error) {
+              // Do not log JWT, HTTP bodies, cookies, credentials or patient data.
+              console.error(label, 'HOSTED_READ_ONLY_BLOCKED:', error?.message || 'UNKNOWN');
+            }
           }
+          console.log('OIDC_COMPARISON', JSON.stringify({originalPass, currentPass}));
+          assert.ok(currentPass, 'CURRENT_WEB_PREVIEW_OIDC_NOT_AUTHORIZED');
           NODE
