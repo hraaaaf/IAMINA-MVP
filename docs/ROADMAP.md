@@ -1,5 +1,13 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G7 — pré-revue de sécurité et tests de crash G3 — 27/10/2026
+
+**Livrables candidats :** `docs/assessments/2026-10-27-w01-g7-premerge-security-readiness.md` (6 écarts ouverts, preuves, critères GO/NO-GO, revue **interne et NON indépendante**), et `backend/core/tests/test_w01_g7_erasure_crash_gates.py` (2 tests purement synthétiques : crash Python au hook et après appel Firebase fictif, conservation `IN_PROGRESS`, HTTP 503 aux retries, aucune suppression SQL ni doublon distant). `SystemExit` **ne prouve pas** un kill OS ou une récupération après panne réelle. **Succès CI non attesté** avant passage du HEAD portant ces fichiers.
+
+**Observations prioritaires** : G5 OIDC hébergé différé, G6 snapshot neuf sur marqueur non vide bloqué par création projet, G2 durcissement Production sous gate ; G3 `ErasureRecord.firebase_uid_snapshot` conserve l'UID en reçu définitif (arbitrage privacy/retention obligatoire avant changement irréversible), cloud reconciliation absente, plafond BFF 4 MiB face à 15 MiB documentaire. Aucun de ces points n'est silencieusement certifié par tests synthétiques.
+
+**Critère de closeout :** revue sécurité/privacy réellement indépendante + G1-G6 + CI exact SHA + GO merge et postmerge. W01 NO-GO, W02 gelé. Aucune mutation Neon/Production/Vercel ni OIDC.
+
 ## W01-G3 — diagnostic opérationnel d'effacement sans identifiants — 27/10/2026
 
 **Preuve avant changement** : PR #1128 au HEAD `83a2a13e8921708eaa2a8e58657c72359c4743a0`, **21/22 runs SUCCESS**, seule erreur OIDC/G5 différée, CI générale #40468638513, Web/API/PG #40468638427 et migrations #40468638453 SUCCESS. Aucun nouveau projet Neon G6 au contrôle ; blocage externe pour test snapshot neuf non résolu.
