@@ -114,6 +114,11 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/reminders/reminders_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/notifications',
+    widget: 'D2NotificationCenterScreen',
+    source: 'lib/features/notifications/d2_notification_center_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/journal/:id/edit',
     widget: 'EditLogScreen',
     source: 'lib/features/journal/edit_log_screen.dart',
