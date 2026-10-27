@@ -7,7 +7,8 @@ and the independently observed Neon DB/branch/role, and refuses all divergence.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime
+from datetime import timezone as dt_timezone
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError

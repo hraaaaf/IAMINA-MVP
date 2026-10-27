@@ -7,12 +7,15 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
+from django.utils import timezone
 
+from core.management.commands.reconcile_w01_g5_synthetic import (
+    _CONFIRMATION,
+    _EXPECTED_IDENTITY,
+)
 from core.models import BasePatientProfile
 from core.models.erasure_attempt import ErasureAttempt
-from core.management.commands.reconcile_w01_g5_synthetic import (
-    _CONFIRMATION, _EXPECTED_IDENTITY,
-)
+from core.models.erasure_record import ErasureRecord
 
 class SyntheticW01ReconciliationTests(TestCase):
     def setUp(self):
@@ -75,8 +78,6 @@ class SyntheticW01ReconciliationTests(TestCase):
                 state=ErasureAttempt.State.COMPLETED,
                 firebase_uid_snapshot="",
             )
-            from core.models.erasure_record import ErasureRecord
-            from django.utils import timezone
             ErasureRecord.objects.create(
                 patient_id_snapshot=user.pk, firebase_uid_snapshot="",
                 completed_at=timezone.now(),
