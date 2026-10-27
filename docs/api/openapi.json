@@ -1687,6 +1687,128 @@
         ]
       }
     },
+    "/api/v1/account/notification-inbox": {
+      "get": {
+        "operationId": "diabetes_api_v1_d2_inbox_get_inbox",
+        "summary": "Get Inbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-in-app-notices"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notification-inbox/save": {
+      "post": {
+        "operationId": "diabetes_api_v1_d2_inbox_save_current_governed_preview",
+        "summary": "Save Current Governed Preview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-in-app-notices"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveNoticeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notification-inbox/{notice_id}/read": {
+      "put": {
+        "operationId": "diabetes_api_v1_d2_inbox_mark_inbox_read",
+        "summary": "Mark Inbox Read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "schema": {
+              "title": "Notice Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-in-app-notices"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notification-inbox/{notice_id}": {
+      "delete": {
+        "operationId": "diabetes_api_v1_d2_inbox_delete_inbox_item",
+        "summary": "Delete Inbox Item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "schema": {
+              "title": "Notice Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-in-app-notices"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/modules/{module_name}/activate": {
       "post": {
         "operationId": "core_api_v1_modules_activate_module",
@@ -5369,6 +5491,21 @@
           "acknowledgment"
         ],
         "title": "D2GrantRequest",
+        "type": "object"
+      },
+      "SaveNoticeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledgment": {
+            "const": "SAVE_GOVERNED_PREVIEW",
+            "title": "Acknowledgment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "acknowledgment"
+        ],
+        "title": "SaveNoticeRequest",
         "type": "object"
       },
       "ImportResultResponse": {
