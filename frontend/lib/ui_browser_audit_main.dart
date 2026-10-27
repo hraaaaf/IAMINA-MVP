@@ -77,6 +77,18 @@ class _BrowserAuditD2Gateway implements D2ConsentGateway {
 
   @override
   Future<D2ObservationPreview?> readPreview() async => null;
+
+  @override
+  Future<List<D2SavedNotice>> inbox() async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> savePreview() async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> markRead(int id) async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> removeNotice(int id) async => const [];
 }
 
 class _BrowserAuditCompanionService extends CompanionService {

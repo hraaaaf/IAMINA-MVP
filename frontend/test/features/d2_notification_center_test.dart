@@ -18,6 +18,11 @@ class FakeGateway implements D2ConsentGateway {
   D2ConsentStatus current = sample();
   int previewReads = 0;
   D2ObservationPreview? preview;
+  int inboxReads = 0;
+  int saves = 0;
+  int reads = 0;
+  int deletes = 0;
+  List<D2SavedNotice> saved = const [];
   @override
   Future<D2ConsentStatus> read(String locale) async {
     if (failRead) throw StateError('offline');
@@ -33,7 +38,31 @@ class FakeGateway implements D2ConsentGateway {
   Future<D2ConsentStatus> withdraw(String locale) async {
     withdrawals++;
     current = sample();
+    saved = const [];
     return current;
+  }
+  @override
+  Future<List<D2SavedNotice>> inbox() async {
+    inboxReads++;
+    return saved;
+  }
+  @override
+  Future<List<D2SavedNotice>> savePreview() async {
+    saves++;
+    saved = [const D2SavedNotice(id: 1, kind: 'meal')];
+    return saved;
+  }
+  @override
+  Future<List<D2SavedNotice>> markRead(int id) async {
+    reads++;
+    saved = [D2SavedNotice(id: id, kind: 'meal', read: true)];
+    return saved;
+  }
+  @override
+  Future<List<D2SavedNotice>> removeNotice(int id) async {
+    deletes++;
+    saved = const [];
+    return saved;
   }
   @override
   Future<D2ObservationPreview?> readPreview() async {
@@ -44,6 +73,26 @@ class FakeGateway implements D2ConsentGateway {
 
 void main() {
   d2PreviewContractTests();
+  test('reject inbox claims of real delivery and malformed items', () {
+    final valid = <String, dynamic>{
+      'delivery_enabled': false,
+      'items': [<String, dynamic>{
+        'id': 1, 'kind': 'context',
+        'created_at': '2026-10-27T10:00:00Z',
+        'expires_at': '2026-11-03T10:00:00Z',
+        'read_at': null,
+      }],
+    };
+    expect(D2SavedNotice.parseInbox(valid).single.kind, 'context');
+    expect(() => D2SavedNotice.parseInbox(
+        {...valid, 'delivery_enabled': true}), throwsStateError);
+    expect(() => D2SavedNotice.parseInbox({
+      ...valid, 'items': [<String, dynamic>{
+        ...(valid['items'] as List).single as Map<String, dynamic>,
+        'kind': 'emergency',
+      }],
+    }), throwsStateError);
+  });
   test('reject malformed backend payload or delivery-enabled flag', () {
     final valid = <String, dynamic>{
       'purpose': 'proactive_in_app_preview',
@@ -108,6 +157,8 @@ void main() {
     expect(find.byKey(const Key('d2-enable-preview-only')), findsNothing);
     expect(gateway.grants, 0);
     expect(gateway.previewReads, 0);
+    expect(gateway.inboxReads, 0);
+    expect(gateway.saves, 0);
   });
 
   testWidgets('governed preview appears only with server opt-in', (tester) async {
@@ -121,6 +172,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(gateway.previewReads, 1);
     expect(find.byKey(const Key('d2-governed-preview')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('d2-save-preview')));
+    await tester.tap(find.byKey(const Key('d2-save-preview')));
+    await tester.pumpAndSettle();
+    expect(gateway.saves, 1);
+    expect(find.byKey(const Key('d2-inbox-item-1')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('d2-inbox-item-1')));
+    await tester.tap(find.byTooltip('Marquer comme lu'));
+    await tester.pumpAndSettle();
+    expect(gateway.reads, 1);
+    await tester.tap(find.byTooltip('Supprimer'));
+    await tester.pumpAndSettle();
+    expect(gateway.deletes, 1);
+    expect(find.byKey(const Key('d2-empty-inbox')), findsOneWidget);
   });
 }
 

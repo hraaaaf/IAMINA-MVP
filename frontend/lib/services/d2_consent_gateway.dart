@@ -9,6 +9,48 @@ abstract class D2ConsentGateway {
   Future<D2ConsentStatus> withdraw(String locale);
   /// On-demand governed observation only, never a notification or delivery.
   Future<D2ObservationPreview?> readPreview();
+  Future<List<D2SavedNotice>> inbox();
+  Future<List<D2SavedNotice>> savePreview();
+  Future<List<D2SavedNotice>> markRead(int id);
+  Future<List<D2SavedNotice>> removeNotice(int id);
+}
+
+class D2SavedNotice {
+  final int id;
+  final String kind;
+  final bool read;
+  const D2SavedNotice({required this.id, required this.kind, this.read = false});
+
+  static List<D2SavedNotice> parseInbox(dynamic body) {
+    if (body is! Map<String, dynamic> ||
+        body['delivery_enabled'] != false ||
+        body['items'] is! List) {
+      throw StateError('Unverified D2 inbox');
+    }
+    final items = body['items'] as List;
+    if (items.length > 20) throw StateError('Too many D2 inbox items');
+    return items.map((raw) {
+      if (raw is! Map<String, dynamic> ||
+          raw['id'] is! int || (raw['id'] as int) <= 0 ||
+          !const ['context', 'meal'].contains(raw['kind']) ||
+          raw['created_at'] is! String ||
+          raw['expires_at'] is! String ||
+          (raw['read_at'] != null && raw['read_at'] is! String)) {
+        throw StateError('Invalid D2 inbox item');
+      }
+      final expiresAt = DateTime.tryParse(raw['expires_at'] as String);
+      final createdAt = DateTime.tryParse(raw['created_at'] as String);
+      if (expiresAt == null || createdAt == null ||
+          !expiresAt.isAfter(createdAt)) {
+        throw StateError('Invalid D2 inbox time window');
+      }
+      return D2SavedNotice(
+        id: raw['id'] as int,
+        kind: raw['kind'] as String,
+        read: raw['read_at'] != null,
+      );
+    }).toList(growable: false);
+  }
 }
 
 class D2ObservationPreview {
@@ -137,6 +179,48 @@ class D2ApiConsentGateway implements D2ConsentGateway {
   Future<D2ConsentStatus> withdraw(String locale) => _perform(() =>
       api.client.delete(
         Uri.parse('/api/v1/account/notification-preview-consent'),
+      ));
+
+  @override
+  Future<List<D2SavedNotice>> _inboxRequest(
+    Future<dynamic> Function() operation,
+  ) async {
+    final epoch = AuthEpoch.value;
+    final response = await operation();
+    requireCurrentAuthEpoch(epoch);
+    if (!response.isSuccessful) throw StateError('D2 inbox unavailable');
+    return inbox();
+  }
+
+  @override
+  Future<List<D2SavedNotice>> inbox() async {
+    final epoch = AuthEpoch.value;
+    final response = await api.client.get(
+      Uri.parse('/api/v1/account/notification-inbox'),
+    );
+    requireCurrentAuthEpoch(epoch);
+    if (!response.isSuccessful) throw StateError('D2 inbox unavailable');
+    return D2SavedNotice.parseInbox(response.body);
+  }
+
+  @override
+  Future<List<D2SavedNotice>> savePreview() => _inboxRequest(() =>
+      api.client.post(
+        Uri.parse('/api/v1/account/notification-inbox/save'),
+        body: <String, dynamic>{'acknowledgment': 'SAVE_GOVERNED_PREVIEW'},
+      ));
+
+  @override
+  Future<List<D2SavedNotice>> markRead(int id) => _inboxRequest(() =>
+      api.client.put(
+        Uri.parse('/api/v1/account/notification-inbox/$id/read'),
+        body: <String, dynamic>{},
+      ));
+
+  @override
+  Future<List<D2SavedNotice>> removeNotice(int id) => _inboxRequest(() =>
+      api.client.delete(
+        Uri.parse('/api/v1/account/notification-inbox/$id'),
       ));
 
   @override

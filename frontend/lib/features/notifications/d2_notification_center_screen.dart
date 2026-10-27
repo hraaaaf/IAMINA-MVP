@@ -28,6 +28,8 @@ class _D2NotificationCenterScreenState
   D2ConsentGateway? _gateway;
   D2ConsentStatus? _consent;
   D2ObservationPreview? _preview;
+  List<D2SavedNotice> _inbox = const [];
+  bool _inboxUnavailable = false;
   bool _previewUnavailable = false;
   bool _loading = true;
   bool _saving = false;
@@ -57,6 +59,8 @@ class _D2NotificationCenterScreenState
       _consent = null;
       _preview = null;
       _previewUnavailable = false;
+      _inbox = const [];
+      _inboxUnavailable = false;
     });
     try {
       final result = await _gateway!.read(_locale);
@@ -70,11 +74,22 @@ class _D2NotificationCenterScreenState
           previewUnavailable = true;
         }
       }
+      List<D2SavedNotice> notices = const [];
+      var inboxUnavailable = false;
+      if (result.optedIn) {
+        try {
+          notices = await _gateway!.inbox();
+        } catch (_) {
+          inboxUnavailable = true;
+        }
+      }
       if (!mounted || !_sameUser) return;
       setState(() {
         _consent = result;
         _preview = preview;
         _previewUnavailable = previewUnavailable;
+        _inbox = notices;
+        _inboxUnavailable = inboxUnavailable;
       });
     } catch (_) {
       if (!mounted || !_sameUser) return;
@@ -102,11 +117,22 @@ class _D2NotificationCenterScreenState
           previewUnavailable = true;
         }
       }
+      List<D2SavedNotice> notices = const [];
+      var inboxUnavailable = false;
+      if (result.optedIn) {
+        try {
+          notices = await _gateway!.inbox();
+        } catch (_) {
+          inboxUnavailable = true;
+        }
+      }
       if (!mounted || !_sameUser) return;
       setState(() {
         _consent = result;
         _preview = preview;
         _previewUnavailable = previewUnavailable;
+        _inbox = notices;
+        _inboxUnavailable = inboxUnavailable;
         _acknowledged = false;
         _unavailable = false;
       });
@@ -116,8 +142,33 @@ class _D2NotificationCenterScreenState
         _consent = null; // Fail closed: never show a stale approval.
         _preview = null;
         _previewUnavailable = false;
+        _inbox = const [];
+        _inboxUnavailable = false;
         _unavailable = true;
         _acknowledged = false;
+      });
+    } finally {
+      if (mounted && _sameUser) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _actOnInbox(
+    Future<List<D2SavedNotice>> Function() action,
+  ) async {
+    if (_saving || !_sameUser || _consent?.optedIn != true) return;
+    setState(() => _saving = true);
+    try {
+      final items = await action();
+      if (!mounted || !_sameUser) return;
+      setState(() {
+        _inbox = items;
+        _inboxUnavailable = false;
+      });
+    } catch (_) {
+      if (!mounted || !_sameUser) return;
+      setState(() {
+        _inbox = const [];
+        _inboxUnavailable = true;
       });
     } finally {
       if (mounted && _sameUser) setState(() => _saving = false);
@@ -149,10 +200,10 @@ class _D2NotificationCenterScreenState
                           size: 32, color: AminaVisualLanguage.actionGreen),
                       const SizedBox(height: 12),
                       Text(
-                        _copy(context, 'Aucune notification reçue',
-                            'No notifications received',
-                            'لا توجد إشعارات مستلمة'),
-                        key: const Key('d2-empty-inbox'),
+                        _copy(context, 'Mes observations enregistrées',
+                            'My saved observations',
+                            'ملاحظاتي المحفوظة'),
+                        key: const Key('d2-inbox-title'),
                         style: const TextStyle(
                           fontFamily: 'Georgia',
                           fontSize: 22,
@@ -161,9 +212,67 @@ class _D2NotificationCenterScreenState
                       ),
                       const SizedBox(height: 8),
                       Text(_copy(context,
-                          'Les envois de notifications ne sont pas activés. Les rappels que vous créez restent séparés.',
-                          'Notification delivery is not enabled. Your saved reminders remain separate.',
-                          'إرسال الإشعارات غير مفعّل. تذكيراتك المحفوظة منفصلة عن ذلك.')),
+                          'Ce carnet contient uniquement les aperçus que vous enregistrez. Aucun message automatique, e-mail, SMS ou push.',
+                          'This collection contains only previews you choose to save. No automatic messages, email, SMS or push.',
+                          'تضم هذه القائمة المعاينات التي تحفظها بنفسك فقط. لا رسائل تلقائية أو بريد أو إشعارات.')),
+                      const SizedBox(height: 12),
+                      if (consent == null || !consent.optedIn)
+                        Text(_copy(context,
+                            'Activez les aperçus facultatifs pour accéder aux éléments enregistrés.',
+                            'Opt in to previews to access saved items.',
+                            'اسمح بالمعاينات الاختيارية للوصول إلى المحفوظات.'))
+                      else if (_inboxUnavailable)
+                        Text(_copy(context,
+                            'Éléments indisponibles : réessayez.',
+                            'Saved items unavailable: try again.',
+                            'المحتوى غير متاح: حاول مجدداً.'),
+                            key: const Key('d2-inbox-error'))
+                      else if (_inbox.isEmpty)
+                        Text(_copy(context, 'Aucun aperçu enregistré.',
+                            'No saved previews.', 'لا توجد معاينات محفوظة.'),
+                            key: const Key('d2-empty-inbox'))
+                      else
+                        ..._inbox.map((item) => ListTile(
+                          key: Key('d2-inbox-item-${item.id}'),
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(item.read
+                              ? Icons.mark_email_read_outlined
+                              : Icons.markunread_outlined,
+                              color: AminaVisualLanguage.actionGreen),
+                          title: Text(_copy(context,
+                              item.kind == 'meal'
+                                  ? 'Observation relative aux repas'
+                                  : 'Observation de contexte',
+                              item.kind == 'meal'
+                                  ? 'Meal observation'
+                                  : 'Context observation',
+                              item.kind == 'meal'
+                                  ? 'ملاحظة عن الوجبات'
+                                  : 'ملاحظة سياقية')),
+                          subtitle: Text(_copy(context,
+                              'Enregistrement volontaire · 7 jours maximum',
+                              'Saved voluntarily · maximum 7 days',
+                              'حُفظت طوعاً · لمدة أقصاها ٧ أيام')),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!item.read) IconButton(
+                                tooltip: _copy(context, 'Marquer comme lu',
+                                    'Mark as read', 'وضع علامة مقروء'),
+                                icon: const Icon(Icons.done_rounded),
+                                onPressed: _saving ? null : () =>
+                                    _actOnInbox(() => _gateway!.markRead(item.id)),
+                              ),
+                              IconButton(
+                                tooltip: _copy(context, 'Supprimer',
+                                    'Delete', 'حذف'),
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: _saving ? null : () =>
+                                    _actOnInbox(() => _gateway!.removeNotice(item.id)),
+                              ),
+                            ],
+                          ),
+                        )),
                     ],
                   ),
                 ),
@@ -206,6 +315,17 @@ class _D2NotificationCenterScreenState
                           'Information descriptive uniquement : ne diagnostique pas, ne prédit pas et ne recommande aucun changement de traitement.',
                           'Descriptive information only: no diagnosis, prediction or treatment changes.',
                           'معلومات وصفية فقط: دون تشخيص أو تنبؤ أو تغيير للعلاج.')),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          key: const Key('d2-save-preview'),
+                          onPressed: _saving ? null :
+                              () => _actOnInbox(_gateway!.savePreview),
+                          icon: const Icon(Icons.bookmark_add_outlined),
+                          label: Text(_copy(context,
+                              'Enregistrer cet aperçu',
+                              'Save this preview',
+                              'حفظ هذه المعاينة')),
+                        ),
                       ],
                     ],
                   )),
