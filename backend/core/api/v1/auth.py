@@ -245,7 +245,11 @@ def set_native_password(request, data: SetPasswordRequest):
 def request_password_reset(request, data: PasswordResetRequest):
     """Send a native recovery link without disclosing account existence."""
     users = list(User.objects.filter(email__iexact=data.email, is_active=True)[:2])
-    if len(users) == 1 and users[0].has_usable_password():
+    if (
+        len(users) == 1
+        and users[0].has_usable_password()
+        and not erasure_blocks_access(users[0])
+    ):
         user = users[0]
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
@@ -292,6 +296,10 @@ def confirm_password_reset(request, data: PasswordResetConfirmRequest):
     except (ValueError, TypeError, OverflowError, User.DoesNotExist) as exc:
         raise HttpError(400, "Invalid or expired recovery credential") from exc
 
+    # The recovery credential can have been issued *before* account erasure.
+    # Do not mutate credentials or issue new access during pending review.
+    if erasure_blocks_access(user):
+        raise HttpError(400, "Invalid or expired recovery credential")
     if not default_token_generator.check_token(user, data.token):
         raise HttpError(400, "Invalid or expired recovery credential")
     try:

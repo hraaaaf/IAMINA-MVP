@@ -1,5 +1,9 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3/G7 — fermeture du flux mot de passe pendant réconciliation (27/10/2026)
+
+**Problème prouvé par lecture** : même avec `ErasureAttempt` bloquant Bearer/session/login, `/auth/password/reset/request` pouvait encore envoyer un lien, et `/auth/password/reset/confirm` acceptait un token émis avant le claim et pouvait écrire un nouveau hash de mot de passe. **Correctif candidat** : ne pas envoyer de lien au compte en effacement tout en gardant la réponse générique anti-énumération ; rejeter token préexistant avec erreur générique avant modification de mot de passe. Tests ORM HTTP synthétiques `pending`, `in_progress`, `review_required`, absence email, mot de passe ancien intact, et contrôle non-régression du reset normal. Aucun état d'effacement ni Firebase modifié. **Succès à démontrer par CI sur nouveau SHA**. W01 NO-GO, G5 OIDC différé, G6 Neon projet jetable gate et G2 Production gate.
+
 ## W01-G3/G7 — gel des identités pendant effacement (27/10/2026)
 
 **Source vérifiée** : HEAD antérieur `a80161e5a24dc22db0ffc7632205a2b345733279` ; 22 runs terminés, 21 SUCCESS, seul OIDC différé. **Risques constatés par revue de code** : claim `ErasureAttempt` était persisté avant hooks et Firebase, mais `core.native_auth.verify_native_token`, `amina.vercel_session_auth.SessionAuth` et `core.auth_migration.resolve_linked_firebase_user` ne consultaient pas ce claim. Le Django User demeure vivant tant que l'effacement SQL n'est pas fini, donc les sessions et tokens précédents pouvaient continuer de traverser les routes cliniques après le claim.
