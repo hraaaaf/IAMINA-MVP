@@ -11,7 +11,7 @@ from amina.vercel_session_auth import check_iamina_csrf
 from core.audit import record_audit
 from core.consent_notice import profile_has_current_consent
 from core.d2_preview_notice import expected_d2_notice, validate_d2_notice
-from core.models import BasePatientProfile, D2PreviewConsentReceipt, D2InAppNotice
+from core.models import BasePatientProfile, D2InAppNotice, D2PreviewConsentReceipt
 
 router = Router(tags=["d2-preview-consent"])
 PATH = "/account/notification-preview-consent"

@@ -24,8 +24,8 @@ from core.models import (
     AIConsentReceipt,
     AIMediaConsentGrant,
     BasePatientProfile,
-    D2PreviewConsentReceipt,
     D2InAppNotice,
+    D2PreviewConsentReceipt,
 )
 from core.models.erasure_record import ErasureRecord
 

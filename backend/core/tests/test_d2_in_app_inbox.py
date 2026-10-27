@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from core.consent_notice import expected_notice_claim
 from core.d2_preview_notice import expected_d2_notice
-from core.models import BasePatientProfile, D2PreviewConsentReceipt, D2InAppNotice
+from core.models import BasePatientProfile, D2InAppNotice, D2PreviewConsentReceipt
 from diabetes.models.entry import LogEntry
 from diabetes.services.clinical.observation_memory import refresh_personal_response_memory
 
