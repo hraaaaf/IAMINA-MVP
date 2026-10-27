@@ -239,7 +239,7 @@ test('Preview forbidden POST returns only classification, preserves rejection an
     let upstream = 0;
     globalThis.fetch = async () => { upstream++; throw Error('No upstream on guard denial'); };
     for (const [request, expectedReason, expectedSite] of [
-      [req('auth/register',{method:'POST',headers:{'sec-fetch-site':'same-origin'}}),'origin-absent','same-origin'],
+      [req('auth/register',{method:'POST',headers:{'sec-fetch-site':'same-site'}}),'origin-absent','same-site'],
       [req('auth/register',{method:'POST',headers:{origin:'https://attacker.example','sec-fetch-site':'cross-site'}}),'origin-mismatch','cross-site'],
       [req('auth/register',{method:'POST',headers:{origin,'host':'attacker.example'}}),'host-rejected','unavailable'],
     ]) {
@@ -253,6 +253,60 @@ test('Preview forbidden POST returns only classification, preserves rejection an
       assert.doesNotMatch(JSON.stringify(output.headers), /attacker\.example|Bearer|token/);
     }
     assert.equal(upstream, 0);
+  });
+});
+
+test('hosted browser same-origin POST can omit Origin, but never bypasses OIDC or forwards cookies', async () => {
+  await withEnv(async () => {
+    const request = req('auth/register', {method:'POST', headers:{
+      'sec-fetch-site':'same-origin', 'content-type':'application/json',
+      cookie:'_vercel_jwt=private-sso-cookie',
+    }});
+    assert.equal(previewOnlyAndSameOrigin(request), 0);
+
+    // Fail closed when Origin is missing and Fetch Metadata is weaker or absent.
+    for (const site of [undefined, 'same-site', 'cross-site', 'none', '',
+      'same-origin, cross-site']) {
+      const headers = site === undefined ? {} : {'sec-fetch-site':site};
+      assert.equal(previewOnlyAndSameOrigin(req('auth/register',{
+        method:'POST', headers,
+      })), 403, 'site=' + String(site));
+    }
+    // Forged Origin cannot be rescued by apparently same-origin metadata.
+    assert.equal(previewOnlyAndSameOrigin(req('auth/register',{method:'POST',headers:{
+      origin:'https://attacker.invalid', 'sec-fetch-site':'same-origin',
+    }})), 403);
+
+    const body = Buffer.from('{}');
+    const incoming = Readable.from([body]);
+    Object.assign(incoming, request);
+    let calls = 0;
+    globalThis.fetch = async (url, options) => {
+      calls++;
+      assert.equal(url, apiOrigin + '/api/v1/auth/register');
+      assert.equal(options.headers.get('x-vercel-trusted-oidc-idp-token'),'synthetic-oidc');
+      assert.equal(options.headers.get('origin'),null);
+      assert.equal(options.headers.get('cookie'),null);
+      assert.equal(options.headers.get('sec-fetch-site'),null);
+      assert.deepEqual(options.body,body);
+      return new Response(JSON.stringify({detail:'Invalid synthetic payload'}),{
+        status:422,headers:{'content-type':'application/json'},
+      });
+    };
+    const output = streamingResponse();
+    await proxy(incoming,output,async()=> 'synthetic-oidc');
+    assert.equal(calls,1);
+    assert.equal(output.statusCode,422);
+    assert.equal(output.headers['x-iamina-preview-guard'],undefined);
+    assert.equal(JSON.parse(output.text()).detail,'Invalid synthetic payload');
+
+    // Same accepted browser request still cannot reach upstream without OIDC.
+    globalThis.fetch=async()=>{throw Error('No egress without OIDC');};
+    const denied = res();
+    await proxy(req('auth/register',{method:'POST',headers:{
+      'sec-fetch-site':'same-origin',
+    }}),denied,async()=>null);
+    assert.equal(denied.statusCode,503);
   });
 });
 
