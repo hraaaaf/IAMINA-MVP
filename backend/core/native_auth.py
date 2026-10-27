@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core import signing
 from django.db import transaction
 
+from core.erasure_access import erasure_blocks_access
 from core.models import BasePatientProfile
 
 _TOKEN_PREFIX = "iamina."
@@ -31,6 +32,8 @@ class NativeTokenIdentity:
 
 def issue_native_token(user) -> str:
     """Issue a timestamped bearer bound to the profile revocation version."""
+    if erasure_blocks_access(user):
+        raise NativeTokenError("revoked_or_unknown_native_token")
     profile, _ = BasePatientProfile.objects.get_or_create(patient=user)
     signer = signing.TimestampSigner(salt=_TOKEN_SALT)
     signed = signer.sign_object(
@@ -76,6 +79,10 @@ def verify_native_token(token: str):
         )
     except BasePatientProfile.DoesNotExist as exc:
         raise NativeTokenError("revoked_or_unknown_native_token") from exc
+    # Erasure intent commits before any hooks/Firebase action. Reject copies of
+    # otherwise valid Bearers while that account is awaiting reconciliation.
+    if erasure_blocks_access(profile.patient):
+        raise NativeTokenError("revoked_or_unknown_native_token")
     return profile.patient
 
 

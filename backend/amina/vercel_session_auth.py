@@ -8,6 +8,7 @@ from ninja.errors import HttpError
 from ninja.security import SessionAuth as NinjaSessionAuth
 
 from amina.middleware.vercel_csrf import IaminaVercelCsrfViewMiddleware
+from core.erasure_access import erasure_blocks_access
 
 
 def _no_view() -> None:
@@ -49,4 +50,7 @@ class SessionAuth(NinjaSessionAuth):
         # instead of silently returning the cookie-authenticated patient.
         if request.META.get("HTTP_AUTHORIZATION"):
             return None
-        return super().authenticate(request, key)
+        user = super().authenticate(request, key)
+        if user is not None and erasure_blocks_access(user):
+            return None
+        return user

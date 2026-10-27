@@ -29,6 +29,7 @@ from core.auth_migration import (
     migrate_new_firebase_identity,
     verify_firebase_token,
 )
+from core.erasure_access import erasure_blocks_access
 from core.models import BasePatientProfile
 from core.native_auth import (
     NativeTokenError,
@@ -152,6 +153,9 @@ def _require_authenticated(request) -> User:
 
 
 def _open_session(request, user: User, *, method: str) -> None:
+    # The account's durable deletion claim forbids issuing fresh sessions.
+    if erasure_blocks_access(user):
+        raise HttpError(403, "Account access unavailable")
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 

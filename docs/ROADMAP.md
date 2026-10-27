@@ -1,5 +1,11 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3/G7 — gel des identités pendant effacement (27/10/2026)
+
+**Source vérifiée** : HEAD antérieur `a80161e5a24dc22db0ffc7632205a2b345733279` ; 22 runs terminés, 21 SUCCESS, seul OIDC différé. **Risques constatés par revue de code** : claim `ErasureAttempt` était persisté avant hooks et Firebase, mais `core.native_auth.verify_native_token`, `amina.vercel_session_auth.SessionAuth` et `core.auth_migration.resolve_linked_firebase_user` ne consultaient pas ce claim. Le Django User demeure vivant tant que l'effacement SQL n'est pas fini, donc les sessions et tokens précédents pouvaient continuer de traverser les routes cliniques après le claim.
+
+**Correctif candidat (sans cloud)** : `core.erasure_access.erasure_blocks_access` sur l'index unique `patient_id_snapshot`; tout intent `pending / in_progress / review_required / completed` associé à l'ID interdit l'émission/vérification du Bearer natif, SessionAuth sur Web, nouveau login Django et résolution/migration Firebase d'un UID déjà lié **avant synchronisation d'email**. Refus fail-closed sans UID ni PHI et sans modifier l'état intent. Tests ORM synthétiques : quatre états, Bearer A refusé après claim, session A refusée, login A refuse sans token/cookie, B reste accessible, migration Firebase A sans écriture. **Ne pas confondre test d'auth avec preuve d'exécution réelle du kill/cleanup Redis/Firebase.** Le contrôle ne sérialise pas en une transaction toute requête médicale précédemment autorisée, ni les identités tiers non enregistrées : revue sécurité indépendante toujours nécessaire. **CI du nouveau HEAD non encore certifiée**.
+
 ## W01-G7 — pré-revue de sécurité et tests de crash G3 — 27/10/2026
 
 **Livrables candidats :** `docs/assessments/2026-10-27-w01-g7-premerge-security-readiness.md` (6 écarts ouverts, preuves, critères GO/NO-GO, revue **interne et NON indépendante**), et `backend/core/tests/test_w01_g7_erasure_crash_gates.py` (2 tests purement synthétiques : crash Python au hook et après appel Firebase fictif, conservation `IN_PROGRESS`, HTTP 503 aux retries, aucune suppression SQL ni doublon distant). `SystemExit` **ne prouve pas** un kill OS ou une récupération après panne réelle. **Succès CI non attesté** avant passage du HEAD portant ces fichiers.
