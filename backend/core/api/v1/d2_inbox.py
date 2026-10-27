@@ -9,6 +9,7 @@ from datetime import timedelta
 from typing import Literal
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 from ninja import Router
@@ -86,8 +87,16 @@ def save_current_governed_preview(request, data: SaveNoticeRequest):
         settings.SECRET_KEY.encode("utf-8"), message, hashlib.sha256,
     ).hexdigest()
     now = timezone.now()
-    # Expired records are purged opportunistically; no cron or provider call.
+    # Serialize saves for the same patient and bound the inbox to 20 items.
+    get_user_model().objects.select_for_update().get(pk=request.user.pk)
     D2InAppNotice.objects.filter(patient=request.user, expires_at__lte=now).delete()
+    existing = D2InAppNotice.objects.filter(
+        patient=request.user, signature=signature,
+    ).first()
+    if existing is None and D2InAppNotice.objects.filter(
+        patient=request.user,
+    ).count() >= MAX_ITEMS:
+        raise HttpError(429, "Saved preview limit reached")
     row, created = D2InAppNotice.objects.get_or_create(
         patient=request.user, signature=signature,
         defaults={"kind": item.kind, "expires_at": now + TTL},

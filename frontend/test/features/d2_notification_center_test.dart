@@ -88,7 +88,7 @@ void main() {
         {...valid, 'delivery_enabled': true}), throwsStateError);
     expect(() => D2SavedNotice.parseInbox({
       ...valid, 'items': [<String, dynamic>{
-        ...(valid['items'] as List).single as Map<String, dynamic>,
+        ...((valid['items'] as List).single as Map<String, dynamic>),
         'kind': 'emergency',
       }],
     }), throwsStateError);
