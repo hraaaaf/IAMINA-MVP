@@ -10,7 +10,7 @@ from core.models.erasure_attempt import ErasureAttempt
 
 
 @pytest.mark.django_db
-def test_backlog_report_counts_states_without_exposing_identities(monkeypatch):
+def test_backlog_report_counts_states_without_exposing_identities():
     secret = "private-synthetic-firebase-uid-6f52"
     entries = [
         (100021, secret, ErasureAttempt.State.PENDING),
@@ -29,8 +29,8 @@ def test_backlog_report_counts_states_without_exposing_identities(monkeypatch):
     def deny_mutation(*args, **kwargs):
         pytest.fail("Backlog inspection attempted a database mutation")
 
-    monkeypatch.setattr(ErasureAttempt.objects, "update", deny_mutation)
-    monkeypatch.setattr(ErasureAttempt.objects, "delete", deny_mutation)
+    # Django deliberately does not expose QuerySet.delete() on managers.
+    # SQL interception below covers *all* write paths, including queryset ones.
     out = StringIO()
     with connection.execute_wrapper(
         lambda execute, sql, params, many, context: (
