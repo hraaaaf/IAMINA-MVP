@@ -40,3 +40,10 @@ Sources checked 27 Oct 2026:
 ## Current evidence / limitations
 
 The PostgreSQL A/B consent and inbox test passed 21/21 assertions inside a disposable Neon branch and rolled back to zero, and original Preview also remained at zero. The positive hosted `POST /notification-inbox/save` and browser Web account transition are **still not independently observed**. GitHub Actions OIDC protected GET remains HTTP 401, with a separate authenticated Vercel manual identity/health PASS. CI on the new retention code must be verified at its exact SHA before signoff.
+
+
+## Verified synthetic scheduling rehearsal — 27 Oct 2026
+
+Neon branch `br-royal-wave-b9d5eaw1` successfully hosted a **read-only** Function `d2qaheartbeat` and branch-local `* * * * *` trigger. Logs explicitly confirmed an invocation at 20:49:00 UTC, with start and successful end at the same minute. This function never queried or mutated patient data. Trigger was disabled, then removed, and function deleted after proof. Source Preview had no trigger. The Vercel sandbox for the independent `/save` test was stopped and all rows rolled back to zero.
+
+**Updated security requirement:** Neon scheduled calls target a publicly addressable function without built-in cron-request authentication; its trigger header is not a cryptographic credential. Never expose the patient-deleting `--apply` command through a header-only protected public Function. Before a live schedule, implement and independently test a protected invocation and least-privileged connection, or choose a safer operator-controlled alternative, plus failure monitoring. The read-only rehearsal does **not** satisfy this gate.
