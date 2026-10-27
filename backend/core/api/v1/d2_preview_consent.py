@@ -11,7 +11,7 @@ from amina.vercel_session_auth import check_iamina_csrf
 from core.audit import record_audit
 from core.consent_notice import profile_has_current_consent
 from core.d2_preview_notice import expected_d2_notice, validate_d2_notice
-from core.models import BasePatientProfile, D2PreviewConsentReceipt
+from core.models import BasePatientProfile, D2PreviewConsentReceipt, D2InAppNotice
 
 router = Router(tags=["d2-preview-consent"])
 PATH = "/account/notification-preview-consent"
@@ -135,6 +135,8 @@ def revoke_d2_preview_consent(request):
     revoked = D2PreviewConsentReceipt.objects.filter(
         patient=request.user, revoked_at__isnull=True,
     ).update(revoked_at=timezone.now())
+    # A revoked preview grant cannot leave patient-visible derived notices behind.
+    D2InAppNotice.objects.filter(patient=request.user).delete()
     if revoked:
         record_audit(request.user, "d2_preview_consent_withdrawn", request)
     return _status(request.user)

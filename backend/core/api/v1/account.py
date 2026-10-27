@@ -25,6 +25,7 @@ from core.models import (
     AIMediaConsentGrant,
     BasePatientProfile,
     D2PreviewConsentReceipt,
+    D2InAppNotice,
 )
 from core.models.erasure_record import ErasureRecord
 
@@ -109,6 +110,7 @@ def give_consent(request, data: ConsentGrantSchema):
         D2PreviewConsentReceipt.objects.filter(
             patient=request.user, revoked_at__isnull=True,
         ).update(revoked_at=now)
+        D2InAppNotice.objects.filter(patient=request.user).delete()
 
         AIConsentReceipt.objects.create(
             patient=request.user,
@@ -165,6 +167,7 @@ def withdraw_consent(request):
             D2PreviewConsentReceipt.objects.filter(
                 patient=request.user, revoked_at__isnull=True,
             ).update(revoked_at=now)
+            D2InAppNotice.objects.filter(patient=request.user).delete()
             if had_consent:
                 record_audit(request.user, "consent_withdrawn", request)
     except BasePatientProfile.DoesNotExist:

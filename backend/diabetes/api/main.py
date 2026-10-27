@@ -25,6 +25,7 @@ from core.api.v1.auth import router as auth_router  # noqa: E402
 from core.api.v1.compatibility import router as compatibility_router  # noqa: E402
 from core.api.v1.country_suggestion import router as country_suggestion_router  # noqa: E402
 from core.api.v1.d2_preview_consent import router as d2_preview_router  # noqa: E402
+from core.api.v1.d2_inbox import router as d2_inbox_router  # noqa: E402
 from core.api.v1.health import router as health_router  # noqa: E402
 from core.api.v1.locale import router as locale_router  # noqa: E402
 from core.api.v1.modules import router as modules_router  # noqa: E402
@@ -91,6 +92,7 @@ api.add_router("/v1", companion_router, auth=_auth)
 api.add_router("/v1", cgm_router, auth=_auth)
 api.add_router("/v1", account_router, auth=_auth)
 api.add_router("/v1", d2_preview_router, auth=_auth)
+api.add_router("/v1", d2_inbox_router, auth=_auth)
 api.add_router("/v1", modules_router, auth=_auth)
 api.add_router("/v1", imports_router, auth=_auth)
 api.add_router("/v1", documents_router, auth=_auth)
