@@ -265,6 +265,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get consentDeclineWithoutAI => 'المتابعة بدون ذكاء اصطناعي';
 
   @override
+  String get consentRemoteAccountRequired =>
+      'تتطلب الموافقة على الذكاء الاصطناعي حساب IAMINA متصلاً بالخادم. لا يمكن حفظها من هذه الجلسة المحلية. يمكنك المتابعة بدون ذكاء اصطناعي.';
+
+  @override
+  String get consentConfirmationFailed =>
+      'لم يتم تأكيد الموافقة على الذكاء الاصطناعي. تظل خدمات الذكاء الاصطناعي الخارجية معطلة. أعد المحاولة أو تابع بدونها.';
+
+  @override
   String get consentAlreadyGiven => 'تمت الموافقة';
 
   @override

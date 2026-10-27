@@ -24,6 +24,11 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/auth/login_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/w01-preview',
+    widget: 'W01ReadOnlyPreviewScreen',
+    source: 'lib/features/auth/w01_read_only_preview_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/app-lock/setup',
     widget: 'AppLockSetupScreen',
     source: 'lib/features/auth/app_lock_setup_screen.dart',

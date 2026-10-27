@@ -185,8 +185,14 @@ jobs:
               CHROME_PID=$!
 
               DEVTOOLS=0
-              for _ in $(seq 1 30); do
-                if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
+              # Chrome first launch can be delayed under concurrent PR CI load.
+              # Keep readiness bounded and fail closed; never weaken screenshot assertions.
+              for _ in $(seq 1 75); do
+                if ! kill -0 "$CHROME_PID" 2>/dev/null; then
+                  echo "Chrome exited before DevTools became ready: ${surface}-${width}x${height}" >&2
+                  break
+                fi
+                if curl -fsS --max-time 2 http://127.0.0.1:9222/json/list >/dev/null; then
                   DEVTOOLS=1
                   break
                 fi

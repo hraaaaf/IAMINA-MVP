@@ -48,6 +48,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w01b
       FIREBASE_CREDENTIALS_PATH: ""
       GEMINI_API_KEY: ""
+      IAMINA_NO_REDIS: "true"
+      IAMINA_PULPER_STATELESS_SYNTHETIC: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -92,3 +94,12 @@ jobs:
           curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /tmp/w01b-health.json
           curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:7364/ > /dev/null
           python scripts/w01b_browser_api_pg_probe.py
+      - name: Synthetic A-B-A registration logout erasure through real HTTP and PG16, no Redis
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && exec python manage.py runserver 127.0.0.1:8000 --noreload > /tmp/w01b-auth-api.log 2>&1) &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /dev/null
+          python scripts/w01b_no_redis_auth_e2e.py

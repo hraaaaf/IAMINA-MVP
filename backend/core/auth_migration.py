@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from django.contrib.auth.models import User
 from django.db import transaction
 
+from core.erasure_access import erasure_blocks_access
 from core.firebase_migration_policy import firebase_migration_enabled
 from core.models import BasePatientProfile
 from diabetes.models import DiabetesProfile
@@ -72,6 +73,8 @@ def resolve_linked_firebase_user(identity: VerifiedFirebaseIdentity) -> User:
         raise FirebaseIdentityNotLinked("firebase_identity_not_linked") from exc
 
     user = profile.patient
+    if erasure_blocks_access(user):
+        raise FirebaseMigrationError("erasure_in_progress")
     _sync_firebase_email(user, identity)
     return user
 
@@ -90,11 +93,15 @@ def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
         firebase_uid=identity.uid
     ).first()
     if existing is not None:
+        if erasure_blocks_access(existing.patient):
+            raise FirebaseMigrationError("erasure_in_progress")
         _sync_firebase_email(existing.patient, identity)
         return existing.patient
 
     legacy_shell = _resolve_legacy_firebase_shell(identity)
     if legacy_shell is not None:
+        if erasure_blocks_access(legacy_shell):
+            raise FirebaseMigrationError("erasure_in_progress")
         profile, _ = BasePatientProfile.objects.get_or_create(patient=legacy_shell)
         if profile.firebase_uid and profile.firebase_uid != identity.uid:
             raise FirebaseIdentityConflict("legacy_identity_already_linked")

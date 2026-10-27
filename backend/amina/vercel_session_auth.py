@@ -8,6 +8,7 @@ from ninja.errors import HttpError
 from ninja.security import SessionAuth as NinjaSessionAuth
 
 from amina.middleware.vercel_csrf import IaminaVercelCsrfViewMiddleware
+from core.erasure_access import erasure_blocks_access
 
 
 def _no_view() -> None:
@@ -32,6 +33,11 @@ class SessionAuth(NinjaSessionAuth):
             error_response = check_iamina_csrf(request)
             if error_response:
                 raise HttpError(403, "CSRF check Failed")
+        # Preserve 403 CSRF on unsafe cookie-auth requests, but never allow
+        # a rejected Authorization header to fall back to a cookie session.
+        # On GET, without this guard patient B could replace a forged Bearer A.
+        if request.META.get("HTTP_AUTHORIZATION"):
+            return None
         return request.COOKIES.get(self.param_name)
 
     def authenticate(
@@ -39,4 +45,12 @@ class SessionAuth(NinjaSessionAuth):
         request: HttpRequest,
         key: Optional[str],
     ) -> Optional[Any]:
-        return super().authenticate(request, key)
+        # Ninja's SessionAuth.authenticate() reads request.user directly and
+        # ignores key. Reject an invalid explicit Authorization credential
+        # instead of silently returning the cookie-authenticated patient.
+        if request.META.get("HTTP_AUTHORIZATION"):
+            return None
+        user = super().authenticate(request, key)
+        if user is not None and erasure_blocks_access(user):
+            return None
+        return user

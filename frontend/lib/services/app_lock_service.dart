@@ -11,6 +11,9 @@ class AppLockService extends ChangeNotifier {
   static const _credentialKey = 'iamina_app_lock_credential_v1';
   static const _requiredKey = 'iamina_app_lock_required_v1';
   static const _requiredValue = 'required';
+  // Explicit preference, stored alongside the device-local user scope.
+  // Never overrides an existing device credential or a recovery marker.
+  static const _openChoiceKey = 'iamina_app_lock_explicit_open_scope_v1';
   static const Duration defaultGracePeriod = Duration(seconds: 60);
 
   final FlutterSecureStorage _storage;
@@ -25,6 +28,8 @@ class AppLockService extends ChangeNotifier {
   bool _required = false;
   bool _unlocked = false;
   bool _recoveryRequired = false;
+  bool _explicitlyOpen = false;
+  int? _openAuthEpoch;
   AppLockCredential? _credential;
   DateTime? _backgroundedAt;
 
@@ -47,15 +52,24 @@ class AppLockService extends ChangeNotifier {
   bool get isInitialized => _initialized;
   bool get isConfigured => _configured;
   bool get isRequired => _required;
-  bool get isUnlocked => _unlocked;
+  bool get isUnlocked =>
+      _unlocked ||
+      (_explicitlyOpen &&
+          !_configured &&
+          !_recoveryRequired &&
+          _openAuthEpoch == AuthService.authEpoch &&
+          (_authService?.isAuthenticated ?? false));
+  bool get isExplicitlyOpen => isUnlocked && _explicitlyOpen && !_configured;
   bool get recoveryRequired => _recoveryRequired;
-  bool get needsSetup => _initialized && !_configured && !_recoveryRequired;
+  bool get needsSetup => _initialized && !_configured && !_recoveryRequired && !_explicitlyOpen;
 
   Future<void> initialize() async {
     _configured = false;
     _required = false;
     _unlocked = false;
     _recoveryRequired = false;
+    _explicitlyOpen = false;
+    _openAuthEpoch = null;
     _credential = null;
 
     try {
@@ -79,6 +93,12 @@ class AppLockService extends ChangeNotifier {
         }
       } else if (_required) {
         _recoveryRequired = true;
+      } else if (await _storedOpenChoiceMatchesCurrentPatient()) {
+        // Choice was explicitly made for this exact patient-local scope.
+        // A missing old credential/required marker is never inferred from
+        // this marker: those two have priority above the open choice.
+        _explicitlyOpen = true;
+        _openAuthEpoch = AuthService.authEpoch;
       } else if (await _hasProtectedLocalState()) {
         // Secure app-lock state disappeared while patient-local state still
         // exists. Treat that as rollback/ambiguity, never as a fresh install.
@@ -111,6 +131,64 @@ class AppLockService extends ChangeNotifier {
   }
 
   Future<AppLockCapability> capability() => _authenticator.capability();
+
+  Future<String> _currentPatientScope() async {
+    final auth = _authService;
+    if (auth == null || !auth.isAuthenticated || auth.isAuditSession) {
+      throw const AppLockException('local_account_required');
+    }
+    final scope = await auth.resolvePatientVaultScope();
+    if (scope == null || scope.databaseName.isEmpty) {
+      throw const AppLockException('patient_scope_unavailable');
+    }
+    return scope.databaseName;
+  }
+
+  Future<bool> _storedOpenChoiceMatchesCurrentPatient() async {
+    try {
+      final scope = await _currentPatientScope();
+      return await _storage.read(key: _openChoiceKey) == scope;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Explicit patient choice: keep the clinical space open on this device.
+  /// It cannot bypass previously configured, missing or corrupted credentials.
+  Future<void> continueWithoutDeviceLock() async {
+    if (!_initialized || _configured || _required || _recoveryRequired) {
+      throw const AppLockException('protected_lock_cannot_be_skipped');
+    }
+    final scope = await _currentPatientScope();
+    // Persist BEFORE allowing patient UI/clinical transport. On failure,
+    // the app must remain locked; never grant session-only fallback.
+    await _storage.write(key: _openChoiceKey, value: scope);
+    _explicitlyOpen = true;
+    _openAuthEpoch = AuthService.authEpoch;
+    notifyListeners();
+  }
+
+  /// A patient who successfully unlocked an existing configured lock can
+  /// explicitly disable it. Never a recovery or unauthenticated bypass.
+  Future<void> disableConfiguredLockAfterUnlock() async {
+    if (!_initialized || !_configured || !_unlocked || _recoveryRequired) {
+      throw const AppLockException('verified_unlock_required');
+    }
+    final scope = await _currentPatientScope();
+    await _storage.write(key: _openChoiceKey, value: scope);
+    // Delete the required marker last. An interrupted operation with the
+    // marker still present still goes to recovery rather than opening.
+    await _storage.delete(key: _credentialKey);
+    await _storage.delete(key: _requiredKey);
+    _configured = false;
+    _required = false;
+    _credential = null;
+    _unlocked = false;
+    _explicitlyOpen = true;
+    _openAuthEpoch = AuthService.authEpoch;
+    notifyListeners();
+  }
+
 
   Future<void> recoverWithVerifiedRemoteAccount() async {
     if (!_initialized) {
@@ -160,8 +238,16 @@ class AppLockService extends ChangeNotifier {
     _configured = true;
     _required = true;
     _recoveryRequired = false;
+    _explicitlyOpen = false;
+    _openAuthEpoch = null;
     _unlocked = true;
     notifyListeners();
+    // Failure to clean a stale preference cannot supersede the credential.
+    try {
+      await _storage.delete(key: _openChoiceKey);
+    } catch (_) {
+      // Existing credential always takes precedence on restart.
+    }
   }
 
   Future<void> unlock() async {

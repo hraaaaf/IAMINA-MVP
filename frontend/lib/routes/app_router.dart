@@ -7,6 +7,7 @@ import '../features/auth/app_lock_unlock_screen.dart';
 import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
+import '../features/auth/w01_read_only_preview_screen.dart';
 import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
@@ -14,6 +15,7 @@ import '../modules/module_registry.dart';
 import '../services/app_lock_service.dart';
 import '../services/auth_service.dart';
 import '../services/consent_service.dart';
+import '../services/preview_api_origin.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -93,6 +95,8 @@ AppRouterHolder createAppRouterHolder({
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
+    // Patient choice is explicit on first use. W01 no-lock choice is
+    // persisted by AppLockService; it never bypasses existing credentials.
     initialLocation: _homeRoute(),
     refreshListenable: refreshables.length == 1
         ? refreshables.first
@@ -104,6 +108,7 @@ AppRouterHolder createAppRouterHolder({
       final isLoginPage = path == '/login';
       final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
+      final isW01ReadOnlyPreview = path == '/w01-preview';
       final isOnboardingPage = path == '/onboarding';
       final isAppLockSetupPage = path == '/app-lock/setup';
       final isAppLockUnlockPage = path == '/app-lock/unlock';
@@ -134,6 +139,12 @@ AppRouterHolder createAppRouterHolder({
         return '/login';
       }
 
+      // W01 Preview: optional lock permits PUBLIC read-only exploration only.
+      // No patient route or vault can be reached through this exception.
+      if (isW01ReadOnlyPreview) {
+        return kIaminaPreviewSameOriginApi ? null : '/login';
+      }
+
       // Audit access is compile-time + loopback constrained. It may render the
       // lock screens for visual certification but never changes patient state.
       if (authService.isAuditSession && isAppLockPage) return null;
@@ -149,7 +160,8 @@ AppRouterHolder createAppRouterHolder({
           )) {
         if (activeLock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
-        } else if (!activeLock.isConfigured) {
+        } else if (!activeLock.isConfigured &&
+            !activeLock.isExplicitlyOpen) {
           if (!isAppLockSetupPage) return '/app-lock/setup';
         } else if (!activeLock.isUnlocked) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
@@ -191,7 +203,16 @@ AppRouterHolder createAppRouterHolder({
         final hasConsent = activeConsent.hasConsent;
         final hasDeclined = activeConsent.hasDeclinedLocally;
 
-        if (!hasConsent &&
+        // W01: the patient can use the actual medical dashboard without
+        // consenting to external AI. An unobtrusive banner in MainShell
+        // offers Accept/Skip. Backend egress still requires exact evidence.
+        if (kIaminaPreviewSameOriginApi &&
+            isConsentPage &&
+            !authService.hasRemoteApiCredential) {
+          return _homeRoute();
+        }
+        if (!kIaminaPreviewSameOriginApi &&
+            !hasConsent &&
             !hasDeclined &&
             !isConsentPage &&
             !isAppLockPage &&
@@ -200,6 +221,7 @@ AppRouterHolder createAppRouterHolder({
         }
         if ((hasConsent || hasDeclined) && isConsentPage) return _homeRoute();
         if (activeConsent.hasCompletedOnboarding && isOnboardingPage) {
+          if (kIaminaPreviewSameOriginApi) return _homeRoute();
           return hasConsent || hasDeclined ? _homeRoute() : '/consent';
         }
       }
@@ -225,6 +247,14 @@ AppRouterHolder createAppRouterHolder({
               child: child,
             );
           },
+        ),
+      ),
+      GoRoute(
+        path: '/w01-preview',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const W01ReadOnlyPreviewScreen(),
         ),
       ),
       GoRoute(

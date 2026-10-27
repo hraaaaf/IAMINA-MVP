@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from core.consent_notice import expected_notice_claim
 from core.models import BasePatientProfile
+from core.models.erasure_record import ErasureRecord
 from core.tests.consent_helpers import grant_current_ai_consent
 from diabetes.models import AuditLog, DiabetesProfile
 
@@ -270,6 +271,101 @@ class DeleteAccountTest(TestCase):
                 patient_id=patient_id,
                 raw_text="SYNTHETIC_RETAINED_RAW_TEXT",
             ).exists()
+        )
+        # A failed purge must not be reported as an accomplished erasure.
+        self.assertFalse(
+            AuditLog.objects.filter(patient_id=patient_id, action="account_deleted").exists()
+        )
+        self.assertFalse(
+            ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+        )
+
+    def test_failed_user_delete_rolls_back_success_audit(self):
+        patient_id = self.user.id
+        with patch.object(User, "delete", side_effect=RuntimeError("synthetic-user-delete")):
+            resp = self.client.delete(
+                "/api/v1/account",
+                data='{"confirm": "DELETE MY ACCOUNT"}',
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 500)
+        self.assertTrue(User.objects.filter(id=patient_id).exists())
+        self.assertFalse(
+            AuditLog.objects.filter(action="account_deleted", patient_id=patient_id).exists()
+        )
+        self.assertFalse(
+            ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+        )
+
+    def test_failed_erasure_receipt_rolls_back_account_delete(self):
+        from diabetes.models import LabReport
+
+        patient_id = self.user.id
+        LabReport.objects.create(
+            patient=self.user,
+            document_type="lab_report",
+            source_format="pdf",
+            raw_text="SYNTHETIC_PENDING_ERASURE",
+        )
+        with patch.object(
+            ErasureRecord.objects,
+            "create",
+            side_effect=RuntimeError("synthetic-erasure-receipt"),
+        ):
+            resp = self.client.delete(
+                "/api/v1/account",
+                data='{"confirm": "DELETE MY ACCOUNT"}',
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 500)
+        self.assertTrue(User.objects.filter(id=patient_id).exists())
+        self.assertTrue(
+            LabReport.objects.filter(
+                patient_id=patient_id, raw_text="SYNTHETIC_PENDING_ERASURE"
+            ).exists()
+        )
+        self.assertFalse(
+            AuditLog.objects.filter(action="account_deleted", patient_id=patient_id).exists()
+        )
+        self.assertFalse(
+            ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+        )
+
+    def test_missing_mandatory_audit_sink_blocks_account_erasure(self):
+        patient_id = self.user.id
+        with patch("core.audit._audit_sink", None):
+            resp = self.client.delete(
+                "/api/v1/account",
+                data='{"confirm": "DELETE MY ACCOUNT"}',
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 500)
+        self.assertTrue(User.objects.filter(id=patient_id).exists())
+        self.assertFalse(
+            AuditLog.objects.filter(patient_id=patient_id, action="account_deleted").exists()
+        )
+        self.assertFalse(
+            ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
+        )
+
+    def test_failing_mandatory_audit_sink_blocks_account_erasure(self):
+        patient_id = self.user.id
+        with patch(
+            "core.audit._audit_sink",
+            side_effect=RuntimeError("synthetic-audit-store-unavailable"),
+        ):
+            resp = self.client.delete(
+                "/api/v1/account",
+                data='{"confirm": "DELETE MY ACCOUNT"}',
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 500)
+        self.assertTrue(User.objects.filter(id=patient_id).exists())
+        self.assertFalse(
+            AuditLog.objects.filter(patient_id=patient_id, action="account_deleted").exists()
+        )
+        self.assertFalse(
+            ErasureRecord.objects.filter(patient_id_snapshot=patient_id).exists()
         )
 
     def test_audit_log_preserved_after_erasure(self):
