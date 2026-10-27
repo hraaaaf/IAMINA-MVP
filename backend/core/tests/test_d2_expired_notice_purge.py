@@ -19,6 +19,15 @@ class D2ExpiredNoticePurgeTests(TestCase):
         self.a = User.objects.create_user(username="d2-purge-a")
         self.b = User.objects.create_user(username="d2-purge-b")
         self.now = timezone.now()
+        # SQLite TestCase DB has no Neon project/branch identity. Mock only
+        # the hosting preflight, while testing the destructive scope rejection
+        # explicitly in test_scope_rejection_occurs_before_any_mutation.
+        scope_patch = patch(
+            "core.management.commands.purge_d2_expired_notices._verify_database_scope",
+            return_value=None,
+        )
+        scope_patch.start()
+        self.addCleanup(scope_patch.stop)
 
     def _notice(self, patient, key, expires_at):
         return D2InAppNotice.objects.create(
