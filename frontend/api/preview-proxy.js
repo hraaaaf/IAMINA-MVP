@@ -72,8 +72,13 @@ function previewGuardFailure(request) {
   if (typeof host !== 'string' || !WEB_HOST.test(host)) return 'host-rejected';
   const origin = request.headers.origin;
   if (origin !== undefined && origin !== 'https://' + host) return 'origin-mismatch';
-  // No cookie transport between Vercel SSO and Django. Django uses IAMINA bearer.
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin) return 'origin-absent';
+  // A verified hosted browser POST may omit Origin while its browser-generated
+  // Fetch Metadata still proves same-origin. Never accept same-site, cross-site,
+  // none or absent Sec-Fetch-Site as an Origin substitute for mutations.
+  // This is a browser CSRF check, not non-browser authentication: all patient
+  // API requests still require trusted OIDC and the Django IAMINA bearer.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin &&
+      request.headers['sec-fetch-site'] !== 'same-origin') return 'origin-absent';
   return null;
 }
 function previewOnlyAndSameOrigin(request) {
