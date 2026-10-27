@@ -11,6 +11,7 @@ import '../features/auth/w01_read_only_preview_screen.dart';
 import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/notifications/d2_notification_center_screen.dart';
 import '../modules/module_registry.dart';
 import '../services/app_lock_service.dart';
 import '../services/auth_service.dart';
@@ -354,6 +355,15 @@ AppRouterHolder createAppRouterHolder({
             pageBuilder: (context, state) =>
                 _createPage(state, r.builder(state)),
           ),
+
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const D2NotificationCenterScreen(),
+        ),
+      ),
 
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
