@@ -119,3 +119,29 @@ AFTER (FR Chrome, inspected at the exact 3a60b84e code SHA): [390x844](https://g
 **Reviewer verdict (same-executor isolated pass):** CHANGES_REQUIRED for full D2, candidate preview-only boundaries retained without activation. **Next exact:** independent specialists (security/privacy, DB, clinical, UX), then W01 hosted auth + DB integration/gates and W02 vault; only afterward implement category-specific consent UI and genuine source-bound inbox. No patient use, no push, no merge, no Vercel.
 
 **Freshness note:** committing this review changes HEAD; CI proof cited above attaches to `3a60b84e...` only. Re-validate exact new HEAD before any merge-readiness statement.
+
+
+## 27/10/2026 — D2 retention physical-purge candidate + hosted A→B→A gate (UNDEPLOYED)
+
+### Scope / goal / success / evidence
+
+Goal: remove expired **manually saved D2 previews** from the primary database independently of any patient activity, while keeping clinical dispatch, push, email, SMS, API and existing consent flows unchanged. Success: command can delete rows with `expires_at <= now` across all patient scopes without touching unexpired rows; repeated run deletes zero. Evidence expected: synthetic Django focused tests and exact-HEAD SQLite/PostgreSQL CI; no assertion of a live scheduler or production erasure without operational proof.
+
+Implementation candidate: `backend/core/management/commands/purge_d2_expired_notices.py` (default DRY_RUN, `--apply` for actual purge, `--batch-size 1..1000`, bounded DB transactions, output contains counts and cutoff only, no patient identifiers). Synthetic tests: `backend/core/tests/test_d2_expired_notice_purge.py` (A and B, dry-run, inclusive expiry boundary, survival of fresh rows, one-row batches, replay, invalid batch size). No schema migration and no change to HTTP GET semantics, browser UI or notification production. Existing revocation-triggered immediate deletion remains in place.
+
+**Operations not activated:** propose an hourly operator-owned scheduled call `python backend/manage.py purge_d2_expired_notices --apply` only AFTER environment DB identity confirmation, privacy/retention approval, rollback/recovery review and explicit operational authorization. The 7-day boundary is expiry/visibility; physical deletion latency depends on actual scheduler health, interval and DB availability. An hourly cadence is a provisional engineering target, not a verified 7-day physical deletion guarantee. Monitor command failures, last successful execution, deleted/remaining expired count, and backups' separate retention/legal policy. Never connect an unverified cron job to Neon or Production. A management command alone does **not** meet the time-bounded retention gate.
+
+### Hosted browser / BFF / API / Neon isolation: prepared, NOT executed
+
+1. Confirm the preview artifact contains the tested D2 HEAD and the browser/BFF/API sessions can access it without disabling protective SSO. Verify all four project-defined Neon identity values from the **server-side BFF** against the independently verified synthetic sandbox. **If different, STOP before any account creation or write**. No patient production DB.
+2. If approved for this exact environment and the DB identity matches, create only two new **synthetic** A/B accounts. As A with current global + D2 preview-only consent, save one governed nonurgent preview from synthetic data and verify listing, read, idempotence, delete. As B: empty list; A's object read/delete returns 404 and cannot be mutated. Return to A and verify correct state; repeat across logout/revocation/auth epoch, cookie CSRF absence/forgery and mixed bearer rejection.
+3. Verify an expired item is hidden; validate physical purge only on a disposable environment if explicitly approved; verify the source consent's deletion cascades and no A data is present in B's view. No automatic events or notification delivery permitted.
+4. Delete synthetic accounts using verified application endpoints, then independently verify in SQL `auth_user=0` for this **initially empty synthetic-only sandbox** and no test notices remain. **If application deletion fails, stop and report, do not silently perform SQL destructive cleanup.** Capture private/non-PHI evidence by exact HEAD, environment fingerprint, request/response outcomes and test run.
+
+### Human reviewer gates before automatic medical notifications
+
+- Clinical: exact eligible source rules, contraindicated/severe/unknown classes, patient population, wording FR/EN/AR and Darija as applicable, non-urgent budget/cadence, quiet hours, emergency bypass impossibility, over-alert fatigue, deterministic source/version review; qualified reviewer signs exact rules before any automatic producer.
+- Privacy/security: separately described purpose/channel opt-in (not preview consent), minimization, auth epoch, consent withdrawal, PHI on lock screens, retention clock and backups, processor/residency, monitoring/error paths, independently reviewed A→B→A hosted evidence.
+- UX/release: independently inspect empty/filled/read/expired/revoked Web views at same mobile/tablet/desktop sizes and RTL/EN; reviewer/certifier, exact-HEAD CI, merge and deployment authorization remain separate gates.
+
+**Current claim limit:** manual saved-preview inbox candidate only. No scheduled deletion, no hosted E2E, no automatic clinical notification approval, no merge/deployment. D2 remains OPEN.
