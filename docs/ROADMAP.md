@@ -1,5 +1,13 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — diagnostic opérationnel d'effacement sans identifiants — 27/10/2026
+
+**Preuve avant changement** : PR #1128 au HEAD `83a2a13e8921708eaa2a8e58657c72359c4743a0`, **21/22 runs SUCCESS**, seule erreur OIDC/G5 différée, CI générale #40468638513, Web/API/PG #40468638427 et migrations #40468638453 SUCCESS. Aucun nouveau projet Neon G6 au contrôle ; blocage externe pour test snapshot neuf non résolu.
+
+**Goal** : détecter les états d'effacement à revoir sans reproduire Firebase, sans requête d'écriture et sans exposer Firebase UID, identifiant utilisateur, exception ou donnée clinique. **Implémentation candidate** : commande Django `python backend/manage.py erasure_backlog_report` en lecture seule ; JSON avec compteurs `pending`, `in_progress`, `review_required`, `completed`, `unresolved_total`. Pas d'opération de récupération ni d'endpoint hébergé. Deux tests ORM (base vide + tous les états, absence d'UID/ID dans stdout, refus des commandes SQL non SELECT en test). Aucune écriture Neon/Production. **Le succès du nouveau HEAD ne sera revendiqué qu'après CI.**
+
+**Runbook G3** : si `review_required > 0`, bloquer toute reprise automatique et ouvrir une revue opérateur documentée (diagnostic de l'état Redis/Firebase/SQL, vérification identité et piste d'audit séparées), ne jamais passer `review_required → pending` sans preuve indépendante d'idempotence des hooks et accord sécurité. Si `in_progress` persiste après incident ou redémarrage, ne pas supposer qu'il est sûr de relancer ; inspecter les traces et décider d'une réconciliation individuelle auditée. Cette commande **ne certifie ni l'absence de données résiduelles ni la conformité RGPD**. Revue G7 et procédure cloud demeurent ouvertes.
+
 ## W01-G3 — contrôle de confidentialité des erreurs de hooks (27/10/2026)
 
 **Point de départ vérifié** : HEAD `47a83daf` PR #1128 Draft, 22 workflows terminés : 21 SUCCESS, 1 FAILURE OIDC différé. CI `#40424175872` SUCCESS, W01-B `#40424175895` SUCCESS, migration drift `#40424175955` SUCCESS. **G6 humain bloqué** : après GO, appel de création d'un projet Neon jetable refusé par les contrôles de sécurité de l'outil ; recherche des projets confirme que le projet nouveau n'existe pas, source G6 et trois branches de preuve préservées. Le snapshot manuel historique ne doit pas être supprimé.
