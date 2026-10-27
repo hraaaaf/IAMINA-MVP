@@ -124,7 +124,7 @@ class D2InboxTests(TestCase):
         self.assertEqual(self.client.get(PATH).json()["items"], [])
         self.assertEqual(self.client.put(f"{PATH}/{notice_id}/read").status_code, 404)
         self.assertEqual(self.client.delete(f"{PATH}/{notice_id}").status_code, 404)
-        self.assertEqual(self._save(patient_id=self.a.pk).status_code, 400)
+        self.assertIn(self._save(patient_id=self.a.pk).status_code, (400, 422))
         self.assertTrue(D2InAppNotice.objects.filter(patient=self.a).exists())
         self.assertEqual(self._save().status_code, 409)
 

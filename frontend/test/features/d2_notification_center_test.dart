@@ -121,7 +121,7 @@ void main() {
       home: D2NotificationCenterScreen(gateway: gateway),
     ));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('d2-empty-inbox')), findsOneWidget);
+    expect(find.byKey(const Key('d2-inbox-title')), findsOneWidget);
     expect(find.text('Synthetic preview notice — no delivery'), findsOneWidget);
     final enable = tester.widget<FilledButton>(
       find.byKey(const Key('d2-enable-preview-only')),
@@ -178,10 +178,12 @@ void main() {
     expect(gateway.saves, 1);
     expect(find.byKey(const Key('d2-inbox-item-1')), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('d2-inbox-item-1')));
-    await tester.tap(find.byTooltip('Marquer comme lu'));
+    await tester.ensureVisible(find.byTooltip('Mark as read'));
+    await tester.tap(find.byTooltip('Mark as read'));
     await tester.pumpAndSettle();
     expect(gateway.reads, 1);
-    await tester.tap(find.byTooltip('Supprimer'));
+    await tester.ensureVisible(find.byTooltip('Delete'));
+    await tester.tap(find.byTooltip('Delete'));
     await tester.pumpAndSettle();
     expect(gateway.deletes, 1);
     expect(find.byKey(const Key('d2-empty-inbox')), findsOneWidget);

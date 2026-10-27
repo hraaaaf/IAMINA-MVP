@@ -17,7 +17,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel, ConfigDict
 
 from core.api.v1.d2_preview_consent import _require_cookie_session_csrf, _status
-from core.models import D2InAppNotice
+from core.models import BasePatientProfile, D2InAppNotice
 from diabetes.services.clinical.proactive_preview import preview_proactive_insights
 
 router = Router(tags=["d2-in-app-notices"])
@@ -89,6 +89,12 @@ def save_current_governed_preview(request, data: SaveNoticeRequest):
     now = timezone.now()
     # Serialize saves for the same patient and bound the inbox to 20 items.
     get_user_model().objects.select_for_update().get(pk=request.user.pk)
+    # Serialize against D2 revoke and global consent withdrawal: both lock
+    # the patient profile before deleting stored notices.
+    BasePatientProfile.objects.select_for_update().filter(
+        patient=request.user,
+    ).first()
+    _require_opt_in(request.user)
     D2InAppNotice.objects.filter(patient=request.user, expires_at__lte=now).delete()
     existing = D2InAppNotice.objects.filter(
         patient=request.user, signature=signature,
