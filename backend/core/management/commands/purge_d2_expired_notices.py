@@ -8,11 +8,39 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from core.models import D2InAppNotice
+
+
+def _scope_matches(observed, expected):
+    """Compare database identity using all four fields, without wildcards."""
+    return len(observed) == 4 and len(expected) == 4 and all(expected) and tuple(observed) == tuple(expected)
+
+
+def _verify_database_scope(options):
+    """Prevent an unscoped live Neon operation before any write."""
+    if connection.vendor != "postgresql":
+        if not settings.DEBUG:
+            raise CommandError("D2_RETENTION_POSTGRES_REQUIRED")
+        return
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT current_database(), current_user, "
+            "current_setting('neon.project_id', true), "
+            "current_setting('neon.branch_id', true)"
+        )
+        observed = tuple(cursor.fetchone() or ())
+    if not settings.DEBUG or any(observed[2:]):
+        expected = (
+            options["expected_database"], options["expected_role"],
+            options["expected_neon_project"], options["expected_neon_branch"],
+        )
+        if not _scope_matches(observed, expected):
+            raise CommandError("D2_RETENTION_TARGET_MISMATCH")
 
 
 class Command(BaseCommand):
@@ -21,6 +49,10 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--apply", action="store_true")
         parser.add_argument("--batch-size", type=int, default=500)
+        parser.add_argument("--expected-database", default="")
+        parser.add_argument("--expected-role", default="")
+        parser.add_argument("--expected-neon-project", default="")
+        parser.add_argument("--expected-neon-branch", default="")
         parser.add_argument(
             "--max-deletes", type=int, default=10000,
             help="Hard ceiling of records allowed per invocation (1-100000).",
@@ -43,6 +75,8 @@ class Command(BaseCommand):
             raise CommandError("--max-overdue-minutes must be between 1 and 10080")
         if apply and max_overdue_minutes is not None:
             raise CommandError("overdue assertion is read-only; omit --apply")
+        if apply:
+            _verify_database_scope(options)
 
         cutoff = timezone.now()
         expired = D2InAppNotice.objects.filter(expires_at__lte=cutoff)
