@@ -1,3 +1,11 @@
+## 27/10/2026 — D2 Web : centre de préférences relié à un consentement réel (candidate)
+
+**Goal écrit / BEFORE** : sur PR #1135, écran Rappels seulement ; preuve Chrome FR BEFORE et AFTER du remplacement des icônes aux 390×844 / 768×1024 / 1280×900 dans la section ci-dessous. Aucun écran patient accessible de consentement D2 ; seuls GET/PUT/DELETE backend existaient. **Référence de maquette** : une carte séparée dans Rappels intitulée « Notifications IAmina » qui mène à une page « Notifications IAmina », deux blocs : état honnête « Aucune notification reçue / envois désactivés », puis texte d'accord intégral issu du serveur, confirmation volontaire et révocation. Même hiérarchie typographique, fond menthe et cartes arrondies que Rappels.
+
+**Candidat ajouté** : `frontend/lib/features/notifications/d2_notification_center_screen.dart` écran Web FR/EN/AR, états loading/offline, notice serveur, case de confirmation (aucun opt-in par défaut), retrait ; `frontend/lib/services/d2_consent_gateway.dart` transport API protégé, lecture exacte `purpose`, `delivery_enabled=false`, `browser_push_enabled=false`, contrat notice, blocage des réponses stale après `AuthEpoch` A→B ; `/notifications` route protégée et lien dans Rappels. Pas de fake inbox, pas de message calculé/stoké, aucun push, aucune notification automatique. Les mêmes API patient-scopées restent source d'autorité ; permissions serveur préexistantes, refus 409 sans consentement global et CSRF sans contournement.
+
+**Proof requis** : CI Flutter analyze/test/browser, nouveau widget test de consentement ack/revocation/default OFF/erreur offline, serveur SQLite+PostgreSQL ; captures AFTER Rappels + nouvel écran FR/EN/AR (390/768/1280), score visuel avant closeout. Ne pas prétendre D2 globale complète : une **vraie** inbox nécessiterait sources gouvernées, stockage/purge patient par identité, contrôles sécurité, sécurité clinique, consentement et règles d'envoi ; aucune autorisation de push ou d'egress clinique. Ne pas remplacer le constat clinique par une simulation qui invente des notifications.
+
 # IAMINA D2 Web/PWA — safe notification boundaries (candidate)
 
 Date: 2026-10-20
