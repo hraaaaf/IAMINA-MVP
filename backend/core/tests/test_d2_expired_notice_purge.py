@@ -10,6 +10,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 from django.utils import timezone
 
+from core.management.commands.purge_d2_expired_notices import _scope_matches
 from core.models import D2InAppNotice
 
 
@@ -132,4 +133,26 @@ class D2ExpiredNoticePurgeTests(TestCase):
                     call_command(
                         "purge_d2_expired_notices", stdout=StringIO(), **kwargs
                     )
+        self.assertEqual(D2InAppNotice.objects.count(), 1)
+
+    def test_scope_matching_requires_every_expected_identity_field(self):
+        observed = (
+            "iamina925_empty", "iamina_preview_app",
+            "noisy-truth-00115950", "br-sweet-frog-b9ok6ptp",
+        )
+        self.assertTrue(_scope_matches(observed, observed))
+        self.assertFalse(_scope_matches(observed, ()))
+        self.assertFalse(_scope_matches(observed, (observed[0], "", *observed[2:])))
+        self.assertFalse(_scope_matches(observed, (*observed[:3], "other-branch")))
+
+    def test_scope_rejection_occurs_before_any_mutation(self):
+        self._notice(self.a, 13, self.now - timedelta(hours=2))
+        with patch(
+            "core.management.commands.purge_d2_expired_notices._verify_database_scope",
+            side_effect=CommandError("D2_RETENTION_TARGET_MISMATCH"),
+        ):
+            with self.assertRaisesMessage(
+                CommandError, "D2_RETENTION_TARGET_MISMATCH",
+            ):
+                call_command("purge_d2_expired_notices", apply=True, stdout=StringIO())
         self.assertEqual(D2InAppNotice.objects.count(), 1)
