@@ -1,5 +1,13 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## W01-G3 — contrôle de confidentialité des erreurs de hooks (27/10/2026)
+
+**Point de départ vérifié** : HEAD `47a83daf` PR #1128 Draft, 22 workflows terminés : 21 SUCCESS, 1 FAILURE OIDC différé. CI `#40424175872` SUCCESS, W01-B `#40424175895` SUCCESS, migration drift `#40424175955` SUCCESS. **G6 humain bloqué** : après GO, appel de création d'un projet Neon jetable refusé par les contrôles de sécurité de l'outil ; recherche des projets confirme que le projet nouveau n'existe pas, source G6 et trois branches de preuve préservées. Le snapshot manuel historique ne doit pas être supprimé.
+
+**Audit G3 :** `core.account_hooks.run_account_delete_hooks` sérialisait `str(exception)` et `repr(hook)` dans les logs et dans la `RuntimeError`. Les messages Redis/externes peuvent contenir des identifiants de patient ou des données sensibles. **Correction candidate** : continuer tous les hooks, compter les erreurs, loguer uniquement `account_delete_hook_failed index=N` et lever `RuntimeError("Account delete hooks failed (count=N)")`, sans exception, UID ni nom de hook dans le log. Test de régression avec charge sensible synthétique dans `str(exception)` et `repr(hook)`, vérification de la confidentialité et de l'exécution des hooks suivants. **Le succès CI du futur HEAD doit être prouvé**, sans modifier la sémantique fail-closed du compte ni les contrats API.
+
+**G3 reste OPEN** pour revue crash/Redis, conservation du Firebase UID, politique de réconciliation et G7. G6 bloqué à la création du projet racine isolé, aucun nettoyage des branches avant preuve complète, G5 OIDC différé, W01 NO-GO. Aucun merge ni déploiement Vercel, aucune mutation Neon Production.
+
 ## W01-G6 — GO projet Neon jetable : CRÉATION BLOQUÉE PAR OUTIL (27/10/2026)
 
 **Goal :** projet Neon isolé avec branche racine + marqueur synthétique non vide → snapshot neuf → restauration **non finalisée (`finalize=false`)** sur branche de test → comparaison SQL → nettoyage des trois branches scratch précédentes uniquement **après validation réussie**. **GO propriétaire explicite :** « Oui do it » pour la création du projet jetable et le nettoyage conditionnel des trois branches (`br-autumn-violet-b9emp7yl`, `br-autumn-bird-b9r6815r`, `br-young-mud-b9vu252m`).

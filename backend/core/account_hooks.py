@@ -23,19 +23,18 @@ def run_account_delete_hooks(patient_id: int, firebase_uid: str) -> None:
     """
     Execute all registered hooks.
 
-    Any hook exception is collected and, after all hooks run, a RuntimeError
-    is raised with the full error list (RGPD Article 17 — hook failure blocks deletion).
+    Any failed hook blocks erasure, but exception details are never written
+    to logs or included in a response; upstream errors may contain patient data.
+    Continue trying independent hooks, then raise a sanitized failure count.
     """
-    errors: list[str] = []
-    for hook in _hooks:
+    failures = 0
+    for index, hook in enumerate(_hooks):
         try:
             hook(patient_id, firebase_uid)
-        except Exception as e:
-            logger.error(
-                "account_delete_hook_failed hook=%s err=%s",
-                hook.__name__ if hasattr(hook, "__name__") else repr(hook),
-                e,
-            )
-            errors.append(str(e))
-    if errors:
-        raise RuntimeError(f"Account delete hooks failed: {errors}")
+        except Exception:
+            failures += 1
+            # Only a stable registry index is logged. Never include hook repr,
+            # exception string, traceback, Firebase UID, or patient content.
+            logger.error("account_delete_hook_failed index=%d", index)
+    if failures:
+        raise RuntimeError(f"Account delete hooks failed (count={failures})")

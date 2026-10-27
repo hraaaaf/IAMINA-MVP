@@ -73,5 +73,38 @@ def test_all_hooks_run_before_error_raised():
 
     # Second hook still ran despite first failing
     assert second_called == [7]
-    # RuntimeError message contains the first hook's error
-    assert "first hook blew up" in str(exc_info.value)
+    # No exception details may escape through the aggregate error.
+    assert "first hook blew up" not in str(exc_info.value)
+    assert "count=1" in str(exc_info.value)
+
+
+def test_sensitive_hook_exception_is_redacted_from_logs_and_error(caplog):
+    """Unexpected storage/Redis exceptions can embed PHI or credentials."""
+    secret = "SECRET_SYNTHETIC_PATIENT_PAYLOAD_6e72"
+    calls = []
+
+    class SensitiveHook:
+        def __repr__(self):
+            return f"<untrusted hook repr {secret}>"
+
+        def __call__(self, patient_id, firebase_uid):
+            calls.append("first")
+            raise RuntimeError(f"upstream failed: {secret}")
+
+    def following_hook(patient_id, firebase_uid):
+        calls.append("second")
+
+    account_hooks.register_account_delete_hook(SensitiveHook())
+    account_hooks.register_account_delete_hook(following_hook)
+
+    with caplog.at_level("ERROR", logger="core.account_hooks"):
+        with pytest.raises(RuntimeError) as exc_info:
+            account_hooks.run_account_delete_hooks(81, "synthetic-firebase-uid")
+
+    assert calls == ["first", "second"]
+    assert str(exc_info.value) == "Account delete hooks failed (count=1)"
+    assert len(caplog.records) == 1
+    assert caplog.records[0].getMessage() == "account_delete_hook_failed index=0"
+    assert secret not in caplog.text
+    assert secret not in str(exc_info.value)
+    assert "synthetic-firebase-uid" not in caplog.text
