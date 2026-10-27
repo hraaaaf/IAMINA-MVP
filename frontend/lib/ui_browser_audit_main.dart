@@ -31,6 +31,8 @@ import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
+import 'features/notifications/d2_notification_center_screen.dart';
+import 'services/d2_consent_gateway.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
@@ -42,6 +44,37 @@ import 'services/locale_preference_service.dart';
 import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
+
+/// Screenshot fixture only: no account, network, inbox or medical evidence.
+class _BrowserAuditD2Gateway implements D2ConsentGateway {
+  bool enabled = false;
+
+  D2ConsentStatus _status() => D2ConsentStatus(
+    optedIn: enabled,
+    noticeText:
+        'Je choisis de voir, dans IAmina uniquement, des aperçus non urgents '
+        'd’observations personnalisées. Cette préférence ne déclenche '
+        'aucune notification du navigateur, aucun e-mail et aucun SMS.',
+    noticeVersion: '2026-10-20.d2.1',
+    noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    locale: 'fr',
+  );
+
+  @override
+  Future<D2ConsentStatus> read(String locale) async => _status();
+
+  @override
+  Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice) async {
+    enabled = true;
+    return _status();
+  }
+
+  @override
+  Future<D2ConsentStatus> withdraw(String locale) async {
+    enabled = false;
+    return _status();
+  }
+}
 
 class _BrowserAuditCompanionService extends CompanionService {
   @override
@@ -291,6 +324,12 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const RemindersScreen(),
         ),
         GoRoute(
+          path: '/notifications',
+          builder: (context, state) => D2NotificationCenterScreen(
+            gateway: _BrowserAuditD2Gateway(),
+          ),
+        ),
+        GoRoute(
           path: '/companion',
           builder: (context, state) => const CompanionPremiumScreen(),
         ),
@@ -428,6 +467,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
   'reminders' => '/reminders',
+  'notifications' => '/notifications',
   'companion' => '/companion',
   'companion-unavailable' => '/companion-unavailable',
   'amina-chat' => '/amina-chat',
