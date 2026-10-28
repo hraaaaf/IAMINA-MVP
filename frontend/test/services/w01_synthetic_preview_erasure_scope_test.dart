@@ -51,6 +51,29 @@ void main() {
     expect(syntheticPreviewEmailAllowed(null), isFalse);
   });
 
+  test('restored QA identity requires live exact Django JSON user binding', () {
+    const valid = '{"id":7,"email":"w01-a@example.invalid"}';
+    bool check(String body, {int status = 200, String type = 'application/json', int id = 7}) =>
+        syntheticIdentityResponseConfirmed(
+          statusCode: status,
+          contentType: type,
+          body: body,
+          expectedUserId: id,
+        );
+    expect(check(valid), isTrue);
+    expect(check(valid, id: 8), isFalse);
+    expect(check(valid, id: 0), isFalse);
+    expect(check(valid, status: 401), isFalse);
+    expect(check(valid, status: 403), isFalse);
+    expect(check(valid, status: 503), isFalse);
+    expect(check(valid, type: 'text/html'), isFalse);
+    expect(check('<html>SSO</html>'), isFalse);
+    expect(check('{invalid'), isFalse);
+    expect(check('{"id":7,"email":"person@gmail.com"}'), isFalse);
+    expect(check('{"id":"7","email":"w01-a@example.invalid"}'), isFalse);
+    expect(check('{"id":7,"email":"evil@example.invalid.attacker"}'), isFalse);
+  });
+
   test('cannot erase on Production or arbitrary/insecure host', () {
     expect(allowed(Uri.parse('https://iamina-review.vercel.app/#/profile')), isFalse);
     expect(allowed(Uri.parse('https://iamina-certified-abcd-achraf-benmoussa-s-projects.vercel.app')), isFalse);
