@@ -28,3 +28,17 @@ Status: candidate, not a W01/D9 product certification. D9 remains OPEN.
 - **No account cleanup authorized or performed** on Production. A direct SQL delete is forbidden for this workflow; any live synthetic account cleanup must be authorized and use the exact application's supported deletion route, with independent read-only postcheck. The 29 old synthetic records in Production are a distinct inventory issue, NOT attribution to the cancelled run.
 
 **Incident status:** live signup POST observed; persisted identity/backend **UNRESOLVED**. **Next exact:** establish read-only alias→BFF→API→DB mapping; decide via explicit human authorization whether to clean known synthetic accounts through verified app endpoints; keep real E2E disabled. W01 and D9 product NO-GO, no new deployment/Neon write.
+
+
+## 28/10/2026 — Frontend production → API production : source et Vercel corroborés
+
+Audit **en lecture seule**, sans inscription ni SQL d'écriture :
+
+- Vercel `iamina-review.vercel.app` → déploiement exact `dpl_8eqWcB1cTJudwE9Rw581WenUsy1K`, target **production**, repo `hraaaaf/IAMINA-MVP`, SHA `60de80ec070157f912cb62c80a7ded1e9bde75a6`.
+- À ce SHA, `frontend/vercel_build.sh` cible exclusivement le projet frontend Vercel `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI` et **force** `API_BASE_URL=https://iamina-certified.vercel.app` et `IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true` lorsque `VERCEL_PROJECT_ID` correspond. La configuration `AuthService` et `ApiClient` utilise `API_BASE_URL` pour les appels `/api/v1`. Ce mécanisme est une preuve de câblage **source build** si Vercel expose l'ID projet attendu, pas une trace réseau certifiée de l'exécution précise.
+- Vercel confirme que `iamina-certified.vercel.app` pointe sur `dpl_9tPKqRpMiyEMhCtQ99Jc5QV2ew77`, target **production**, projet backend `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`, SHA `9d24cff11fc422fe0c6235757dbf317eebe32912`.
+- **Séparation des environnements confirmée sur configuration** : le projet Vercel backend possède `DATABASE_URL` ciblé `production` et `preview`, plus des variables `IAMINA_EXPECTED_DB_HOST` et `IAMINA_EXPECTED_DB_NAME` ciblées `production`. Aucune valeur de variable ni identifiant secret inspecté ou exposé ici. Les métadonnées ne prouvent **pas** quel branchement Neon effectif a été utilisé par cette requête historique.
+- Conclusion prouvée : le POST signup observé dans le run annulé #40768344797 provenait de l'alias frontend Production ; l'architecture déployée du frontend est explicitement configurée pour joindre l'API Production certifiée. **Il manque encore une preuve d'identité exacte API → connexion DB/branche Neon au temps de la requête**, ainsi que l'identifiant synthétique applicatif et sa suppression. Les 29 comptes synthétiques historiques observés précédemment en lecture seule sur Neon Production ne doivent pas être associés à ce run sans preuve.
+- **Gate** : aucun replay du signup, aucun effacement direct SQL, aucun test hébergé créant un compte sur production. Le garde PR auto-signup #1162 reste en DRAFT et n'est pas sur la branche base ; PR/merge non autorisés automatiquement.
+
+**Next :** vérifier hors secrets l'empreinte d'identité de la connexion Production via endpoint d'attestation BFF/API prévu, puis faire correspondre exactement à Neon en lecture seule. Si le système n'expose aucune attestation fiable sans secret, **STOP — human/security gate**, ne pas inventer de correspondance ni demander à créer un compte.
