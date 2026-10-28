@@ -242,3 +242,25 @@ test('pending recovery scrubs plaintext when owner changes during restore', asyn
   assert.ok(captured.every(v => v === 0), 'revoked owner must scrub pending recovery plaintext');
   assert.equal((await c.pg.state()).status, 'pending');
 });
+
+
+test('pending recovery must deny a revoked owner after remote finalize ACK', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  c.pg.failsFinalize = true;
+  await assert.rejects(s.commit(bytes), /synthetic_server_timeout/);
+  s.close();
+  c.pg.failsFinalize = false;
+  const originalFinalize = c.pg.finalize.bind(c.pg);
+  let didFinalize = false;
+  c.pg.finalize = async request => {
+    const receipt = await originalFinalize(request);
+    didFinalize = true;
+    c.owner.active = false;
+    return receipt;
+  };
+  await assert.rejects(finalizePendingSynthetic(c.args), fails('owner_session_changed'));
+  assert.equal(didFinalize, true, 'synthetic server ACK race must be exercised');
+  assert.equal((await c.pg.state()).status, 'ready');
+  await assert.rejects(openOptionASyntheticSession(c.args), fails('owner_session_changed'));
+});
