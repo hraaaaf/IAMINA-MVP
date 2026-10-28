@@ -1,6 +1,7 @@
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/d9_first_use_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,6 +72,62 @@ void main() {
     addTearDown(newA.dispose);
     expect(newA.hasCompletedOnboarding, isFalse);
     expect(newA.hasConsent, isFalse);
+  });
+
+
+  test('D9 failed same-owner revalidation invalidates cached completion', () {
+    final consent = ConsentService()..seedInitialProfile(null);
+    addTearDown(consent.dispose);
+    expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 734),
+        isTrue);
+    expect(consent.hasCompletedOnboarding, isTrue);
+    // Revoked bearer/offline/malformed response becomes null: no sticky proof.
+    expect(consent.adoptVerifiedD9FirstUseProof(null, activeOwner: 734),
+        isFalse);
+    expect(consent.hasCompletedOnboarding, isFalse);
+    expect(consent.hasConsent, isFalse);
+    expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 734),
+        isTrue);
+  });
+
+  test('D9 reused service A-B-A cannot borrow the prior owner proof', () {
+    final consent = ConsentService()..seedInitialProfile(null);
+    addTearDown(consent.dispose);
+    expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 734),
+        isTrue);
+    expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 812),
+        isFalse);
+    expect(consent.hasCompletedOnboarding, isFalse);
+    expect(consent.adoptVerifiedD9FirstUseProof(null, activeOwner: 734),
+        isFalse);
+    expect(consent.hasCompletedOnboarding, isFalse);
+    expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 734),
+        isTrue);
+    expect(consent.hasConsent, isFalse);
+  });
+
+  test('D9 owner change in local profile invalidates foreign remote proof',
+      () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(812),
+        preferredLanguage: const drift.Value('fr'),
+        updatedAt: DateTime.utc(2026, 10, 28),
+      ),
+    );
+    final bProfile = await db.select(db.patientProfiles).getSingle();
+    final consent = ConsentService()..seedInitialProfile(null);
+    addTearDown(consent.dispose);
+    expect(consent.adoptVerifiedD9FirstUseProof(proof(734), activeOwner: 734),
+        isTrue);
+    consent.seedInitialProfile(bProfile);
+    // B's own saved first use is legitimate, but cannot keep A's proof.
+    expect(consent.hasCompletedOnboarding, isTrue);
+    consent.seedInitialProfile(null);
+    expect(consent.hasCompletedOnboarding, isFalse);
+    expect(consent.hasConsent, isFalse);
   });
 
   test('D9 new device with no local profile cannot persist AI consent', () async {
