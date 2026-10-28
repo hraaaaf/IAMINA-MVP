@@ -156,7 +156,7 @@ void main() {
     final owner = FakePrincipal();
     final seen = <String>[];
     final client = MockClient((request) async {
-      seen.add(request.method + ' ' + request.url.path);
+      seen.add('${request.method} ${request.url.path}');
       final payload = jsonDecode(request.body) as Map<String, dynamic>;
       if (request.url.path.endsWith('/reserve')) {
         expect(payload['expected_revision'], 0);
