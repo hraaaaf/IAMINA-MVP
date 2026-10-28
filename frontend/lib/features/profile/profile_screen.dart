@@ -16,6 +16,7 @@ import '../../services/auth_service.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import '../../services/consent_evidence_store.dart';
 import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
@@ -327,6 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth = context.read<AuthService>();
     if (!auth.canEraseSyntheticPreviewAccount) return;
     final db = context.read<AppDatabase>();
+    final evidence = context.read<ConsentEvidenceStore>();
     final router = GoRouter.of(context);
     final confirmation = TextEditingController();
     final accepted = await showDialog<bool>(
@@ -370,7 +372,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _syntheticErasureBusy = true);
     try {
       await auth.eraseSyntheticPreviewAccount(
-        purgeLocalVault: db.purgeSyntheticPatientVaultAfterRemoteErasure,
+        purgeLocalVault: () async {
+          await db.purgeSyntheticPatientVaultAfterRemoteErasure();
+          await evidence.clear();
+        },
       );
       router.go('/login');
     } catch (_) {
