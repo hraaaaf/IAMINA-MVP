@@ -7,6 +7,7 @@ on:
       - feat/w02-d10-option-a-w01-preview-20261028
     paths:
       - 'frontend/lib/data/drift/w02_web_memory_sqlite_candidate.dart'
+      - 'frontend/lib/data/drift/database.dart'
       - 'frontend/test/web/w02_web_memory_sqlite_candidate_test.dart'
       - 'frontend/pubspec.yaml'
       - 'frontend/web/iamina_w02_synthetic_session.mjs'

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -6,6 +7,25 @@ import 'package:uuid/uuid.dart';
 import 'patient_vault_scope.dart';
 
 part 'database.g.dart';
+
+// D10 W02 Preview safety: never initialize the old plaintext Web patient
+// IndexedDB/Drift path. Only the separate, authenticated AES-GCM WASM candidate
+// may eventually replace this after explicit E2E + clinical security approval.
+// Native SQLite semantics remain unchanged.
+QueryExecutor _w02ProtectedPatientVaultExecutor(PatientVaultScope scope) {
+  if (kIsWeb) {
+    throw StateError('encrypted_web_patient_vault_unavailable');
+  }
+  return driftDatabase(
+    name: scope.databaseName,
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
+}
+
+
 
 // ============================================================================
 // Database Tables
@@ -135,15 +155,7 @@ class AppDatabase extends _$AppDatabase {
   // A→logout→B certification before any real patient use.
   AppDatabase.forPatientVault(PatientVaultScope scope)
     : patientVaultScope = scope,
-      super(
-        driftDatabase(
-          name: scope.databaseName,
-          web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
-          ),
-        ),
-      );
+      super(_w02ProtectedPatientVaultExecutor(scope));
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django

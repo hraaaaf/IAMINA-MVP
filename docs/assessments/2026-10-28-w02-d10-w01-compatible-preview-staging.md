@@ -10,3 +10,7 @@ Base Git W01/D2 `84ac2ccc30957be00b29c9b4445406310dd92668` ; composants synthét
 
 ## Critère de succès
 Tests CI Python PG et Flutter Chrome exact-SHA ; Vercel two-project Preview READY ; vérification identité SQL sur base indépendante avant tout test d'écriture ; tests A→B→A, antirollback, cleanup et SQL zéro ; audit sécurité indépendant avant GO patient. Ne pas prétendre complet sans preuve. Fichier canonique de reprise.
+
+## Sécurité vérifiée : écart W01 Web
+
+La base W01/D2 utilisait encore `driftDatabase(web: DriftWebOptions(...))` dans `AppDatabase.forPatientVault`. Le test W02 a correctement échoué au contrat de protection. Correctif **uniquement sur staging** : helper `_w02ProtectedPatientVaultExecutor` rejette `kIsWeb` avec `encrypted_web_patient_vault_unavailable` avant création de la base patient. Chemin Native inchangé. **Attention :** `AppDatabase.defaults()` reste un chemin legacy Web pouvant créer du SQLite navigateur non chiffré. L'ensemble de l'app n'est pas certifié, et aucune donnée patient réelle ne doit passer par ce chemin. Ce staging permet uniquement preuve de build, deny et intégrations synthétiques ; pas d'activation Web patient. Go conditionné à inventaire des consommateurs de `defaults()` et suppression de tout stockage clinique plaintext.
