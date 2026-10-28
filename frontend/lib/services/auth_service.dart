@@ -473,8 +473,12 @@ class AuthService extends ChangeNotifier {
         )) {
       throw StateError('Synthetic Preview identity verification failed');
     }
+    // Identity re-verification changes only this transient QA capability.
+    // _notifyAuthChanged() advances AuthEpoch and tears down the physical
+    // patient vault, disposing its GoRouter before the cleanup navigation.
+    // Do NOT emit an auth transition: no bearer, owner or clinical scope changed.
+    // context.go('/w01-qa-erasure') evaluates the guard using this flag.
     _remoteCredentialVerified = true;
-    _notifyAuthChanged();
   }
 
   /// Test-only, single-attempt remote application erasure, followed by local
