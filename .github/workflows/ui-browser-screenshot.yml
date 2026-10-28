@@ -162,13 +162,21 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders notifications)
+          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders notifications notifications-ar)
           viewports=("${{ matrix.width }} ${{ matrix.height }} ${{ matrix.mobile }}")
 
           for viewport in "${viewports[@]}"; do
             read -r width height mobile <<< "$viewport"
             for surface in "${surfaces[@]}"; do
               target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-${width}x${height}.png"
+              # The Arabic D2 screenshot must use the same actual screen and
+              # viewport as FR, switching only the isolated audit locale.
+              audit_surface="$surface"
+              audit_language="fr"
+              if [ "$surface" = "notifications-ar" ]; then
+                audit_surface="notifications"
+                audit_language="ar"
+              fi
               profile_dir="$(mktemp -d)"
               "$CHROME" \
                 --headless=new \
@@ -180,7 +188,7 @@ jobs:
                 --remote-debugging-port=9222 \
                 --user-data-dir="$profile_dir" \
                 --window-size=${width},${height} \
-                "http://127.0.0.1:7358/?surface=${surface}" \
+                "http://127.0.0.1:7358/?surface=${audit_surface}&lang=${audit_language}" \
                 >/tmp/iamina-chrome-${surface}-${width}x${height}.log 2>&1 &
               CHROME_PID=$!
 
