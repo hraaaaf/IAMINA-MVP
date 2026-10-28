@@ -227,3 +227,18 @@ The same zero counts were confirmed independently by owner SQL on **both** the d
 **Previous Hosted W01-G5:** [27/27 browser PASS](https://agent.tinyfish.ai/runs/be7a2edb-9376-4455-9809-2e51ba0c7484) at deployed SHA `90bcf7a4`; independent Neon users/profiles/logs/notices/receipts all zero. Do not extrapolate BFF proof to new Flutter UI/D2.
 
 **Integration status:** source prepared for a single non-merged PR #1153 commit. On changed HEAD, exact-SHA CI must rerun. Existing Web/API Preview at `90bcf7a4` remains READY and unchanged; prior SHA-pinned login opt-in must not be silently carried to a new SHA. A **new Vercel Preview deployment requires separate explicit GO**. After deploy, run same-viewports BEFORE/AFTER and real synthetic Flutter A→B→A/D2 tests with application deletion + independent SQL zero; STOP on any erasure failure. No Production/merge authorization.
+
+## 28/10/2026 — W01+D2 synthetic Flutter deletion, independent identity guard
+
+**Goal:** patient A→B→A Flutter Web + D2 with only synthetic `@example.invalid` accounts, full in-app erasure, independent Neon user/profile/log/D2 zero. The hosted Flutter D2 path remains **UNTESTED** as of this commit; no clinical release approval.
+
+**Owner GO 28/10 13:45 UTC:** integrate the QA-only synthetic erase safety fix and deploy **Web Preview only**, not Production or merge. At starting SHA `60a12033`, existing verified Flutter erasure UI requires Preview HTTPS deployment host, QA build flags, verified bound native bearer and explicit `DELETE MY ACCOUNT` confirmation, with local vault purge after positive API acknowledgment.
+
+**Additional fail-closed verification:** before any API DELETE, read `GET /api/v1/auth/me` through the same-origin Preview BFF using the current bearer. Reject if not HTTP 200 JSON, account ID differs from current bound identity, or authenticated email does not match the strict `@example.invalid` synthetic pattern. Preserve session on identity error or unconfirmed DELETE. Production bypass not added.
+
+**Cross-check:** parent [general CI #40698838086](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40698838086) **SUCCESS 6/6 jobs** and parent [BFF #40698838337](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40698838337) **SUCCESS**; isolated changed-guard [Flutter QA #40700380507](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40700380507) **SUCCESS** (analyze, strict email regression test, Web build). This is *not* proof of hosted Flutter D2 flow. New HEAD requires independent exact-HEAD CI and pinned QA Preview before tests.
+
+**BEFORE/UX:** existing Profile danger zone Sign out / Withdraw consent, no account erasure; subsequent commit adds synthetic-only delete action (with confirmation and local vault purge). Mockup/spec at `docs/assessments/2026-10-28-w01-d2-synthetic-flutter-erasure-qa.md`. Authenticated BEFORE screenshot unavailable; AFTER 390×844 / 1280×900 visual QA still required. Do not infer a visual score.
+
+**E2E Next exact:** Preview Web deployment at new approved HEAD, verify SSO + BFF 4 Neon IDs + DB baseline zero before signup, single A test and in-app DELETE + independent SQL zero first, then B/A isolation + D2 consent/inbox + app erasure + SQL zero. If any deletion is unconfirmed, STOP additional creations; no direct SQL delete. Clinical/privacy legal-hold, notice text, physical retention schedule remain separate NO-GO gates.
+
