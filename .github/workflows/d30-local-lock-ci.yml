@@ -1,0 +1,43 @@
+name: D30 local re-enrollment safety (isolated)
+
+on:
+  push:
+    branches:
+      - test/d30-local-reenrollment-lock-20261028
+    paths:
+      - .github/workflows/d30-local-lock-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d30-isolated-local-lock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d30-local-lock:
+    name: D30 local app-lock regression and Web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IAMINA_REMOTE_ACCOUNT_ENROLLMENT: "false"
+      IAMINA_OFFLINE_DEMO: "false"
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Run D30 app-lock and scoped vault regression tests
+        run: |
+          flutter test --no-pub test/services/app_lock_service_test.dart
+          flutter test --no-pub test/services/patient_vault_session_controller_test.dart
+      - name: Build Flutter Web offline-capable assets without deployment
+        run: flutter build web --release --no-web-resources-cdn
