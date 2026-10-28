@@ -237,6 +237,58 @@ def _media_consent_state(
     }
 
 
+class D9FirstUseCompletionCommand(BaseModel):
+    # No clinical fields, consent stamps, or client-selected owner allowed.
+    model_config = ConfigDict(extra="forbid")
+
+    # The client must explicitly assert completion after a successful local
+    # first-use save. Absence of this action never counts as proof.
+    version: Literal[1]
+    confirmed: Literal[True]
+
+
+class D9FirstUseCompletionState(BaseModel):
+    version: Literal[1] = 1
+    owner_user_id: int
+    completed: bool
+    completed_at: Optional[datetime]
+
+
+def _d9_completion_state(profile: BasePatientProfile) -> D9FirstUseCompletionState:
+    completed_at = profile.first_use_completed_at
+    return D9FirstUseCompletionState(
+        owner_user_id=profile.patient_id,
+        completed=completed_at is not None,
+        completed_at=completed_at,
+    )
+
+
+@router.get("/profile/first-use", response=D9FirstUseCompletionState)
+def get_d9_first_use_completion(request):
+    """Return only this authenticated owner's explicit first-use proof."""
+    return _d9_completion_state(_get_base_profile(request.user))
+
+
+@router.post("/profile/first-use", response=D9FirstUseCompletionState)
+@transaction.atomic
+def record_d9_first_use_completion(request, data: D9FirstUseCompletionCommand):
+    """Idempotent explicit completion, not a clinical or AI consent write.
+
+    The signed-in patient must already have a base profile. Neither an empty
+    clinical extension shell nor the mere presence of a bearer sets completion.
+    """
+    del data  # Pydantic validated version=1 and confirmed=true.
+    profile = BasePatientProfile.objects.select_for_update().filter(
+        patient=request.user
+    ).first()
+    if profile is None:
+        raise HttpError(404, "Profile not found")
+    if profile.first_use_completed_at is None:
+        profile.first_use_completed_at = timezone.now()
+        profile.save(update_fields=["first_use_completed_at", "updated_at"])
+    return _d9_completion_state(profile)
+
+
 @router.get("/profile", response=PatientProfileSchema)
 def get_profile(request):
     return _get_diabetes_profile(request.user)
