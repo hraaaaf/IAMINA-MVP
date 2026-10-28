@@ -29,6 +29,17 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+/// Only exact synthetic accounts in the same-origin Web Preview are erasable.
+bool syntheticPreviewAccountEraseAllowed({
+  required bool sameOriginPreview,
+  required bool remoteAccountEnrollmentEnabled,
+  required String? email,
+}) =>
+    sameOriginPreview &&
+    remoteAccountEnrollmentEnabled &&
+    email != null &&
+    RegExp(r'^[a-z0-9][a-z0-9._-]{0,60}@example\.invalid$').hasMatch(email);
+
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
@@ -368,6 +379,60 @@ class AuthService extends ChangeNotifier {
       throw registrationFailureForStatus(response.statusCode);
     }
     await _acceptAuthResponse(response, generation);
+  }
+
+  /// QA-only erasure via the application API and a bound synthetic bearer.
+  /// On any remote failure, retain the authenticated session for cleanup retry.
+  Future<void> eraseSyntheticPreviewAccount() async {
+    final token = _nativeToken;
+    final userId = _nativeAccountId;
+    if (!kIaminaPreviewSameOriginApi || !kRemoteAccountEnrollmentEnabled ||
+        _auditSession || token == null || userId == null) {
+      throw StateError('Synthetic Preview erasure is unavailable');
+    }
+    final generation = _authGeneration;
+    final origin = resolveIaminaApiOrigin(kAuthBaseUrl);
+    final me = await _httpClient.get(
+      Uri.parse(origin + '/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json',
+      },
+    );
+    _requireCurrentAuthGeneration(generation);
+    if (me.statusCode != 200) {
+      throw StateError('Synthetic account identity could not be verified');
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(me.body);
+    } catch (_) {
+      throw StateError('Malformed synthetic account identity');
+    }
+    if (decoded is! Map<String, dynamic> || decoded['id'] != userId ||
+        !syntheticPreviewAccountEraseAllowed(
+          sameOriginPreview: kIaminaPreviewSameOriginApi,
+          remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+          email: decoded['email'] is String ? decoded['email'] as String : null,
+        )) {
+      throw StateError('Refusing to erase a non-synthetic patient account');
+    }
+
+    final deletion = await _httpClient.delete(
+      Uri.parse(origin + '/api/v1/account'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'confirm': 'DELETE MY ACCOUNT'}),
+    );
+    _requireCurrentAuthGeneration(generation);
+    if (deletion.statusCode != 200) {
+      throw StateError('Synthetic Preview account erasure failed');
+    }
+    // Server deletion confirmed: retire local credentials and session binding.
+    await signOut();
   }
 
   Future<void> signOut() async {
