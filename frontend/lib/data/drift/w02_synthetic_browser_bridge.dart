@@ -22,6 +22,7 @@ extension type _SyntheticW02Session._(JSObject _) implements JSObject {
   external JSUint8Array? get snapshot;
   external JSNumber get revision;
   external JSPromise<JSNumber> commit(JSUint8Array bytes);
+  external JSPromise<JSString> envelopeSha256();
   external void close();
 }
 
@@ -90,6 +91,13 @@ final class W02SyntheticBrowserSession {
     if (snapshot.isEmpty) throw StateError('w02_empty_snapshot');
     // JSUint8Array marshaling; no plaintext JSON or persistent temporary file.
     return (await _session.commit(snapshot.toJS).toDart).toDartInt;
+  }
+
+  /// SHA-256 digest of the authenticated encrypted envelope only.
+  /// Matches the server Option A canonical [format,version,revision,nonce,ciphertext].
+  Future<String> envelopeSha256() async {
+    if (_closed) throw StateError('w02_browser_bridge_closed');
+    return (await _session.envelopeSha256().toDart).toDart;
   }
 
   void close() {

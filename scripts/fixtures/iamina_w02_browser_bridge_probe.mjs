@@ -62,6 +62,17 @@ export async function openSyntheticBrowserBridge(vaultId, slot, secret, minimumR
       return snapshot;
     },
     get revision() { return revision; },
+    async envelopeSha256() {
+      if (closed || expectedEnvelope === null) throw Error('w02_no_encrypted_envelope');
+      // Canonical Option A digest: [format, version, revision, nonce, ciphertext].
+      // It contains metadata plus ciphertext only; not plaintext SQLite bytes.
+      const row = expectedEnvelope;
+      const encoded = new TextEncoder().encode(JSON.stringify([
+        row.format, row.version, row.revision, row.nonce, row.ciphertext,
+      ]));
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded));
+      return Array.from(digest, x => x.toString(16).padStart(2, '0')).join('');
+    },
     async commit(inputBytes) {
       if (closed) throw Error('w02_browser_bridge_closed');
       if (!(inputBytes instanceof Uint8Array) || inputBytes.length === 0) {

@@ -7,3 +7,7 @@ Files: `frontend/lib/data/drift/w02_native_revision_client.dart`, `frontend/test
 Unchanged: Flutter `AppDatabase.forPatientVault` fail-closed `encrypted_web_patient_vault_unavailable`; JS synthetic fixture remains test-only outside shipped web bundle; no Neon/Vercel/merge/medical patient account write. A Dart adapter test does not constitute end-to-end hosted BFF→API→Postgres nor a data-recovery guarantee.
 
 Success: exact HEAD Chrome + Flutter --fatal-infos and static code-contract logs. Additional independent security-review and human Vercel Preview gate remain mandatory. Next: integrate this Dart transport with injected Option A JS fixture and memory SQLite in an isolated Chrome end-to-end test (no patient runtime), then adjudicate crash recovery and key lifecycle.
+
+## Cross-layer Chrome integration (synthetic, no hosted API)
+
+A real Chrome 3rd-path test now exercises `W02NativeRevisionClient` (account verified + bearer + auth epoch, `MockClient` matching server Option A receipts) → `W02SyntheticBrowserBridge` (WebCrypto AES-GCM + IndexedDB CAS) → real in-memory Flutter Drift SQLite WASM → ciphertext restore and SQL SELECT. The JS fixture returns a canonical digest of its encrypted envelope. The mocked revision authority has **no PostgreSQL**; the separate #40725428391 run validates real PG row lock and bearer backend. The cross-layer test is not an end-to-end cloud Preview certification. Wrong account epoch denies reused A lease. No app routes changed.
