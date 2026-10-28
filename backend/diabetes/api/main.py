@@ -24,12 +24,14 @@ from core.api.v1.account import router as account_router  # noqa: E402
 from core.api.v1.auth import router as auth_router  # noqa: E402
 from core.api.v1.compatibility import router as compatibility_router  # noqa: E402
 from core.api.v1.country_suggestion import router as country_suggestion_router  # noqa: E402
+from core.api.v1.d2_preview_consent import router as d2_preview_router  # noqa: E402
 from core.api.v1.health import router as health_router  # noqa: E402
 from core.api.v1.locale import router as locale_router  # noqa: E402
 from core.api.v1.modules import router as modules_router  # noqa: E402
 from diabetes.api.v1.analytics import router as analytics_router  # noqa: E402
 from diabetes.api.v1.cgm import router as cgm_router  # noqa: E402
 from diabetes.api.v1.companion import router as companion_router  # noqa: E402
+from diabetes.api.v1.d2_inbox import router as d2_inbox_router  # noqa: E402
 from diabetes.api.v1.demo import router as demo_router  # noqa: E402
 from diabetes.api.v1.documents import router as documents_router  # noqa: E402
 from diabetes.api.v1.imports import router as imports_router  # noqa: E402
@@ -89,6 +91,8 @@ api.add_router("/v1", proactive_router, auth=_auth)
 api.add_router("/v1", companion_router, auth=_auth)
 api.add_router("/v1", cgm_router, auth=_auth)
 api.add_router("/v1", account_router, auth=_auth)
+api.add_router("/v1", d2_preview_router, auth=_auth)
+api.add_router("/v1", d2_inbox_router, auth=_auth)
 api.add_router("/v1", modules_router, auth=_auth)
 api.add_router("/v1", imports_router, auth=_auth)
 api.add_router("/v1", documents_router, auth=_auth)
