@@ -6,9 +6,16 @@ from functools import partial
 
 _ROOT = Path(__file__).resolve().parents[1] / "frontend" / "web"
 
+_ALLOWED = {
+    "/sqlite3.wasm",
+    "/iamina_w02_browser_bridge_probe.mjs",
+    "/iamina_vault_envelope.mjs",
+    "/iamina_vault_ciphertext_store.mjs",
+}
+
 class WasmFixtureHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path != "/sqlite3.wasm":
+        if self.path not in _ALLOWED:
             self.send_error(404)
             return
         super().do_GET()
