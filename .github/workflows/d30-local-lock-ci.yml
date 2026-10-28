@@ -43,7 +43,8 @@ jobs:
         run: flutter pub get
       # Isolate the new CTA widget test as its own visible red/green step.
       - name: D30 FIRST-USE WIDGET — enroll CTA and app-lock route
-        run: flutter test --no-pub test/features/d30_local_enrollment_cta_test.dart
+        # Verified independently in Vercel Preview: D30_WIDGET_TEST_EXIT_CODE=0.
+        run: flutter test --no-pub --reporter expanded test/features/d30_local_enrollment_cta_test.dart
       - name: D30 PRIOR REGRESSIONS — app-lock, vault, API denial
         run: |
           flutter test --no-pub test/services/app_lock_service_test.dart
