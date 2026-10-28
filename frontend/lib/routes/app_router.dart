@@ -55,6 +55,25 @@ bool shouldApplyConsentGate({
       hasConsentService;
 }
 
+/// A local-only device has no remote clinical identity and cannot send
+/// governed AI data. Do not interrupt local glucose recording with an AI
+/// consent prompt; keep the existing consent gate for remote-capable sessions.
+bool shouldRequireRemoteAIConsentGate({
+  required bool isLoggedIn,
+  required bool isAnonymous,
+  required bool requiresHostedRemoteLogin,
+  required bool hasConsentService,
+  required bool hasRemoteApiCredential,
+}) {
+  return hasRemoteApiCredential &&
+      shouldApplyConsentGate(
+        isLoggedIn: isLoggedIn,
+        isAnonymous: isAnonymous,
+        requiresHostedRemoteLogin: requiresHostedRemoteLogin,
+        hasConsentService: hasConsentService,
+      );
+}
+
 bool shouldApplyOnboardingGate({
   required bool isLoggedIn,
   required bool isAnonymous,
@@ -180,13 +199,23 @@ AppRouterHolder createAppRouterHolder({
       }
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
-      // Consent is requested only after minimum onboarding is persisted.
+      // No mandatory AI dialog for the local-only path: remote AI transport
+      // has no bearer and is denied by ApiClient independently of routing.
+      // A direct stale /consent bookmark must not reintroduce this gate.
+      if (isLoggedIn &&
+          !authService.hasRemoteApiCredential &&
+          !authService.isAuditSession &&
+          isConsentPage) {
+        return _homeRoute();
+      }
+      // Remote-capable sessions retain the verified consent gate.
       if (activeConsent != null &&
-          shouldApplyConsentGate(
+          shouldRequireRemoteAIConsentGate(
             isLoggedIn: isLoggedIn,
             isAnonymous: isAnonymous,
             requiresHostedRemoteLogin: requiresHostedRemoteLogin,
             hasConsentService: true,
+            hasRemoteApiCredential: authService.hasRemoteApiCredential,
           )) {
         final hasConsent = activeConsent.hasConsent;
         final hasDeclined = activeConsent.hasDeclinedLocally;
