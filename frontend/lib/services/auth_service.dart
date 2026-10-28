@@ -34,6 +34,20 @@ bool demoUsesLocalAuditSession({
   required bool remoteAccountEnrollmentEnabled,
 }) => offlineDemo || remoteAccountEnrollmentEnabled;
 
+/// Synthetic Preview account-erasure UI is inaccessible from Production,
+/// local audit sessions, arbitrary domains or unverified remote accounts.
+bool mayEraseSyntheticPreviewAccount({
+  required bool sameOriginPreview,
+  required bool remoteAccountEnrollmentEnabled,
+  required bool hasVerifiedNativeCredential,
+  required Uri browserUri,
+}) =>
+    sameOriginPreview && remoteAccountEnrollmentEnabled &&
+    hasVerifiedNativeCredential && browserUri.scheme == 'https' &&
+    browserUri.userInfo.isEmpty &&
+    RegExp(r'^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects[.]vercel[.]app$')
+        .hasMatch(browserUri.host);
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -178,6 +192,14 @@ class AuthService extends ChangeNotifier {
       _auditSession || _nativeToken == null ? null : _nativeAccountId;
   bool get hasRemoteApiCredential =>
       _nativeToken != null && _nativeToken!.isNotEmpty;
+  bool get canEraseSyntheticPreviewAccount => mayEraseSyntheticPreviewAccount(
+    sameOriginPreview: kIaminaPreviewSameOriginApi,
+    remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+    hasVerifiedNativeCredential: !_auditSession && _remoteCredentialVerified &&
+        _nativeToken != null && _nativeAccountId != null,
+    browserUri: Uri.base,
+  );
+
   bool get isAnonymous =>
       _auditSession ||
       (!_localSessionEnrolled &&
@@ -368,6 +390,56 @@ class AuthService extends ChangeNotifier {
       throw registrationFailureForStatus(response.statusCode);
     }
     await _acceptAuthResponse(response, generation);
+  }
+
+  /// Test-only, single-attempt remote application erasure, followed by local
+  /// vault purge and credential retirement. HTTP ambiguity never means PASS.
+  Future<void> eraseSyntheticPreviewAccount({
+    required Future<void> Function() purgeLocalVault,
+  }) async {
+    if (!canEraseSyntheticPreviewAccount) {
+      throw StateError('Synthetic Preview erasure is unavailable');
+    }
+    final token = _nativeToken!;
+    final generation = _authGeneration;
+    final response = await _httpClient.delete(
+      Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/account'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'confirm': 'DELETE MY ACCOUNT'}),
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || _nativeToken != token) {
+      throw StateError('Account changed during deletion: manual review');
+    }
+    if (response.statusCode != 200) {
+      throw StateError('Server erasure unconfirmed: HTTP ' +
+          response.statusCode.toString());
+    }
+    Object? localError;
+    try {
+      await purgeLocalVault();
+    } catch (error) {
+      localError = error;
+    } finally {
+      _authGeneration++;
+      _auditSession = false;
+      _nativeToken = null;
+      _nativeAccountId = null;
+      _remoteCredentialVerified = false;
+      _localSessionEnrolled = false;
+      _notifyAuthChanged();
+      await _withCredentialStorage(() async {
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+        await _storage.delete(key: _localSessionKey);
+      });
+    }
+    if (localError != null) {
+      throw StateError('Server erased, but local test vault purge unverified');
+    }
   }
 
   Future<void> signOut() async {
