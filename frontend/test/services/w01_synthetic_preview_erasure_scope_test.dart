@@ -22,6 +22,24 @@ void main() {
     expect(allowed(qa, remoteEnrollment: false), isFalse);
     expect(allowed(qa, verified: false), isFalse);
   });
+  test('HTML SSO 200, invalid JSON and failed API cannot confirm erasure', () {
+    expect(syntheticErasureResponseConfirmed(
+      statusCode: 200, contentType: 'text/html',
+      body: '<html>Vercel Authentication</html>'), isFalse);
+    expect(syntheticErasureResponseConfirmed(
+      statusCode: 503, contentType: 'application/json',
+      body: '{"detail":"Account and all associated data deleted."}'), isFalse);
+    expect(syntheticErasureResponseConfirmed(
+      statusCode: 200, contentType: 'application/json',
+      body: '{oops'), isFalse);
+    expect(syntheticErasureResponseConfirmed(
+      statusCode: 200, contentType: 'application/json',
+      body: '{"detail":"different response"}'), isFalse);
+    expect(syntheticErasureResponseConfirmed(
+      statusCode: 200, contentType: 'application/json; charset=utf-8',
+      body: '{"detail":"Account and all associated data deleted."}'), isTrue);
+  });
+
   test('cannot erase on Production or arbitrary/insecure host', () {
     expect(allowed(Uri.parse('https://iamina-review.vercel.app/#/profile')), isFalse);
     expect(allowed(Uri.parse('https://iamina-certified-abcd-achraf-benmoussa-s-projects.vercel.app')), isFalse);
