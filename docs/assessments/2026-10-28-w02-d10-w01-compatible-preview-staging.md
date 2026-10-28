@@ -85,3 +85,21 @@ Branches à **préserver** sans examen/GO spécifique : défaut `br-sweet-frog-b
 4. Résoudre le gate W01 first-user : [run #40739595534](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40739595534) **FAIL** sur « Maroc » et inscription. Refaire suite W01, audit sécurité indépendant, revue PR DRAFT, décision humaine GO, puis merge/post-merge et closeout.
 5. **Aucun % lot/chantier certifié** tant que ces gates échouent ou ne sont pas exécutés. Pas de GO clinique, pas de main, pas de données réelles.
 
+
+
+## Closeout CI native Web — 28/10/2026 : JS interop VM fixed
+
+**Situation diagnostiquée** : au HEAD initial `776153acae5cdc79f4e67ab7efe517e1b959e637`, [UI geometry golden #40749890631](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40749890631) **FAIL** à la compilation native VM : `database.dart` importait directement `drift/wasm.dart` / `sqlite3/wasm.dart`; le transitive `dart:js_interop` n'existe pas sur la VM. Ce rouge n'était **pas** une variation d'écran ou un pixel golden diff. Le rendu géométrique n'avait pas démarré.
+
+**Correction effective** : [commit `35ec53a2f693cb1f32ac9646d5bb3952694f7faa`](https://github.com/hraaaaf/IAMINA-MVP/commit/35ec53a2f693cb1f32ac9646d5bb3952694f7faa) : imports `guest_audit_executor_native.dart` / `guest_audit_executor_web.dart` conditionnés par `dart.library.js_interop`. Seul le Web importe Drift/SQLite WASM et crée un SQLite guest volatile en mémoire. Le natif continue par la voie Drift Native. Le garde `forPatientVault` sur Web patient non chiffré reste **fail-closed**. Test source « wasm never reaches native VM » ajouté ; workflow W02 inclut désormais le test VM avec la commande exacte de golden native.
+
+**Preuves sur le SHA corrigé** :
+- [UI geometry golden #40750922905](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750922905) **SUCCESS**, cause racine du rouge corrigée.
+- [W02 WASM Chrome #40750914744](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750914744) **SUCCESS**.
+- [W02 guest bootstrap CI #40750940608](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750940608) **SUCCESS** (test VM golden inclus + build Web release + Chrome RAM guest / refus patient non chiffré).
+- [FRUG-1 ingest #40750922859](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750922859) **SUCCESS**.
+- [UI browser screenshot #40750922810](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750922810) **IN_PROGRESS au dernier relevé avant ce closeout** ; ne pas déclarer sa réussite avant sa conclusion.
+
+**Portée stricte** : le fix est une séparation des imports sans changement voulu de l'UI. Le dernier test TinyFish hébergé (before/after) a démontré l'écran d'accueil réparé au code `3903f5e4`, mais la Preview Vercel **n'a pas été redéployée au commit `35ec53a2`** ; ne pas prétendre un AFTER hébergé au nouveau code. Le `core.0024` Neon QA demeure non appliqué, `auth_user=0` et aucune table W02 ; **patient NO-GO**, PR DRAFT / non mergée.
+
+**Next exact :** vérifier l'issue du screenshot CI ; si vert, ce sous-lot CI est clos, sinon corriger puis retester. Reprendre séparément migration QA autorisée, app-lock première connexion, E2E synthétique A→B→A/cleanup, W01 first-user gate, revue sécurité et décision humaine de merge. Ne pas déployer de nouveau Vercel sans GO spécifique. Pas de pourcentage de chantier certifié.
