@@ -47,11 +47,7 @@ jobs:
           python -u ../scripts/w02_local_wasm_asset_server.py > /tmp/w02-wasm-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          curl --fail --silent --show-error --retry 6 --retry-connrefused --retry-delay 1 \\
-            --dump-header /tmp/w02-wasm-headers.txt \\
-            http://127.0.0.1:7399/sqlite3.wasm -o /dev/null
+          curl --fail --silent --show-error --retry 6 --retry-connrefused --retry-delay 1              --dump-header /tmp/w02-wasm-headers.txt              http://127.0.0.1:7399/sqlite3.wasm -o /dev/null
           grep -i 'Content-Type: application/wasm' /tmp/w02-wasm-headers.txt
           grep -i 'Access-Control-Allow-Origin: \*' /tmp/w02-wasm-headers.txt
-          flutter test --no-pub --platform chrome --reporter expanded --timeout 30s \\
-            --dart-define=W02_TEST_WASM_URL=http://127.0.0.1:7399/sqlite3.wasm \\
-            test/web/w02_web_memory_sqlite_candidate_test.dart
+          flutter test --no-pub --platform chrome --reporter expanded --timeout 30s              --dart-define=W02_TEST_WASM_URL=http://127.0.0.1:7399/sqlite3.wasm              test/web/w02_web_memory_sqlite_candidate_test.dart
