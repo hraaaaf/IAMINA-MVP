@@ -29,7 +29,7 @@ void main() {
     ]);
     addTearDown(router.dispose);
 
-    await tester.pumpWidget(Provider<AuthService>.value(
+    await tester.pumpWidget(ChangeNotifierProvider<AuthService>.value(
       value: auth,
       child: MaterialApp.router(
         routerConfig: router,
