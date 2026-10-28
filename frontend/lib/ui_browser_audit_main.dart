@@ -47,32 +47,57 @@ import 'services/sync_service.dart';
 
 /// Screenshot fixture only: no account, network, inbox or medical evidence.
 class _BrowserAuditD2Gateway implements D2ConsentGateway {
-  bool enabled = false;
+  _BrowserAuditD2Gateway({this.enabled = false, this.unavailable = false});
 
-  D2ConsentStatus _status() => D2ConsentStatus(
-    optedIn: enabled,
-    noticeText:
-        'Je choisis de voir, dans IAmina uniquement, des aperçus non urgents '
-        'd’observations personnalisées. Cette préférence ne déclenche '
-        'aucune notification du navigateur, aucun e-mail et aucun SMS.',
-    noticeVersion: '2026-10-20.d2.1',
-    noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    locale: 'fr',
-  );
+  bool enabled;
+  final bool unavailable;
+
+  // Synthetic visual states only. These are NOT real consent or patient data.
+  D2ConsentStatus _status(String locale) {
+    final lang = locale.startsWith('ar')
+        ? 'ar'
+        : locale.startsWith('en')
+            ? 'en'
+            : 'fr';
+    final notice = switch (lang) {
+      'ar' => 'أختار الاطلاع داخل IAmina فقط على معاينات لملاحظات '
+          'شخصية غير عاجلة. لا يفعّل هذا الاختيار إشعارات المتصفح '
+          'أو البريد الإلكتروني أو الرسائل النصية.',
+      'en' => 'I choose to view inside IAmina only non-urgent previews '
+          'of personal observations. This does not enable browser '
+          'notifications, email or SMS.',
+      _ => 'Je choisis de voir, dans IAmina uniquement, des aperçus '
+          'non urgents d’observations personnalisées. Cette préférence '
+          'ne déclenche aucune notification du navigateur, '
+          'aucun e-mail et aucun SMS.',
+    };
+    return D2ConsentStatus(
+      optedIn: enabled,
+      noticeText: notice,
+      noticeVersion: '2026-10-20.d2.1',
+      noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      locale: lang,
+    );
+  }
 
   @override
-  Future<D2ConsentStatus> read(String locale) async => _status();
+  Future<D2ConsentStatus> read(String locale) async {
+    if (unavailable) throw StateError('Synthetic D2 gateway unavailable');
+    return _status(locale);
+  }
 
   @override
   Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice) async {
+    if (unavailable) throw StateError('Synthetic D2 gateway unavailable');
     enabled = true;
-    return _status();
+    return _status(acceptedNotice.locale);
   }
 
   @override
   Future<D2ConsentStatus> withdraw(String locale) async {
+    if (unavailable) throw StateError('Synthetic D2 gateway unavailable');
     enabled = false;
-    return _status();
+    return _status(locale);
   }
 
   @override
@@ -341,7 +366,10 @@ class _BrowserAuditApp extends StatelessWidget {
         GoRoute(
           path: '/notifications',
           builder: (context, state) => D2NotificationCenterScreen(
-            gateway: _BrowserAuditD2Gateway(),
+            gateway: _BrowserAuditD2Gateway(
+              enabled: surface.endsWith('-on'),
+              unavailable: surface.endsWith('-error'),
+            ),
           ),
         ),
         GoRoute(
@@ -401,7 +429,11 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      locale: Locale(surface.startsWith('notifications-ar')
+          ? 'ar'
+          : surface.startsWith('notifications-en')
+              ? 'en'
+              : 'fr'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -467,7 +499,10 @@ class _BrowserAddLogMealSurfaceState extends State<_BrowserAddLogMealSurface> {
       const AddLogScreen(focus: AddLogFocus.meal);
 }
 
-String _pathForSurface(String surface) => switch (surface) {
+String _pathForSurface(String surface) =>
+    surface.startsWith('notifications-')
+        ? '/notifications'
+        : switch (surface) {
   'onboarding' => '/onboarding',
   'consent' => '/consent',
   'dashboard' => '/dashboard',
