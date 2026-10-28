@@ -47,7 +47,13 @@ import 'services/sync_service.dart';
 
 /// Screenshot fixture only: no account, network, inbox or medical evidence.
 class _BrowserAuditD2Gateway implements D2ConsentGateway {
-  bool enabled = false;
+  // Screenshot-only states; never connects to patients or remote API.
+  _BrowserAuditD2Gateway({String variant = 'off'})
+      : enabled = variant == 'on',
+        unavailable = variant == 'error';
+
+  bool enabled;
+  final bool unavailable;
 
   D2ConsentStatus _status(String requestedLocale) {
     final isArabic = requestedLocale.startsWith('ar');
@@ -67,7 +73,10 @@ class _BrowserAuditD2Gateway implements D2ConsentGateway {
   }
 
   @override
-  Future<D2ConsentStatus> read(String locale) async => _status(locale);
+  Future<D2ConsentStatus> read(String locale) async {
+    if (unavailable) throw StateError('synthetic offline audit');
+    return _status(locale);
+  }
 
   @override
   Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice) async {
@@ -82,10 +91,15 @@ class _BrowserAuditD2Gateway implements D2ConsentGateway {
   }
 
   @override
-  Future<D2ObservationPreview?> readPreview() async => null;
+  Future<D2ObservationPreview?> readPreview() async => enabled
+      ? const D2ObservationPreview(
+          kind: 'meal', state: 'monitoring', allowedNextStep: 'MONITOR')
+      : null;
 
   @override
-  Future<List<D2SavedNotice>> inbox() async => const [];
+  Future<List<D2SavedNotice>> inbox() async => enabled
+      ? const [D2SavedNotice(id: 1, kind: 'meal')]
+      : const [];
 
   @override
   Future<List<D2SavedNotice>> savePreview() async => const [];
@@ -280,6 +294,7 @@ class _BrowserAuditApp extends StatelessWidget {
     // Real patient locale policy and application screens remain unchanged.
     final auditLocale = Uri.base.queryParameters['lang'] == 'ar'
         ? const Locale('ar') : const Locale('fr');
+    final auditD2State = Uri.base.queryParameters['d2State'] ?? 'off';
     final router = GoRouter(
       initialLocation: _pathForSurface(surface),
       routes: [
@@ -351,7 +366,7 @@ class _BrowserAuditApp extends StatelessWidget {
         GoRoute(
           path: '/notifications',
           builder: (context, state) => D2NotificationCenterScreen(
-            gateway: _BrowserAuditD2Gateway(),
+            gateway: _BrowserAuditD2Gateway(variant: auditD2State),
           ),
         ),
         GoRoute(
