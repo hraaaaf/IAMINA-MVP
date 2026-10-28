@@ -162,22 +162,35 @@ jobs:
           start_chrome() {
             local profile="$1"
             local phase="$2"
-            "$CHROME" \
+            # Hosted runners can be heavily contended. Chrome's CDP startup
+            # exceeded the former 10s readiness window without an app failure.
+            # Isolate runner DBus and /dev/shm quirks, keep fail-closed evidence
+            # and allow a bounded 30s window (no blind retry or success bypass).
+            env -u DBUS_SESSION_BUS_ADDRESS "$CHROME" \
               --headless=new \
               --no-sandbox \
               --no-first-run \
               --disable-session-crashed-bubble \
+              --disable-dev-shm-usage \
+              --disable-gpu \
               --enable-unsafe-swiftshader \
               --remote-allow-origins='*' \
+              --remote-debugging-address=127.0.0.1 \
               --remote-debugging-port=9225 \
               --user-data-dir="$profile" \
               "http://127.0.0.1:7362/?phase=$phase" \
               >/tmp/iamina-pwa-update-chrome.log 2>&1 &
             CHROME_PID=$!
-            for _ in $(seq 1 50); do
-              if curl -fsS http://127.0.0.1:9225/json/list >/dev/null; then return 0; fi
+            for _ in $(seq 1 150); do
+              if curl -fsS http://127.0.0.1:9225/json/list >/dev/null 2>&1; then return 0; fi
+              if ! kill -0 "$CHROME_PID" 2>/dev/null; then
+                echo "Chrome exited before CDP was available ($phase)" >&2
+                cat /tmp/iamina-pwa-update-chrome.log >&2 || true
+                return 1
+              fi
               sleep 0.2
             done
+            echo "Chrome CDP unavailable after bounded 30s startup ($phase)" >&2
             cat /tmp/iamina-pwa-update-chrome.log >&2 || true
             return 1
           }
