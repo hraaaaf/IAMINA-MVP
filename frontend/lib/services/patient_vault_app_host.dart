@@ -102,7 +102,12 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     ++_d9LockNonce;
     final current = _bindings;
     if (!widget.appLock.isUnlocked) {
-      if (current != null && current.d9Gate == _D9FirstUseGate.checking) {
+      if (current != null && current.d9FirstUse != null) {
+        // A completed remote marker must not survive a lock cycle without
+        // fresh server proof, even if the account ID has not changed.
+        current.consent.adoptVerifiedD9FirstUseProof(
+          null, activeOwner: current.scope.nativeDjangoUserId ?? 0,
+        );
         current.d9Gate = _D9FirstUseGate.unresolved;
         if (mounted) setState(() {});
       }
@@ -140,12 +145,14 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         !widget.appLock.isUnlocked) {
       return; // A -> B -> A, logout, lock and disposal invalidate the result.
     }
+    // A failed, revoked or pending server proof must invalidate any previous
+    // owner completion before the route gate is reconsidered.
+    final proofAccepted = current.consent.adoptVerifiedD9FirstUseProof(
+      proof, activeOwner: owner,
+    );
     if (proof == null) {
       current.d9Gate = _D9FirstUseGate.unavailable;
-    } else if (proof.completed &&
-        current.consent.adoptVerifiedD9FirstUseProof(
-          proof, activeOwner: owner,
-        )) {
+    } else if (proof.completed && proofAccepted) {
       current.d9Gate = _D9FirstUseGate.complete;
     } else if (!proof.completed && proof.ownerUserId == owner) {
       current.d9Gate = _D9FirstUseGate.newPatient;
