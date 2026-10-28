@@ -41,3 +41,9 @@ jobs:
           flutter test --no-pub test/services/patient_vault_session_controller_test.dart
       - name: Build Flutter Web offline-capable assets without deployment
         run: flutter build web --release --no-web-resources-cdn
+      - name: Install isolated Chromium smoke dependencies
+        run: |
+          python3 -m pip install --user playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+      - name: Smoke-test locally served Flutter Web in Chromium
+        run: python3 ../scripts/d30_web_boot_smoke.py
