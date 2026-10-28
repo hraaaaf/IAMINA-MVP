@@ -48,6 +48,11 @@ bool mayEraseSyntheticPreviewAccount({
     RegExp(r'^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects[.]vercel[.]app$')
         .hasMatch(browserUri.host);
 
+/// Never erase a real user from the synthetic QA UI even if a bearer exists.
+bool syntheticPreviewEmailAllowed(String? email) =>
+    email != null &&
+    RegExp(r'^[a-z0-9][a-z0-9._-]{0,60}@example\.invalid$').hasMatch(email);
+
 /// HTTP 200 alone may be an SSO HTML challenge. Require the exact backend
 /// JSON erasure acknowledgment before retiring any local patient identity.
 bool syntheticErasureResponseConfirmed({
@@ -422,6 +427,32 @@ class AuthService extends ChangeNotifier {
     }
     final token = _nativeToken!;
     final generation = _authGeneration;
+    // Fail closed before erasure: prove this exact bearer belongs to the
+    // bound native user AND to an @example.invalid QA identity.
+    final me = await _httpClient.get(
+      Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || _nativeToken != token ||
+        me.statusCode != 200 ||
+        !(me.headers['content-type'] ?? '').toLowerCase().contains('application/json')) {
+      throw StateError('Synthetic identity preflight unverified');
+    }
+    final Object? identity;
+    try {
+      identity = jsonDecode(me.body);
+    } on FormatException {
+      throw StateError('Malformed synthetic identity response');
+    }
+    if (identity is! Map<String, dynamic> ||
+        identity['id'] != _nativeAccountId ||
+        !syntheticPreviewEmailAllowed(identity['email'] is String
+            ? identity['email'] as String : null)) {
+      throw StateError('Refusing erasure of non-synthetic account');
+    }
     final response = await _httpClient.delete(
       Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/account'),
       headers: {
