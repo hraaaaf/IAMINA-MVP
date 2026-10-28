@@ -251,7 +251,10 @@ void main() {
         envelopeSha256: digest,
       );
       expect(finalized['committed_envelope_sha256'], digest);
-      expect((await identityApi.state())['status'], 'ready');
+      final authoritative = await identityApi.state();
+      expect(authoritative['status'], 'ready');
+      expect(authoritative['slot'], storedSlot);
+      expect(authoritative['committed_envelope_sha256'], digest);
     } finally {
       bytes?.fillRange(0, bytes.length, 0);
       await volatile?.close();
@@ -264,6 +267,9 @@ void main() {
     W02WebMemorySqliteCandidate? recovered;
     Uint8List? restored;
     try {
+      // Server-committed checksum must match the exact ciphertext recovered
+      // from IndexedDB before allowing any synthetic SQL SELECT.
+      expect(await reopened.envelopeSha256(), currentHash);
       restored = reopened.takeAuthenticatedSnapshot();
       recovered = await W02WebMemorySqliteCandidate.open(
         authenticatedSnapshot: restored,
