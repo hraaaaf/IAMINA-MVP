@@ -536,8 +536,10 @@ test('W01 Vercel API rewrite includes terminal slashes and never falls through t
     {source:'/api/v1/:path(.*)', destination:'/api/preview-proxy?path=:path'},
     {source:'/:path((?!api(?:/|$)).*)', destination:'/index.html'},
   ]);
+  // Root remains a legacy SPA fallback; W02 Preview is rooted at frontend/.
+  // Do not modify the monorepo Vercel routing or Production.
   assert.deepEqual(monorepo.rewrites, [
-    {source:'/:path((?!api(?:/|$)).*)', destination:'/index.html'},
+    {source:'/(.*)', destination:'/index.html'},
   ]);
 
   // Test the documented regex semantics independently of Django, without
