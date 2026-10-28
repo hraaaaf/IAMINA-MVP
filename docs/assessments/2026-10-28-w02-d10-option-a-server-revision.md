@@ -15,3 +15,7 @@
 ## Strict JS integration-contract probe
 
 `scripts/fixtures/iamina_w02_option_a_client.mjs` is **test-only** and not shipped by Flutter Web. It defines a same-origin, bearer-only `fetch` adapter, derives a canonical SHA-256 digest over `[format, version, revision, nonce, ciphertext]`, verifies that PG's committed revision/digest matches IndexedDB before any restore, blocks any pending reservation, makes browser commit after an API reserve and finalizes after the IndexedDB ciphertext CAS, and provides explicit pending recovery **only when the new encrypted envelope actually exists**. This module is **not** the production clinical bridge and does not magically turn a local recovery secret into an authenticated identity. `scripts/tests/test_w02_option_a_client.mjs` tests real AES-GCM bytes with mocked PG-state authority, including crash/quota, stale revision, same-revision ciphertext swap, A/B isolation and credential handling. The Python suite independently exercises a REAL isolated PostgreSQL 16 backing store. There is no live BFF/Neon hosted E2E.
+
+## Identity binding hardening
+
+All Preview API responses return `vault_id = amina_vault_v1_native_<Django user pk>`, derived from the server-verified Native Bearer rather than client-supplied identity. The JS synthetic adapter refuses to open or commit if the vault namespace differs. This is still not Flutter's real auth epoch implementation and is not clinical activation.

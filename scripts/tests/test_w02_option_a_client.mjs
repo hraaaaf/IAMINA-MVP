@@ -27,8 +27,8 @@ class MemoryCipherStore {
   }
 }
 class FakePg {
-  constructor() {this.slot=null;this.rev=0;this.digest='';this.pending=null;this.failsFinalize=false;}
-  async state() {return {status:this.pending?'pending':this.slot===null?'uninitialized':'ready',
+  constructor() {this.vaultId=ownerA;this.slot=null;this.rev=0;this.digest='';this.pending=null;this.failsFinalize=false;}
+  async state() {return {vault_id:this.vaultId,status:this.pending?'pending':this.slot===null?'uninitialized':'ready',
     slot:this.slot,committed_revision:this.rev,committed_envelope_sha256:this.digest,
     pending_revision:this.pending?.rev??null,pending_ticket:this.pending?.ticket??null};}
   async reserve({slot,expected_revision}) {
@@ -36,7 +36,7 @@ class FakePg {
     if(this.slot!==null&&this.slot!==slot || expected_revision!==this.rev) throw Error('stale');
     if(this.slot===null) this.slot=slot;
     this.pending={rev:this.rev+1,ticket:'T'.repeat(43)};
-    return {revision:this.pending.rev,ticket:this.pending.ticket};
+    return {vault_id:this.vaultId,revision:this.pending.rev,ticket:this.pending.ticket};
   }
   async finalize({slot,revision,ticket,envelope_sha256}) {
     if(this.failsFinalize) throw Error('synthetic_server_timeout');
@@ -109,7 +109,7 @@ test('network failure after IDB commit is recoverable with authenticated local b
 });
 test('other owner, wrong key and revoked session denied',async()=>{
   const c=await ctx();const s=await openOptionASyntheticSession(c.args);await s.commit(bytes);s.close();
-  await assert.rejects(openOptionASyntheticSession({...c.args,vaultId:ownerB}),err => err?.code === 'rollback_or_ciphertext_mismatch' || err?.code === 'authentication_failed');
+  await assert.rejects(openOptionASyntheticSession({...c.args,vaultId:ownerB}),fails('verified_owner_scope_mismatch'));
   await assert.rejects(openOptionASyntheticSession({...c.args,key:await importRecoverySecret(createRecoverySecret())}));
   c.owner.active=false;
   await assert.rejects(openOptionASyntheticSession(c.args),fails('owner_session_changed'));
@@ -126,4 +126,11 @@ test('no BFF cookies, explicit same-origin, invalid bearer denied',async()=>{
   assert.equal(calls[0].options.cache,'no-store');
   assert.equal(calls[0].options.redirect,'error');
   assert.ok(!('Cookie' in calls[0].options.headers));
+});
+
+test('server-verified native account namespace is mandatory',async()=>{
+  const c=await ctx();
+  c.pg.vaultId=ownerB;
+  await assert.rejects(openOptionASyntheticSession(c.args),fails('verified_owner_scope_mismatch'));
+  assert.equal(c.store.envelope,null);
 });

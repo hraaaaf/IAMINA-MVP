@@ -65,11 +65,13 @@ def test_reserve_finalize_cas_idempotence_and_rollback_denial():
         state = client.get(API + "/state")
         assert state.status_code == 200
         assert state.json()["status"] == "uninitialized"
+        assert state.json()["vault_id"].startswith("amina_vault_v1_native_")
         reserve = client.post(API + "/reserve", data={"slot": SLOT_A, "expected_revision": 0},
                               content_type="application/json")
         assert reserve.status_code == 200, reserve.content
         receipt = reserve.json()
         assert receipt["revision"] == 1
+        assert receipt["vault_id"] == state.json()["vault_id"]
         assert len(receipt["ticket"]) == 43
         assert client.get(API + "/state").json()["status"] == "pending"
         # Never expose last committed snapshot while pending.

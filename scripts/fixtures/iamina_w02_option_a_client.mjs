@@ -17,8 +17,9 @@ function requireOwner(ownerSession, vaultId, slot) {
     deny('owner_session_changed');
   }
 }
-function parseState(state, slot) {
+function parseState(state, slot, vaultId) {
   if (!state || !states.has(state.status)) deny('invalid_anchor_state');
+  if (state.vault_id !== vaultId) deny('verified_owner_scope_mismatch');
   if (state.status === 'uninitialized') {
     if (state.slot !== null || state.committed_revision !== 0) deny('invalid_anchor_state');
     return;
@@ -91,7 +92,7 @@ export async function openOptionASyntheticSession({
   requireOwner(ownerSession, vaultId, slot);
   const state = await api.state();
   requireOwner(ownerSession, vaultId, slot);
-  parseState(state, slot);
+  parseState(state, slot, vaultId);
   if (state.status === 'pending') deny('pending_recovery_required');
   if (state.status === 'uninitialized' && allowSyntheticEmpty !== true) {
     deny('enrollment_not_authorized');
@@ -136,7 +137,8 @@ export async function openOptionASyntheticSession({
       try {
         const reservation = await api.reserve({ slot, expected_revision: revision });
         poisoned = true; // Ever after reserve: failures require recovery.
-        if (!reservation || reservation.revision !== revision + 1 ||
+        if (!reservation || reservation.vault_id !== vaultId ||
+            reservation.revision !== revision + 1 ||
             !slotRe.test(reservation.ticket)) deny('invalid_reservation_receipt');
         if (closed) deny('session_closed');
         requireOwner(ownerSession, vaultId, slot);
@@ -152,7 +154,8 @@ export async function openOptionASyntheticSession({
           slot, revision: reservation.revision,
           ticket: reservation.ticket, envelope_sha256: digest,
         });
-        if (final?.status !== 'ready' ||
+        if (final?.vault_id !== vaultId ||
+            final?.status !== 'ready' ||
             final.committed_revision !== reservation.revision ||
             final.committed_envelope_sha256 !== digest) {
           deny('invalid_finalization_receipt');
@@ -188,7 +191,7 @@ export async function finalizePendingSynthetic({
   requireOwner(ownerSession, vaultId, slot);
   const state = await api.state();
   requireOwner(ownerSession, vaultId, slot);
-  parseState(state, slot);
+  parseState(state, slot, vaultId);
   if (state.status !== 'pending') deny('no_pending_recovery');
   const record = await store.readEnvelope(slot);
   if (!record || record.revision !== state.pending_revision) {
@@ -208,7 +211,8 @@ export async function finalizePendingSynthetic({
     slot, revision: state.pending_revision,
     ticket: state.pending_ticket, envelope_sha256: digest,
   });
-  if (final?.status !== 'ready' || final.committed_revision !== state.pending_revision ||
+  if (final?.vault_id !== vaultId ||
+      final?.status !== 'ready' || final.committed_revision !== state.pending_revision ||
       final.committed_envelope_sha256 !== digest) deny('invalid_finalization_receipt');
   return Object.freeze({ revision: state.pending_revision, envelope_sha256: digest });
 }

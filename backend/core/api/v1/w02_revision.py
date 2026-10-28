@@ -52,22 +52,26 @@ class FinalizePayload(BaseModel):
 router = Router(tags=["w02-preview-revision"])
 
 
+def _with_verified_scope(request, result):
+    return {**result, "vault_id": f"amina_vault_v1_native_{request.auth.pk}"}
+
+
 @router.get("/w02/vault-revision/state")
 def read_vault_revision(request):
     _preview_only()
     response = state_for_user(request.auth)
     # A pending transaction is NOT permission to decrypt the last snapshot.
-    return response
+    return _with_verified_scope(request, response)
 
 
 @router.post("/w02/vault-revision/reserve")
 def reserve(request, payload: ReservePayload):
     _preview_only()
     try:
-        return reserve_revision(
+        return _with_verified_scope(request, reserve_revision(
             user=request.auth, slot=payload.slot,
             expected_revision=payload.expected_revision,
-        )
+        ))
     except RevisionAnchorError as error:
         raise HttpError(409 if error.code != "invalid_reservation" else 422, error.code) from error
 
@@ -76,9 +80,9 @@ def reserve(request, payload: ReservePayload):
 def finalize(request, payload: FinalizePayload):
     _preview_only()
     try:
-        return finalize_revision(
+        return _with_verified_scope(request, finalize_revision(
             user=request.auth, slot=payload.slot, revision=payload.revision,
             ticket=payload.ticket, envelope_sha256=payload.envelope_sha256,
-        )
+        ))
     except RevisionAnchorError as error:
         raise HttpError(422 if error.code == "invalid_finalize" else 409, error.code) from error
