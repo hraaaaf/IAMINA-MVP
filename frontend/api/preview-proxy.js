@@ -39,9 +39,12 @@ function syntheticLoginRequested() {
     SYNTHETIC_LOGIN_ENABLE_VALUE;
 }
 function syntheticLoginScopeValid() {
+  const pinnedSha = process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA;
   return process.env.VERCEL_ENV === 'preview' &&
     process.env.VERCEL_PROJECT_ID === WEB_PROJECT &&
-    process.env.VERCEL_GIT_COMMIT_REF === SYNTHETIC_LOGIN_BRANCH;
+    process.env.VERCEL_GIT_COMMIT_REF === SYNTHETIC_LOGIN_BRANCH &&
+    typeof pinnedSha === 'string' && /^[0-9a-f]{40}$/.test(pinnedSha) &&
+    pinnedSha === process.env.VERCEL_GIT_COMMIT_SHA;
 }
 function syntheticEmailAllowed(email) {
   return typeof email === 'string' &&
