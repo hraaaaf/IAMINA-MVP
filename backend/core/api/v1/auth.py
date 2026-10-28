@@ -19,21 +19,46 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
 from ninja.errors import HttpError
+from ninja.security import HttpBearer
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from amina.vercel_session_auth import SessionAuth
 from core.auth_migration import (
     FirebaseIdentityConflict,
     FirebaseMigrationError,
     migrate_new_firebase_identity,
     verify_firebase_token,
 )
+from core.erasure_access import erasure_blocks_access
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token, revoke_native_tokens
+from core.native_auth import (
+    NativeTokenError,
+    issue_native_token,
+    revoke_native_tokens,
+    verify_native_token,
+)
 from core.observability import EVT_SESSION_START, track
 
 logger = logging.getLogger(__name__)
 
 router = Router(tags=["auth"])
+
+
+class NativeAccountBearerAuth(HttpBearer):
+    """Core-owned IAMINA native Bearer path, without condition imports."""
+
+    def authenticate(self, request, token: str):
+        try:
+            user = verify_native_token(token)
+        except NativeTokenError:
+            return None
+        request.user = user
+        return user
+
+
+# Account operations use IAMINA native Bearer or Django SessionAuth with CSRF.
+# Firebase migration exchanges issue native tokens before this protected path.
+_patient_auth = [NativeAccountBearerAuth(), SessionAuth()]
 
 
 class FirebaseAuthRequest(BaseModel):
@@ -128,6 +153,9 @@ def _require_authenticated(request) -> User:
 
 
 def _open_session(request, user: User, *, method: str) -> None:
+    # The account's durable deletion claim forbids issuing fresh sessions.
+    if erasure_blocks_access(user):
+        raise HttpError(403, "Account access unavailable")
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 
@@ -174,12 +202,12 @@ def login_native(request, data: NativeLoginRequest):
     return _auth_response(user, "Authenticated")
 
 
-@router.get("/auth/me", response=UserResponse)
+@router.get("/auth/me", response=UserResponse, auth=_patient_auth)
 def current_identity(request):
     return _serialize_user(_require_authenticated(request))
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", auth=_patient_auth)
 def logout_native(request):
     user = request.user if request.user.is_authenticated else None
     if user is not None:
@@ -188,7 +216,7 @@ def logout_native(request):
     return {"detail": "Signed out"}
 
 
-@router.post("/auth/password")
+@router.post("/auth/password", auth=_patient_auth)
 @transaction.atomic
 def set_native_password(request, data: SetPasswordRequest):
     """Establish or rotate the native credential without weakening ownership."""
@@ -217,7 +245,11 @@ def set_native_password(request, data: SetPasswordRequest):
 def request_password_reset(request, data: PasswordResetRequest):
     """Send a native recovery link without disclosing account existence."""
     users = list(User.objects.filter(email__iexact=data.email, is_active=True)[:2])
-    if len(users) == 1 and users[0].has_usable_password():
+    if (
+        len(users) == 1
+        and users[0].has_usable_password()
+        and not erasure_blocks_access(users[0])
+    ):
         user = users[0]
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
@@ -264,6 +296,10 @@ def confirm_password_reset(request, data: PasswordResetConfirmRequest):
     except (ValueError, TypeError, OverflowError, User.DoesNotExist) as exc:
         raise HttpError(400, "Invalid or expired recovery credential") from exc
 
+    # The recovery credential can have been issued *before* account erasure.
+    # Do not mutate credentials or issue new access during pending review.
+    if erasure_blocks_access(user):
+        raise HttpError(400, "Invalid or expired recovery credential")
     if not default_token_generator.check_token(user, data.token):
         raise HttpError(400, "Invalid or expired recovery credential")
     try:
@@ -292,7 +328,7 @@ def firebase_auth(request, data: FirebaseAuthRequest):
     return _auth_response(user, "Authenticated through migration bridge")
 
 
-@router.post("/auth/firebase/link")
+@router.post("/auth/firebase/link", auth=_patient_auth)
 @transaction.atomic
 def link_firebase_identity(request, data: FirebaseAuthRequest):
     """Explicitly attach a verified Firebase UID to the current Django account."""
@@ -324,7 +360,7 @@ def link_firebase_identity(request, data: FirebaseAuthRequest):
     return {"detail": "Firebase identity linked"}
 
 
-@router.delete("/auth/firebase/link")
+@router.delete("/auth/firebase/link", auth=_patient_auth)
 @transaction.atomic
 def unlink_firebase_identity(request):
     """Remove the migration credential only when native recovery is available."""

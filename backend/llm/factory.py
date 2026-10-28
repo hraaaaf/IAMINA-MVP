@@ -182,6 +182,7 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
         return provider
 
     original_complete = provider.complete
+    original_json_object = getattr(provider, "complete_json_object", None)
     original_stream = provider.stream
     original_think = provider.think
     provider_name = _provider_policy_name(provider)
@@ -199,22 +200,32 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
         policy = authorize_processor_policy(provider_name, payload.purpose, TEXT)
         return payload, policy
 
-    def guarded_complete(system: str, user: str):
+    def _guard_completion(system: str, user: str, original_call, operation: str):
         payload, policy = _authorize(system, user)
         if not policy.external_egress:
             return _execute_provider_call(
                 provider_name,
-                "complete",
-                lambda: original_complete(
+                operation,
+                lambda: original_call(
                     payload.system_prompt,
                     payload.user_prompt,
                 ),
             )
+        # One FinOps reservation for either ordinary or JSON-object
+        # completion. Never expose an ungoverned alternate network method.
         return _execute_external_complete(
             provider=provider,
             provider_name=provider_name,
             payload=payload,
-            original_complete=original_complete,
+            original_complete=original_call,
+        )
+
+    def guarded_complete(system: str, user: str):
+        return _guard_completion(system, user, original_complete, "complete")
+
+    def guarded_json_object(system: str, user: str):
+        return _guard_completion(
+            system, user, original_json_object, "complete_json_object"
         )
 
     def guarded_stream(system: str, user: str) -> Iterator[str]:
@@ -263,6 +274,8 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
         )
 
     provider.complete = guarded_complete  # type: ignore[method-assign]
+    if callable(original_json_object):
+        setattr(provider, "complete_json_object", guarded_json_object)
     provider.stream = guarded_stream  # type: ignore[method-assign]
     provider.think = guarded_think  # type: ignore[method-assign]
     setattr(provider, "_iamina_text_payload_policy", True)

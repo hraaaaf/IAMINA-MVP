@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -10,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../data/drift/patient_vault_scope.dart';
 
 import 'auth_epoch.dart';
+import 'preview_api_origin.dart';
 import 'firebase_migration_policy.dart';
 
 const String kAuthBaseUrl = String.fromEnvironment(
@@ -31,6 +33,68 @@ bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
 }) => offlineDemo || remoteAccountEnrollmentEnabled;
+
+/// Synthetic Preview account-erasure UI is inaccessible from Production,
+/// local audit sessions, arbitrary domains or unverified remote accounts.
+bool mayEraseSyntheticPreviewAccount({
+  required bool sameOriginPreview,
+  required bool remoteAccountEnrollmentEnabled,
+  required bool hasVerifiedNativeCredential,
+  required Uri browserUri,
+}) =>
+    sameOriginPreview && remoteAccountEnrollmentEnabled &&
+    hasVerifiedNativeCredential && browserUri.scheme == 'https' &&
+    browserUri.userInfo.isEmpty &&
+    RegExp(r'^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects[.]vercel[.]app$')
+        .hasMatch(browserUri.host);
+
+/// Never erase a real user from the synthetic QA UI even if a bearer exists.
+bool syntheticPreviewEmailAllowed(String? email) =>
+    email != null &&
+    RegExp(r'^[a-z0-9][a-z0-9._-]{0,60}@example\.invalid$').hasMatch(email);
+
+/// HTTP 200 alone may be an SSO HTML challenge. Require the exact backend
+/// JSON erasure acknowledgment before retiring any local patient identity.
+bool syntheticErasureResponseConfirmed({
+  required int statusCode,
+  required String? contentType,
+  required String body,
+}) {
+  if (statusCode != 200 ||
+      !(contentType ?? '').toLowerCase().contains('application/json')) {
+    return false;
+  }
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> &&
+        decoded['detail'] == 'Account and all associated data deleted.';
+  } on FormatException {
+    return false;
+  }
+}
+
+/// The restored bearer must be bound to the same active Django identity.
+/// A protected SSO HTML page, wrong user or real email can never re-enable QA.
+bool syntheticIdentityResponseConfirmed({
+  required int statusCode,
+  required String? contentType,
+  required String body,
+  required int expectedUserId,
+}) {
+  if (statusCode != 200 || expectedUserId <= 0 ||
+      !(contentType ?? '').toLowerCase().contains('application/json')) {
+    return false;
+  }
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> &&
+        decoded['id'] == expectedUserId &&
+        syntheticPreviewEmailAllowed(decoded['email'] is String
+            ? decoded['email'] as String : null);
+  } on FormatException {
+    return false;
+  }
+}
 
 typedef AuthFailureLogger = void Function(
   String operation,
@@ -91,6 +155,31 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
+  // An older HTTP login must never overwrite a more recent identity or
+  // reopen a session after logout. All credential writes share one queue.
+  int _authGeneration = 0;
+  Future<void> _credentialStorageTail = Future<void>.value();
+
+  void _requireCurrentAuthGeneration(int generation) {
+    if (generation != _authGeneration) {
+      throw StateError('Authentication attempt superseded');
+    }
+  }
+
+  Future<T> _withCredentialStorage<T>(
+    Future<T> Function() operation,
+  ) async {
+    final previous = _credentialStorageTail;
+    final finished = Completer<void>();
+    // Reserve the queue slot before the first await; logout is linearizable.
+    _credentialStorageTail = finished.future;
+    try {
+      await previous;
+      return await operation();
+    } finally {
+      finished.complete();
+    }
+  }
 
   AuthService({
     FirebaseAuth? auth,
@@ -151,6 +240,14 @@ class AuthService extends ChangeNotifier {
       _auditSession || _nativeToken == null ? null : _nativeAccountId;
   bool get hasRemoteApiCredential =>
       _nativeToken != null && _nativeToken!.isNotEmpty;
+  bool get canEraseSyntheticPreviewAccount => mayEraseSyntheticPreviewAccount(
+    sameOriginPreview: kIaminaPreviewSameOriginApi,
+    remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+    hasVerifiedNativeCredential: !_auditSession && _remoteCredentialVerified &&
+        _nativeToken != null && _nativeAccountId != null,
+    browserUri: Uri.base,
+  );
+
   bool get isAnonymous =>
       _auditSession ||
       (!_localSessionEnrolled &&
@@ -264,6 +361,7 @@ class AuthService extends ChangeNotifier {
     if (!_initialized) {
       throw StateError('Audit session requires initialized authentication');
     }
+    _authGeneration++; // An audit-only identity supersedes pending logins.
     _auditSession = true;
     _notifyAuthChanged();
   }
@@ -278,27 +376,31 @@ class AuthService extends ChangeNotifier {
   Future<String?> refreshToken() async {
     if (_auditSession) return null;
     if (_nativeToken != null) {
+      _authGeneration++; // Expired bearer invalidates any pending login.
       _nativeToken = null;
       _nativeAccountId = null;
       _remoteCredentialVerified = false;
       // Retire the session before a storage/plugin await can resume its
       // pending clinical synchronizer under an unbound credential.
       _notifyAuthChanged();
-      await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _nativeIdentityKey);
+      await _withCredentialStorage(() async {
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+      });
       return null;
     }
     return _firebaseAuth?.currentUser?.getIdToken(true);
   }
 
   Future<void> signInWithEmail(String email, String password) async {
+    final generation = ++_authGeneration;
     final normalized = email.trim().toLowerCase();
     final nativeResponse = await _postJson(
       '/api/v1/auth/login',
       {'email': normalized, 'password': password},
     );
     if (nativeResponse.statusCode >= 200 && nativeResponse.statusCode < 300) {
-      await _acceptAuthResponse(nativeResponse);
+      await _acceptAuthResponse(nativeResponse, generation);
       return;
     }
     if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
@@ -315,10 +417,11 @@ class AuthService extends ChangeNotifier {
         {'id_token': firebaseToken},
       );
       if (exchange.statusCode >= 200 && exchange.statusCode < 300) {
-        await _acceptAuthResponse(exchange);
+        await _acceptAuthResponse(exchange, generation);
         return;
       }
     }
+    _requireCurrentAuthGeneration(generation);
     throw StateError('Authentication failed');
   }
 
@@ -326,6 +429,7 @@ class AuthService extends ChangeNotifier {
     if (!kRemoteAccountEnrollmentEnabled) {
       throw StateError('Remote account enrollment is disabled');
     }
+    final generation = ++_authGeneration;
     final response = await _postJson(
       '/api/v1/auth/register',
       {'email': email.trim().toLowerCase(), 'password': password},
@@ -333,10 +437,131 @@ class AuthService extends ChangeNotifier {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw registrationFailureForStatus(response.statusCode);
     }
-    await _acceptAuthResponse(response);
+    await _acceptAuthResponse(response, generation);
+  }
+
+  /// Recover a *cached* synthetic QA session after a Flutter Web reload.
+  /// No lock, onboarding or medical access is granted until live Django
+  /// verifies the exact existing bearer/user binding and synthetic email.
+  Future<void> reverifySyntheticPreviewForErasure() async {
+    final token = _nativeToken;
+    final id = _nativeAccountId;
+    if (_auditSession || token == null || id == null ||
+        !mayEraseSyntheticPreviewAccount(
+          sameOriginPreview: kIaminaPreviewSameOriginApi,
+          remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+          hasVerifiedNativeCredential: true,
+          browserUri: Uri.base,
+        )) {
+      throw StateError('Synthetic Preview recovery unavailable');
+    }
+    final generation = _authGeneration;
+    final response = await _httpClient.get(
+      Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || token != _nativeToken ||
+        id != _nativeAccountId ||
+        !syntheticIdentityResponseConfirmed(
+          statusCode: response.statusCode,
+          contentType: response.headers['content-type'],
+          body: response.body,
+          expectedUserId: id,
+        )) {
+      throw StateError('Synthetic Preview identity verification failed');
+    }
+    // Identity re-verification changes only this transient QA capability.
+    // _notifyAuthChanged() advances AuthEpoch and tears down the physical
+    // patient vault, disposing its GoRouter before the cleanup navigation.
+    // Do NOT emit an auth transition: no bearer, owner or clinical scope changed.
+    // context.go('/w01-qa-erasure') evaluates the guard using this flag.
+    _remoteCredentialVerified = true;
+  }
+
+  /// Test-only, single-attempt remote application erasure, followed by local
+  /// vault purge and credential retirement. HTTP ambiguity never means PASS.
+  Future<void> eraseSyntheticPreviewAccount({
+    required Future<void> Function() purgeLocalVault,
+  }) async {
+    if (!canEraseSyntheticPreviewAccount) {
+      throw StateError('Synthetic Preview erasure is unavailable');
+    }
+    final token = _nativeToken!;
+    final generation = _authGeneration;
+    // Fail closed before erasure: prove this exact bearer belongs to the
+    // bound native user AND to an @example.invalid QA identity.
+    final me = await _httpClient.get(
+      Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || _nativeToken != token ||
+        me.statusCode != 200 ||
+        !(me.headers['content-type'] ?? '').toLowerCase().contains('application/json')) {
+      throw StateError('Synthetic identity preflight unverified');
+    }
+    final Object? identity;
+    try {
+      identity = jsonDecode(me.body);
+    } on FormatException {
+      throw StateError('Malformed synthetic identity response');
+    }
+    if (identity is! Map<String, dynamic> ||
+        identity['id'] != _nativeAccountId ||
+        !syntheticPreviewEmailAllowed(identity['email'] is String
+            ? identity['email'] as String : null)) {
+      throw StateError('Refusing erasure of non-synthetic account');
+    }
+    final response = await _httpClient.delete(
+      Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/account'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'confirm': 'DELETE MY ACCOUNT'}),
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || _nativeToken != token) {
+      throw StateError('Account changed during deletion: manual review');
+    }
+    if (!syntheticErasureResponseConfirmed(
+      statusCode: response.statusCode,
+      contentType: response.headers['content-type'],
+      body: response.body,
+    )) {
+      throw StateError('Server erasure not confirmed by application JSON');
+    }
+    Object? localError;
+    try {
+      await purgeLocalVault();
+    } catch (error) {
+      localError = error;
+    } finally {
+      _authGeneration++;
+      _auditSession = false;
+      _nativeToken = null;
+      _nativeAccountId = null;
+      _remoteCredentialVerified = false;
+      _localSessionEnrolled = false;
+      _notifyAuthChanged();
+      await _withCredentialStorage(() async {
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+        await _storage.delete(key: _localSessionKey);
+      });
+    }
+    if (localError != null) {
+      throw StateError('Server erased, but local test vault purge unverified');
+    }
   }
 
   Future<void> signOut() async {
+    _authGeneration++; // Synchronous cancellation of every pending login.
     _auditSession = false;
     final token = _nativeToken;
 
@@ -349,9 +574,11 @@ class AuthService extends ChangeNotifier {
     // Cancel stale session egress SYNCHRONOUSLY. Awaiting secure storage first
     // left an A→logout window where old SyncService still had A's epoch.
     _notifyAuthChanged();
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _nativeIdentityKey);
-    await _storage.delete(key: _localSessionKey);
+    await _withCredentialStorage(() async {
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeIdentityKey);
+      await _storage.delete(key: _localSessionKey);
+    });
     // Preserve the stable local-only vault locator: deleting it orphaned
     // offline clinical records without removing their SQLite database.
     // The revoked session cannot resolve it until explicit re-enrollment;
@@ -360,10 +587,16 @@ class AuthService extends ChangeNotifier {
 
     if (token != null) {
       try {
-        await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+        final response = await _httpClient.post(
+          Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
+        // Local sign-out remains final, but only 2xx confirms remote
+        // revocation. A protected Preview API can return 401/403/502/503
+        // without throwing: never silently count this as a revoked token.
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw StateError('Remote logout revocation not confirmed');
+        }
       } catch (error, stackTrace) {
         _failureLogger(
           'logout',
@@ -421,13 +654,17 @@ class AuthService extends ChangeNotifier {
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
   }
 
-  Future<void> _acceptAuthResponse(http.Response response) async {
+  Future<void> _acceptAuthResponse(
+    http.Response response,
+    int generation,
+  ) async {
+    _requireCurrentAuthGeneration(generation);
     final payload = jsonDecode(response.body);
     if (payload is! Map<String, dynamic>) {
       throw StateError('Malformed authentication response');
@@ -441,27 +678,50 @@ class AuthService extends ChangeNotifier {
     if (id is! int || id <= 0) {
       throw StateError('Missing authenticated IAMINA user ID');
     }
-    // A completed native response retires any previous local/remote account
-    // before the first persistence await. Failures leave no old patient open.
-    _nativeToken = null;
-    _nativeAccountId = null;
-    _remoteCredentialVerified = false;
-    _localSessionEnrolled = false;
-    _auditSession = false;
-    _notifyAuthChanged();
-    // Write binding first. Interrupted writes cannot pair a new token
-    // with a previous account's cached patient ID.
-    await _storage.write(
-      key: _nativeIdentityKey,
-      value: jsonEncode({'token': token, 'user_id': id}),
-    );
-    await _storage.write(key: _tokenKey, value: token);
-    await _storage.write(key: _localSessionKey, value: _localSessionValue);
-    _nativeToken = token;
-    _nativeAccountId = id;
-    _localSessionEnrolled = true;
-    _remoteCredentialVerified = true;
-    _notifyAuthChanged();
+
+    // The reservation is synchronous and ordered even when secure storage
+    // pauses, so a stale write can never overtake logout or patient B's write.
+    await _withCredentialStorage(() async {
+      _requireCurrentAuthGeneration(generation);
+      _nativeToken = null;
+      _nativeAccountId = null;
+      _remoteCredentialVerified = false;
+      _localSessionEnrolled = false;
+      _auditSession = false;
+      _notifyAuthChanged();
+
+      try {
+        // Persist the token and its typed owner as a matched pair. Check
+        // generation after EACH await, not only after the HTTP response.
+        await _storage.write(
+          key: _nativeIdentityKey,
+          value: jsonEncode({'token': token, 'user_id': id}),
+        );
+        _requireCurrentAuthGeneration(generation);
+        await _storage.write(key: _tokenKey, value: token);
+        _requireCurrentAuthGeneration(generation);
+        await _storage.write(key: _localSessionKey, value: _localSessionValue);
+        _requireCurrentAuthGeneration(generation);
+
+        _nativeToken = token;
+        _nativeAccountId = id;
+        _localSessionEnrolled = true;
+        _remoteCredentialVerified = true;
+        _notifyAuthChanged();
+      } catch (_) {
+        // A cancelled/interrupted write may have persisted half a credential.
+        // Clear it before releasing the queue to a newer login or logout.
+        _nativeToken = null;
+        _nativeAccountId = null;
+        _localSessionEnrolled = false;
+        _remoteCredentialVerified = false;
+        _notifyAuthChanged();
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+        await _storage.delete(key: _localSessionKey);
+        rethrow;
+      }
+    });
   }
 
   void _notifyAuthChanged() {

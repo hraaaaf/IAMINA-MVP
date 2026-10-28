@@ -8,12 +8,10 @@ on:
       - IAMINA.py
       - IAMINA.bat
       - IAMINA.command
-      - .github/workflows/developer-portability.yml
       - .tool-versions
       - backend/requirements.txt
       - frontend/pubspec.yaml
       - frontend/pubspec.lock
-      - frontend/vercel_build.sh
       - docs/DEPENDENCIES.md
       - docs/DEVELOPER_MACOS.md
       - docs/LAUNCHER.md
@@ -23,7 +21,7 @@ permissions:
 
 concurrency:
   group: developer-portability-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   launcher-smoke:

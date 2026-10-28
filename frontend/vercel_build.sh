@@ -40,8 +40,31 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
         echo "ERROR: Preview requires the exact IAMINA synthetic backend deployment URL" >&2
         exit 64
       fi
-      API_BASE_URL="${IAMINA_REVIEW_PREVIEW_API_BASE_URL%/}"
+      API_BASE_URL="https://invalid.iamina-preview.invalid"
+      IAMINA_PREVIEW_SAME_ORIGIN_API=true
+      # Remote registration is OFF on every ordinary Preview. A single
+      # explicitly approved, project/branch/deployment-scoped synthetic QA
+      # release may opt in; the BFF separately enforces exact Neon identity
+      # before any account mutation, and restricts emails to example.invalid.
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      case "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN:-}" in
+        '')
+          ;;
+        D2_WEB_SYNTHETIC_ONLY_V1)
+          if [ "${VERCEL_GIT_COMMIT_REF:-}" != "integration/w01-d2-preview-only-20261027" ] ||
+            [[ ! "${VERCEL_URL:-}" =~ ^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$ ]] ||
+            [[ ! "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA:-}" =~ ^[0-9a-f]{40}$ ]] ||
+            [ "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA:-}" != "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
+            echo "ERROR: refusing synthetic Preview auth outside exact review branch/host" >&2
+            exit 64
+          fi
+          IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+          ;;
+        *)
+          echo "ERROR: refusing unknown synthetic Preview auth mode" >&2
+          exit 64
+          ;;
+      esac
       ;;
     production)
       # Existing production routing remains unchanged.
@@ -67,6 +90,7 @@ if [ -n "${API_BASE_URL:-}" ]; then
   echo "Building IAMINA web with configured backend: $API_BASE_URL"
   flutter build web --release \
     --dart-define=API_BASE_URL="$API_BASE_URL" \
+    --dart-define=IAMINA_PREVIEW_SAME_ORIGIN_API="${IAMINA_PREVIEW_SAME_ORIGIN_API:-false}" \
     --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"

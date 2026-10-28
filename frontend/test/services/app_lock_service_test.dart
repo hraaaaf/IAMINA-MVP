@@ -413,6 +413,104 @@ void main() {
     service.dispose();
   });
 
+
+  test('W01 explicit choice opens the clinical vault and survives restart', () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      fail('Device-only opt-out must not call the remote server');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final lock = AppLockService(
+      authService: auth, authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => false,
+    );
+    await lock.initialize();
+    expect(lock.isUnlocked, isFalse);
+    await lock.continueWithoutDeviceLock();
+    expect(lock.isUnlocked, isTrue);
+    expect(lock.isExplicitlyOpen, isTrue);
+    expect(lock.isRequired, isFalse);
+    final patient = await auth.resolvePatientVaultScope();
+    expect(
+      await const FlutterSecureStorage().read(
+        key: 'iamina_app_lock_explicit_open_scope_v1',
+      ),
+      patient!.databaseName,
+    );
+    final restarted = AppLockService(
+      authService: auth, authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => true,
+    );
+    await restarted.initialize();
+    expect(restarted.isExplicitlyOpen, isTrue);
+    expect(restarted.recoveryRequired, isFalse);
+    await auth.signOut();
+    expect(lock.isUnlocked, isFalse);
+    expect(restarted.isUnlocked, isFalse);
+    restarted.dispose();
+    lock.dispose();
+    auth.dispose();
+  });
+
+  test('W01 opt-out cannot bypass a legacy protected vault without choice', () async {
+    seedStorage({});
+    final auth = AuthService();
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final lock = AppLockService(
+      authService: auth, authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => true,
+    );
+    await lock.initialize();
+    expect(lock.recoveryRequired, isTrue);
+    await expectLater(lock.continueWithoutDeviceLock(),
+        throwsA(isA<AppLockException>()));
+    expect(lock.isUnlocked, isFalse);
+    lock.dispose();
+    auth.dispose();
+  });
+
+  test('W01 configured strong lock cannot be skipped or disabled while locked', () async {
+    seedStorage({_credentialKey: _credential.encode(), _requiredKey: 'required'});
+    final auth = AuthService();
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final lock = AppLockService(
+      authService: auth, authenticator: _FakeAuthenticator(),
+    );
+    await lock.initialize();
+    expect(lock.isConfigured, isTrue);
+    expect(lock.isUnlocked, isFalse);
+    await expectLater(lock.continueWithoutDeviceLock(),
+        throwsA(isA<AppLockException>()));
+    await expectLater(lock.disableConfiguredLockAfterUnlock(),
+        throwsA(isA<AppLockException>()));
+    expect(lock.isUnlocked, isFalse);
+    lock.dispose();
+    auth.dispose();
+  });
+
+  test('W01 configured lock can be disabled after the device was verified', () async {
+    seedStorage({});
+    final auth = AuthService();
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final lock = AppLockService(authService: auth,
+        authenticator: _FakeAuthenticator());
+    await lock.initialize();
+    await lock.configure();
+    expect(lock.isConfigured, isTrue);
+    expect(lock.isUnlocked, isTrue);
+    await lock.disableConfiguredLockAfterUnlock();
+    expect(lock.isConfigured, isFalse);
+    expect(lock.isExplicitlyOpen, isTrue);
+    expect(await const FlutterSecureStorage().read(key: _credentialKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _requiredKey), isNull);
+    lock.dispose();
+    auth.dispose();
+  });
+
   test('secure persistence precedes public unlocked state in source', () {
     final source = File('lib/services/app_lock_service.dart').readAsStringSync();
 

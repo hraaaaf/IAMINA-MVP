@@ -1,0 +1,31 @@
+name: W01 synthetic erasure recovery isolated Flutter QA
+on:
+  push:
+    branches:
+      - fix/w01-qa-erasure-reauth-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w01-qa-erasure-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  flutter-qa:
+    name: Flutter analyze, erasure security tests, Web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test --no-pub test/services/w01_synthetic_preview_erasure_scope_test.dart
+      - run: flutter test --no-pub test/app_lock_ui_contract_test.dart test/services/auth_service_failure_observability_test.dart
+      - run: flutter build web --release --no-web-resources-cdn

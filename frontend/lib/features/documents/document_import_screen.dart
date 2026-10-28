@@ -118,7 +118,10 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     });
 
     final api = context.read<ApiClient>();
-    final result = await api.confirmDocumentImport(_preview!.batchId);
+    final result = await api.confirmDocumentImport(
+      _preview!.batchId,
+      previewToken: _preview!.previewToken,
+    );
 
     setState(() {
       _loading = false;

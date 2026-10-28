@@ -31,6 +31,8 @@ import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
+import 'features/notifications/d2_notification_center_screen.dart';
+import 'services/d2_consent_gateway.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
@@ -42,6 +44,72 @@ import 'services/locale_preference_service.dart';
 import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
+
+/// Screenshot fixture only: no account, network, inbox or medical evidence.
+class _BrowserAuditD2Gateway implements D2ConsentGateway {
+  // Screenshot-only states; never connects to patients or remote API.
+  _BrowserAuditD2Gateway({String variant = 'off'})
+      : enabled = variant == 'on',
+        unavailable = variant == 'error';
+
+  bool enabled;
+  final bool unavailable;
+
+  D2ConsentStatus _status(String requestedLocale) {
+    final isArabic = requestedLocale.startsWith('ar');
+    return D2ConsentStatus(
+      optedIn: enabled,
+      noticeText: isArabic
+          ? 'أختار الاطلاع داخل IAmina فقط على معاينات لملاحظات شخصية غير عاجلة '
+              'مستمدة من بياناتي المسجلة. لا يفعّل هذا الاختيار إشعارات '
+              'المتصفح أو البريد الإلكتروني أو الرسائل النصية.'
+          : 'Je choisis de voir, dans IAmina uniquement, des aperçus non urgents '
+              'd’observations personnalisées. Cette préférence ne déclenche '
+              'aucune notification du navigateur, aucun e-mail et aucun SMS.',
+      noticeVersion: '2026-10-20.d2.1',
+      noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      locale: isArabic ? 'ar' : 'fr',
+    );
+  }
+
+  @override
+  Future<D2ConsentStatus> read(String locale) async {
+    if (unavailable) throw StateError('synthetic offline audit');
+    return _status(locale);
+  }
+
+  @override
+  Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice) async {
+    enabled = true;
+    return _status(acceptedNotice.locale);
+  }
+
+  @override
+  Future<D2ConsentStatus> withdraw(String locale) async {
+    enabled = false;
+    return _status(locale);
+  }
+
+  @override
+  Future<D2ObservationPreview?> readPreview() async => enabled
+      ? const D2ObservationPreview(
+          kind: 'meal', state: 'monitoring', allowedNextStep: 'MONITOR')
+      : null;
+
+  @override
+  Future<List<D2SavedNotice>> inbox() async => enabled
+      ? const [D2SavedNotice(id: 1, kind: 'meal')]
+      : const [];
+
+  @override
+  Future<List<D2SavedNotice>> savePreview() async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> markRead(int id) async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> removeNotice(int id) async => const [];
+}
 
 class _BrowserAuditCompanionService extends CompanionService {
   @override
@@ -222,6 +290,11 @@ class _BrowserAuditApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = Uri.base.queryParameters['surface'] ?? 'dashboard';
+    // Only the isolated screenshot fixture can select AR for the D2 audit.
+    // Real patient locale policy and application screens remain unchanged.
+    final auditLocale = Uri.base.queryParameters['lang'] == 'ar'
+        ? const Locale('ar') : const Locale('fr');
+    final auditD2State = Uri.base.queryParameters['d2State'] ?? 'off';
     final router = GoRouter(
       initialLocation: _pathForSurface(surface),
       routes: [
@@ -291,6 +364,12 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const RemindersScreen(),
         ),
         GoRoute(
+          path: '/notifications',
+          builder: (context, state) => D2NotificationCenterScreen(
+            gateway: _BrowserAuditD2Gateway(variant: auditD2State),
+          ),
+        ),
+        GoRoute(
           path: '/companion',
           builder: (context, state) => const CompanionPremiumScreen(),
         ),
@@ -347,7 +426,7 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      locale: auditLocale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -428,6 +507,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
   'reminders' => '/reminders',
+  'notifications' => '/notifications',
   'companion' => '/companion',
   'companion-unavailable' => '/companion-unavailable',
   'amina-chat' => '/amina-chat',

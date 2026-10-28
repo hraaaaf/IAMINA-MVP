@@ -266,6 +266,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get consentDeclineWithoutAI => 'Continuer sans IA';
 
   @override
+  String get consentRemoteAccountRequired =>
+      'Le consentement IA nécessite un compte IAMINA connecté au serveur. Cette session locale ne peut pas l’enregistrer. Vous pouvez continuer sans IA.';
+
+  @override
+  String get consentConfirmationFailed =>
+      'Le consentement IA n’a pas été confirmé. Aucun accès à l’IA externe n’est activé. Réessayez ou continuez sans IA.';
+
+  @override
   String get consentAlreadyGiven => 'Consentement accordé';
 
   @override

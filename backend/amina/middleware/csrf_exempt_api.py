@@ -23,9 +23,15 @@ class CsrfExemptApiMiddleware:
 
     def __call__(self, request):
         authorization = request.META.get("HTTP_AUTHORIZATION", "")
-        uses_bearer_auth = authorization.lower().startswith("bearer ")
+        # A browser may carry an ambient Django session cookie alongside a
+        # syntactically invalid Bearer. Never let that header disable CSRF:
+        # SessionAuth could otherwise accept the cookie after Bearer rejection.
+        # The W01 same-origin BFF already strips every browser cookie.
+        uses_cookie_free_bearer = (
+            authorization.lower().startswith("bearer ") and not request.COOKIES
+        )
 
-        if uses_bearer_auth or request.path in self._EXEMPT_PATHS:
+        if uses_cookie_free_bearer or request.path in self._EXEMPT_PATHS:
             setattr(request, "_dont_enforce_csrf_checks", True)
 
         try:

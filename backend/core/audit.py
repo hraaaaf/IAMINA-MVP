@@ -31,3 +31,15 @@ def record_audit(patient, action: str, request=None, **metadata) -> None:
         _audit_sink(patient, action, request, **metadata)
     except Exception:
         logger.exception("audit sink failed for action=%s", action)
+
+
+def record_audit_required(patient, action: str, request=None, **metadata) -> None:
+    """Fail closed if a mandatory compliance audit cannot be persisted.
+
+    Unlike the best-effort port, erasure must not commit successfully if its
+    audit sink is missing or raises. Invoke inside the same DB transaction as
+    the audited operation; this cannot make external providers transactional.
+    """
+    if _audit_sink is None:
+        raise RuntimeError("mandatory audit sink unavailable")
+    _audit_sink(patient, action, request, **metadata)

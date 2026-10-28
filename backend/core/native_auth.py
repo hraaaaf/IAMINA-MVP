@@ -8,11 +8,16 @@ from django.conf import settings
 from django.core import signing
 from django.db import transaction
 
+from core.erasure_access import erasure_blocks_access
 from core.models import BasePatientProfile
 
 _TOKEN_PREFIX = "iamina."
 _TOKEN_SALT = "iamina.native-auth.v1"
-_DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+# A copied medical bearer must not retain server access for a month if logout
+# cannot reach Django. Reauthentication uses the existing password login:
+# NO long-lived refresh secret is minted or silently replayed from a device.
+_MAX_ACCESS_AGE_SECONDS = 60 * 60
+_DEFAULT_MAX_AGE_SECONDS = _MAX_ACCESS_AGE_SECONDS
 
 
 class NativeTokenError(Exception):
@@ -27,6 +32,8 @@ class NativeTokenIdentity:
 
 def issue_native_token(user) -> str:
     """Issue a timestamped bearer bound to the profile revocation version."""
+    if erasure_blocks_access(user):
+        raise NativeTokenError("revoked_or_unknown_native_token")
     profile, _ = BasePatientProfile.objects.get_or_create(patient=user)
     signer = signing.TimestampSigner(salt=_TOKEN_SALT)
     signed = signer.sign_object(
@@ -47,6 +54,11 @@ def verify_native_token(token: str):
         "NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS",
         _DEFAULT_MAX_AGE_SECONDS,
     )
+    # A misconfigured runtime cannot silently restore the legacy 30-day
+    # lifetime. An invalid value fails closed instead of bypassing expiry.
+    if isinstance(max_age, bool) or not isinstance(max_age, int) or max_age <= 0:
+        raise NativeTokenError("invalid_native_token_lifetime")
+    max_age = min(max_age, _MAX_ACCESS_AGE_SECONDS)
     try:
         payload = signer.unsign_object(token[len(_TOKEN_PREFIX):], max_age=max_age)
     except (signing.BadSignature, signing.SignatureExpired, TypeError, ValueError) as exc:
@@ -67,6 +79,10 @@ def verify_native_token(token: str):
         )
     except BasePatientProfile.DoesNotExist as exc:
         raise NativeTokenError("revoked_or_unknown_native_token") from exc
+    # Erasure intent commits before any hooks/Firebase action. Reject copies of
+    # otherwise valid Bearers while that account is awaiting reconciliation.
+    if erasure_blocks_access(profile.patient):
+        raise NativeTokenError("revoked_or_unknown_native_token")
     return profile.patient
 
 

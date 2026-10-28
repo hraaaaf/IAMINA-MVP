@@ -1,6 +1,7 @@
 """Patient-scoped lifecycle helpers for transient document extraction cache."""
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.cache import cache
 from django_redis import get_redis_connection
 
@@ -17,6 +18,11 @@ def pending_extraction_pattern(patient_id: int) -> str:
 def purge_patient_pending_extractions(patient_id: int) -> int:
     """Delete all pending extraction batches for one patient, fail-closed on Redis errors."""
     logical_pattern = pending_extraction_pattern(patient_id)
+    if getattr(settings, "IAMINA_NO_REDIS", False):
+        # Synthetic-only W01 mode: ingest and confirm are disabled *before*
+        # creating pending batches. Do not contact a missing Redis server.
+        # This mode must never be enabled while legacy pending data exists.
+        return 0
     redis = get_redis_connection("default")
     physical_pattern = cache.make_key(logical_pattern)
     keys = list(redis.scan_iter(match=physical_pattern, count=100))

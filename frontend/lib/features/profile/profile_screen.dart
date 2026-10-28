@@ -16,6 +16,7 @@ import '../../services/auth_service.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import '../../services/consent_evidence_store.dart';
 import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
@@ -62,6 +63,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _syntheticErasureBusy = false;
   final _targetLowController = TextEditingController();
   final _targetHighController = TextEditingController();
   String? _diabetesType;
@@ -317,6 +319,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  /// Never available on Production: exact synthetic Preview scope is enforced
+  /// again inside AuthService and by the BFF before application deletion.
+  Future<void> _confirmSyntheticPreviewErasure() async {
+    if (_syntheticErasureBusy) return;
+    final auth = context.read<AuthService>();
+    if (!auth.canEraseSyntheticPreviewAccount) return;
+    final db = context.read<AppDatabase>();
+    final evidence = context.read<ConsentEvidenceStore>();
+    final router = GoRouter.of(context);
+    final confirmation = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(_profileUiText(ctx,
+          fr: 'Supprimer le compte de test',
+          en: 'Delete test account',
+          ar: 'حذف الحساب التجريبي')),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(_profileUiText(ctx,
+            fr: 'Preview synthétique uniquement. Suppression du compte serveur et purge du coffre local. Saisissez DELETE MY ACCOUNT.',
+            en: 'Synthetic Preview only. Delete server account and local vault. Type DELETE MY ACCOUNT.',
+            ar: 'معاينة تجريبية فقط. حذف حساب الخادم والخزنة المحلية. اكتب DELETE MY ACCOUNT.')),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('w01-preview-erasure-confirmation'),
+            controller: confirmation,
+            decoration: const InputDecoration(labelText: 'DELETE MY ACCOUNT'),
+          ),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            key: const Key('w01-preview-erasure-confirm'),
+            onPressed: () => Navigator.pop(ctx,
+              confirmation.text == 'DELETE MY ACCOUNT'),
+            child: Text(_profileUiText(ctx,
+              fr: 'Supprimer', en: 'Delete', ar: 'حذف')),
+          ),
+        ],
+      ),
+    );
+    confirmation.dispose();
+    if (accepted != true || !mounted || !auth.canEraseSyntheticPreviewAccount) {
+      return;
+    }
+    setState(() => _syntheticErasureBusy = true);
+    try {
+      await auth.eraseSyntheticPreviewAccount(
+        purgeLocalVault: () async {
+          await db.purgeSyntheticPatientVaultAfterRemoteErasure();
+          await evidence.clear();
+        },
+      );
+      router.go('/login');
+    } catch (_) {
+      if (!mounted || !auth.hasRemoteApiCredential) {
+        router.go('/login');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+          _profileUiText(context,
+            fr: 'Suppression non confirmée. Aucun autre compte de test avant vérification manuelle.',
+            en: 'Erasure unconfirmed. Do not create more test accounts before manual review.',
+            ar: 'لم يتم تأكيد الحذف. لا تنشئ حسابات أخرى قبل المراجعة اليدوية.'),
+        )));
+      }
+    } finally {
+      if (mounted) setState(() => _syntheticErasureBusy = false);
+    }
   }
 
   void _confirmWithdrawConsent(AppLocalizations l10n) {

@@ -69,6 +69,24 @@ RETENTION_RULES: tuple[RetentionRule, ...] = (
         notes="The application does not persist uploaded audio, images or documents after processing.",
     ),
     RetentionRule(
+        dataset="d2_explicit_saved_preview_items",
+        trigger=ROLLING,
+        retention_days=7,
+        deletion_action=(
+            "hide at expiry, then physically delete through the monitored "
+            "D2 expired-preview purge job"
+        ),
+        owner=_POLICY_OWNER,
+        effective_on=date(2026, 10, 20),
+        review_due_on=_REVIEW_DUE,
+        legal_hold_supported=False,
+        notes=(
+            "Only explicitly saved nonurgent preview metadata; no push or "
+            "automatic delivery. Physical expiry requires an enabled "
+            "scheduler plus monitored execution; not certified until then."
+        ),
+    ),
+    RetentionRule(
         dataset="patient_export_staging_files",
         trigger=ROLLING,
         retention_days=7,

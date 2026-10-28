@@ -1,0 +1,112 @@
+name: W01 hosted Web BFF Neon identity read-only (GitHub OIDC)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/w01-hosted-bff-oidc-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: w01-hosted-oidc-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hosted-bff-preflight:
+    name: Protected Preview BFF identity and health, no account creation
+    if: >-
+      github.repository == 'hraaaaf/IAMINA-MVP' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == 'hraaaaf/IAMINA-MVP' &&
+      github.event.pull_request.head.ref == 'feat/w01-preview-same-origin-bff-20261017' &&
+      github.event.pull_request.number == 1128
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Obtain short-lived GitHub OIDC identity without browser login
+        id: github_oidc
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken();
+            core.setSecret(token);
+            core.setOutput('token', token);
+      - name: Verify Vercel SSO access, four Neon identity fields, and API health
+        env:
+          W01_GITHUB_OIDC: ${{ steps.github_oidc.outputs.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+
+          // Immutable deployment URL only, GET requests. No account registration,
+          // POST, DELETE, Neon mutation or Production access.
+          const base = 'https://iamina-review-43uutvmzm-achraf-benmoussa-s-projects.vercel.app';
+          const expected = Object.freeze({
+            database_name: 'iamina925_empty',
+            role_name: 'iamina_preview_app',
+            neon_project_id: 'noisy-truth-00115950',
+            neon_branch_id: 'br-sweet-frog-b9ok6ptp',
+          });
+          const token = process.env.W01_GITHUB_OIDC;
+          assert.ok(typeof token === 'string' && token.length > 30, 'GITHUB_OIDC_MISSING');
+
+          // Diagnostic: print only the allowlisted *public workload claims*.
+          // Never print the JWT, signature, full payload, or any credential.
+          const publicFields = ['aud', 'sub', 'repository', 'ref', 'workflow_ref', 'job_workflow_ref', 'event_name'];
+          const jwtParts = token.split('.');
+          assert.equal(jwtParts.length, 3, 'OIDC_JWT_SHAPE_INVALID');
+          const claims = JSON.parse(Buffer.from(jwtParts[1], 'base64url').toString('utf8'));
+          const publicClaims = Object.fromEntries(publicFields
+            .filter(key => Object.hasOwn(claims, key))
+            .map(key => [key, claims[key]]));
+          console.log('W01_OIDC_PUBLIC_CLAIMS', JSON.stringify(publicClaims));
+
+          // Never print response bodies, JWTs, cookies or credentials.
+          async function get(path) {
+            const result = await fetch(base + path, {
+              method: 'GET',
+              headers: {
+                'accept': 'application/json',
+                'x-vercel-trusted-oidc-idp-token': token,
+              },
+              redirect: 'manual',
+              cache: 'no-store',
+              signal: AbortSignal.timeout(15000),
+            });
+            const type = (result.headers.get('content-type') || '').toLowerCase();
+            console.log(path, 'HTTP', result.status, 'JSON', type.includes('application/json'));
+            if (result.status !== 200 || !type.includes('application/json')) {
+              throw new Error(result.status === 401 || result.status === 403 ||
+                result.status >= 300 && result.status < 400 ||
+                type.includes('text/html')
+                ? 'VERCEL_SSO_TRUSTED_SOURCE_NOT_AUTHORIZED'
+                : 'HOSTED_BFF_HTTP_OR_CONTENT_TYPE_FAILURE');
+            }
+            const body = await result.text();
+            assert.ok(body.length < 16384, 'UNEXPECTED_RESPONSE_SIZE');
+            return JSON.parse(body);
+          }
+
+          try {
+            const actual = await get('/api/v1/ops/preview-db-identity');
+            const match = Object.entries(expected).every(([k,v]) => actual?.[k] === v);
+            assert.ok(match, 'DB_IDENTITY_MISMATCH_STOP_NO_ACCOUNT_CREATION');
+            console.log('NEON_FOUR_FIELD_IDENTITY_VIA_WEB_BFF_PASS');
+            const health = await get('/api/v1/health');
+            assert.equal(health?.db, 'ok', 'HEALTH_DATABASE_NOT_OK');
+            console.log('BFF_API_NEON_HEALTH_PASS');
+            console.log('W01_HOSTED_READ_ONLY_PREFLIGHT_PASS');
+          } catch (err) {
+            // Never log remote response bodies: they could contain sensitive data.
+            console.error('W01_HOSTED_PREFLIGHT_BLOCKED:', err instanceof Error ? err.message : 'UNKNOWN');
+            process.exitCode = 1;
+          }
+          NODE

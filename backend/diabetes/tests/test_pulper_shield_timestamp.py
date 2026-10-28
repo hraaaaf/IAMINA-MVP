@@ -1,4 +1,5 @@
 """Regression tests for Pulper glucose timestamp integrity."""
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -115,6 +116,9 @@ class PulperTimestampIntegrityTest(SimpleTestCase):
                 "diabetes.services.documents.store.LabReport.objects.create",
                 return_value=report,
             ),
+            # Pure SimpleTestCase intentionally mocks persistence, not a DB.
+            # Production atomicity is exercised by the PostgreSQL TestCase.
+            patch("diabetes.services.documents.store.transaction.atomic", side_effect=nullcontext),
             patch("diabetes.services.documents.store.LogEntry.objects.create") as create_log,
         ):
             result = persist(output, patient, "batch-1")
@@ -140,6 +144,7 @@ class PulperTimestampIntegrityTest(SimpleTestCase):
                 return_value=report,
             ),
             patch("diabetes.services.documents.store.LabReport.objects.filter") as filter_report,
+            patch("diabetes.services.documents.store.transaction.atomic", side_effect=nullcontext),
             patch("diabetes.services.documents.store.LogEntry.objects.filter") as filter_log,
             patch("diabetes.services.documents.store.LogEntry.objects.create") as create_log,
         ):

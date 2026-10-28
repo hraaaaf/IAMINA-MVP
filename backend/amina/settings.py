@@ -182,7 +182,25 @@ LLM_MODEL = os.environ.get('LLM_MODEL', 'openai/gpt-oss-120b')
 KIMI_BASE_URL = os.environ.get('KIMI_BASE_URL', '')
 KIMI_API_KEY = os.environ.get('KIMI_API_KEY', '')
 
-# ── Redis ─────────────────────────────────────────────────────
+# ── W01 synthetic-only no-Redis mode ───────────────────────────
+# A process-local cache is safe for derived, disposable context, never as a
+# cross-worker document handoff. The Pulper two-step route is disabled while
+# this mode is active, before extraction or clinical write.
+IAMINA_NO_REDIS = os.environ.get("IAMINA_NO_REDIS", "False").lower() == "true"
+# Triple-gated local synthetic prototype. Never serve patients or Vercel.
+IAMINA_PULPER_STATELESS_SYNTHETIC = (
+    os.environ.get("IAMINA_PULPER_STATELESS_SYNTHETIC", "False").lower() == "true"
+)
+VERCEL = os.environ.get("VERCEL", "").lower() == "1"
+VERCEL_ENV = os.environ.get("VERCEL_ENV", "")
+if IAMINA_PULPER_STATELESS_SYNTHETIC and (
+    not IAMINA_NO_REDIS or not DEBUG or VERCEL or VERCEL_ENV
+):
+    raise ValueError("Stateless Pulper prototype is CI-local synthetic only")
+if IAMINA_NO_REDIS and os.environ.get("VERCEL_ENV") == "production":
+    raise ValueError("IAMINA_NO_REDIS synthetic-only mode cannot serve Production")
+
+# ── Legacy Redis backend, only for existing non-no-Redis environments ─────────
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
 # ── Django Cache (django-redis, graceful fallback when Redis is down) ─────────
@@ -203,6 +221,15 @@ CACHES = {
         "TIMEOUT": 300,  # 5 min default TTL
     }
 }
+if IAMINA_NO_REDIS:
+    # No network backend, no PHI staging, no false multi-worker cache guarantee.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "iamina-no-redis-derived-only",
+            "TIMEOUT": 300,
+        }
+    }
 
 # Dedicated privacy-safe cost/usage logger. Keep it isolated so enabling
 # FinOps telemetry never raises verbosity for patient-facing/application logs.

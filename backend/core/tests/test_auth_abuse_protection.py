@@ -211,3 +211,36 @@ def test_vercel_forwarded_client_ip_is_the_ip_bucket_key():
 
 def test_auth_abuse_middleware_is_enabled_in_application_stack():
     assert "core.middleware.auth_abuse.AuthAbuseProtectionMiddleware" in settings.MIDDLEWARE
+
+
+@pytest.mark.django_db
+@override_settings(
+    AUTH_ABUSE_LIMITS={
+        "login_ip": {"limit": 1, "window_seconds": 60},
+        "login_account": {"limit": 100, "window_seconds": 60},
+    },
+)
+def test_two_accounts_share_a_429_when_their_proxy_source_is_identical():
+    """Transport simulation only; does NOT prove actual hosted Vercel client IPs."""
+    middleware = _middleware()
+    path = "/api/v1/auth/login"
+
+    first = _post(
+        path, email="synthetic-a@example.test", ip="10.0.0.11",
+        forwarded_for="203.0.113.21",
+    )
+    second = _post(
+        path, email="synthetic-b@example.test", ip="10.0.0.12",
+        forwarded_for="203.0.113.21",
+    )
+    genuinely_distinct = _post(
+        path, email="synthetic-c@example.test", ip="10.0.0.13",
+        forwarded_for="203.0.113.22",
+    )
+    assert middleware(first).status_code == 202
+    denied = middleware(second)
+    assert denied.status_code == 429
+    assert json.loads(denied.content)["error"]["code"] == "auth_rate_limited"
+    assert 1 <= int(denied["Retry-After"]) <= 60
+    assert middleware(genuinely_distinct).status_code == 202
+    assert AuthAbuseBucket.objects.filter(scope="login_ip").count() == 2

@@ -7,7 +7,9 @@ import '../../core/localization/app_lock_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/app_lock_authenticator.dart';
 import '../../services/app_lock_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/audit_access_policy.dart';
+import '../../services/preview_api_origin.dart';
 
 class AppLockSetupScreen extends StatefulWidget {
   const AppLockSetupScreen({super.key});
@@ -38,6 +40,41 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
       if (mounted) setState(() => _capability = result);
     } catch (_) {
       if (mounted) setState(() => _capability = AppLockCapability.unavailable);
+    }
+  }
+
+  Future<void> _continueWithoutLock() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<AppLockService>().continueWithoutDeviceLock();
+      if (mounted) context.go('/onboarding');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context)!.appLockSetupFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _recoverSyntheticQaErasure() async {
+    if (_busy) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      await context.read<AuthService>().reverifySyntheticPreviewForErasure();
+      if (mounted) context.go('/w01-qa-erasure');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'Compte de test non vérifié. Ne créez pas un autre compte. '
+            'Conservez cette session pour une vérification manuelle.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -202,6 +239,17 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                     : l10n.appLockUnavailable,
                               ),
                             ],
+                            if (kIaminaPreviewSameOriginApi &&
+                                kRemoteAccountEnrollmentEnabled &&
+                                context.watch<AuthService>().hasRemoteApiCredential) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                key: const Key('w01-qa-reverify-erasure'),
+                                onPressed: _busy ? null : _recoverSyntheticQaErasure,
+                                icon: const Icon(Icons.delete_forever_outlined),
+                                label: const Text('Supprimer le compte de test'),
+                              ),
+                            ],
                             if (_error != null) ...[
                               const SizedBox(height: 16),
                               _WarningBox(text: _error!),
@@ -226,6 +274,21 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
                             ),
+                            if (kIaminaPreviewSameOriginApi) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton(
+                                key: const Key('w01-clinical-lock-opt-out'),
+                                onPressed: _busy ? null : _continueWithoutLock,
+                                child: Text(l10n.w01OpenMedicalSpace),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                l10n.w01OpenMedicalSpaceWarning,
+                                style: TextStyle(fontSize: 12,
+                                  color: AminaTheme.textSecondary(context)),
+                              ),
+
+                            ],
                           ],
                         ),
                       ),

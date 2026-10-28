@@ -83,6 +83,8 @@
   "consentDataPoint3": "😴 الإجهاد وعلامات أحداث الحياة",
   "consentAccept": "قبول ومتابعة",
   "consentDeclineWithoutAI": "المتابعة بدون ذكاء اصطناعي",
+  "consentRemoteAccountRequired": "تتطلب الموافقة على الذكاء الاصطناعي حساب IAMINA متصلاً بالخادم. لا يمكن حفظها من هذه الجلسة المحلية. يمكنك المتابعة بدون ذكاء اصطناعي.",
+  "consentConfirmationFailed": "لم يتم تأكيد الموافقة على الذكاء الاصطناعي. تظل خدمات الذكاء الاصطناعي الخارجية معطلة. أعد المحاولة أو تابع بدونها.",
   "consentAlreadyGiven": "تمت الموافقة",
   "consentWithdraw": "سحب موافقة الذكاء الاصطناعي",
   "consentWithdrawConfirmTitle": "سحب موافقة الذكاء الاصطناعي؟",

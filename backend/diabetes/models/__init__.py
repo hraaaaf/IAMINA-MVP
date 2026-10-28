@@ -4,6 +4,7 @@ from .cgm import CGMConnection, CGMReadingRecord, CGMSensorSession
 from .chat import AIChatMessage
 from .clinical_observation import ClinicalObservationState
 from .companion_review import CompanionReviewAnchor, CompanionReviewObservationSnapshot
+from .document_confirmation_nonce import DocumentConfirmationNonce
 from .entry import LogEntry
 from .feedback import DemoFeedback
 from .lab_report import LabReport
@@ -16,6 +17,7 @@ __all__ = [
     'DiabetesProfile',
     'PatientProfile',
     'LogEntry',
+    'DocumentConfirmationNonce',
     'AISummary',
     'DemoFeedback',
     'AIChatMessage',

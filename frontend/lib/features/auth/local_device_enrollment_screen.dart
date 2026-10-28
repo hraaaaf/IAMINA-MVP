@@ -27,7 +27,11 @@ class _LocalDeviceEnrollmentScreenState
     });
     try {
       await context.read<AuthService>().enrollLocalDevice();
-      if (mounted) context.go('/app-lock/setup');
+      if (mounted) {
+        // Let the patient explicitly enable biometrics or decline the
+        // optional lock. Neither choice is silently imposed.
+        context.go('/app-lock/setup');
+      }
     } catch (_) {
       if (mounted) {
         setState(

@@ -1,0 +1,9 @@
+{
+  "name": "iamina-web-preview-bff",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@vercel/oidc": "3.8.10"
+  }
+}
