@@ -1,0 +1,35 @@
+name: W01 D2 emergency QA cleanup route
+on:
+  push:
+    branches:
+      - test/w01-d2-safe-cleanup-route-20261028
+    paths:
+      - .github/workflows/w01-d2-safe-cleanup-qa.yml
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  flutter-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze Web QA route
+        run: flutter analyze --no-fatal-infos
+      - name: Test erasure scope
+        run: flutter test --no-pub test/services/w01_synthetic_preview_erasure_scope_test.dart
+      - name: Compile Flutter Web Preview
+        run: flutter build web --release --no-web-resources-cdn
