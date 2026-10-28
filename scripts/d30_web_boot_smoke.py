@@ -1,10 +1,8 @@
 """Read-only D30 Flutter Web Chromium smoke. No patient data, remote APIs or deployment."""
-import contextlib
 import http.server
 import pathlib
 import socketserver
 import threading
-import time
 
 from playwright.sync_api import sync_playwright
 
@@ -35,7 +33,9 @@ def main():
                 context = browser.new_context(service_workers="block")
                 page = context.new_page()
                 errors = []
+                requests = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
+                page.on("request", lambda request: requests.append((request.method, request.url)))
                 response = page.goto(origin, wait_until="domcontentloaded", timeout=60000)
                 if response is None or response.status != 200:
                     raise AssertionError(f"Flutter Web HTML not served: {response}")
@@ -44,9 +44,29 @@ def main():
                     timeout=60000,
                 )
                 page.screenshot(path="/tmp/d30-flutter-web-boot.png")
+                # Reload verifies Web runtime only, not clinical record persistence.
+                page.reload(wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_function(
+                    "() => !!document.querySelector('flutter-view, flt-glass-pane')",
+                    timeout=60000,
+                )
+                page.screenshot(path="/tmp/d30-flutter-web-reload.png")
+                clinical_paths = (
+                    "/api/v1/logs", "/api/v1/profile",
+                    "/api/v1/chat", "/api/v1/ai", "/api/v1/medical",
+                )
+                clinical = [
+                    (method, url) for method, url in requests
+                    if method not in ("GET", "HEAD", "OPTIONS")
+                    and any(path in url.lower() for path in clinical_paths)
+                ]
+                if clinical:
+                    raise AssertionError(
+                        f"D30 unexpected clinical writes on boot/reload: {clinical[:4]}"
+                    )
                 if errors:
                     raise AssertionError(f"Flutter Web uncaught errors: {errors[:3]}")
-                print("D30 Chrome smoke PASS: Web booted locally; no clinical interaction executed.")
+                print("D30 Chrome smoke PASS: local boot + reload, no observed clinical write on either; no patient data entered.")
                 context.close()
             finally:
                 browser.close()
