@@ -49,6 +49,21 @@ class _ConsentScreenState extends State<ConsentScreen> {
       Localizations.localeOf(context).toLanguageTag(),
     );
     try {
+      // D9: server first-use proof does not authorize AI consent on a new device.
+      if (db.patientVaultScope?.nativeDjangoUserId != null &&
+          await db.getProfileForLocalUserId(db.activeProfileRowId) == null) {
+        if (mounted) {
+          final language = Localizations.localeOf(context).languageCode;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(switch (language) {
+              'fr' => 'Consentement IA non activé : configurez d’abord votre profil local sur cet appareil.',
+              'ar' => 'لم يتم تفعيل موافقة الذكاء الاصطناعي. يرجى إعداد ملفك المحلي أولاً.',
+              _ => 'AI consent was not enabled. Set up your local profile on this device first.',
+            }),
+          ));
+        }
+        return;
+      }
       final accepted = await api.giveVersionedConsent(claim);
       if (!accepted) {
         if (mounted) setState(() => _error = l10n.consentConfirmationFailed);

@@ -1,0 +1,96 @@
+name: W02 D9 first-use owner gate (isolated synthetic Web/PG)
+on:
+  push:
+    branches:
+      - feat/w02-d9-owner-first-use-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w02-d9-owner-first-use
+  cancel-in-progress: true
+jobs:
+  d9-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_w02_d9_synthetic
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_w02_d9_synthetic"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: w02-d9-synthetic-ci-only
+      DEBUG: "True"
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w02_d9_synthetic
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      IAMINA_W02_REVISION_ANCHOR_ENABLED: "false"
+      VERCEL_ENV: development
+      IAMINA_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Source isolation and migration tripwires
+        run: python -m unittest discover -s scripts/tests -p test_w02_d9_w01_compat_source.py -v
+      - name: Install Django backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Schema, migration drift and API snapshot
+        working-directory: backend
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          python manage.py export_openapi > /tmp/d9-openapi.json
+          diff -q /tmp/d9-openapi.json ../docs/api/openapi.json
+          python manage.py migrate --noinput
+          python manage.py shell -c "from django.db import connection; from core.models import BasePatientProfile; assert connection.vendor == 'postgresql' and any(f.name == 'first_use_completed_at' for f in BasePatientProfile._meta.fields)"
+      - name: Authenticated owner-scoped D9 PG tests
+        working-directory: backend
+        run: python -m pytest --tb=short -q diabetes/tests/test_d9_explicit_first_use_proof.py
+      - name: No users or records in isolated CI database
+        working-directory: backend
+        run: |
+          python manage.py shell -c "from django.contrib.auth.models import User; assert User.objects.count()==0"
+  d9-flutter-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies and check D9
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/services/d9_first_use_transport.dart lib/services/patient_vault_app_host.dart lib/services/consent_service.dart lib/features/auth/consent_screen.dart lib/features/auth/onboarding_chat_screen.dart test/services/d9_first_use_transport_test.dart test/services/d9_vault_first_use_integration_test.dart test/d9_first_use_vault_wiring_contract_test.dart
+      - name: D9 synthetic owner/consent/recovery Dart VM tests
+        working-directory: frontend
+        run: |
+          flutter test --no-pub --reporter expanded test/services/d9_first_use_transport_test.dart test/services/d9_vault_first_use_integration_test.dart test/d9_first_use_vault_wiring_contract_test.dart
+      - name: Production Web bundle compiles with fail-closed vault
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn
+      - name: Chrome guest RAM and protected patient Web regression
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          python -u ../scripts/w02_local_wasm_asset_server.py >/tmp/w02-d9-wasm.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 8 --retry-connrefused --retry-delay 1 http://127.0.0.1:7399/sqlite3.wasm -o /dev/null
+          flutter test --no-pub --platform chrome --reporter expanded --timeout 45s \
+            --dart-define=W02_TEST_WASM_URL=http://127.0.0.1:7399/sqlite3.wasm \
+            test/web/w02_guest_boot_test.dart

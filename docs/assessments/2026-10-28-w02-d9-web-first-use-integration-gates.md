@@ -1,0 +1,58 @@
+# IAMINA W02/D9 — Existing-account first use: W01/D2 + W02 guarded candidate
+
+**Date:** 2026-10-28. **Scope:** D9 only. **Status:** CANDIDATE, NOT_VERIFIED, NO patient GO. No merge or Vercel deployment.
+**Source:** D9 PR #1003 (ba5f639), based on historical D7 (2bcea824); re-applied on protected W02 source cb7bd373 derived from W01/D2.
+**D9 goal:** A previously onboarded authenticated patient does not repeat first-use; no medical payload/AI consent may be inferred or borrowed between accounts or devices.
+
+## Technical integration and evidence
+- The old D9 migration core.0020 **collided** with W01/D2 core.0020–0023; W02 has its own core.0024_w02_vault_revision_anchor. D9 is now core.0025_d9_first_use_completed_at, depending strictly on W02 0024. Previous QA branch is NOT migrated (0024=0, 0025=0 by implication, no write authorized).
+- D9 server owner proof API GET/POST /api/v1/profile/first-use and explicit timestamp, owner derived exclusively from authenticated request; never a diagnosis, consent event or local profile restoration. Existing accounts without explicit server marker remain unknown and require a safe recovery decision.
+- On Web, AppDatabase.forPatientVault **continues to refuse** unencrypted clinical storage (encrypted_web_patient_vault_unavailable); guest uses volatile WASM RAM. These guards supersede any unsafe first-use auto-bypass.
+- Original PR #1003 source patch dry-run on W02: 14 files apply; consent-screen conflict. Consent guard manually rebased into the current W01/D2 versioned consent screen, maintaining remote account requirement and refusal if no owner-scoped local profile.
+- No remote clinical profile hydration is implemented merely by the boolean first-use marker. Never treat remote completion as restored profile, AI consent, or permission to sync.
+
+## Required D9 complete FUE matrix (all must PASS to close)
+| Feature / scenario | Expected | Evidence / current verdict |
+| --- | --- | --- |
+| Same account A, local vault with verified first-use, cold reload | Skip repeat onboarding; no lost data | Historical local Chrome/SQLite tests; **NOT_RUN** on current hosted SHA |
+| New account A, no remote marker | Explicit first-use shown; no synthetic clinical seed | Backend/Flutter test candidates; **NOT_RUN** in hosted browser |
+| Existing A on a new device, valid owner-bound server marker | Skip duplicate questions *without fabricating local medical profile*, allow explicit safe setup/recovery | **NOT_RUN** hosted; recovery UX unresolved |
+| Existing account without historical marker | Do not infer from diabetes treatment or old consent; recovery path explicit | **NOT_RUN** hosted; product UX unresolved |
+| A → logout → B → A and forged bearer | No cross-account profile/consent/cache; logout revocation enforced | Synthetic old tests; **NOT_RUN** hosted on new branch |
+| Offline, stale response after account switch, multi-tab, reload | Fail closed, clear retry/sign-out UX, no cross-user write | **NOT_RUN** hosted |
+| AI consent separately authorized | Remote first-use marker cannot enable AI/network egress | Source guard candidate; **NOT_RUN** hosted |
+| UI/UX FR/AR RTL & keyboard/touch | BEFORE→mockup→AFTER, 390×844 / 768×1024 / 1280×900, full functional journey | **NOT_RUN**, no D9 paired captures |
+| Django on isolated QA Neon | Apply core.0024 then core.0025 with Django, independent SQL; synthetic A/B and cleanup auth_user=0 | **NOT_RUN**, sandbox security gate blocks QA DDL |
+| Complete exact-HEAD code/CI + postmerge | Regression tests and FUE all green, score >=9/10, perfection pass, postmerge | **NOT_RUN** |
+
+**BLOCKERS:** W01 G1–G7 formal closure and merge; D9 server proof not yet deployed; W02 encrypted patient vault not operational on hosted Web; Neon QA migration denied by security controls; first-login/auth plus historical account treatment; no complete D9 FUE; no reviewer/score. **D9 NOT_VERIFIED** regardless of unit CI green. No Production/no real patient/no Vercel deploy.
+
+**Next:** run exact-head Python/Flutter/backend PG CI of this candidate; fix failures; prepare hosted Web protected path without weakening fail-closed; carry out FUE only on authorized isolated QA, then independent security/privacy/adversarial scoring and conditional merge/postmerge. Do not advance to D10 closure merely because D9 candidate compiles.
+
+
+## Exact-SHA CI correction and closeout of synthetic candidate — 2026-10-28
+
+**Goal:** Web/Django first-use D9 candidate on protected W02 parent. **Result:** 5/5 relevant workflows SUCCESS on the **same code SHA b2c0665f77584a079ab0a974c8f6bb2ff750e053**:
+- [W02 D9 PG16 + Flutter Web + Chrome #40761769612](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761769612) — 2/2 jobs SUCCESS; Python 4/4 static, Django migration drift, generated OpenAPI snapshot, isolated PG16 schema core.0024→0025, Native Bearer D9 tests, synthetic zero-user cleanup, Flutter analyze/D9 tests, Web release build and Chrome guest/non-plaintext regression.
+- [First-use mobile visual #40761779080](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779080) — SUCCESS.
+- [Onboarding CTA Chrome #40761779018](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779018) — SUCCESS.
+- [UI missing routes #40761779488](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779488) — SUCCESS.
+- [UI browser screenshots #40761779517](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779517) — SUCCESS.
+
+**Red-to-green:** first [D9 #40760994437](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40760994437) had Flutter Web SUCCESS and PostgreSQL FAILURE **only at the generated-versus-versioned OpenAPI snapshot comparison**, after Django check and migration drift PASS. Fix commit b2c0665f77584a079ab0a974c8f6bb2ff750e053 regenerated the exact snapshot, preserving W02 revision routes and document ingestion; full D9 CI then SUCCESS. **Not a PG migration failure.** No Neon migration or Vercel deployment.
+
+**Evidence boundary:** D9 hosted authenticated **FUE remains NOT_RUN** in the matrix above. Visual CI screenshots do not prove a real logged-in A→B→A, new-device clinical continuity or encrypted clinical Web vault. W01 G1–G7 and QA Neon core.0024/0025 remain open; patient Web fails closed, no clinical patient data, no merge. **D9 CODE CI GREEN; D9 PRODUCT BLOCKED / NOT_VERIFIED**, no score >=9 or Perfection Pass declared.
+
+**Next:** resolve W01 gates and indispensable encrypted Web vault D10 in an isolated security-scoped prerequisite, then perform full D9 hosted FUE in authorized QA (A→B→A, offline/reload, consent, revocation, SQL zero cleanup; FR/AR at 390x844, 768x1024, 1280x900 with paired BEFORE/AFTER), adversarial review/scoring, conditional merge/postmerge and D9 closure. Decision closure order stays D9 → D10 → D11 → D24 → D26 → D30; D10 security prerequisites may be developed before closing D9 without marking D10 product closed.
+
+
+## FUE safety fix — revalidation, app-lock and owner-switch — 28/10/2026
+
+**Goal:** a previously valid D9 server first-use marker must not survive failed revalidation, revoked bearer, cross-account reuse or a lock/unlock cycle; do not infer AI consent or revive clinical Web storage.
+
+**Source correction, exact code HEAD `e4cc2dc91ffd6836c27e99467095c84f20fb26ff` (3 focused commits):**
+- `ConsentService` now binds the D9 remote completion to an explicit owner, clears it on failed proof and owner changes, and distinguishes matching local profile completion from unrelated owner state. A null profile event alone lacks owner information, so lock/auth transitions must revalidate explicitly.
+- `PatientVaultAppHost` invalidates cached D9 completion immediately on app-lock and marks D9 unresolved, forcing a fresh server GET after unlock. A missing/revoked/pending proof is passed through the fail-closed invalidation path before any route gate can reopen.
+- Adds 3 behavioral Dart tests: old proof rejected after same-owner invalidation, same-instance A→B→A proof isolation, foreign local profile invalidation. Updates the source wiring contract asserting the app-lock and server-proof invalidation path. Existing local Web clinical vault refusal `encrypted_web_patient_vault_unavailable` remains unchanged.
+
+**Exact-code proof (verified):** GitHub [W02 D9 CI #40786165659](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40786165659) **COMPLETED SUCCESS**, source code SHA `e4cc2dc91ffd6836c27e99467095c84f20fb26ff`. Both jobs GREEN: `d9-flutter-web` Flutter analyze SUCCESS, **21/21 Dart VM tests**, Flutter Web release bundle built, **2/2 real Chrome guest/fail-closed tests**; `d9-postgres` source compatibility **4/4**, Django check/migration drift/OpenAPI diff/migration PostgreSQL 16 SUCCESS, **8/8 authenticated owner-scoped Django tests**, isolated CI DB cleanup `auth_user=0`. These are controlled synthetic/code validations, NOT a hosted complete first-use experience. **Independent QA Neon read-only** `noisy-truth-00115950/br-green-meadow-b9j6o0bp/iamina925_empty`: `auth_user=0`, `core.0024=0`, `core.0025=0`, W02 anchor table absent; no QA migration was performed. No Vercel deployment, no Neon DDL/DML, no patient data. Browser FUE A→B→A/new device/FR/AR/offline still NOT_RUN; D9 product NO-GO. Next: review W01/D10 clinical vault prerequisite and authorized QA migration/deployment, then hosted FUE and independent privacy/UX audit.

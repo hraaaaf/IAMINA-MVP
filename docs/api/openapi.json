@@ -763,6 +763,76 @@
         ]
       }
     },
+    "/api/v1/profile/first-use": {
+      "get": {
+        "operationId": "diabetes_api_v1_profile_get_d9_first_use_completion",
+        "summary": "Get D9 First Use Completion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/D9FirstUseCompletionState"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return only this authenticated owner's explicit first-use proof.",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "diabetes_api_v1_profile_record_d9_first_use_completion",
+        "summary": "Record D9 First Use Completion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/D9FirstUseCompletionState"
+                }
+              }
+            }
+          }
+        },
+        "description": "Idempotent explicit completion, not a clinical or AI consent write.\n\nThe signed-in patient must already have a base profile. Neither an empty\nclinical extension shell nor the mere presence of a bearer sets completion.",
+        "tags": [
+          "profile"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/D9FirstUseCompletionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/profile": {
       "get": {
         "operationId": "diabetes_api_v1_profile_get_profile",
@@ -1903,6 +1973,86 @@
           },
           {
             "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/w02/vault-revision/state": {
+      "get": {
+        "operationId": "core_api_v1_w02_revision_read_vault_revision",
+        "summary": "Read Vault Revision",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "w02-preview-revision"
+        ],
+        "security": [
+          {
+            "W02NativeOnlyBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/w02/vault-revision/reserve": {
+      "post": {
+        "operationId": "core_api_v1_w02_revision_reserve",
+        "summary": "Reserve",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "w02-preview-revision"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "W02NativeOnlyBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/w02/vault-revision/finalize": {
+      "post": {
+        "operationId": "core_api_v1_w02_revision_finalize",
+        "summary": "Finalize",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "w02-preview-revision"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "W02NativeOnlyBearer": []
           }
         ]
       }
@@ -3529,6 +3679,64 @@
           "message"
         ],
         "title": "Error",
+        "type": "object"
+      },
+      "D9FirstUseCompletionState": {
+        "properties": {
+          "version": {
+            "const": 1,
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "owner_user_id": {
+            "title": "Owner User Id",
+            "type": "integer"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "required": [
+          "owner_user_id",
+          "completed",
+          "completed_at"
+        ],
+        "title": "D9FirstUseCompletionState",
+        "type": "object"
+      },
+      "D9FirstUseCompletionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "confirmed"
+        ],
+        "title": "D9FirstUseCompletionCommand",
         "type": "object"
       },
       "PatientProfileSchema": {
@@ -5577,6 +5785,52 @@
         "title": "SaveNoticeRequest",
         "type": "object"
       },
+      "ReservePayload": {
+        "properties": {
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "expected_revision": {
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slot",
+          "expected_revision"
+        ],
+        "title": "ReservePayload",
+        "type": "object"
+      },
+      "FinalizePayload": {
+        "properties": {
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "ticket": {
+            "title": "Ticket",
+            "type": "string"
+          },
+          "envelope_sha256": {
+            "title": "Envelope Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot",
+          "revision",
+          "ticket",
+          "envelope_sha256"
+        ],
+        "title": "FinalizePayload",
+        "type": "object"
+      },
       "ImportResultResponse": {
         "properties": {
           "ok": {
@@ -6605,6 +6859,10 @@
         "name": "sessionid"
       },
       "HybridBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "W02NativeOnlyBearer": {
         "type": "http",
         "scheme": "bearer"
       }
