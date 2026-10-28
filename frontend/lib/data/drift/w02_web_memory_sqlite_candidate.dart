@@ -28,7 +28,9 @@ final class W02WebMemorySqliteCandidate {
   // references. Not a proof of RAM zeroization (GC, copies and engine buffers).
   static void _wipeReachableFiles(InMemoryFileSystem memory) {
     for (final buffer in memory.fileData.values) {
-      buffer?.fillRange(0, buffer.length, 0);
+      if (buffer != null) {
+        buffer.fillRange(0, buffer.length, 0);
+      }
     }
     memory.fileData.clear();
   }
