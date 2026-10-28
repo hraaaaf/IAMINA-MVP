@@ -21,7 +21,8 @@ test('snapshot is checked before constructing sqlite and no partial transaction 
   assert.ok(initialCheck >= 0 && initialCheck < load);
   assert.match(candidate, /!_sqlite\.autocommit/);
   assert.match(candidate, /w02_unexpected_sqlite_sidecar/);
-  assert.match(candidate, /_memory\.fileData\.clear\(\)/);
+  assert.match(candidate, /_wipeReachableFiles\(_memory\)/);
+  assert.match(candidate, /memory\.fileData\.clear\(\)/);
 });
 test('runtime patient guard remains fail-closed; candidate is unreferenced', { skip: !existsSync(dbPath) }, () => {
   const db = readFileSync(dbPath, 'utf8');
