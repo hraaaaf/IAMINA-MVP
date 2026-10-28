@@ -49,30 +49,36 @@ import 'services/sync_service.dart';
 class _BrowserAuditD2Gateway implements D2ConsentGateway {
   bool enabled = false;
 
-  D2ConsentStatus _status() => D2ConsentStatus(
-    optedIn: enabled,
-    noticeText:
-        'Je choisis de voir, dans IAmina uniquement, des aperçus non urgents '
-        'd’observations personnalisées. Cette préférence ne déclenche '
-        'aucune notification du navigateur, aucun e-mail et aucun SMS.',
-    noticeVersion: '2026-10-20.d2.1',
-    noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    locale: 'fr',
-  );
+  D2ConsentStatus _status(String requestedLocale) {
+    final isArabic = requestedLocale.startsWith('ar');
+    return D2ConsentStatus(
+      optedIn: enabled,
+      noticeText: isArabic
+          ? 'أختار الاطلاع داخل IAmina فقط على معاينات لملاحظات شخصية غير عاجلة '
+              'مستمدة من بياناتي المسجلة. لا يفعّل هذا الاختيار إشعارات '
+              'المتصفح أو البريد الإلكتروني أو الرسائل النصية.'
+          : 'Je choisis de voir, dans IAmina uniquement, des aperçus non urgents '
+              'd’observations personnalisées. Cette préférence ne déclenche '
+              'aucune notification du navigateur, aucun e-mail et aucun SMS.',
+      noticeVersion: '2026-10-20.d2.1',
+      noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      locale: isArabic ? 'ar' : 'fr',
+    );
+  }
 
   @override
-  Future<D2ConsentStatus> read(String locale) async => _status();
+  Future<D2ConsentStatus> read(String locale) async => _status(locale);
 
   @override
   Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice) async {
     enabled = true;
-    return _status();
+    return _status(acceptedNotice.locale);
   }
 
   @override
   Future<D2ConsentStatus> withdraw(String locale) async {
     enabled = false;
-    return _status();
+    return _status(locale);
   }
 
   @override
@@ -270,6 +276,10 @@ class _BrowserAuditApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = Uri.base.queryParameters['surface'] ?? 'dashboard';
+    // Only the isolated screenshot fixture can select AR for the D2 audit.
+    // Real patient locale policy and application screens remain unchanged.
+    final auditLocale = Uri.base.queryParameters['lang'] == 'ar'
+        ? const Locale('ar') : const Locale('fr');
     final router = GoRouter(
       initialLocation: _pathForSurface(surface),
       routes: [
@@ -401,7 +411,7 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      locale: auditLocale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
