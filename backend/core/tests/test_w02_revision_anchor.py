@@ -59,13 +59,13 @@ def test_native_bearer_required_and_firebase_or_session_do_not_grant_access():
 
 @pytest.mark.django_db
 def test_reserve_finalize_cas_idempotence_and_rollback_denial():
-    _, bearer = _identity("owner_a")
+    user, bearer = _identity("owner_a")
     client = _client(bearer)
     with patch.dict(os.environ, PREVIEW):
         state = client.get(API + "/state")
         assert state.status_code == 200
         assert state.json()["status"] == "uninitialized"
-        assert state.json()["vault_id"].startswith("amina_vault_v1_native_")
+        assert state.json()["vault_id"] == f"amina_vault_v1_native_{user.pk}"
         reserve = client.post(API + "/reserve", data={"slot": SLOT_A, "expected_revision": 0},
                               content_type="application/json")
         assert reserve.status_code == 200, reserve.content
