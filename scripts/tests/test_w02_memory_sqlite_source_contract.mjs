@@ -33,3 +33,13 @@ test('browser-only acceptance tests cover real SQLite round trip and no silent r
   assert.match(web, /authenticatedSnapshot: encryptedInput/);
   assert.match(web, /new volatile connection cannot see prior synthetic records/);
 });
+
+test('W02 Chrome WASM diagnostic uses an explicit Flutter asset and real byte-loader', () => {
+  const pubspec = readFileSync('frontend/pubspec.yaml', 'utf8');
+  assert.match(candidate, /WasmSqlite3\.load\(sqlite3WasmBytes\)/);
+  assert.match(candidate, /w02_wasm_load_timeout/);
+  assert.match(web, /TestWidgetsFlutterBinding\.ensureInitialized\(\)/);
+  assert.match(web, /rootBundle\s*\.load\('web\/sqlite3\.wasm'\)/);
+  assert.match(pubspec, /- web\/sqlite3\.wasm/);
+  assert.match(pubspec, /sqlite3: 2\.9\.4/);
+});

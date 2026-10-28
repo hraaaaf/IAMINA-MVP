@@ -28,3 +28,12 @@ Static Node regression contract: scripts/tests/test_w02_memory_sqlite_source_con
 5. Close W01 before W02 merge as required by roadmap; run only one final GitHub CI once integrated; seek separate explicit Vercel Preview GO, then real hosted synthetic Web to BFF to API to Neon with independent SQL cleanup auth_user=0.
 
 **W02 patients/Production NO-GO**. No Vercel deployment, Neon mutation, PR merge, patient data or clinical app-path activation in this subpass. No UI/UX change in the product.
+
+
+## 28/10/2026 — Diagnostic Chrome sur branche de test, non certifié
+
+Rappel du résultat réellement observé dans le sandbox précédent : après correction du chemin WASM via `WasmSqlite3.load(bytes)` et `rootBundle`, Dart analyze 0 issue, mais Chrome encore **1/3 PASS, 2/3 TIMEOUT (30 s)**. L'origine n'a pas été identifiée (aucune trace de l'étape exacte). **Ces modifications sandbox n'avaient pas été publiées**.
+
+Le présent candidat de diagnostic fournit un chargeur de bytes explicite (asset Flutter existant `web/sqlite3.wasm`), la dépendance `sqlite3:2.9.4`, la binding de tests Flutter et une trace par étape `asset_load`, `wasm_load`, `vfs_register`, `sqlite_open`, `pragma`, `drift_executor`, `runCustom`, `insert`, `export`, `reopen`, `select`. Un délai explicite de 12 s sur le chargement asynchrone remplace un gel silencieux par `w02_wasm_load_timeout`. La trace ne contient aucune donnée patient.
+
+**Statut au moment de la préparation : CI Chrome non exécutée sur ce nouveau SHA.** Une branche de test isolée, non mergée, sert uniquement à obtenir le journal GitHub Actions complet. Si la CI révèle une autre étape bloquée, corriger la cause, relancer le test au nouveau SHA et n'appeler 3/3 PASS que sur preuve exacte. Garde clinique Web inchangé, aucune activation de coffre patient, aucun Vercel/Neon/Production.
