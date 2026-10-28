@@ -13,6 +13,7 @@ import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../services/auth_service.dart';
+import '../../services/preview_api_origin.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
@@ -75,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _ramadanStartDate;
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
+  bool _erasingSyntheticPreviewAccount = false;
 
   // Fail closed when no clinical transport provider is mounted (e.g. offline
   // pilot widget tests). The remote conflict action stays unavailable until
@@ -317,6 +319,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmSyntheticPreviewErasure() async {
+    if (_erasingSyntheticPreviewAccount) return;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_profileUiText(context,
+          fr: 'Supprimer le compte synthétique',
+          en: 'Delete synthetic test account',
+          ar: 'حذف الحساب التجريبي الوهمي')),
+        content: Text(_profileUiText(context,
+          fr: 'Preview de test uniquement. Le compte @example.invalid et ses données seront supprimés définitivement via l’API IAMINA. Si la suppression échoue, la session sera conservée pour réessayer.',
+          en: 'Test Preview only. Your @example.invalid account and data will be permanently erased through the IAMINA API. If deletion fails, the session is kept for retry.',
+          ar: 'معاينة اختبار فقط. سيتم حذف حساب @example.invalid وبياناته نهائياً عبر IAMINA. في حال الفشل ستبقى الجلسة لإعادة المحاولة.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(_profileUiText(context,
+              fr: 'Supprimer le test',
+              en: 'Delete test account',
+              ar: 'حذف الاختبار')),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    final auth = context.read<AuthService>();
+    final router = GoRouter.of(context);
+    setState(() => _erasingSyntheticPreviewAccount = true);
+    try {
+      await auth.eraseSyntheticPreviewAccount();
+      if (mounted) router.go('/login');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_profileUiText(context,
+            fr: 'Suppression non confirmée. Session conservée : réessayez ou signalez ce blocage.',
+            en: 'Deletion not confirmed. Session preserved: retry or report this block.',
+            ar: 'لم يتم تأكيد الحذف. الجلسة محفوظة: أعد المحاولة أو أبلغ عن العطل.')),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _erasingSyntheticPreviewAccount = false);
+    }
   }
 
   void _confirmWithdrawConsent(AppLocalizations l10n) {
