@@ -29,3 +29,16 @@ La base W01/D2 utilisait encore `driftDatabase(web: DriftWebOptions(...))` dans 
 **Goal atteint :** deux artefacts Preview exact-SHA compilés/READY et migration compatible vérifiée en CI, pas Production. **Goal NON atteint :** E2E Web → BFF → API → Neon sur DB indépendante avec cleanup SQL indépendant, clé et durable recovery, absence de chemin plaintext global, tests app-lock BEFORE/AFTER, audit sécurité indépendant.
 
 **Next exact :** résoudre quota Neon via décision humaine sur archivage ou capacité ; créer branche QA neuve, vérifier quatre identifiants et les privilèges, y appliquer `core.0024` sur QA uniquement, autoriser explicitement `IAMINA_W02_REVISION_ANCHOR_ENABLED=true` uniquement sur nouvelle branche Vercel et exécuter E2E A→B→A/crash puis nettoyage SQL zéro. Si quota non résolu, poursuivre Chrome CI et code sécurité sans données patients. Aucun merge ni Production GO.
+
+
+## Closeout complémentaire exact-SHA — 28/10/2026
+
+**CI Chrome finalement VERTE** : [GitHub Actions #40732061792](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40732061792) **SUCCESS** au code `1e2a24092f7f58d690f575709e5aed1b4216c3df`, job `122970703740` : **63/63 Node PASS**, **15/15 Flutter Chrome PASS**, `flutter analyze --fatal-infos` = **No issues found**. Test navigateur inclut les octets SQLite Drift/Flutter → JS WebCrypto AES-GCM → IndexedDB ciphertext-only et restauration, l'adaptateur d'identité native mockée, le refus du mauvais compte et de l'ancienne révision. Le garde de la base patient Web non chiffrée est rétabli au SHA exact. Ce vert n'est pas un E2E hébergé authentifié.
+
+**Deux Preview Vercel READY, même SHA code**, preuve indépendante via les deux IDs de déploiement déjà consignés ; logs Web = `✓ Built build/web`, origine `https://invalid.iamina-preview.invalid` interne (le BFF même origine est requis). Domaine API authentifié par Vercel SSO, pas de bypass ou de désactivation de protection. Une tentative de consultation HTTP publique non authentifiée n'a pas fourni de réponse exploitable, donc **pas de prétention de vérification API par requête réelle**.
+
+**PR revue** : [#1158](https://github.com/hraaaaf/IAMINA-MVP/pull/1158), **DRAFT**, base `integration/w01-d2-preview-only-20261027`, GitHub `mergeable=true`, `mergeable_state=clean` lors de vérification. Aucun merge.
+
+**SQL post-déploiement indépendant** : Neon sandbox `iamina925_empty` rôle `iamina_preview_app`, `auth_user=0`, `core_w02vaultrevisionanchor` absent ; aucune mutation de données/DDL en cloud. Les branches supplémentaires sont refusées par quota. L'E2E hébergé avec vraies créations synthétiques exige une nouvelle base QA isolée ; interdiction de contourner par le parent partagé ou Production.
+
+**Bilan Goal / preuve :** staging compatible migrations et deux déploiements Preview exact-SHA atteints ; tests isolés PG & Chrome verts ; NO-GO patient et E2E Neon non atteint. **Human gate réel :** libérer un slot Neon par suppression ciblée d'une branche QA explicitement autorisée (après vérification de son utilité), ou augmenter quota ; puis exécuter les étapes d'isolement/migration, A→B→A/crash, nettoyage SQL zéro, audit sécurité indépendants. Nulle fusion, déploiement Production ou activation de données médicales n'est autorisée par ce closeout.
