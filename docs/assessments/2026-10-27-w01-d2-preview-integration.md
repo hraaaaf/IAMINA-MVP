@@ -242,3 +242,11 @@ The same zero counts were confirmed independently by owner SQL on **both** the d
 
 **E2E Next exact:** Preview Web deployment at new approved HEAD, verify SSO + BFF 4 Neon IDs + DB baseline zero before signup, single A test and in-app DELETE + independent SQL zero first, then B/A isolation + D2 consent/inbox + app erasure + SQL zero. If any deletion is unconfirmed, STOP additional creations; no direct SQL delete. Clinical/privacy legal-hold, notice text, physical retention schedule remain separate NO-GO gates.
 
+## 28/10/2026 — Fail-closed emergency cleanup route for synthetic Flutter QA
+
+**Observed blocker:** `/profile` is unreachable before app-lock setup and mandatory onboarding; if a synthetic sign-up hits a first-use UI blocker, normal Profile deletion cannot be reached. Never create accounts without a reliable cleanup path.
+
+**Solution isolated in QA:** `/#/w01-qa-erasure` is a non-clinical cleanup screen gated **before** app-lock/onboarding redirects only if `AuthService.canEraseSyntheticPreviewAccount` is true (HTTPS immutable Web Preview hostname, both QA compile flags, bound verified native account). The page renders NO clinical data. The action separately requires typed `DELETE MY ACCOUNT`, reuses `eraseSyntheticPreviewAccount()` with authenticated `GET /auth/me` ID/email `@example.invalid` check before `DELETE /account`, exact JSON acknowledgment and local vault/consent purge. Error leaves session if server deletion unconfirmed; no SQL deletion or broader route bypass. Production and standard patient routes cannot access this path.
+
+**Verification levels:** existing isolated guard [QA #40700380507](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40700380507) GREEN; routing/UI addition QA [#40701939240](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40701939240) must finish GREEN prior to integration. Host deployment, same-viewports BEFORE/AFTER 390×844 and 1280×900, first synthetic account deletion and SQL ZERO remain **not yet executed**. This safety route never constitutes clinical consent or app-lock bypass approval for real patients.
+
