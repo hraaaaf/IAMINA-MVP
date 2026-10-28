@@ -139,11 +139,13 @@ jobs:
 
           cleanup_process() {
             local pid="$1"
+            kill -- "-$pid" 2>/dev/null || true
             kill "$pid" 2>/dev/null || true
             for _ in $(seq 1 30); do
               if ! kill -0 "$pid" 2>/dev/null; then break; fi
               sleep 0.2
             done
+            kill -9 -- "-$pid" 2>/dev/null || true
             if kill -0 "$pid" 2>/dev/null; then kill -9 "$pid" 2>/dev/null || true; fi
             wait "$pid" 2>/dev/null || true
           }
@@ -162,8 +164,11 @@ jobs:
           start_chrome() {
             local profile="$1"
             local phase="$2"
-            "$CHROME" \
+            setsid "$CHROME" \
               --headless=new \
+              --disable-background-networking \
+              --disable-extensions \
+              --disable-dev-shm-usage \
               --no-sandbox \
               --no-first-run \
               --disable-session-crashed-bubble \
@@ -178,7 +183,9 @@ jobs:
               if curl -fsS http://127.0.0.1:9225/json/list >/dev/null; then return 0; fi
               sleep 0.2
             done
+            echo "Chrome CDP port 9225 unavailable during phase=$phase" >&2
             cat /tmp/iamina-pwa-update-chrome.log >&2 || true
+            ps -eo pid,ppid,pgid,stat,comm | grep -E 'chrome|chromium' | tail -30 >&2 || true
             return 1
           }
 
