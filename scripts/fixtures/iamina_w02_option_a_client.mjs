@@ -21,12 +21,21 @@ function parseState(state, slot, vaultId) {
   if (!state || !states.has(state.status)) deny('invalid_anchor_state');
   if (state.vault_id !== vaultId) deny('verified_owner_scope_mismatch');
   if (state.status === 'uninitialized') {
-    if (state.slot !== null || state.committed_revision !== 0) deny('invalid_anchor_state');
+    if (state.slot !== null || state.committed_revision !== 0 ||
+        state.committed_envelope_sha256 !== '' ||
+        state.pending_revision !== null || state.pending_ticket !== null) {
+      deny('invalid_anchor_state');
+    }
     return;
   }
   if (state.slot !== slot || !Number.isSafeInteger(state.committed_revision) ||
-      state.committed_revision < 0 || state.committed_revision > 0 &&
-      !hashRe.test(state.committed_envelope_sha256)) deny('invalid_anchor_state');
+      state.committed_revision < 0 ||
+      (state.committed_revision === 0
+        ? state.committed_envelope_sha256 !== ''
+        : !hashRe.test(state.committed_envelope_sha256)) ||
+      (state.status === 'ready' && state.committed_revision === 0)) {
+    deny('invalid_anchor_state');
+  }
   if (state.status === 'pending' &&
       (!Number.isSafeInteger(state.pending_revision) ||
        state.pending_revision !== state.committed_revision + 1 ||
@@ -99,24 +108,33 @@ export async function openOptionASyntheticSession({
   }
   const previous = await store.readEnvelope(slot);
   let snapshot = null;
-  if (state.status === 'uninitialized') {
-    if (previous !== null) deny('unanchored_browser_ciphertext');
-  } else {
-    if (state.committed_revision < 1 || previous === null ||
-        previous.revision !== state.committed_revision ||
-        await envelopeSha256(previous) !== state.committed_envelope_sha256) {
-      deny('rollback_or_ciphertext_mismatch');
+  try {
+    if (state.status === 'uninitialized') {
+      if (previous !== null) deny('unanchored_browser_ciphertext');
+    } else {
+      if (state.committed_revision < 1 || previous === null ||
+          previous.revision !== state.committed_revision ||
+          await envelopeSha256(previous) !== state.committed_envelope_sha256) {
+        deny('rollback_or_ciphertext_mismatch');
+      }
+      const restored = await store.restore({
+        slot, vaultId, minimumRevision: state.committed_revision, key,
+      });
+      if (!restored || !(restored.bytes instanceof Uint8Array)) {
+        deny('invalid_restored_snapshot');
+      }
+      // Take ownership of the plaintext BEFORE any further async work.
+      // Even a digest-parse error or logout during restore must scrub bytes.
+      snapshot = restored.bytes;
+      if (await envelopeSha256(restored.envelope) !== state.committed_envelope_sha256) {
+        deny('concurrent_restore');
+      }
     }
-    const restored = await store.restore({
-      slot, vaultId, minimumRevision: state.committed_revision, key,
-    });
-    if (!restored || await envelopeSha256(restored.envelope) !== state.committed_envelope_sha256) {
-      restored?.bytes?.fill(0);
-      deny('concurrent_restore');
-    }
-    snapshot = restored.bytes;
+    requireOwner(ownerSession, vaultId, slot);
+  } catch (error) {
+    snapshot?.fill(0);
+    throw error;
   }
-  requireOwner(ownerSession, vaultId, slot);
   let revision = state.committed_revision;
   let expectedEnvelope = previous;
   let closed = false, poisoned = false, busy = false;
