@@ -8,6 +8,7 @@ on:
       - .github/workflows/d30-local-lock-ci.yml
       - scripts/d30_web_boot_smoke.py
       - frontend/test/services/app_lock_service_test.dart
+      - frontend/test/services/d30_api_egress_denial_test.dart
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
 
@@ -42,6 +43,7 @@ jobs:
         run: |
           flutter test --no-pub test/services/app_lock_service_test.dart
           flutter test --no-pub test/services/patient_vault_session_controller_test.dart
+          flutter test --no-pub test/services/d30_api_egress_denial_test.dart
       - name: Build Flutter Web offline-capable assets without deployment
         run: flutter build web --release --no-web-resources-cdn
       - name: Install isolated Chromium smoke dependencies
