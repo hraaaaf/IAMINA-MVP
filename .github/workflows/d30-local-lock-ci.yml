@@ -10,6 +10,7 @@ on:
       - frontend/test/services/app_lock_service_test.dart
       - frontend/test/services/d30_api_egress_denial_test.dart
       - scripts/d30_web_enrollment_e2e.py
+      - frontend/test/features/d30_local_enrollment_cta_test.dart
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
 
@@ -45,6 +46,7 @@ jobs:
           flutter test --no-pub test/services/app_lock_service_test.dart
           flutter test --no-pub test/services/patient_vault_session_controller_test.dart
           flutter test --no-pub test/services/d30_api_egress_denial_test.dart
+          flutter test --no-pub test/features/d30_local_enrollment_cta_test.dart
       - name: Build Flutter Web offline-capable assets without deployment
         run: flutter build web --release --no-web-resources-cdn
       - name: Install isolated Chromium smoke dependencies
@@ -67,4 +69,5 @@ jobs:
             /tmp/d30-flutter-web-boot.png
             /tmp/d30-flutter-web-reload.png
             /tmp/d30-local-enrollment-transition.png
+            /tmp/d30-enrollment-before-click.png
           if-no-files-found: ignore
