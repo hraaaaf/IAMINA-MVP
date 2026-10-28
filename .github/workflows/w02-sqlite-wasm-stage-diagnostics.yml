@@ -8,6 +8,8 @@ on:
       - 'frontend/lib/data/drift/w02_web_memory_sqlite_candidate.dart'
       - 'frontend/test/web/w02_web_memory_sqlite_candidate_test.dart'
       - 'frontend/pubspec.yaml'
+      - 'frontend/web/iamina_w02_synthetic_session.mjs'
+      - 'scripts/tests/test_w02_synthetic_session.mjs'
       - 'scripts/tests/test_w02_memory_sqlite_source_contract.mjs'
       - '.github/workflows/w02-sqlite-wasm-stage-diagnostics.yml'
   workflow_dispatch:
@@ -24,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Static W02 no-plaintext and source guard contracts
         run: |
-          node --test scripts/tests/test_w02_encrypted_vault_envelope.mjs scripts/tests/test_w02_ciphertext_store.mjs scripts/tests/test_w02_memory_sqlite_source_contract.mjs
+          node --test scripts/tests/test_w02_encrypted_vault_envelope.mjs scripts/tests/test_w02_ciphertext_store.mjs scripts/tests/test_w02_memory_sqlite_source_contract.mjs scripts/tests/test_w02_synthetic_session.mjs
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
