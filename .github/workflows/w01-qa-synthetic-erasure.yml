@@ -1,0 +1,38 @@
+name: W01 QA synthetic Flutter erasure (Web only)
+on:
+  push:
+    branches:
+      - test/w01-d2-flutter-synthetic-erase-20261028
+    paths:
+      - .github/workflows/w01-qa-synthetic-erasure.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-web-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze Flutter Web
+        run: flutter analyze --no-fatal-infos
+      - name: Unit test synthetic erasure gate
+        run: flutter test --no-pub test/services/synthetic_preview_erasure_guard_test.dart
+      - name: Build Flutter Web release
+        run: flutter build web --release --no-web-resources-cdn
