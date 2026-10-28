@@ -73,6 +73,29 @@ bool syntheticErasureResponseConfirmed({
   }
 }
 
+/// The restored bearer must be bound to the same active Django identity.
+/// A protected SSO HTML page, wrong user or real email can never re-enable QA.
+bool syntheticIdentityResponseConfirmed({
+  required int statusCode,
+  required String? contentType,
+  required String body,
+  required int expectedUserId,
+}) {
+  if (statusCode != 200 || expectedUserId <= 0 ||
+      !(contentType ?? '').toLowerCase().contains('application/json')) {
+    return false;
+  }
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> &&
+        decoded['id'] == expectedUserId &&
+        syntheticPreviewEmailAllowed(decoded['email'] is String
+            ? decoded['email'] as String : null);
+  } on FormatException {
+    return false;
+  }
+}
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -415,6 +438,43 @@ class AuthService extends ChangeNotifier {
       throw registrationFailureForStatus(response.statusCode);
     }
     await _acceptAuthResponse(response, generation);
+  }
+
+  /// Recover a *cached* synthetic QA session after a Flutter Web reload.
+  /// No lock, onboarding or medical access is granted until live Django
+  /// verifies the exact existing bearer/user binding and synthetic email.
+  Future<void> reverifySyntheticPreviewForErasure() async {
+    final token = _nativeToken;
+    final id = _nativeAccountId;
+    if (_auditSession || token == null || id == null ||
+        !mayEraseSyntheticPreviewAccount(
+          sameOriginPreview: kIaminaPreviewSameOriginApi,
+          remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+          hasVerifiedNativeCredential: true,
+          browserUri: Uri.base,
+        )) {
+      throw StateError('Synthetic Preview recovery unavailable');
+    }
+    final generation = _authGeneration;
+    final response = await _httpClient.get(
+      Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || token != _nativeToken ||
+        id != _nativeAccountId ||
+        !syntheticIdentityResponseConfirmed(
+          statusCode: response.statusCode,
+          contentType: response.headers['content-type'],
+          body: response.body,
+          expectedUserId: id,
+        )) {
+      throw StateError('Synthetic Preview identity verification failed');
+    }
+    _remoteCredentialVerified = true;
+    _notifyAuthChanged();
   }
 
   /// Test-only, single-attempt remote application erasure, followed by local
