@@ -48,6 +48,26 @@ bool mayEraseSyntheticPreviewAccount({
     RegExp(r'^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects[.]vercel[.]app$')
         .hasMatch(browserUri.host);
 
+/// HTTP 200 alone may be an SSO HTML challenge. Require the exact backend
+/// JSON erasure acknowledgment before retiring any local patient identity.
+bool syntheticErasureResponseConfirmed({
+  required int statusCode,
+  required String? contentType,
+  required String body,
+}) {
+  if (statusCode != 200 ||
+      !(contentType ?? '').toLowerCase().contains('application/json')) {
+    return false;
+  }
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> &&
+        decoded['detail'] == 'Account and all associated data deleted.';
+  } on FormatException {
+    return false;
+  }
+}
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -414,9 +434,12 @@ class AuthService extends ChangeNotifier {
     if (generation != _authGeneration || _nativeToken != token) {
       throw StateError('Account changed during deletion: manual review');
     }
-    if (response.statusCode != 200) {
-      throw StateError('Server erasure unconfirmed: HTTP ' +
-          response.statusCode.toString());
+    if (!syntheticErasureResponseConfirmed(
+      statusCode: response.statusCode,
+      contentType: response.headers['content-type'],
+      body: response.body,
+    )) {
+      throw StateError('Server erasure not confirmed by application JSON');
     }
     Object? localError;
     try {
