@@ -150,6 +150,21 @@ class AppDatabase extends _$AppDatabase {
   /// accounts must use the authenticated server ID, never a Firebase hash.
   int get activeProfileRowId => patientVaultScope?.nativeDjangoUserId ?? 1;
 
+  /// Purge all five local clinical tables for this verified native test vault.
+  /// Device-only, legacy and audit vaults are explicitly excluded.
+  Future<void> purgeSyntheticPatientVaultAfterRemoteErasure() async {
+    if (patientVaultScope?.nativeDjangoUserId == null) {
+      throw StateError('No native patient vault to purge');
+    }
+    await transaction(() async {
+      await delete(chatMessages).go();
+      await delete(logEntries).go();
+      await delete(medicationEvents).go();
+      await delete(reminders).go();
+      await delete(patientProfiles).go();
+    });
+  }
+
   @override
   int get schemaVersion => 12;
 
