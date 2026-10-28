@@ -6,7 +6,7 @@ In real Chrome test only, pass actual Drift SQLite WASM bytes Dart→JS Uint8Arr
 ## Strict perimeter
 - `iamina_w02_browser_bridge_probe.mjs` permits only synthetic `amina_vault_v1_native_734`/`812` fixtures. The user-held secret, slot and trusted revision supplied by tests are NOT a clinically sound recovery/authorization mechanism. No external trusted monotonic floor.
 - `w02_synthetic_browser_bridge.dart` uses typed-array JS interop from an imported ES module, pinning the URL to `http://127.0.0.1:7399/iamina_w02_browser_bridge_probe.mjs`; no arbitrary source, no production path import. Buffer clearing is best effort.
-- Fixture HTTP server exposes only WASM and three audited JS files; no patient secrets, data, or arbitrary directories.
+- Fixture HTTP server serves the bridge fixture from scripts/fixtures, never from frontend/web packaged application assets, and exposes only WASM plus the audited dependency modules; no patient secrets, data, or arbitrary directories.
 - Garde `database.dart` remains `encrypted_web_patient_vault_unavailable`; no Vercel/Neon/Production/merge.
 - A green JS test and a green Chrome SQLite test do not substitute for **this** actual Dart↔JS round-trip. Only exact-SHA CI is proof.
 

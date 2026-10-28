@@ -9,7 +9,7 @@ on:
       - 'frontend/test/web/w02_web_memory_sqlite_candidate_test.dart'
       - 'frontend/pubspec.yaml'
       - 'frontend/web/iamina_w02_synthetic_session.mjs'
-      - 'frontend/web/iamina_w02_browser_bridge_probe.mjs'
+      - 'scripts/fixtures/iamina_w02_browser_bridge_probe.mjs'
       - 'frontend/lib/data/drift/w02_synthetic_browser_bridge.dart'
       - 'frontend/test/web/w02_synthetic_browser_bridge_test.dart'
       - 'scripts/w02_local_wasm_asset_server.py'
@@ -57,5 +57,6 @@ jobs:
           curl --fail --silent --show-error --retry 6 --retry-connrefused --retry-delay 1              --dump-header /tmp/w02-wasm-headers.txt              http://127.0.0.1:7399/sqlite3.wasm -o /dev/null
           grep -i 'Content-Type: application/wasm' /tmp/w02-wasm-headers.txt
           grep -i 'Access-Control-Allow-Origin: \*' /tmp/w02-wasm-headers.txt
+          node --check ../scripts/fixtures/iamina_w02_browser_bridge_probe.mjs
           curl --fail --silent --show-error -I http://127.0.0.1:7399/iamina_w02_browser_bridge_probe.mjs | grep -i 'application/javascript\|text/javascript'
           flutter test --no-pub --platform chrome --reporter expanded --timeout 30s              --dart-define=W02_TEST_WASM_URL=http://127.0.0.1:7399/sqlite3.wasm              test/web/w02_web_memory_sqlite_candidate_test.dart test/web/w02_synthetic_browser_bridge_test.dart
