@@ -28,6 +28,9 @@ from core.api.v1.d2_preview_consent import router as d2_preview_router  # noqa: 
 from core.api.v1.health import router as health_router  # noqa: E402
 from core.api.v1.locale import router as locale_router  # noqa: E402
 from core.api.v1.modules import router as modules_router  # noqa: E402
+from core.api.v1.w02_revision import (  # noqa: E402
+    router as w02_revision_router, W02NativeOnlyBearer,
+)
 from diabetes.api.v1.analytics import router as analytics_router  # noqa: E402
 from diabetes.api.v1.cgm import router as cgm_router  # noqa: E402
 from diabetes.api.v1.companion import router as companion_router  # noqa: E402
@@ -94,6 +97,8 @@ api.add_router("/v1", account_router, auth=_auth)
 api.add_router("/v1", d2_preview_router, auth=_auth)
 api.add_router("/v1", d2_inbox_router, auth=_auth)
 api.add_router("/v1", modules_router, auth=_auth)
+# W02: Preview-only native Bearer, disabled unless explicit gate.
+api.add_router("/v1", w02_revision_router, auth=W02NativeOnlyBearer())
 api.add_router("/v1", imports_router, auth=_auth)
 api.add_router("/v1", documents_router, auth=_auth)
 

@@ -26,6 +26,7 @@ from core.models.finops_user_throttle import AIUserThrottleWindow  # noqa: F401
 from core.models.locale import PatientLocalePreference  # noqa: F401
 from core.models.patient import BasePatientProfile  # noqa: F401
 from core.models.patient_module import PatientModule  # noqa: F401
+from core.models.w02_revision_anchor import W02VaultRevisionAnchor  # noqa: F401
 
 # Re-export so Django's migration framework discovers this model in the core app.
 from core.observability.events import ObservabilityEvent  # noqa: F401
