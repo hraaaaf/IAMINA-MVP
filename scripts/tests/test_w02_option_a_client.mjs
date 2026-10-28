@@ -134,3 +134,133 @@ test('server-verified native account namespace is mandatory',async()=>{
   await assert.rejects(openOptionASyntheticSession(c.args),fails('verified_owner_scope_mismatch'));
   assert.equal(c.store.envelope,null);
 });
+
+test('uninitialized anchor refuses stale pending, digest and inconsistent metadata', async () => {
+  for (const poison of [
+    { pending_revision: 1 }, { pending_ticket: 'T'.repeat(43) },
+    { committed_envelope_sha256: 'a'.repeat(64) }, { committed_revision: 1 },
+    { slot }, { pending_ticket: undefined },
+  ]) {
+    const c = await ctx();
+    const originalState = c.pg.state.bind(c.pg);
+    c.pg.state = async () => ({ ...(await originalState()), ...poison });
+    await assert.rejects(openOptionASyntheticSession(c.args), fails('invalid_anchor_state'));
+    assert.equal(c.store.envelope, null);
+  }
+});
+
+test('ready anchor requires committed positive revision and valid digest', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  await s.commit(bytes);
+  s.close();
+  for (const poison of [
+    { committed_revision: 0, committed_envelope_sha256: '' },
+    { committed_envelope_sha256: '' },
+    { committed_envelope_sha256: 'x'.repeat(64) },
+    { pending_revision: 2 }, { pending_ticket: 'T'.repeat(43) },
+  ]) {
+    const orig = c.pg.state.bind(c.pg);
+    c.pg.state = async () => ({ ...(await orig()), ...poison });
+    await assert.rejects(openOptionASyntheticSession(c.args), fails('invalid_anchor_state'));
+    c.pg.state = orig;
+  }
+});
+
+test('logout during async decrypted restore wipes its plaintext buffer', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  await s.commit(bytes);
+  s.close();
+  let captured;
+  const originalRestore = c.store.restore.bind(c.store);
+  c.store.restore = async args => {
+    const result = await originalRestore(args);
+    captured = result.bytes;
+    c.owner.active = false;
+    return result;
+  };
+  await assert.rejects(openOptionASyntheticSession(c.args), fails('owner_session_changed'));
+  assert.ok(captured instanceof Uint8Array && captured.length > 0);
+  assert.ok(captured.every(value => value === 0), 'decrypted snapshot must be zeroized');
+});
+
+test('invalid restored envelope after decryption wipes plaintext even when hashing throws', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  await s.commit(bytes);
+  s.close();
+  let captured;
+  const originalRestore = c.store.restore.bind(c.store);
+  c.store.restore = async args => {
+    const result = await originalRestore(args);
+    captured = result.bytes;
+    return { ...result, envelope: { invalid: 'synthetic-tamper' } };
+  };
+  await assert.rejects(openOptionASyntheticSession(c.args), fails('invalid_envelope'));
+  assert.ok(captured instanceof Uint8Array && captured.length > 0);
+  assert.ok(captured.every(value => value === 0), 'invalid envelope must scrub returned plaintext');
+});
+
+test('pending recovery scrubs plaintext when envelope hashing throws', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  c.pg.failsFinalize = true;
+  await assert.rejects(s.commit(bytes), /synthetic_server_timeout/);
+  s.close();
+  c.pg.failsFinalize = false;
+  let captured;
+  const originalRestore = c.store.restore.bind(c.store);
+  c.store.restore = async args => {
+    const restored = await originalRestore(args);
+    captured = restored.bytes;
+    return { ...restored, envelope: { tampered: true } };
+  };
+  await assert.rejects(finalizePendingSynthetic(c.args), fails('invalid_envelope'));
+  assert.ok(captured instanceof Uint8Array && captured.length > 0);
+  assert.ok(captured.every(v => v === 0), 'recovery plaintext must be wiped on hash failure');
+  assert.equal((await c.pg.state()).status, 'pending');
+});
+
+test('pending recovery scrubs plaintext when owner changes during restore', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  c.pg.failsFinalize = true;
+  await assert.rejects(s.commit(bytes), /synthetic_server_timeout/);
+  s.close();
+  c.pg.failsFinalize = false;
+  let captured;
+  const originalRestore = c.store.restore.bind(c.store);
+  c.store.restore = async args => {
+    const restored = await originalRestore(args);
+    captured = restored.bytes;
+    c.owner.active = false;
+    return restored;
+  };
+  await assert.rejects(finalizePendingSynthetic(c.args), fails('owner_session_changed'));
+  assert.ok(captured instanceof Uint8Array && captured.length > 0);
+  assert.ok(captured.every(v => v === 0), 'revoked owner must scrub pending recovery plaintext');
+  assert.equal((await c.pg.state()).status, 'pending');
+});
+
+
+test('pending recovery must deny a revoked owner after remote finalize ACK', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  c.pg.failsFinalize = true;
+  await assert.rejects(s.commit(bytes), /synthetic_server_timeout/);
+  s.close();
+  c.pg.failsFinalize = false;
+  const originalFinalize = c.pg.finalize.bind(c.pg);
+  let didFinalize = false;
+  c.pg.finalize = async request => {
+    const receipt = await originalFinalize(request);
+    didFinalize = true;
+    c.owner.active = false;
+    return receipt;
+  };
+  await assert.rejects(finalizePendingSynthetic(c.args), fails('owner_session_changed'));
+  assert.equal(didFinalize, true, 'synthetic server ACK race must be exercised');
+  assert.equal((await c.pg.state()).status, 'ready');
+  await assert.rejects(openOptionASyntheticSession(c.args), fails('owner_session_changed'));
+});

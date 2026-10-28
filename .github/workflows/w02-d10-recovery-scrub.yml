@@ -1,0 +1,39 @@
+name: W02 D10 synthetic restoration zeroization security
+on:
+  push:
+    branches: [feat/w02-d10-restore-scrub-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w02-d10-restore-scrub-20261028
+  cancel-in-progress: true
+jobs:
+  synthetic-crypto-adversarial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: AES-GCM, recovery, rollback, logout-race, and malformed PG authority negative tests
+        run: |
+          node --test \
+            scripts/tests/test_w02_option_a_client.mjs \
+            scripts/tests/test_w02_encrypted_vault_envelope.mjs \
+            scripts/tests/test_w02_synthetic_session.mjs \
+            scripts/tests/test_w02_ciphertext_store.mjs
+      - name: Guard real Web patient vault from unencrypted persistence
+        run: |
+          python3 -m unittest discover -s scripts/tests -p test_w02_web_guest_bootstrap_source.py -v
+          python3 - <<'PY'
+          from pathlib import Path
+          db = Path('frontend/lib/data/drift/database.dart').read_text()
+          guest = Path('frontend/lib/data/drift/guest_audit_executor_web.dart').read_text()
+          candidate = Path('scripts/fixtures/iamina_w02_option_a_client.mjs').read_text()
+          assert "encrypted_web_patient_vault_unavailable" in db
+          assert "InMemoryFileSystem()" in guest
+          assert "synthetic" in candidate.lower()
+          print("W02 secure deployment boundary: guarded")
+          PY
