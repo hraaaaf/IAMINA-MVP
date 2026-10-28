@@ -61,3 +61,23 @@ Correctif suivant **dans le test seulement** : implémentation `QueryExecutorUse
 ## W02 — Final focused analyzer lint tightening (2026-10-28)
 
 [Feature branch run #40712512060](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40712512060) at source SHA `8c02657f370bc46eaf9a08a8b0d97ad8d2a5290f` was **SUCCESS**: Chrome 3/3 and Node 46/46 PASS, with 14 nonfatal analyzer INFO diagnostics (`avoid_print`) in test instrumentation. Before claiming a completely clean focused analyze, replace test-only `print` with Flutter's `debugPrintSynchronously` and require `flutter analyze --fatal-infos` in the isolated W02 workflow. These are test/harness-only hygiene changes; a **fresh exact-SHA successful CI is required**.
+
+
+## Liens avec D10 — coordinateur synthétique parallèle vérifié (2026-10-28)
+
+
+## Closeout technique des tests synthétiques parallèles — 28/10/2026
+
+**Code exact vérifié :** [620ef4d7](https://github.com/hraaaaf/IAMINA-MVP/commit/620ef4d7fc8ade120aaba2f503aef2184de1269c) ; [GitHub Actions #40715637997](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40715637997) **SUCCESS** (job 122912426747) : **62/62 tests Node PASS, 3/3 Flutter Chrome SQLite WASM PASS, analyse Flutter `--fatal-infos` « No issues found! »**. Le coordinateur représente **16 tests Node** ; les 46 autres contrats Node portent sur l'enveloppe AES-GCM, IndexedDB CAS, test Drift source. Ce résultat ne prouve pas un bridge Dart↔JS ou l'activation de `AppDatabase`.
+
+**Inventaire legacy, lecture seule du code :**
+- `frontend/lib/data/drift/database.dart` : `AppDatabase.defaults()` ouvre la base **historique non scopée** `amina`. Elle ne peut jamais être rattachée automatiquement au prochain utilisateur connecté.
+- `AppDatabase.forPatientVault()` construit un coffre nommément isolé par `PatientVaultScope` : `amina_vault_v1_native_<userId>` ou `amina_vault_v1_device_<uuid-v4-normalisé>` ; la preuve d'autorisation propriétaire doit provenir de l'auth, pas du nom de DB.
+- Schéma Drift version **12**, cinq tables déclarées `LogEntries, PatientProfiles, ChatMessages, MedicationEvents, Reminders` plus `patient_treatment_declarations_v1` créée par migration ; v11→12 enrichit le statut de sync. Ne pas inventer identité ou traitement de l'ancienne base, ni effacer/migrer avant consentement et preuve de propriété.
+- `frontend/web/index.html` charge actuellement uniquement `iamina_app_lock.js` et Flutter bootstrap, **pas** le coordinateur synthétique ; garde `encrypted_web_patient_vault_unavailable` maintenu.
+
+**Gate migration :** propriété de `amina` inconnue sans preuve externe → contrôle humain et plan no-loss ; sauvegarde chiffrée et contrôle des données avant bascule, quarantaine puis effacement uniquement après confirmation vérifiée. Pas d'opération sur une vraie base dans ce lot.
+
+**Références externes :** [OWASP HTML5 Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html) et [MDN IndexedDB durability](https://developer.mozilla.org/en-US/docs/Web/API/IDBTransaction/durability) : `strict` reste un hint et IndexedDB ne constitue ni secret store ni backup, XSS restant menace. Aucune « garantie anti-XSS » revendiquée.
+
+**Restant critique D10-B Web :** vrai bridge JS↔Dart sous auth epoch/owner vérifié, autorité de révision monotone indépendante durable et recovery sans pertes, véritable implémentation app-lock facultative uniquement après sécurité, migration consentie, E2E multi-comptes + navigateurs, revue sécurité/privacy indépendante, UI BEFORE/AFTER, GO W01 avant merge W02, autorisation distincte de Preview Vercel. **NO-GO patient** ; rien déployé, rien muté sur Neon, aucune fusion. Pourcentage D10 global **non certifiable** à partir des seuls tests synthétiques.
