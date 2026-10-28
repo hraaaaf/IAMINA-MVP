@@ -408,6 +408,40 @@ test('synthetic signup fails closed if any Neon identity field changes', async()
   });
 });
 
+
+test('synthetic D2 and logout fail closed on changed Neon before patient egress',async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    let calls=0;
+    globalThis.fetch=async(url)=>{
+      calls++;
+      assert.equal(url,apiOrigin+'/api/v1/ops/preview-db-identity');
+      return new Response(JSON.stringify({
+        database_name:'WRONG_DB',role_name:'iamina_preview_app',
+        neon_project_id:'noisy-truth-00115950',
+        neon_branch_id:'br-sweet-frog-b9ok6ptp',
+      }),{status:200,headers:{'content-type':'application/json'}});
+    };
+    for(const [path,opts] of [
+      ['account/notification-preview-consent',{method:'GET'}],
+      ['auth/me',{method:'GET'}],
+      ['auth/logout',{method:'POST',headers:{origin}}],
+    ]){
+      const incoming=req(path,opts);
+      if(opts.method==='POST'){
+        // Empty request stream is legitimate for logout.
+        Object.assign(Readable.from([]),incoming);
+      }
+      const input=opts.method==='POST' ? Object.assign(Readable.from([]),incoming) : incoming;
+      const out=res();
+      await proxy(input,out,async()=>'synthetic-oidc');
+      assert.equal(out.statusCode,503,path);
+    }
+    assert.equal(calls,3,'only identity preflight requests, never clinical egress');
+  });
+});
+
 test('synthetic signup with exact Neon identity forwards only after OIDC and body checks', async()=>{
   await withEnv(async()=>{
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
