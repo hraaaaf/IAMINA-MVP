@@ -60,3 +60,16 @@ Requête SQL read-only supplémentaire, strictement agrégée sur `Neon square-s
 Le log de diagnostic du run #40768344797 signale un POST signup réussi à 21:02:42–21:02:57 UTC, et l'API production a deux entrées `/api/v1/auth/register` dans la fenêtre. **Correspondance temporelle forte mais causalité non établie** sans request ID/log corrélé et identité BFF→Neon au moment T. Le propriétaire signale disposer de **deux comptes fictifs** utilisables pour QA, mais leur identité/environnement exacts ne sont pas encore corroborés ; ces comptes ne sont pas assimilés automatiquement à ce compte historique.
 
 **Statut sécurité :** aucune suppression, inscription ni mutation Neon. Aucun test clinique Production. QA indépendante `noisy-truth-00115950 / br-green-meadow-b9j6o0bp / iamina925_empty` : `auth_user=0` au dernier contrôle lecture seule. D9 FUE Web hosted NOT_VERIFIED. **Next :** établir mapping identité compte/backend avec preuves autorisées (sans secrets), ou conserver attribution incertaine ; poursuivre uniquement sur branche QA isolée.
+
+
+## 28/10/2026 — Deux comptes A/B historiques confirmés ; attestation API toujours requise
+
+**Read-only Neon independent result** for `noisy-truth-00115950` / `br-sweet-frog-b9ok6ptp` / `iamina925_empty` queried **as restricted application role `iamina_preview_app`**, not owner: `current_database()=iamina925_empty`, `current_user=iamina_preview_app`, `current_setting('neon.project_id')=noisy-truth-00115950`, `current_setting('neon.branch_id')=br-sweet-frog-b9ok6ptp`; **2 existing A/B test accounts found by exact email match**, both active. No passwords, sensitive values, user IDs or clinical rows retrieved; no SQL write.
+
+Vercel historical synthetic deployment pair **READY / Preview**, both at source SHA `06b2ad57e18e565d0c8e01c28a260541cf759475`:
+- Web `dpl_4g6w19iYnExYzoQZRxbzHv9MTKuQ` host `iamina-review-r8m9yx2jk-achraf-benmoussa-s-projects.vercel.app`.
+- API `dpl_6wKTvU7YcwUc8FyN7944RKdjbAxo` host `iamina-certified-7xj7cbbzc-achraf-benmoussa-s-projects.vercel.app`.
+- Notion W01 history records branch-scoped Web Preview API URL pointing to this exact API deployment, confirmed source `frontend/vercel_build.sh` and `frontend/api/preview-proxy.js` require same-origin BFF and strict Preview OIDC gate, never Production alias. This establishes configuration, **not a successful authenticated runtime request**.
+- API source `backend/amina/preview_db_identity.py` provides read-only 4-field SQL identity attestation but requires **normal Preview SSO/OIDC**. Its successful response through BFF has **not** been independently observed. Do not override SSO or bypass OIDC.
+
+**Outcome:** A/B users located, 4 independent QA DB values verified. **Remaining gate:** authenticated Web → BFF → API Preview actual DB attestation = NOT_VERIFIED; no login A/B, no writes, no delete, no deploy. Once normal SSO access and live identity response are established, run authorized A→B→A only with explicit nonpatient boundary, then any clean-up requires exact authorization and application-owned deletion plus independent SQL proof. W01 G5/D9 still OPEN; patient NO-GO.
