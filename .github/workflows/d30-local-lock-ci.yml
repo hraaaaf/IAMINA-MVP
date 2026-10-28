@@ -13,6 +13,8 @@ on:
       - scripts/d30_web_clinical_e2e.py
       - frontend/test/features/d30_local_enrollment_cta_test.dart
       - frontend/vercel_build.sh
+      - frontend/lib/routes/app_router.dart
+      - frontend/test/routes/d30_local_ai_consent_gate_test.dart
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
 
@@ -52,6 +54,7 @@ jobs:
           flutter test --no-pub test/services/app_lock_service_test.dart
           flutter test --no-pub test/services/patient_vault_session_controller_test.dart
           flutter test --no-pub test/services/d30_api_egress_denial_test.dart
+          flutter test --no-pub test/routes/d30_local_ai_consent_gate_test.dart
       - name: Verify Vercel Web builds vendor CanvasKit for offline use
         run: |
           python3 - <<'PY'
