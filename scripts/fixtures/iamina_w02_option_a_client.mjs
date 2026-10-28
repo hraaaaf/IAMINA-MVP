@@ -218,12 +218,19 @@ export async function finalizePendingSynthetic({
   const restored = await store.restore({
     slot, vaultId, minimumRevision: state.pending_revision, key,
   });
-  if (!restored || await envelopeSha256(restored.envelope) !== await envelopeSha256(record)) {
-    restored?.bytes?.fill(0);
-    deny('pending_ciphertext_changed');
+  if (!restored || !(restored.bytes instanceof Uint8Array)) {
+    deny('invalid_pending_snapshot');
   }
-  restored.bytes.fill(0);
-  requireOwner(ownerSession, vaultId, slot);
+  // Explicit recovery also decrypts plaintext. Any hash parse error or
+  // principal change must wipe the acquired bytes before refusing.
+  try {
+    if (await envelopeSha256(restored.envelope) !== await envelopeSha256(record)) {
+      deny('pending_ciphertext_changed');
+    }
+    requireOwner(ownerSession, vaultId, slot);
+  } finally {
+    restored.bytes.fill(0);
+  }
   const digest = await envelopeSha256(record);
   const final = await api.finalize({
     slot, revision: state.pending_revision,

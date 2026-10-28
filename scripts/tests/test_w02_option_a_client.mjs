@@ -201,3 +201,44 @@ test('invalid restored envelope after decryption wipes plaintext even when hashi
   assert.ok(captured instanceof Uint8Array && captured.length > 0);
   assert.ok(captured.every(value => value === 0), 'invalid envelope must scrub returned plaintext');
 });
+
+test('pending recovery scrubs plaintext when envelope hashing throws', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  c.pg.failsFinalize = true;
+  await assert.rejects(s.commit(bytes), /synthetic_server_timeout/);
+  s.close();
+  c.pg.failsFinalize = false;
+  let captured;
+  const originalRestore = c.store.restore.bind(c.store);
+  c.store.restore = async args => {
+    const restored = await originalRestore(args);
+    captured = restored.bytes;
+    return { ...restored, envelope: { tampered: true } };
+  };
+  await assert.rejects(finalizePendingSynthetic(c.args), fails('invalid_envelope'));
+  assert.ok(captured instanceof Uint8Array && captured.length > 0);
+  assert.ok(captured.every(v => v === 0), 'recovery plaintext must be wiped on hash failure');
+  assert.equal((await c.pg.state()).status, 'pending');
+});
+
+test('pending recovery scrubs plaintext when owner changes during restore', async () => {
+  const c = await ctx();
+  const s = await openOptionASyntheticSession(c.args);
+  c.pg.failsFinalize = true;
+  await assert.rejects(s.commit(bytes), /synthetic_server_timeout/);
+  s.close();
+  c.pg.failsFinalize = false;
+  let captured;
+  const originalRestore = c.store.restore.bind(c.store);
+  c.store.restore = async args => {
+    const restored = await originalRestore(args);
+    captured = restored.bytes;
+    c.owner.active = false;
+    return restored;
+  };
+  await assert.rejects(finalizePendingSynthetic(c.args), fails('owner_session_changed'));
+  assert.ok(captured instanceof Uint8Array && captured.length > 0);
+  assert.ok(captured.every(v => v === 0), 'revoked owner must scrub pending recovery plaintext');
+  assert.equal((await c.pg.state()).status, 'pending');
+});
