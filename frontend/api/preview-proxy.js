@@ -24,6 +24,57 @@ function resolvePreviewApiOrigin() {
 }
 const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
 
+// Opt-in QA mode. Absent by default; this code cannot activate itself or
+// grant access past Vercel Deployment Protection / the existing trusted OIDC.
+const SYNTHETIC_LOGIN_ENABLE_VALUE = 'D2_WEB_SYNTHETIC_ONLY_V1';
+const SYNTHETIC_LOGIN_BRANCH = 'integration/w01-d2-preview-only-20261027';
+const SYNTHETIC_IDENTITY = Object.freeze({
+  database_name: 'iamina925_empty',
+  role_name: 'iamina_preview_app',
+  neon_project_id: 'noisy-truth-00115950',
+  neon_branch_id: 'br-sweet-frog-b9ok6ptp',
+});
+function syntheticLoginRequested() {
+  return process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN ===
+    SYNTHETIC_LOGIN_ENABLE_VALUE;
+}
+function syntheticLoginScopeValid() {
+  return process.env.VERCEL_ENV === 'preview' &&
+    process.env.VERCEL_PROJECT_ID === WEB_PROJECT &&
+    process.env.VERCEL_GIT_COMMIT_REF === SYNTHETIC_LOGIN_BRANCH;
+}
+function syntheticEmailAllowed(email) {
+  return typeof email === 'string' &&
+    /^[a-z0-9][a-z0-9._-]{0,60}@example\.invalid$/.test(email);
+}
+function syntheticLoginPayloadAllowed(path, payload) {
+  if (!['auth/register', 'auth/login'].includes(path)) return false;
+  let parsed;
+  try { parsed = JSON.parse(payload.toString('utf8')); } catch { return false; }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+  // Preserve the already-proven non-mutating Django 422 preflight.
+  if (path === 'auth/register' && Object.keys(parsed).length === 0) return true;
+  return syntheticEmailAllowed(parsed.email) &&
+    typeof parsed.password === 'string' && parsed.password.length > 0;
+}
+async function syntheticIdentityVerified(apiOrigin, oidcToken) {
+  try {
+    const reply = await fetch(apiOrigin + '/api/v1/ops/preview-db-identity', {
+      method: 'GET',
+      headers: new Headers({'x-vercel-trusted-oidc-idp-token': oidcToken}),
+      redirect: 'manual', cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (reply.status !== 200 ||
+        !reply.headers.get('content-type')?.toLowerCase().includes('application/json'))
+      return false;
+    const actual = await reply.json();
+    return actual && typeof actual === 'object' &&
+      Object.entries(SYNTHETIC_IDENTITY).every(([key, expected]) =>
+        actual[key] === expected);
+  } catch { return false; }
+}
+
 class PayloadTooLargeError extends Error {}
 
 async function readBoundedBody(request) {
@@ -107,6 +158,9 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     }
     return response.status(gate).end();
   }
+  // A mis-scoped QA opt-in must not silently fall back to ordinary auth.
+  if (syntheticLoginRequested() && !syntheticLoginScopeValid())
+    return response.status(503).end();
   if (!ALLOWED_METHODS.has(request.method)) return response.status(405).end();
   const route = requestPath(request);
   if (!route) return response.status(400).end();
@@ -153,6 +207,23 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
       payload = await readBoundedBody(request);
     } catch (error) {
       return response.status(error instanceof PayloadTooLargeError ? 413 : 400).end();
+    }
+  }
+
+  if (syntheticLoginRequested()) {
+    // The QA Preview must never permit Firebase exchange, password reset or
+    // any other account bootstrap than native synthetic @example.invalid.
+    if (route.path === 'auth/firebase' ||
+        route.path.startsWith('auth/password/')) return response.status(403).end();
+    if (route.path === 'auth/register' || route.path === 'auth/login') {
+      if (request.method !== 'POST' || route.search !== '' ||
+          !syntheticLoginPayloadAllowed(route.path, payload))
+        return response.status(403).end();
+      // Enforced by the trusted server-side BFF, not by a user-supplied
+      // browser header or a stale UI toggle. No registration/login egress if
+      // Neon deployment identity fails or the identity endpoint is blocked.
+      if (!await syntheticIdentityVerified(apiOrigin, oidcToken))
+        return response.status(503).end();
     }
   }
 
