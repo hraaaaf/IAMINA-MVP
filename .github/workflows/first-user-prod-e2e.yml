@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   real-first-user-prod:
+    # Never auto-create remote accounts on PRs; require an explicit manual gate.
+    if: ${{ github.event_name == 'workflow_dispatch' && vars.IAMINA_ALLOW_REAL_PROD_E2E == 'true' }}
     name: Real prod first-user 390x844
     runs-on: ubuntu-latest
     timeout-minutes: 35
