@@ -44,3 +44,15 @@
 **Evidence boundary:** D9 hosted authenticated **FUE remains NOT_RUN** in the matrix above. Visual CI screenshots do not prove a real logged-in A→B→A, new-device clinical continuity or encrypted clinical Web vault. W01 G1–G7 and QA Neon core.0024/0025 remain open; patient Web fails closed, no clinical patient data, no merge. **D9 CODE CI GREEN; D9 PRODUCT BLOCKED / NOT_VERIFIED**, no score >=9 or Perfection Pass declared.
 
 **Next:** resolve W01 gates and indispensable encrypted Web vault D10 in an isolated security-scoped prerequisite, then perform full D9 hosted FUE in authorized QA (A→B→A, offline/reload, consent, revocation, SQL zero cleanup; FR/AR at 390x844, 768x1024, 1280x900 with paired BEFORE/AFTER), adversarial review/scoring, conditional merge/postmerge and D9 closure. Decision closure order stays D9 → D10 → D11 → D24 → D26 → D30; D10 security prerequisites may be developed before closing D9 without marking D10 product closed.
+
+
+## FUE safety fix — revalidation, app-lock and owner-switch — 28/10/2026
+
+**Goal:** a previously valid D9 server first-use marker must not survive failed revalidation, revoked bearer, cross-account reuse or a lock/unlock cycle; do not infer AI consent or revive clinical Web storage.
+
+**Source correction, exact code HEAD `e4cc2dc91ffd6836c27e99467095c84f20fb26ff` (3 focused commits):**
+- `ConsentService` now binds the D9 remote completion to an explicit owner, clears it on failed proof and owner changes, and distinguishes matching local profile completion from unrelated owner state. A null profile event alone lacks owner information, so lock/auth transitions must revalidate explicitly.
+- `PatientVaultAppHost` invalidates cached D9 completion immediately on app-lock and marks D9 unresolved, forcing a fresh server GET after unlock. A missing/revoked/pending proof is passed through the fail-closed invalidation path before any route gate can reopen.
+- Adds 3 behavioral Dart tests: old proof rejected after same-owner invalidation, same-instance A→B→A proof isolation, foreign local profile invalidation. Updates the source wiring contract asserting the app-lock and server-proof invalidation path. Existing local Web clinical vault refusal `encrypted_web_patient_vault_unavailable` remains unchanged.
+
+**Evidence status:** Source changes and exact test additions committed to D9 isolated branch; GitHub [W02 D9 CI run #40786165659](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40786165659) triggered at exact code HEAD, initially **PENDING**, result NOT_YET_VERIFIED. Earlier D9 CI `b2c0665f` SUCCESS is NOT transferable to this code. No Vercel deployment, no Neon DDL or DML, no patient data. Browser full FUE remains NOT_RUN, D9 product NO-GO. Next: read final exact-SHA CI jobs, repair any red tests, then resume W01/D10 prerequisite and hosted FUE only on authorized QA.
