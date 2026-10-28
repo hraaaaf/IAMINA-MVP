@@ -193,3 +193,23 @@ test('close during asynchronous trusted floor reservation prevents ciphertext co
   assert.equal(ctx.store.row,null);
   assert.equal(await ctx.floor.getFloor(ctx.args),1);
 });
+
+test('an independently trusted floor advancing during open blocks stale memory access', async () => {
+  const ctx = await setup();
+  const first = await openSyntheticVaultSession(ctx.args);
+  await first.commit(); await first.close();
+  const realGet = ctx.floor.getFloor.bind(ctx.floor);
+  let reads = 0;
+  ctx.floor.getFloor = async scope => (++reads === 2 ? 2 : realGet(scope));
+  await assert.rejects(openSyntheticVaultSession(ctx.args), code('trusted_revision_changed_during_open'));
+  assert.equal(reads,2);
+  assert.equal(ctx.opened[1].closed,true);
+});
+test('trusted floor recheck failure does not leak a volatile executor', async () => {
+  const ctx = await setup();
+  const oldGet = ctx.floor.getFloor.bind(ctx.floor);
+  let reads=0;
+  ctx.floor.getFloor = async scope => { reads++; if (reads===2) throw Error('anchor-unavailable'); return oldGet(scope); };
+  await assert.rejects(openSyntheticVaultSession(ctx.args), /anchor-unavailable/);
+  assert.equal(ctx.opened[0].closed,true);
+});

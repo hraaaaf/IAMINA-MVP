@@ -86,6 +86,13 @@ export async function openSyntheticVaultSession({
     expectedEnvelope = await store.readEnvelope(slot);
     assertOwner();
     if (!sameEnvelope(expectedEnvelope, authenticatedEnvelope)) deny('concurrent_open');
+    // A writer may reserve the next trusted floor before its IDB transaction
+    // becomes visible. Do not hand out an already-revoked in-memory revision.
+    const latestFloor = await revisionAuthority.getFloor({ vaultId, slot });
+    assertOwner();
+    if (!revisionOk(latestFloor) || latestFloor !== floor) {
+      deny('trusted_revision_changed_during_open');
+    }
   } catch (err) {
     await memory.close();
     throw err;
