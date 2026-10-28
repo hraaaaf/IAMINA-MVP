@@ -2,31 +2,31 @@ import 'dart:typed_data';
 
 import 'package:amina/data/drift/w02_web_memory_sqlite_candidate.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/services.dart' show rootBundle;
 
-/// Run with Flutter Web/Chrome. Never enables a real patient vault.
-Future<Uint8List> loadTestWasm() async {
-  print('W02_STAGE asset_load:start');
-  final asset = await rootBundle
-      .load('web/sqlite3.wasm')
-      .timeout(const Duration(seconds: 12));
-  final bytes =
-      asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes);
-  print('W02_STAGE asset_load:done bytes=${bytes.length}');
-  expect(bytes.length, greaterThan(100000));
-  return bytes;
+/// Dedicated Chrome test runner serves the repository-pinned sqlite3.wasm
+/// over loopback HTTP with CORS. No hosted/patient data is used.
+Uri browserWasmUri() {
+  const value = String.fromEnvironment('W02_TEST_WASM_URL');
+  final uri = Uri.tryParse(value);
+  if (uri == null ||
+      uri.scheme != 'http' ||
+      uri.host != '127.0.0.1' ||
+      uri.port != 7399 ||
+      uri.path != '/sqlite3.wasm') {
+    throw StateError('w02_test_wasm_url_must_be_loopback');
+  }
+  return uri;
 }
 
 void traceW02(String stage) => print('W02_STAGE $stage');
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   test('W02 Drift WASM writes and reopens only a volatile SQLite snapshot', () async {
-    final wasm = await loadTestWasm();
+    final sqlite3Wasm = browserWasmUri();
+    print('W02_STAGE first_open:start');
     final first = await W02WebMemorySqliteCandidate.open(
       authenticatedSnapshot: null,
-      sqlite3WasmBytes: wasm,
+      sqlite3Wasm: sqlite3Wasm,
       trace: traceW02,
     );
     print('W02_STAGE first_open:done');
@@ -52,7 +52,7 @@ void main() {
       ]));
       final reopened = await W02WebMemorySqliteCandidate.open(
         authenticatedSnapshot: encryptedInput,
-        sqlite3WasmBytes: wasm,
+        sqlite3Wasm: sqlite3Wasm,
         trace: traceW02,
       );
       print('W02_STAGE reopen:done');
@@ -80,10 +80,9 @@ void main() {
   });
 
   test('W02 new volatile connection cannot see prior synthetic records', () async {
-    final wasm = await loadTestWasm();
     final empty = await W02WebMemorySqliteCandidate.open(
       authenticatedSnapshot: null,
-      sqlite3WasmBytes: wasm,
+      sqlite3Wasm: browserWasmUri(),
       trace: traceW02,
     );
     try {

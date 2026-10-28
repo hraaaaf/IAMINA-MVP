@@ -84,7 +84,6 @@ flutter:
   generate: true
 
   assets:
-    - web/sqlite3.wasm # browser-test-servable copy of existing audited binary
     - assets/images/
     - assets/icons/
     - assets/food/pictograms/v1/

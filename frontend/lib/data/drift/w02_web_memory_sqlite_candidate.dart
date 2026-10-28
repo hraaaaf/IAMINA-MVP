@@ -40,22 +40,18 @@ final class W02WebMemorySqliteCandidate {
   static Future<W02WebMemorySqliteCandidate> open({
     required Uint8List? authenticatedSnapshot,
     Uri? sqlite3Wasm,
-    Uint8List? sqlite3WasmBytes,
     void Function(String)? trace,
   }) async {
     final initial = authenticatedSnapshot;
     if (initial != null) _assertSnapshot(initial);
 
     trace?.call('wasm_load:start');
-    final sqlite3 = await (sqlite3WasmBytes == null
-            ? WasmSqlite3.loadFromUrl(
-                sqlite3Wasm ?? Uri.parse('sqlite3.wasm'),
-              )
-            : WasmSqlite3.load(sqlite3WasmBytes))
-        .timeout(
-          const Duration(seconds: 12),
-          onTimeout: () => throw StateError('w02_wasm_load_timeout'),
-        );
+    final sqlite3 = await WasmSqlite3.loadFromUrl(
+      sqlite3Wasm ?? Uri.parse('sqlite3.wasm'),
+    ).timeout(
+      const Duration(seconds: 12),
+      onTimeout: () => throw StateError('w02_wasm_load_timeout'),
+    );
     trace?.call('wasm_load:done');
     final memory = InMemoryFileSystem();
     trace?.call('vfs_register:start');
