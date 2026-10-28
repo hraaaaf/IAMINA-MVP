@@ -15,6 +15,7 @@ import 'auth_storage_change_stub.dart'
     as storage_events;
 import 'auth_epoch.dart';
 import 'firebase_migration_policy.dart';
+import 'preview_api_origin.dart';
 
 const String kAuthBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -528,7 +529,7 @@ class AuthService extends ChangeNotifier {
     if (token != null) {
       try {
         final response = await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
         if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -594,7 +595,7 @@ class AuthService extends ChangeNotifier {
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
