@@ -199,6 +199,12 @@ void main() {
     final gateway = FakeGateway()..failRead = true;
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('fr'),
+      supportedLocales: const [Locale('fr'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: D2NotificationCenterScreen(gateway: gateway),
     ));
     await tester.pumpAndSettle();
