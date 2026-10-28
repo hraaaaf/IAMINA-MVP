@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -94,6 +95,32 @@ class ChatMessages extends Table {
 // Database
 // ============================================================================
 
+/// W02 security gate: current Drift Web uses OPFS/IndexedDB-backed SQLite,
+/// without a proven encryption-at-rest and recovery envelope. This only permits
+/// the explicitly synthetic audit vault until an independently verified encrypted
+/// Web executor replaces the default persistent backend.
+///
+/// Does not delete, migrate, decrypt or certify any pre-existing browser data.
+bool allowUnencryptedPatientVaultForPlatform(
+  PatientVaultScope scope, {
+  required bool isWeb,
+}) =>
+    !isWeb ||
+    scope.databaseName == PatientVaultScope.auditOnly().databaseName;
+
+DatabaseConnection _openPatientVaultConnection(PatientVaultScope scope) {
+  if (!allowUnencryptedPatientVaultForPlatform(scope, isWeb: kIsWeb)) {
+    throw StateError('encrypted_web_patient_vault_unavailable');
+  }
+  return driftDatabase(
+    name: scope.databaseName,
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
+}
+
 @DriftDatabase(
   tables: [
     LogEntries,
@@ -135,15 +162,7 @@ class AppDatabase extends _$AppDatabase {
   // A→logout→B certification before any real patient use.
   AppDatabase.forPatientVault(PatientVaultScope scope)
     : patientVaultScope = scope,
-      super(
-        driftDatabase(
-          name: scope.databaseName,
-          web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
-          ),
-        ),
-      );
+      super(_openPatientVaultConnection(scope));
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django
