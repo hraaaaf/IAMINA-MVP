@@ -1977,6 +1977,86 @@
         ]
       }
     },
+    "/api/v1/w02/vault-revision/state": {
+      "get": {
+        "operationId": "core_api_v1_w02_revision_read_vault_revision",
+        "summary": "Read Vault Revision",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "w02-preview-revision"
+        ],
+        "security": [
+          {
+            "W02NativeOnlyBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/w02/vault-revision/reserve": {
+      "post": {
+        "operationId": "core_api_v1_w02_revision_reserve",
+        "summary": "Reserve",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "w02-preview-revision"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "W02NativeOnlyBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/w02/vault-revision/finalize": {
+      "post": {
+        "operationId": "core_api_v1_w02_revision_finalize",
+        "summary": "Finalize",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "w02-preview-revision"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "W02NativeOnlyBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/import/librelink": {
       "post": {
         "operationId": "diabetes_api_v1_imports_import_librelink_csv",
@@ -5705,6 +5785,52 @@
         "title": "SaveNoticeRequest",
         "type": "object"
       },
+      "ReservePayload": {
+        "properties": {
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "expected_revision": {
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slot",
+          "expected_revision"
+        ],
+        "title": "ReservePayload",
+        "type": "object"
+      },
+      "FinalizePayload": {
+        "properties": {
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "ticket": {
+            "title": "Ticket",
+            "type": "string"
+          },
+          "envelope_sha256": {
+            "title": "Envelope Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot",
+          "revision",
+          "ticket",
+          "envelope_sha256"
+        ],
+        "title": "FinalizePayload",
+        "type": "object"
+      },
       "ImportResultResponse": {
         "properties": {
           "ok": {
@@ -6733,6 +6859,10 @@
         "name": "sessionid"
       },
       "HybridBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "W02NativeOnlyBearer": {
         "type": "http",
         "scheme": "bearer"
       }
