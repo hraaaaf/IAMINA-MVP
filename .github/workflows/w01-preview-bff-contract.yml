@@ -18,6 +18,12 @@ on:
       - 'docs/assessments/2026-10-16-w01-before-w02-gates.md'
       - '.github/workflows/w01-preview-bff-contract.yml'
   workflow_dispatch:
+  # One-shot BFF-only QA: push on this isolated branch when this YAML changes.
+  push:
+    branches:
+      - test/w01-bff-only-20261028
+    paths:
+      - '.github/workflows/w01-preview-bff-contract.yml'
 permissions:
   contents: read
 concurrency:
