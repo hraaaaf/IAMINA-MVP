@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:amina/services/auth_service.dart';
 
@@ -72,6 +74,22 @@ void main() {
     expect(check('{"id":7,"email":"person@gmail.com"}'), isFalse);
     expect(check('{"id":"7","email":"w01-a@example.invalid"}'), isFalse);
     expect(check('{"id":7,"email":"evil@example.invalid.attacker"}'), isFalse);
+  });
+
+  test('successful synthetic re-verification keeps the bound vault/router epoch', () {
+    // AuthService._notifyAuthChanged() advances AuthEpoch and tears down the
+    // patient-scoped GoRouter. A QA credential recheck must not do this.
+    final source = File('lib/services/auth_service.dart').readAsStringSync();
+    final marker = 'Future<void> reverifySyntheticPreviewForErasure() async {';
+    expect(source, contains(marker));
+    final recheck = source.split(marker).last.split(
+      '/// Test-only, single-attempt remote application erasure',
+    ).first;
+    expect(recheck, contains("'/api/v1/auth/me'"));
+    expect(recheck, contains('syntheticIdentityResponseConfirmed('));
+    expect(recheck, contains('_remoteCredentialVerified = true;'));
+    expect(recheck, isNot(contains('_notifyAuthChanged();')));
+    expect(recheck, isNot(contains('AuthEpoch.advance()')));
   });
 
   test('cannot erase on Production or arbitrary/insecure host', () {
