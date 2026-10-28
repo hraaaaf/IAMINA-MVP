@@ -48,6 +48,7 @@ jobs:
         run: |
           python3 -m pip install --user playwright==1.58.0
           python3 -m playwright install --with-deps chromium
+      # Diagnostic run: report exact outbound URLs instead of masking the failure.
       - name: Smoke-test locally served Flutter Web in Chromium
         run: python3 ../scripts/d30_web_boot_smoke.py
       - name: Retain Chromium smoke screenshot
