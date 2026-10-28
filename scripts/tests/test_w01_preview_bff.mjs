@@ -396,10 +396,21 @@ test('synthetic auth rejects real email and Firebase / reset before any upstream
       await proxy(input,output,async()=>'synthetic-oidc');
       assert.equal(output.statusCode,403,email);
     }
-    for (const path of ['auth/firebase','auth/password/reset/request','auth/password/reset/confirm']) {
+    for (const path of ['auth/firebase','auth/firebase/','auth/password','auth/password/','auth/password/reset/request','auth/password/reset/confirm']) {
       const output=res();
       await proxy(req(path,{method:'POST',headers:{origin}}),output,async()=>'synthetic-oidc');
       assert.equal(output.statusCode,403,path);
+    }
+    for (const payload of [
+      {email:'w01-synthetic@example.invalid',password:'synthetic',first_name:'Real Patient'},
+      {email:'w01-synthetic@example.invalid',password:'synthetic',last_name:'Personal Name'},
+      {email:'w01-synthetic@example.invalid',password:'synthetic',patient_note:'patient data'},
+    ]) {
+      const body=Readable.from([Buffer.from(JSON.stringify(payload))]);
+      Object.assign(body,req('auth/register',{method:'POST',headers:{origin}}));
+      const out=res();
+      await proxy(body,out,async()=>'synthetic-oidc');
+      assert.equal(out.statusCode,403,'untrusted registration fields forbidden');
     }
     assert.equal(calls,0);
   });
