@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:drift/drift.dart';
-import 'package:drift/wasm.dart' show WasmDatabase;
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:sqlite3/wasm.dart' show InMemoryFileSystem, WasmSqlite3;
 import 'package:uuid/uuid.dart';
 
 import 'patient_vault_scope.dart';
+import 'guest_audit_executor_native.dart'
+    if (dart.library.js_interop) 'guest_audit_executor_web.dart' as guest_executor;
 
 part 'database.g.dart';
 
@@ -34,19 +34,7 @@ QueryExecutor _w02GuestAuditExecutor({Uri? sqlite3Wasm}) {
   if (!kIsWeb) {
     return _w02ProtectedPatientVaultExecutor(PatientVaultScope.auditOnly());
   }
-  return LazyDatabase(() async {
-    final sqlite = await WasmSqlite3.loadFromUrl(
-      sqlite3Wasm ?? Uri.parse('sqlite3.wasm'),
-    ).timeout(
-      const Duration(seconds: 12),
-      onTimeout: () => throw StateError('w02_guest_wasm_load_timeout'),
-    );
-    sqlite.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
-    return WasmDatabase.opened(
-      sqlite.openInMemory(),
-      closeUnderlyingOnClose: true,
-    );
-  });
+  return guest_executor.openVolatileGuestWeb(sqlite3Wasm: sqlite3Wasm);
 }
 
 // ============================================================================
