@@ -31,6 +31,8 @@ import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
+import 'features/notifications/d2_notification_center_screen.dart';
+import 'services/d2_consent_gateway.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
@@ -42,6 +44,77 @@ import 'services/locale_preference_service.dart';
 import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
+
+/// Screenshot fixture only: no account, network, inbox or medical evidence.
+class _BrowserAuditD2Gateway implements D2ConsentGateway {
+  _BrowserAuditD2Gateway({this.enabled = false, this.unavailable = false});
+
+  bool enabled;
+  final bool unavailable;
+
+  // Synthetic visual states only. These are NOT real consent or patient data.
+  D2ConsentStatus _status(String locale) {
+    final lang = locale.startsWith('ar')
+        ? 'ar'
+        : locale.startsWith('en')
+            ? 'en'
+            : 'fr';
+    final notice = switch (lang) {
+      'ar' => 'أختار الاطلاع داخل IAmina فقط على معاينات لملاحظات '
+          'شخصية غير عاجلة. لا يفعّل هذا الاختيار إشعارات المتصفح '
+          'أو البريد الإلكتروني أو الرسائل النصية.',
+      'en' => 'I choose to view inside IAmina only non-urgent previews '
+          'of personal observations. This does not enable browser '
+          'notifications, email or SMS.',
+      _ => 'Je choisis de voir, dans IAmina uniquement, des aperçus '
+          'non urgents d’observations personnalisées. Cette préférence '
+          'ne déclenche aucune notification du navigateur, '
+          'aucun e-mail et aucun SMS.',
+    };
+    return D2ConsentStatus(
+      optedIn: enabled,
+      noticeText: notice,
+      noticeVersion: '2026-10-20.d2.1',
+      noticeHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      locale: lang,
+    );
+  }
+
+  @override
+  Future<D2ConsentStatus> read(String locale) async {
+    if (unavailable) throw StateError('Synthetic D2 gateway unavailable');
+    return _status(locale);
+  }
+
+  @override
+  Future<D2ConsentStatus> grant(D2ConsentStatus acceptedNotice) async {
+    if (unavailable) throw StateError('Synthetic D2 gateway unavailable');
+    enabled = true;
+    return _status(acceptedNotice.locale);
+  }
+
+  @override
+  Future<D2ConsentStatus> withdraw(String locale) async {
+    if (unavailable) throw StateError('Synthetic D2 gateway unavailable');
+    enabled = false;
+    return _status(locale);
+  }
+
+  @override
+  Future<D2ObservationPreview?> readPreview() async => null;
+
+  @override
+  Future<List<D2SavedNotice>> inbox() async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> savePreview() async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> markRead(int id) async => const [];
+
+  @override
+  Future<List<D2SavedNotice>> removeNotice(int id) async => const [];
+}
 
 class _BrowserAuditCompanionService extends CompanionService {
   @override
@@ -291,6 +364,15 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const RemindersScreen(),
         ),
         GoRoute(
+          path: '/notifications',
+          builder: (context, state) => D2NotificationCenterScreen(
+            gateway: _BrowserAuditD2Gateway(
+              enabled: surface.endsWith('-on'),
+              unavailable: surface.endsWith('-error'),
+            ),
+          ),
+        ),
+        GoRoute(
           path: '/companion',
           builder: (context, state) => const CompanionPremiumScreen(),
         ),
@@ -347,7 +429,11 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      locale: Locale(surface.startsWith('notifications-ar')
+          ? 'ar'
+          : surface.startsWith('notifications-en')
+              ? 'en'
+              : 'fr'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -413,7 +499,10 @@ class _BrowserAddLogMealSurfaceState extends State<_BrowserAddLogMealSurface> {
       const AddLogScreen(focus: AddLogFocus.meal);
 }
 
-String _pathForSurface(String surface) => switch (surface) {
+String _pathForSurface(String surface) =>
+    surface.startsWith('notifications-')
+        ? '/notifications'
+        : switch (surface) {
   'onboarding' => '/onboarding',
   'consent' => '/consent',
   'dashboard' => '/dashboard',
@@ -428,6 +517,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
   'reminders' => '/reminders',
+  'notifications' => '/notifications',
   'companion' => '/companion',
   'companion-unavailable' => '/companion-unavailable',
   'amina-chat' => '/amina-chat',
