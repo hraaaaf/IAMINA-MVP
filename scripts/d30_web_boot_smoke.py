@@ -58,6 +58,7 @@ def main():
                             url.startswith("data:") or url.startswith("blob:"))
                 ]
                 if external:
+                    print("D30 external requests blocked:", repr(external[:12]), flush=True)
                     raise AssertionError(
                         f"D30 unexpected external Web request: {external[:4]}"
                     )
