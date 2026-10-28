@@ -28,3 +28,19 @@
 **BLOCKERS:** W01 G1–G7 formal closure and merge; D9 server proof not yet deployed; W02 encrypted patient vault not operational on hosted Web; Neon QA migration denied by security controls; first-login/auth plus historical account treatment; no complete D9 FUE; no reviewer/score. **D9 NOT_VERIFIED** regardless of unit CI green. No Production/no real patient/no Vercel deploy.
 
 **Next:** run exact-head Python/Flutter/backend PG CI of this candidate; fix failures; prepare hosted Web protected path without weakening fail-closed; carry out FUE only on authorized isolated QA, then independent security/privacy/adversarial scoring and conditional merge/postmerge. Do not advance to D10 closure merely because D9 candidate compiles.
+
+
+## Exact-SHA CI correction and closeout of synthetic candidate — 2026-10-28
+
+**Goal:** Web/Django first-use D9 candidate on protected W02 parent. **Result:** 5/5 relevant workflows SUCCESS on the **same code SHA b2c0665f77584a079ab0a974c8f6bb2ff750e053**:
+- [W02 D9 PG16 + Flutter Web + Chrome #40761769612](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761769612) — 2/2 jobs SUCCESS; Python 4/4 static, Django migration drift, generated OpenAPI snapshot, isolated PG16 schema core.0024→0025, Native Bearer D9 tests, synthetic zero-user cleanup, Flutter analyze/D9 tests, Web release build and Chrome guest/non-plaintext regression.
+- [First-use mobile visual #40761779080](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779080) — SUCCESS.
+- [Onboarding CTA Chrome #40761779018](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779018) — SUCCESS.
+- [UI missing routes #40761779488](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779488) — SUCCESS.
+- [UI browser screenshots #40761779517](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40761779517) — SUCCESS.
+
+**Red-to-green:** first [D9 #40760994437](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40760994437) had Flutter Web SUCCESS and PostgreSQL FAILURE **only at the generated-versus-versioned OpenAPI snapshot comparison**, after Django check and migration drift PASS. Fix commit b2c0665f77584a079ab0a974c8f6bb2ff750e053 regenerated the exact snapshot, preserving W02 revision routes and document ingestion; full D9 CI then SUCCESS. **Not a PG migration failure.** No Neon migration or Vercel deployment.
+
+**Evidence boundary:** D9 hosted authenticated **FUE remains NOT_RUN** in the matrix above. Visual CI screenshots do not prove a real logged-in A→B→A, new-device clinical continuity or encrypted clinical Web vault. W01 G1–G7 and QA Neon core.0024/0025 remain open; patient Web fails closed, no clinical patient data, no merge. **D9 CODE CI GREEN; D9 PRODUCT BLOCKED / NOT_VERIFIED**, no score >=9 or Perfection Pass declared.
+
+**Next:** resolve W01 gates and indispensable encrypted Web vault D10 in an isolated security-scoped prerequisite, then perform full D9 hosted FUE in authorized QA (A→B→A, offline/reload, consent, revocation, SQL zero cleanup; FR/AR at 390x844, 768x1024, 1280x900 with paired BEFORE/AFTER), adversarial review/scoring, conditional merge/postmerge and D9 closure. Decision closure order stays D9 → D10 → D11 → D24 → D26 → D30; D10 security prerequisites may be developed before closing D9 without marking D10 product closed.
