@@ -49,6 +49,8 @@ jobs:
           python3 -m pip install --user playwright==1.58.0
           python3 -m playwright install --with-deps chromium
       # Diagnostic run: report exact outbound URLs instead of masking the failure.
+      # D30 browser gate denies Flutter's external font fallback; all other
+      # external attempts still fail the test without making a network call.
       - name: Smoke-test locally served Flutter Web in Chromium
         run: python3 ../scripts/d30_web_boot_smoke.py
       - name: Retain Chromium smoke screenshot
