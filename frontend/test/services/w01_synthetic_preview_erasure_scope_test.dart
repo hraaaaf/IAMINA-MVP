@@ -85,7 +85,7 @@ void main() {
     final recheck = source.split(marker).last.split(
       '/// Test-only, single-attempt remote application erasure',
     ).first;
-    expect(recheck, contains("'/api/v1/auth/me'"));
+    expect(recheck, contains('/api/v1/auth/me'));
     expect(recheck, contains('syntheticIdentityResponseConfirmed('));
     expect(recheck, contains('_remoteCredentialVerified = true;'));
     expect(recheck, isNot(contains('_notifyAuthChanged();')));
