@@ -1,6 +1,7 @@
 import 'package:amina/features/notifications/d2_notification_center_screen.dart';
 import 'package:amina/services/d2_consent_gateway.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 D2ConsentStatus sample({bool enabled = false}) => D2ConsentStatus(
@@ -159,6 +160,60 @@ void main() {
     expect(gateway.previewReads, 0);
     expect(gateway.inboxReads, 0);
     expect(gateway.saves, 0);
+  });
+
+  testWidgets('FR EN AR consent labels and Arabic RTL direction remain honest',
+      (tester) async {
+    for (final caseData in <(Locale, String, TextDirection)>[
+      (const Locale('fr'), 'Notifications IAmina', TextDirection.ltr),
+      (const Locale('en'), 'IAmina notifications', TextDirection.ltr),
+      (const Locale('ar'), 'إشعارات IAmina', TextDirection.rtl),
+    ]) {
+      final gateway = FakeGateway();
+      await tester.pumpWidget(MaterialApp(
+        locale: caseData.$1,
+        supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: D2NotificationCenterScreen(
+          key: ValueKey('d2-${caseData.$1.languageCode}'),
+          gateway: gateway,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text(caseData.$2), findsOneWidget);
+      final title = find.byKey(const Key('d2-inbox-title'));
+      expect(title, findsOneWidget);
+      expect(Directionality.of(tester.element(title)), caseData.$3);
+      expect(gateway.grants, 0, reason: 'Never opt in on first entry');
+      expect(find.byKey(const Key('d2-enable-preview-only')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('failed consent read can recover by explicit retry without opt-in',
+      (tester) async {
+    final gateway = FakeGateway()..failRead = true;
+    await tester.pumpWidget(MaterialApp(
+      home: D2NotificationCenterScreen(gateway: gateway),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('d2-error')), findsOneWidget);
+    expect(gateway.grants, 0);
+    gateway.failRead = false;
+    await tester.tap(find.text('Réessayer'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('d2-error')), findsNothing);
+    final enable = tester.widget<FilledButton>(
+      find.byKey(const Key('d2-enable-preview-only')),
+    );
+    expect(enable.onPressed, isNull);
+    expect(gateway.grants, 0);
+    expect(gateway.previewReads, 0);
+    expect(gateway.inboxReads, 0);
   });
 
   testWidgets('governed preview appears only with server opt-in', (tester) async {
