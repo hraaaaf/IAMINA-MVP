@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
-from django.db import close_old_connections
+from django.db import close_old_connections, connections
 
 from core.models.w02_revision_anchor import W02VaultRevisionAnchor
 from core.native_auth import issue_native_token, revoke_native_tokens
@@ -155,7 +155,10 @@ def test_postgres_two_concurrent_reserves_exactly_one_wins():
         except RevisionAnchorError as exc:
             return exc.code
         finally:
-            close_old_connections()
+            # Postgres TransactionTestCase needs zero worker sessions before
+            # teardown DROP DATABASE. close_old_connections alone preserves
+            # healthy persistent connections (CONN_MAX_AGE=600).
+            connections.close_all()
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes = list(pool.map(lambda _: attempt(), range(2)))
     assert sum(isinstance(x, dict) for x in outcomes) == 1, outcomes
