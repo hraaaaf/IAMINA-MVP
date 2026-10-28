@@ -55,25 +55,6 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
   esac
 fi
 
-# TEMPORARY D30 diagnostic, scoped to this isolated branch and Preview only.
-# Run the same failing Flutter widget test in Vercel so the full traceback is
-# accessible to the agent; never test against Production or mutate a backend.
-if [ "${VERCEL_ENV:-}" = "preview" ] &&
-   [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ] &&
-   [ "${VERCEL_GIT_COMMIT_REF:-}" = "test/d30-local-reenrollment-lock-20261028" ]; then
-  echo "D30 first-use widget diagnostic — Flutter 3.41.0 — isolated Preview"
-  set +e
-  flutter test --no-pub --reporter expanded test/features/d30_local_enrollment_cta_test.dart > /tmp/d30-widget-test.txt 2>&1
-  d30_exit=$?
-  set -e
-  cat /tmp/d30-widget-test.txt
-  echo "D30_WIDGET_TEST_EXIT_CODE=$d30_exit"
-  if [ "$d30_exit" -ne 0 ]; then
-    echo "D30 Preview build blocked: first-use widget test failed" >&2
-    exit "$d30_exit"
-  fi
-fi
-
 # Defensive normalization: some Vercel builds can inherit a legacy project-
 # level API_BASE_URL ending in /api/v1. Flutter services append their own
 # /api/v1 paths, so strip that suffix even when VERCEL_PROJECT_ID is absent.
