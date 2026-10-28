@@ -26,7 +26,7 @@ Confirmation modal
 
 ## Implementation in isolated QA branch
 
-Branch `test/w01-d2-safe-flutter-erasure-20261028`, rooted at Preview HEAD `90bcf7a4`. The client-side UI is gated by compile-time **same-origin Preview**, **remote enrollment**, verified native Django credential, HTTPS immutable `iamina-review-…-achraf-benmoussa-s-projects.vercel.app` host; the BFF independently restricts exact Vercel branch/SHA and `@example.invalid` registration. No Production-facing button. The application DELETE uses current bearer and body `{"confirm":"DELETE MY ACCOUNT"}`, requires HTTP 200, performs zero blind retries, purges five bound local clinical tables before credential retirement; non-200 or uncertain state never claims success.
+Branch `test/w01-d2-safe-flutter-erasure-20261028`, rooted at Preview HEAD `90bcf7a4`. The client-side UI is gated by compile-time **same-origin Preview**, **remote enrollment**, verified native Django credential, HTTPS immutable `iamina-review-…-achraf-benmoussa-s-projects.vercel.app` host; the BFF independently restricts exact Vercel branch/SHA and `@example.invalid` registration. No Production-facing button. The application DELETE uses current bearer and body `{"confirm":"DELETE MY ACCOUNT"}`, requires HTTP 200, performs zero blind retries, purges five bound local clinical tables and the vault-scoped consent evidence before credential retirement; non-200 or uncertain state never claims success.
 
 ## AFTER proof — not yet available
 
