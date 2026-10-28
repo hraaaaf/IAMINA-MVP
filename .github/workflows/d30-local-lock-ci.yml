@@ -11,6 +11,7 @@ on:
       - frontend/test/services/d30_api_egress_denial_test.dart
       - scripts/d30_web_enrollment_e2e.py
       - frontend/test/features/d30_local_enrollment_cta_test.dart
+      - frontend/vercel_build.sh
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
 
@@ -50,6 +51,15 @@ jobs:
           flutter test --no-pub test/services/app_lock_service_test.dart
           flutter test --no-pub test/services/patient_vault_session_controller_test.dart
           flutter test --no-pub test/services/d30_api_egress_denial_test.dart
+      - name: Verify Vercel Web builds vendor CanvasKit for offline use
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('vercel_build.sh').read_text()
+          expected = 'flutter build web --release --no-web-resources-cdn'
+          assert source.count(expected) == 2, 'Vercel release paths must bundle CanvasKit locally'
+          print('D30 release asset policy PASS: Vercel Web never needs CanvasKit CDN')
+          PY
       - name: Build Flutter Web offline-capable assets without deployment
         run: flutter build web --release --no-web-resources-cdn
       - name: Install isolated Chromium smoke dependencies
