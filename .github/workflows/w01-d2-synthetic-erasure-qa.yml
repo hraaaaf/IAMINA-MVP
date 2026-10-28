@@ -1,5 +1,5 @@
 name: W01 D2 synthetic Flutter erasure QA
-# Final QA snapshot includes vault-scoped consent evidence cleanup.
+# Final QA checks vault consent evidence cleanup and HTML-200 denial.
 on:
   push:
     branches:
