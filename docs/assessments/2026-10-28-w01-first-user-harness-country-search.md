@@ -122,3 +122,10 @@ Source confirmation at **exact deployed SHA `06b2ad57e18e565d0c8e01c28a260541cf7
 6. Quatrième porte : QA final SQL en lecture seule + audit W01 ; le produit D9 reste bloqué jusqu'au coffre chiffré D10 clinique et aux preuves de restauration multi-appareil.
 
 **État réel :** préparation documentaire uniquement, **aucun login A/B**, aucune mutation Neon, aucun nouveau compte, aucun déploiement. **BLOCKED** par la candidate auth QA séparée et l'accès authentifié navigateur, pas par une CI en cours. Le verrou `encrypted_web_patient_vault_unavailable` ne doit pas être retiré.
+
+
+## 28/10/2026 — QA auth static CI 6/6 GREEN
+
+**Result:** targeted code SHA `9fe6ab6ef5b2d28a33cfa47a1b5c7bcb0a5b3a74`, GitHub Actions [#40784151480](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40784151480) **SUCCESS**, job `web-first-user-harness-static` **6 tests / 6 PASS / 0 FAIL**, including 3 new QA-only contract guards: Preview/branch/exact commit SHA, restricted synthetic email + four-field DB attestation, and default-off remote Web auth. CI runs without browser login or backend writes. No changes to runtime application, Vercel deployment, Neon, Production, or patient data.
+
+**Status:** code/static QA contract GREEN; **real hosted A→B→A NOT_RUN**, candidate Web QA opt-in not deployed and clinical Web vault still unavailable. The historical Preview remains local-login-only. Before live QA opt-in: explicit Vercel deployment approval, signed-in browser QA credentials entered securely, check exact deployed commit and all four Neon identity fields, then authenticated isolation/revocation checks. W01/G5 and D9 product OPEN, patient NO-GO.
