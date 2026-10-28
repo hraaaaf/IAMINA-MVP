@@ -1,0 +1,39 @@
+name: W01 D2 exact synthetic erasure QA
+on:
+  push:
+    branches:
+      - test/w01-d2-erasure-email-guard-20261028
+    paths:
+      - .github/workflows/w01-d2-erasure-email-guard-qa.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze Flutter
+        run: flutter analyze --no-fatal-infos
+      - name: Test synthetic erasure refusal and scope
+        run: flutter test --no-pub test/services/w01_synthetic_preview_erasure_scope_test.dart
+      - name: Build Flutter Web
+        run: flutter build web --release --no-web-resources-cdn
