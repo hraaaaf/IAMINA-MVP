@@ -42,3 +42,12 @@ Audit **en lecture seule**, sans inscription ni SQL d'écriture :
 - **Gate** : aucun replay du signup, aucun effacement direct SQL, aucun test hébergé créant un compte sur production. Le garde PR auto-signup #1162 reste en DRAFT et n'est pas sur la branche base ; PR/merge non autorisés automatiquement.
 
 **Next :** vérifier hors secrets l'empreinte d'identité de la connexion Production via endpoint d'attestation BFF/API prévu, puis faire correspondre exactement à Neon en lecture seule. Si le système n'expose aucune attestation fiable sans secret, **STOP — human/security gate**, ne pas inventer de correspondance ni demander à créer un compte.
+
+
+## 28/10/2026 — Production API runtime log correlation (read only)
+
+Vercel runtime logs queried **read-only and aggregated by requestPath**: project `prj_Pn9FnyconF3h2w9gOU74iV98kJoU` (`iamina-certified`), deployment `dpl_9tPKqRpMiyEMhCtQ99Jc5QV2ew77`, environment `production`, exact UTC window `2026-10-28T21:02:35Z` to `2026-10-28T21:03:10Z`. Vercel returned **two /api/v1/auth/register log entries**. This window overlaps the cancelled first-user diagnostic at 21:02:42–21:02:57 UTC. No user identifiers, tokens, request bodies or PII fetched. **Two log entries are not proof of two requests, two 2xx statuses, or two successfully persisted accounts.**
+
+Combined with the verified old frontend `iamina-review.vercel.app` production deployment SHA `60de80ec` and build-script target `iamina-certified.vercel.app`, this is **strong API-routing correlation**, NOT proof of the exact DB connection or user identity. The independent read-only Production Neon check documented earlier found no matching `ux95-signup-` account created in that exact window, and the precise remote account/DB attribution remains unresolved.
+
+**NO-GO on automatic account-creating replay**. Never delete existing Production synthetic users without verified attribution, supported application deletion endpoint and explicit authorization. Next: obtain a non-sensitive, owner-authorized DB identity attestation for the exact historical deployed backend (or accept that historical DB attribution is not recoverable), then use W01 synthetic QA only.
