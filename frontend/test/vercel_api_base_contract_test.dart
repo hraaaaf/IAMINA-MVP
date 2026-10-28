@@ -45,12 +45,23 @@ void main() {
     );
   });
 
-  test('Vercel review build enables native account enrollment for hosted testing', () {
+  test('Preview remote accounts default OFF; opt-in is branch- and host-scoped', () {
     final source = File('vercel_build.sh').readAsStringSync();
-
-    expect(source, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true'));
-    expect(
-      source,
+    final preview = source.split('    preview)\n').last.split('    production)\n').first;
+    final production = source.split('    production)\n').last.split('    *)\n').first;
+    expect(preview, contains('IAMINA_PREVIEW_SAME_ORIGIN_API=true'));
+    expect(preview, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false'));
+    expect(preview, contains('D2_WEB_SYNTHETIC_ONLY_V1'));
+    expect(preview, contains('VERCEL_GIT_COMMIT_REF'));
+    expect(preview, contains('integration/w01-d2-preview-only-20261027'));
+    expect(preview, contains('VERCEL_URL'));
+    expect(preview, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true'));
+    expect(preview.indexOf('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false'),
+      lessThan(preview.indexOf('D2_WEB_SYNTHETIC_ONLY_V1')));
+    expect(preview, contains('refusing unknown synthetic Preview auth mode'));
+    expect(production, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true'));
+    expect(production, isNot(contains('D2_WEB_SYNTHETIC_ONLY_V1')));
+    expect(source,
       contains(
         r'--dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"',
       ),
