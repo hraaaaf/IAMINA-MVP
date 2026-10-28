@@ -43,7 +43,9 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    final button = find.byType(FilledButton);
+    // FilledButton.icon is implemented by a private subclass in Flutter;
+    // find.byType(FilledButton) checks the exact runtimeType and misses it.
+    final button = find.byWidgetPredicate((widget) => widget is FilledButton);
     expect(button, findsOneWidget);
     await tester.ensureVisible(button);
     await tester.pumpAndSettle();
