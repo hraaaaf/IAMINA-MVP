@@ -6,8 +6,9 @@ import { proxy, safePath, requestPath, previewOnlyAndSameOrigin, resolvePreviewA
 
 const envKeys = [
   'VERCEL_ENV','VERCEL_PROJECT_ID','IAMINA_REVIEW_PREVIEW_API_BASE_URL',
-  'VERCEL_OIDC_TOKEN','VERCEL_GIT_COMMIT_REF',
-  'IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN'
+  'VERCEL_OIDC_TOKEN','VERCEL_GIT_COMMIT_REF','VERCEL_GIT_COMMIT_SHA',
+  'IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN',
+  'IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA'
 ];
 const origin = 'https://iamina-review-goowsfx8j-achraf-benmoussa-s-projects.vercel.app';
 const apiOrigin = 'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app';
@@ -18,7 +19,9 @@ function envSet() {
   process.env.VERCEL_OIDC_TOKEN = 'a.test.token';
   // No test inadvertently activates synthetic remote auth by inheritance.
   delete process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN;
+  delete process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA;
   delete process.env.VERCEL_GIT_COMMIT_REF;
+  delete process.env.VERCEL_GIT_COMMIT_SHA;
 }
 function req(path='health', opts={}) {
   return {
@@ -339,6 +342,8 @@ test('synthetic remote Preview auth is OFF without exact opt-in', async () => {
 test('opt-in synthetic auth fails closed on wrong Git branch before OIDC or egress', async () => {
   await withEnv(async () => {
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
     process.env.VERCEL_GIT_COMMIT_REF='main';
     let calls=0;
     globalThis.fetch=async()=>{calls++;throw Error('no egress');};
@@ -353,9 +358,29 @@ test('opt-in synthetic auth fails closed on wrong Git branch before OIDC or egre
   });
 });
 
+test('synthetic mode rejects absent or wrong SHA before OIDC and API egress', async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    let upstream=0;
+    globalThis.fetch=async()=>{upstream++;throw Error('must not egress');};
+    for(const pinned of [undefined,'b'.repeat(40),'invalid-sha']){
+      if(pinned===undefined)delete process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA;
+      else process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA=pinned;
+      const output=res();
+      await proxy(req('health'),output,async()=>{throw Error('no OIDC');});
+      assert.equal(output.statusCode,503,String(pinned));
+    }
+    assert.equal(upstream,0);
+  });
+});
+
 test('synthetic auth rejects real email and Firebase / reset before any upstream egress', async()=>{
   await withEnv(async()=>{
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
     process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
     let calls=0;
     globalThis.fetch=async()=>{calls++;throw Error('must not egress');};
@@ -383,6 +408,8 @@ test('synthetic auth rejects real email and Firebase / reset before any upstream
 test('synthetic signup fails closed if any Neon identity field changes', async()=>{
   await withEnv(async()=>{
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
     process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
     const body=Buffer.from(JSON.stringify({
       email:'w01-synthetic@example.invalid',password:'not-a-real-password',
@@ -412,6 +439,8 @@ test('synthetic signup fails closed if any Neon identity field changes', async()
 test('synthetic D2 and logout fail closed on changed Neon before patient egress',async()=>{
   await withEnv(async()=>{
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
     process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
     let calls=0;
     globalThis.fetch=async(url)=>{
@@ -445,6 +474,8 @@ test('synthetic D2 and logout fail closed on changed Neon before patient egress'
 test('synthetic signup with exact Neon identity forwards only after OIDC and body checks', async()=>{
   await withEnv(async()=>{
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
     process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
     const payload=Buffer.from(JSON.stringify({
       email:'w01-synthetic@example.invalid',password:'not-a-real-password',
@@ -486,6 +517,8 @@ test('synthetic signup with exact Neon identity forwards only after OIDC and bod
 test('synthetic mode preserves Django 422 invalid-body preflight after identity proof', async()=>{
   await withEnv(async()=>{
     process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
     process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
     const input=Readable.from([Buffer.from('{}')]);
     Object.assign(input,req('auth/register',{method:'POST',headers:{
