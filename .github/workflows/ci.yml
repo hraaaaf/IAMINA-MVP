@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   changes:
@@ -26,6 +26,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Enforce workflow concurrency policy
+        run: node scripts/tests/check_workflow_concurrency.mjs
 
       - name: Classify changed paths
         id: scope

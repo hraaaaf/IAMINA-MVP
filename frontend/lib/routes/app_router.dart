@@ -8,9 +8,11 @@ import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
 import '../features/auth/w01_read_only_preview_screen.dart';
+import '../features/auth/w01_synthetic_qa_erasure_screen.dart';
 import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/notifications/d2_notification_center_screen.dart';
 import '../modules/module_registry.dart';
 import '../services/app_lock_service.dart';
 import '../services/auth_service.dart';
@@ -137,6 +139,14 @@ AppRouterHolder createAppRouterHolder({
       );
       if (requiresHostedRemoteLogin && !isLoginPage) {
         return '/login';
+      }
+
+      // Synthetic-only cleanup route is deliberately outside onboarding and
+      // app-lock routing. It renders NO medical data. The verified native
+      // session, exact Preview host/flags, application bearer and synthetic
+      // @example.invalid email are rechecked before any remote DELETE.
+      if (path == '/w01-qa-erasure') {
+        return authService.canEraseSyntheticPreviewAccount ? null : '/login';
       }
 
       // W01 Preview: optional lock permits PUBLIC read-only exploration only.
@@ -316,6 +326,15 @@ AppRouterHolder createAppRouterHolder({
           },
         ),
       ),
+      // Never add to module navigation or production menus.
+      GoRoute(
+        path: '/w01-qa-erasure',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const W01SyntheticQaErasureScreen(),
+        ),
+      ),
       GoRoute(
         path: '/onboarding',
         parentNavigatorKey: _rootNavigatorKey,
@@ -354,6 +373,15 @@ AppRouterHolder createAppRouterHolder({
             pageBuilder: (context, state) =>
                 _createPage(state, r.builder(state)),
           ),
+
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const D2NotificationCenterScreen(),
+        ),
+      ),
 
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

@@ -1,5 +1,25 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## 28/10/2026 — LOT de préparation Web : alignement FUE / intégration PR #1153 (tests hébergés différés)
+
+**Instruction propriétaire :** reporter les tests hébergés A/B et poursuivre le développement Web. Ne pas interpréter ce report comme une dispense de certification ou une autorisation de fusion/déploiement.
+
+**Source constatée avant ce lot :** PR #1153 DRAFT, branche `integration/w01-d2-preview-only-20261027`, HEAD `f3a82f88327faa70ce10cd77cee6073ae80cb4fa` ; compare GitHub `main...HEAD` : 244 commits ahead / 2 behind, 214 chemins changés ; compare inverse `HEAD...main` : les 2 commits divergents modifient seulement **9 documents de gouvernance**. Le contenu de ces neuf documents est aligné exactement sur `main` en un commit documentaire, **sans prétendre intégrer l'historique des 2 commits main**. Règle FUE complète pour toutes les décisions produit D + gates de sécurité/clinique/privacy spécifiques, sans reviewer indépendant systématique pour un D. Aucun changement de code exécutable, API, schéma, CI YAML ni UI sur ce lot.
+
+**État des tests reportés :** sur Neon Preview synthétique `noisy-truth-00115950 / br-sweet-frog-b9ok6ptp / iamina925_empty`, derniers contrôles SQL = 2 comptes fictifs A/B, 2 profils, 0 reçu D2 et 0 notice D2 ; aucune suppression applicative confirmée. Ils sont préservés jusqu'à reprise du test/effacement applicatif. Aucun `auth_user=0` revendiqué. Le dernier HEAD `f3a82f88` avait six gates techniques Web SUCCESS, bilan GitHub 63 SUCCESS / 4 FAILURE / 1 SKIPPED / 0 ACTIVE, ce qui ne certifie pas automatiquement le futur commit documentaire.
+
+**Goal du lot indépendant :** éliminer les contradictions FUE vs ancien Reviewer dans la candidate W01+D2 ; **succès observable** = neuf blobs Git identiques à `main`, diff limité aux neuf fichiers + roadmap + canonique, CI exact nouveau HEAD contrôlée. **Preuve** = GitHub blob SHA/diff et état du run. Il ne s'agit pas d'une clôture D2. **Next** : audit du diff release 214 fichiers et des 2 commits de gouvernance restés divergents dans l'historique, correction ciblée des vrais écarts sans fusion, puis reprise ultérieure des tests A/B → suppression par endpoints → SQL zéro ; revue privacy/clinique, retention J+7, GO merge et GO Vercel distincts restent bloquants.
+
+
+## W01+D2 — 28/10/2026 — Web candidate 6/6 gates GREEN, release NO-GO
+
+**Verified technical HEAD `8a9f7f19` (PR #1153 DRAFT):** six exact-SHA Web workflows SUCCESS (general CI Flutter/Django/PostgreSQL, BFF, Web→PostgreSQL, W02 Chrome A/B/A, PWA update/recovery, PWA Chrome persistence `sharedIndexedDb` seed/reload/installability). Snapshot: **64 SUCCESS / 3 FAILURE / 1 SKIPPED / 0 ACTIVE**; non-Web gates remain red. [Canonical evidence](assessments/2026-10-27-w01-d2-preview-integration.md). The immutable Vercel Web Preview remains READY on deployed **`8a417041`**, not `8a9f7f19`; Production unchanged and no merge.
+
+**Neon synthetic account cleanup:** A then B deleted **through the app**; independently observed users=0, base/diabetes profiles/logs=0, D2 notices/receipts=0; **29 django_session rows retained** with unknown relationship to those accounts. Synthetic Django regression now proves stale A Bearer/cookie 401 after deletion, B stays 200; hosted replay not certified. The D2 screenshot CI produced six **isolated synthetic** FR/AR/OFF/ON/ERROR states at **390×844** and **1280×900**, not an authenticated hosted pixel comparison. Anonymous Preview auth and D2 consent GET both reject 401.
+
+**BLOCKERS before W01+D2 closeout:** concurrent two-account hosted D2 consent/inbox/isolation and app cleanup with SQL zero; live stale-session replay; hosted authenticated BEFORE/AFTER visual and accessibility certification; independently reviewed security/privacy/clinical and retention J+7 scheduler, CNDP/processor evidence; independent PR review/merge GO and distinct Production deployment GO. **No global % asserted.** This entry is the current bounded technical-gate snapshot; historical W01 entries below retain their original dated meaning.
+
+
 ## W01-G3/G7 — fermeture du flux mot de passe pendant réconciliation (27/10/2026)
 
 **Problème prouvé par lecture** : même avec `ErasureAttempt` bloquant Bearer/session/login, `/auth/password/reset/request` pouvait encore envoyer un lien, et `/auth/password/reset/confirm` acceptait un token émis avant le claim et pouvait écrire un nouveau hash de mot de passe. **Correctif candidat** : ne pas envoyer de lien au compte en effacement tout en gardant la réponse générique anti-énumération ; rejeter token préexistant avec erreur générique avant modification de mot de passe. Tests ORM HTTP synthétiques `pending`, `in_progress`, `review_required`, absence email, mot de passe ancien intact, et contrôle non-régression du reset normal. Aucun état d'effacement ni Firebase modifié. **Succès à démontrer par CI sur nouveau SHA**. W01 NO-GO, G5 OIDC différé, G6 Neon projet jetable gate et G2 Production gate.

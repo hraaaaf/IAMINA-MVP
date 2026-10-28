@@ -34,6 +34,68 @@ bool demoUsesLocalAuditSession({
   required bool remoteAccountEnrollmentEnabled,
 }) => offlineDemo || remoteAccountEnrollmentEnabled;
 
+/// Synthetic Preview account-erasure UI is inaccessible from Production,
+/// local audit sessions, arbitrary domains or unverified remote accounts.
+bool mayEraseSyntheticPreviewAccount({
+  required bool sameOriginPreview,
+  required bool remoteAccountEnrollmentEnabled,
+  required bool hasVerifiedNativeCredential,
+  required Uri browserUri,
+}) =>
+    sameOriginPreview && remoteAccountEnrollmentEnabled &&
+    hasVerifiedNativeCredential && browserUri.scheme == 'https' &&
+    browserUri.userInfo.isEmpty &&
+    RegExp(r'^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects[.]vercel[.]app$')
+        .hasMatch(browserUri.host);
+
+/// Never erase a real user from the synthetic QA UI even if a bearer exists.
+bool syntheticPreviewEmailAllowed(String? email) =>
+    email != null &&
+    RegExp(r'^[a-z0-9][a-z0-9._-]{0,60}@example\.invalid$').hasMatch(email);
+
+/// HTTP 200 alone may be an SSO HTML challenge. Require the exact backend
+/// JSON erasure acknowledgment before retiring any local patient identity.
+bool syntheticErasureResponseConfirmed({
+  required int statusCode,
+  required String? contentType,
+  required String body,
+}) {
+  if (statusCode != 200 ||
+      !(contentType ?? '').toLowerCase().contains('application/json')) {
+    return false;
+  }
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> &&
+        decoded['detail'] == 'Account and all associated data deleted.';
+  } on FormatException {
+    return false;
+  }
+}
+
+/// The restored bearer must be bound to the same active Django identity.
+/// A protected SSO HTML page, wrong user or real email can never re-enable QA.
+bool syntheticIdentityResponseConfirmed({
+  required int statusCode,
+  required String? contentType,
+  required String body,
+  required int expectedUserId,
+}) {
+  if (statusCode != 200 || expectedUserId <= 0 ||
+      !(contentType ?? '').toLowerCase().contains('application/json')) {
+    return false;
+  }
+  try {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> &&
+        decoded['id'] == expectedUserId &&
+        syntheticPreviewEmailAllowed(decoded['email'] is String
+            ? decoded['email'] as String : null);
+  } on FormatException {
+    return false;
+  }
+}
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -178,6 +240,14 @@ class AuthService extends ChangeNotifier {
       _auditSession || _nativeToken == null ? null : _nativeAccountId;
   bool get hasRemoteApiCredential =>
       _nativeToken != null && _nativeToken!.isNotEmpty;
+  bool get canEraseSyntheticPreviewAccount => mayEraseSyntheticPreviewAccount(
+    sameOriginPreview: kIaminaPreviewSameOriginApi,
+    remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+    hasVerifiedNativeCredential: !_auditSession && _remoteCredentialVerified &&
+        _nativeToken != null && _nativeAccountId != null,
+    browserUri: Uri.base,
+  );
+
   bool get isAnonymous =>
       _auditSession ||
       (!_localSessionEnrolled &&
@@ -368,6 +438,126 @@ class AuthService extends ChangeNotifier {
       throw registrationFailureForStatus(response.statusCode);
     }
     await _acceptAuthResponse(response, generation);
+  }
+
+  /// Recover a *cached* synthetic QA session after a Flutter Web reload.
+  /// No lock, onboarding or medical access is granted until live Django
+  /// verifies the exact existing bearer/user binding and synthetic email.
+  Future<void> reverifySyntheticPreviewForErasure() async {
+    final token = _nativeToken;
+    final id = _nativeAccountId;
+    if (_auditSession || token == null || id == null ||
+        !mayEraseSyntheticPreviewAccount(
+          sameOriginPreview: kIaminaPreviewSameOriginApi,
+          remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+          hasVerifiedNativeCredential: true,
+          browserUri: Uri.base,
+        )) {
+      throw StateError('Synthetic Preview recovery unavailable');
+    }
+    final generation = _authGeneration;
+    final response = await _httpClient.get(
+      Uri.parse('${resolveIaminaApiOrigin(kAuthBaseUrl)}/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || token != _nativeToken ||
+        id != _nativeAccountId ||
+        !syntheticIdentityResponseConfirmed(
+          statusCode: response.statusCode,
+          contentType: response.headers['content-type'],
+          body: response.body,
+          expectedUserId: id,
+        )) {
+      throw StateError('Synthetic Preview identity verification failed');
+    }
+    // Identity re-verification changes only this transient QA capability.
+    // _notifyAuthChanged() advances AuthEpoch and tears down the physical
+    // patient vault, disposing its GoRouter before the cleanup navigation.
+    // Do NOT emit an auth transition: no bearer, owner or clinical scope changed.
+    // context.go('/w01-qa-erasure') evaluates the guard using this flag.
+    _remoteCredentialVerified = true;
+  }
+
+  /// Test-only, single-attempt remote application erasure, followed by local
+  /// vault purge and credential retirement. HTTP ambiguity never means PASS.
+  Future<void> eraseSyntheticPreviewAccount({
+    required Future<void> Function() purgeLocalVault,
+  }) async {
+    if (!canEraseSyntheticPreviewAccount) {
+      throw StateError('Synthetic Preview erasure is unavailable');
+    }
+    final token = _nativeToken!;
+    final generation = _authGeneration;
+    // Fail closed before erasure: prove this exact bearer belongs to the
+    // bound native user AND to an @example.invalid QA identity.
+    final me = await _httpClient.get(
+      Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || _nativeToken != token ||
+        me.statusCode != 200 ||
+        !(me.headers['content-type'] ?? '').toLowerCase().contains('application/json')) {
+      throw StateError('Synthetic identity preflight unverified');
+    }
+    final Object? identity;
+    try {
+      identity = jsonDecode(me.body);
+    } on FormatException {
+      throw StateError('Malformed synthetic identity response');
+    }
+    if (identity is! Map<String, dynamic> ||
+        identity['id'] != _nativeAccountId ||
+        !syntheticPreviewEmailAllowed(identity['email'] is String
+            ? identity['email'] as String : null)) {
+      throw StateError('Refusing erasure of non-synthetic account');
+    }
+    final response = await _httpClient.delete(
+      Uri.parse(resolveIaminaApiOrigin(kAuthBaseUrl) + '/api/v1/account'),
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'confirm': 'DELETE MY ACCOUNT'}),
+    ).timeout(const Duration(seconds: 25));
+    if (generation != _authGeneration || _nativeToken != token) {
+      throw StateError('Account changed during deletion: manual review');
+    }
+    if (!syntheticErasureResponseConfirmed(
+      statusCode: response.statusCode,
+      contentType: response.headers['content-type'],
+      body: response.body,
+    )) {
+      throw StateError('Server erasure not confirmed by application JSON');
+    }
+    Object? localError;
+    try {
+      await purgeLocalVault();
+    } catch (error) {
+      localError = error;
+    } finally {
+      _authGeneration++;
+      _auditSession = false;
+      _nativeToken = null;
+      _nativeAccountId = null;
+      _remoteCredentialVerified = false;
+      _localSessionEnrolled = false;
+      _notifyAuthChanged();
+      await _withCredentialStorage(() async {
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+        await _storage.delete(key: _localSessionKey);
+      });
+    }
+    if (localError != null) {
+      throw StateError('Server erased, but local test vault purge unverified');
+    }
   }
 
   Future<void> signOut() async {

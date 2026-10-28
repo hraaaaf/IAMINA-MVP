@@ -44,26 +44,17 @@ Use short-lived prefixes such as `feature/`, `fix/`, `docs/`, or `chore/`.
 
 One roadmap unit should normally map to one focused branch and one PR.
 
-## Mandatory Builder → Reviewer → Certifier workflow
+## Mandatory Builder → full Decision FUE → evidence-based Certifier workflow
 
-Every roadmap LOT, P-level remediation unit, hotfix or governance change must follow the repository-owned team protocol in `AGENTS.md` and `.agents/README.md`:
+`AGENTS.md` and `docs/QUALITY_SCORING_POLICY.md` are normative. For **every product decision D**, the Builder must execute a **FUE (FIRST USER EXPERIENCE)** over **100% of the D's in-scope functionality** rather than waiting for a mandatory independent Reviewer. A FUE is a feature-by-feature first-user journey in actual Flutter Web/PWA (FR/AR RTL, 390×844/768×1024/1280×900, click/touch, keyboard, navigation, negative/recovery and storage/account behavior where relevant).
 
-1. **Builder** inspects, reproduces, defines acceptance criteria, implements and prepares evidence.
-2. **Applicable Reviewer(s)** independently review the final behavior/diff using the relevant `.skills/*/SKILL.md` procedures. Blocking findings return the LOT to the Builder.
-3. **Release Certifier** independently verifies reviewer closure, exact-head gates, final diff hygiene, canonical documentation and merge readiness.
-4. **Merge** uses expected-head SHA locking when supported.
-5. **Post-merge verification** on `main` is required before a LOT may be declared 100% complete.
+1. Builder defines the full D inventory, acceptance criteria and required FUE scenarios; implements and records focused/negative tests.
+2. An adversarial pass challenges the result; then FUE records for each D feature: expected → observed → screenshot/log/test evidence → PASS/FAIL/NOT_RUN. **100% of required cases must have an observed PASS**. No independent Reviewer is required *just because the work is a D*; no static test or 9/9 CI may replace FUE.
+3. Release Certification independently re-checks the **evidence**, score caps, final FUE verdict and exact-HEAD CI in a fresh pass. The same executor may perform isolated passes but must never claim independent review and is score-capped at 9.4.
+4. Any risk-specific clinical/privacy/security/database reviewer or human approval is still mandatory **where risk and established policy require it**; no FUE can bypass safety gates.
+5. Merge uses expected-head SHA locking where supported; verify `main` and post-merge CI before claiming 100%.
 
-The Builder may not certify its own LOT. Prefer separate agents when orchestration supports them. If only one runtime/session is available, Builder, Reviewer and Certifier must still be executed as explicit isolated passes; Reviewer and Certifier must re-read evidence rather than inheriting Builder conclusions.
-
-Mandatory skills for every LOT:
-
-- `.skills/lot-execution/SKILL.md`;
-- `.skills/release-certification/SKILL.md`.
-
-Additional skills/reviewers are mandatory according to `.agents/README.md` when UX/UI, clinical safety, database/migrations or security/privacy/egress surfaces are touched.
-
-A code or documentation change after certification changes the head SHA and invalidates stale exact-head evidence. Re-run the applicable gates before merge.
+For non-D LOTs/hotfix/governance, use a Builder → critical evidence review → Release Certification chain. Mandatory skills for each relevant LOT: `.skills/lot-execution/SKILL.md` and `.skills/release-certification/SKILL.md`; include `.skills/ux-ui-certification/SKILL.md` for visual/interaction work. After any code or documentation change, revalidate all applicable exact-HEAD gates.
 
 ## Mandatory quality scoring and verification
 
@@ -73,7 +64,7 @@ A code or documentation change after certification changes the head SHA and inva
 - The retained score is always the lower admissible score after applicable caps, never an average.
 - A LOT score is the lowest retained material-step score, never an average across steps.
 - A score gap greater than `0.5` requires investigation, remediation/justification, rerun of affected evidence, and rescore.
-- `10/10` is exceptional; `9.5+` requires genuine independent review.
+- `10/10` is exceptional; `9.5+` requires genuine independent review **to claim that exceptional score**, not as a generic D gate.
 - Same executor + adversarial reviewer is automatically capped at `9.4/10`.
 - Required red test or missing/stale required proof caps at `7.9/10`.
 - Demonstrated regression caps at `6.9/10` until remediated and rerun.
@@ -112,7 +103,7 @@ A PR should state:
 6. Perfection Pass result before VERIFIED;
 7. any manual verification still required;
 8. which canonical docs must change at closeout;
-9. Builder identity/pass, applicable Reviewer verdict(s), and Release Certifier verdict.
+9. Builder pass, **for D: exhaustive FUE feature matrix, coverage and FUE_PASS/FUE_NO_GO**, any risk-specialist verdicts, and Release Certifier verdict.
 
 Keep PRs focused. Large diffs are acceptable when a coherent cleanup cannot safely be split, but explain why.
 

@@ -8,12 +8,14 @@ from types import SimpleNamespace
 import firebase_admin.auth
 import pytest
 from django.contrib.auth.models import User
+from django.test import Client
 from ninja.errors import HttpError
 
 from core.api.v1 import account
 from core.models import BasePatientProfile
 from core.models.erasure_attempt import ErasureAttempt
 from core.models.erasure_record import ErasureRecord
+from core.native_auth import issue_native_token
 
 
 @pytest.fixture
@@ -100,6 +102,64 @@ def test_native_user_requires_no_firebase_admin_call(monkeypatch, isolated_erasu
     assert intent.firebase_uid_snapshot == ""
     assert intent.completed_at is not None
     assert isolated_erasure == ["hooks", "audit", "logout"]
+
+
+@pytest.mark.django_db
+def test_native_app_erasure_rejects_old_bearer_and_cookie_without_affecting_b(
+    isolated_erasure,
+):
+    """Ephemeral Django test DB: stale A credentials fail closed after app erase.
+
+    This is NOT replay of an actual hosted Preview token or proof that all
+    django_session rows have been physically removed.
+    """
+    a = User.objects.create_user(
+        username="w01-revocation-a@example.invalid",
+        email="w01-revocation-a@example.invalid",
+        password="SyntheticOnlyPass!2026",
+    )
+    b = User.objects.create_user(
+        username="w01-revocation-b@example.invalid",
+        email="w01-revocation-b@example.invalid",
+        password="SyntheticOnlyPass!2026",
+    )
+    token_a = issue_native_token(a)
+    token_b = issue_native_token(b)
+    a_id = a.pk
+    b_id = b.pk
+
+    cookie_a = Client()
+    cookie_a.force_login(a)
+    cookie_b = Client()
+    cookie_b.force_login(b)
+    direct = Client()
+
+    def bearer(token):
+        return direct.get(
+            "/api/v1/auth/me",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+    assert bearer(token_a).status_code == 200
+    assert bearer(token_b).status_code == 200
+    assert cookie_a.get("/api/v1/auth/me").status_code == 200
+    assert cookie_b.get("/api/v1/auth/me").status_code == 200
+
+    result = account.delete_account(
+        _request(a), account.DeleteConfirmSchema(confirm="DELETE MY ACCOUNT")
+    )
+    assert result["detail"] == "Account and all associated data deleted."
+    assert not User.objects.filter(pk=a_id).exists()
+    assert not BasePatientProfile.objects.filter(patient_id=a_id).exists()
+    assert User.objects.filter(pk=b_id).exists()
+
+    # Preserve the old cookie on purpose (the test fixture bypasses logout).
+    # Authentication must still reject deleted A, not just a cleared browser.
+    assert bearer(token_a).status_code == 401
+    assert cookie_a.get("/api/v1/auth/me").status_code == 401
+    assert bearer(token_b).status_code == 200
+    assert cookie_b.get("/api/v1/auth/me").status_code == 200
+
 
 
 @pytest.mark.django_db

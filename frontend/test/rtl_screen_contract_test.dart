@@ -29,6 +29,11 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/auth/w01_read_only_preview_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/w01-qa-erasure',
+    widget: 'W01SyntheticQaErasureScreen',
+    source: 'lib/features/auth/w01_synthetic_qa_erasure_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/app-lock/setup',
     widget: 'AppLockSetupScreen',
     source: 'lib/features/auth/app_lock_setup_screen.dart',
@@ -117,6 +122,11 @@ const _screenRegistry = <_RtlScreenEntry>[
     route: '/reminders',
     widget: 'RemindersScreen',
     source: 'lib/features/reminders/reminders_screen.dart',
+  ),
+  _RtlScreenEntry(
+    route: '/notifications',
+    widget: 'D2NotificationCenterScreen',
+    source: 'lib/features/notifications/d2_notification_center_screen.dart',
   ),
   _RtlScreenEntry(
     route: '/journal/:id/edit',

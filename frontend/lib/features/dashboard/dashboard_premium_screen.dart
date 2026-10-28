@@ -391,8 +391,9 @@ class _PremiumBrandHeader extends StatelessWidget {
         ),
         IconButton(
           key: const ValueKey('dashboard-reminders-action'),
+          tooltip: _t(context, 'Rappels', 'Reminders', 'التذكيرات'),
           onPressed: () => context.go('/reminders'),
-          icon: const Icon(Icons.notifications_none_rounded),
+          icon: const Icon(Icons.event_note_outlined),
           style: IconButton.styleFrom(
             minimumSize: const Size(48, 48),
             backgroundColor: AminaVisualLanguage.controlSurface(context),

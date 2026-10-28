@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -122,6 +123,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+                                  _notificationAccessCard(),
+                                  const SizedBox(height: 22),
                                   form,
                                   const SizedBox(height: 22),
                                   list,
@@ -131,7 +134,17 @@ class _RemindersScreenState extends State<RemindersScreen> {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(flex: 6, child: form),
+                                Expanded(
+                                  flex: 6,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      _notificationAccessCard(),
+                                      const SizedBox(height: 22),
+                                      form,
+                                    ],
+                                  ),
+                                ),
                                 const SizedBox(width: 24),
                                 Expanded(flex: 4, child: list),
                               ],
@@ -143,6 +156,51 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _notificationAccessCard() {
+    return Container(
+      key: const Key('d2-notification-entry'),
+      padding: const EdgeInsets.all(18),
+      decoration: AminaVisualLanguage.cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.notifications_none_outlined,
+                  color: AminaVisualLanguage.actionGreen),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _rt(context, 'Notifications IAmina',
+                      'IAmina notifications', 'إشعارات IAmina'),
+                  style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(_rt(context,
+              'Gérez l’accord pour de futurs aperçus non urgents. Les alertes automatiques et les notifications du navigateur restent désactivées.',
+              'Manage consent for future non-urgent previews. Automatic alerts and browser notifications remain disabled.',
+              'إدارة الموافقة على المعاينات غير العاجلة مستقبلاً. التنبيهات التلقائية وإشعارات المتصفح معطّلة.')),
+          const SizedBox(height: 12),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton.icon(
+              key: const Key('d2-open-notification-center'),
+              onPressed: () => context.push('/notifications'),
+              icon: const Icon(Icons.tune_rounded),
+              label: Text(_rt(context, 'Gérer les préférences',
+                  'Manage preferences', 'إدارة التفضيلات')),
             ),
           ),
         ],
@@ -164,7 +222,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 height: 42,
                 decoration: AminaVisualLanguage.mintIconDecoration(context),
                 child: const Icon(
-                  Icons.notifications_none_rounded,
+                  Icons.event_note_outlined,
                   color: AminaVisualLanguage.actionGreen,
                   size: 21,
                 ),
@@ -278,7 +336,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               child: FilledButton.icon(
                 key: const Key('save-reminder'),
                 onPressed: _addReminder,
-                icon: const Icon(Icons.add_alert_outlined),
+                icon: const Icon(Icons.add_rounded),
                 label: Text(
                   _rt(
                     context,
@@ -328,7 +386,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         height: 46,
                         decoration: AminaVisualLanguage.mintIconDecoration(context),
                         child: const Icon(
-                          Icons.notifications_none_rounded,
+                          Icons.event_note_outlined,
                           color: AminaVisualLanguage.actionGreen,
                           size: 22,
                         ),

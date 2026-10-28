@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: p5-4a-pwa-browser-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   chrome-persistence:
@@ -88,11 +88,19 @@ jobs:
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
           PROFILE="$(mktemp -d)"
-          "$CHROME" \
+          # Match the proven Chrome CDP startup policy used by the
+          # P5-4A update/recovery proof. Runner DBus and /dev/shm contention
+          # must not be mistaken for a Drift persistence failure.
+          env -u DBUS_SESSION_BUS_ADDRESS "$CHROME" \
             --headless=new \
             --no-sandbox \
+            --no-first-run \
+            --disable-session-crashed-bubble \
+            --disable-dev-shm-usage \
+            --disable-gpu \
             --enable-unsafe-swiftshader \
             --remote-allow-origins='*' \
+            --remote-debugging-address=127.0.0.1 \
             --remote-debugging-port=9223 \
             --user-data-dir="$PROFILE" \
             http://127.0.0.1:7360/?phase=seed \
@@ -100,14 +108,20 @@ jobs:
           CHROME_PID=$!
 
           DEVTOOLS=0
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:9223/json/list >/dev/null; then
+          for _ in $(seq 1 150); do
+            if curl -fsS http://127.0.0.1:9223/json/list >/dev/null 2>&1; then
               DEVTOOLS=1
               break
             fi
-            sleep 1
+            if ! kill -0 "$CHROME_PID" 2>/dev/null; then
+              echo "Chrome exited before CDP readiness" >&2
+              cat /tmp/iamina-pwa-chrome.log >&2 || true
+              exit 1
+            fi
+            sleep 0.2
           done
           if [ "$DEVTOOLS" != '1' ]; then
+            echo "Chrome CDP unavailable after bounded 30s startup" >&2
             cat /tmp/iamina-pwa-chrome.log >&2 || true
             exit 1
           fi

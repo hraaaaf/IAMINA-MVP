@@ -6,7 +6,9 @@ import { proxy, safePath, requestPath, previewOnlyAndSameOrigin, resolvePreviewA
 
 const envKeys = [
   'VERCEL_ENV','VERCEL_PROJECT_ID','IAMINA_REVIEW_PREVIEW_API_BASE_URL',
-  'VERCEL_OIDC_TOKEN'
+  'VERCEL_OIDC_TOKEN','VERCEL_GIT_COMMIT_REF','VERCEL_GIT_COMMIT_SHA',
+  'IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN',
+  'IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA'
 ];
 const origin = 'https://iamina-review-goowsfx8j-achraf-benmoussa-s-projects.vercel.app';
 const apiOrigin = 'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app';
@@ -15,6 +17,11 @@ function envSet() {
   process.env.VERCEL_PROJECT_ID = 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI';
   process.env.IAMINA_REVIEW_PREVIEW_API_BASE_URL = apiOrigin;
   process.env.VERCEL_OIDC_TOKEN = 'a.test.token';
+  // No test inadvertently activates synthetic remote auth by inheritance.
+  delete process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN;
+  delete process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA;
+  delete process.env.VERCEL_GIT_COMMIT_REF;
+  delete process.env.VERCEL_GIT_COMMIT_SHA;
 }
 function req(path='health', opts={}) {
   return {
@@ -234,6 +241,330 @@ test('production and cross-origin requests are rejected before backend',()=>{
   assert.equal(previewOnlyAndSameOrigin(req('health',{headers:{origin:'https://evil.example'}})),403);
   assert.equal(previewOnlyAndSameOrigin(req('health',{method:'POST'})),403);
 });
+test('Preview forbidden POST returns only classification, preserves rejection and never reaches API', async () => {
+  await withEnv(async () => {
+    let upstream = 0;
+    globalThis.fetch = async () => { upstream++; throw Error('No upstream on guard denial'); };
+    for (const [request, expectedReason, expectedSite] of [
+      [req('auth/register',{method:'POST',headers:{'sec-fetch-site':'same-site'}}),'origin-absent','same-site'],
+      [req('auth/register',{method:'POST',headers:{origin:'https://attacker.example','sec-fetch-site':'cross-site'}}),'origin-mismatch','cross-site'],
+      [req('auth/register',{method:'POST',headers:{origin,'host':'attacker.example'}}),'host-rejected','unavailable'],
+    ]) {
+      const output = res();
+      await proxy(request, output, async () => 'synthetic-oidc');
+      assert.equal(output.statusCode, 403);
+      assert.equal(output.headers['x-iamina-preview-guard'], expectedReason);
+      assert.equal(output.headers['x-iamina-fetch-site'], expectedSite);
+      assert.equal(output.headers['access-control-allow-origin'], undefined);
+      assert.equal(output.headers['cache-control'], 'private, no-store, max-age=0');
+      assert.doesNotMatch(JSON.stringify(output.headers), /attacker\.example|Bearer|token/);
+    }
+    assert.equal(upstream, 0);
+  });
+});
+
+test('hosted browser same-origin POST can omit Origin, but never bypasses OIDC or forwards cookies', async () => {
+  await withEnv(async () => {
+    const request = req('auth/register', {method:'POST', headers:{
+      'sec-fetch-site':'same-origin', 'content-type':'application/json',
+      cookie:'_vercel_jwt=private-sso-cookie',
+    }});
+    assert.equal(previewOnlyAndSameOrigin(request), 0);
+
+    // Fail closed when Origin is missing and Fetch Metadata is weaker or absent.
+    for (const site of [undefined, 'same-site', 'cross-site', 'none', '',
+      'same-origin, cross-site']) {
+      const headers = site === undefined ? {} : {'sec-fetch-site':site};
+      assert.equal(previewOnlyAndSameOrigin(req('auth/register',{
+        method:'POST', headers,
+      })), 403, 'site=' + String(site));
+    }
+    // Forged Origin cannot be rescued by apparently same-origin metadata.
+    assert.equal(previewOnlyAndSameOrigin(req('auth/register',{method:'POST',headers:{
+      origin:'https://attacker.invalid', 'sec-fetch-site':'same-origin',
+    }})), 403);
+
+    const body = Buffer.from('{}');
+    const incoming = Readable.from([body]);
+    Object.assign(incoming, request);
+    let calls = 0;
+    globalThis.fetch = async (url, options) => {
+      calls++;
+      assert.equal(url, apiOrigin + '/api/v1/auth/register');
+      assert.equal(options.headers.get('x-vercel-trusted-oidc-idp-token'),'synthetic-oidc');
+      assert.equal(options.headers.get('origin'),null);
+      assert.equal(options.headers.get('cookie'),null);
+      assert.equal(options.headers.get('sec-fetch-site'),null);
+      assert.deepEqual(options.body,body);
+      return new Response(JSON.stringify({detail:'Invalid synthetic payload'}),{
+        status:422,headers:{'content-type':'application/json'},
+      });
+    };
+    const output = streamingResponse();
+    await proxy(incoming,output,async()=> 'synthetic-oidc');
+    assert.equal(calls,1);
+    assert.equal(output.statusCode,422);
+    assert.equal(output.headers['x-iamina-preview-guard'],undefined);
+    assert.equal(JSON.parse(output.text()).detail,'Invalid synthetic payload');
+
+    // Same accepted browser request still cannot reach upstream without OIDC.
+    globalThis.fetch=async()=>{throw Error('No egress without OIDC');};
+    const denied = res();
+    await proxy(req('auth/register',{method:'POST',headers:{
+      'sec-fetch-site':'same-origin',
+    }}),denied,async()=>null);
+    assert.equal(denied.statusCode,503);
+  });
+});
+
+
+test('synthetic remote Preview auth is OFF without exact opt-in', async () => {
+  await withEnv(async () => {
+    let calls = 0;
+    globalThis.fetch = async (url) => {
+      calls++;
+      assert.equal(url, apiOrigin + '/api/v1/auth/login');
+      return new Response(JSON.stringify({detail:'synthetic invalid credentials'}),{
+        status:401,headers:{'content-type':'application/json'},
+      });
+    };
+    const input = Readable.from([Buffer.from(JSON.stringify({
+      email:'legacy@example.test',password:'fixture',
+    }))]);
+    Object.assign(input,req('auth/login',{method:'POST',headers:{origin}}));
+    const output=streamingResponse();
+    await proxy(input,output,async()=>'synthetic-oidc');
+    assert.equal(output.statusCode,401);
+    assert.equal(calls,1,'no identity preflight outside explicit mode');
+  });
+});
+
+test('opt-in synthetic auth fails closed on wrong Git branch before OIDC or egress', async () => {
+  await withEnv(async () => {
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_REF='main';
+    let calls=0;
+    globalThis.fetch=async()=>{calls++;throw Error('no egress');};
+    const output=res();
+    await proxy(req('health'),output,async()=>{throw Error('no OIDC');});
+    assert.equal(output.statusCode,503);
+    assert.equal(calls,0);
+    process.env.VERCEL_ENV='production';
+    const production=res();
+    await proxy(req('health'),production,async()=>{throw Error('no OIDC');});
+    assert.equal(production.statusCode,404);
+  });
+});
+
+test('synthetic mode rejects absent or wrong SHA before OIDC and API egress', async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    let upstream=0;
+    globalThis.fetch=async()=>{upstream++;throw Error('must not egress');};
+    for(const pinned of [undefined,'b'.repeat(40),'invalid-sha']){
+      if(pinned===undefined)delete process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA;
+      else process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA=pinned;
+      const output=res();
+      await proxy(req('health'),output,async()=>{throw Error('no OIDC');});
+      assert.equal(output.statusCode,503,String(pinned));
+    }
+    assert.equal(upstream,0);
+  });
+});
+
+test('synthetic auth rejects real email and Firebase / reset before any upstream egress', async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    let calls=0;
+    globalThis.fetch=async()=>{calls++;throw Error('must not egress');};
+    for (const email of [
+      'patient@gmail.com','someone@example.com','foo@example.invalid.evil',
+      'foo+real@example.invalid','REAL@example.invalid','',
+    ]) {
+      const input=Readable.from([Buffer.from(JSON.stringify({email,password:'synthetic'}))]);
+      Object.assign(input,req('auth/register',{method:'POST',headers:{
+        origin,'content-type':'application/json',
+      }}));
+      const output=res();
+      await proxy(input,output,async()=>'synthetic-oidc');
+      assert.equal(output.statusCode,403,email);
+    }
+    for (const path of ['auth/firebase','auth/firebase/','auth/password','auth/password/','auth/password/reset/request','auth/password/reset/confirm']) {
+      // A real POST must supply a readable request body. Without a stream,
+      // readBoundedBody rejects the malformed fixture as HTTP 400 before the
+      // synthetic-only route guard can intentionally return HTTP 403.
+      const input=Readable.from([Buffer.from('{}')]);
+      Object.assign(input,req(path,{method:'POST',headers:{
+        origin,'content-type':'application/json',
+      }}));
+      const output=res();
+      await proxy(input,output,async()=>'synthetic-oidc');
+      assert.equal(output.statusCode,403,path);
+    }
+    for (const payload of [
+      {email:'w01-synthetic@example.invalid',password:'synthetic',first_name:'Real Patient'},
+      {email:'w01-synthetic@example.invalid',password:'synthetic',last_name:'Personal Name'},
+      {email:'w01-synthetic@example.invalid',password:'synthetic',patient_note:'patient data'},
+    ]) {
+      const body=Readable.from([Buffer.from(JSON.stringify(payload))]);
+      Object.assign(body,req('auth/register',{method:'POST',headers:{origin}}));
+      const out=res();
+      await proxy(body,out,async()=>'synthetic-oidc');
+      assert.equal(out.statusCode,403,'untrusted registration fields forbidden');
+    }
+    assert.equal(calls,0);
+  });
+});
+
+test('synthetic signup fails closed if any Neon identity field changes', async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    const body=Buffer.from(JSON.stringify({
+      email:'w01-synthetic@example.invalid',password:'not-a-real-password',
+    }));
+    const input=Readable.from([body]);
+    Object.assign(input,req('auth/register',{method:'POST',headers:{origin}}));
+    let calls=0;
+    globalThis.fetch=async(url,opts)=>{
+      calls++;
+      assert.equal(url,apiOrigin+'/api/v1/ops/preview-db-identity');
+      assert.equal(opts.headers.get('x-vercel-trusted-oidc-idp-token'),'synthetic-oidc');
+      return new Response(JSON.stringify({
+        database_name:'iamina925_empty',role_name:'iamina_preview_app',
+        neon_project_id:'noisy-truth-00115950',
+        neon_branch_id:'WRONG_BRANCH',
+      }),{status:200,headers:{'content-type':'application/json'}});
+    };
+    const output=res();
+    await proxy(input,output,async()=>'synthetic-oidc');
+    assert.equal(output.statusCode,503);
+    assert.equal(calls,1,'must never attempt register if identity differs');
+    assert.equal(output.headers['cache-control'],'private, no-store, max-age=0');
+  });
+});
+
+
+test('synthetic D2 and logout fail closed on changed Neon before patient egress',async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    let calls=0;
+    globalThis.fetch=async(url)=>{
+      calls++;
+      assert.equal(url,apiOrigin+'/api/v1/ops/preview-db-identity');
+      return new Response(JSON.stringify({
+        database_name:'WRONG_DB',role_name:'iamina_preview_app',
+        neon_project_id:'noisy-truth-00115950',
+        neon_branch_id:'br-sweet-frog-b9ok6ptp',
+      }),{status:200,headers:{'content-type':'application/json'}});
+    };
+    for(const [path,opts] of [
+      ['account/notification-preview-consent',{method:'GET'}],
+      ['auth/me',{method:'GET'}],
+      ['auth/logout',{method:'POST',headers:{origin}}],
+    ]){
+      const incoming=req(path,opts);
+      if(opts.method==='POST'){
+        // Empty request stream is legitimate for logout.
+        Object.assign(Readable.from([]),incoming);
+      }
+      const input=opts.method==='POST' ? Object.assign(Readable.from([]),incoming) : incoming;
+      const out=res();
+      await proxy(input,out,async()=>'synthetic-oidc');
+      assert.equal(out.statusCode,503,path);
+    }
+    assert.equal(calls,3,'only identity preflight requests, never clinical egress');
+  });
+});
+
+test('synthetic signup with exact Neon identity forwards only after OIDC and body checks', async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    const payload=Buffer.from(JSON.stringify({
+      email:'w01-synthetic@example.invalid',password:'not-a-real-password',
+    }));
+    const input=Readable.from([payload]);
+    Object.assign(input,req('auth/register',{method:'POST',headers:{
+      origin,'content-type':'application/json',cookie:'SSO=no-egress',
+    }}));
+    let calls=0;
+    globalThis.fetch=async(url,opts)=>{
+      calls++;
+      if(calls===1){
+        assert.equal(url,apiOrigin+'/api/v1/ops/preview-db-identity');
+        assert.equal(opts.method,'GET');
+        assert.equal(opts.headers.get('cookie'),null);
+        return new Response(JSON.stringify({
+          database_name:'iamina925_empty',role_name:'iamina_preview_app',
+          neon_project_id:'noisy-truth-00115950',
+          neon_branch_id:'br-sweet-frog-b9ok6ptp',
+        }),{status:200,headers:{'content-type':'application/json'}});
+      }
+      assert.equal(url,apiOrigin+'/api/v1/auth/register');
+      assert.equal(opts.headers.get('cookie'),null);
+      assert.equal(opts.headers.get('origin'),null);
+      assert.equal(opts.headers.get('x-vercel-trusted-oidc-idp-token'),'synthetic-oidc');
+      assert.deepEqual(opts.body,payload);
+      return new Response(JSON.stringify({synthetic:true}),{
+        status:200,headers:{'content-type':'application/json'},
+      });
+    };
+    const out=streamingResponse();
+    await proxy(input,out,async()=>'synthetic-oidc');
+    assert.equal(out.statusCode,200);
+    assert.equal(JSON.parse(out.text()).synthetic,true);
+    assert.equal(calls,2,'identity GET must precede registration POST');
+  });
+});
+
+test('synthetic mode preserves Django 422 invalid-body preflight after identity proof', async()=>{
+  await withEnv(async()=>{
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN='D2_WEB_SYNTHETIC_ONLY_V1';
+    process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_SHA='a'.repeat(40);
+    process.env.VERCEL_GIT_COMMIT_REF='integration/w01-d2-preview-only-20261027';
+    const input=Readable.from([Buffer.from('{}')]);
+    Object.assign(input,req('auth/register',{method:'POST',headers:{
+      origin,'content-type':'application/json',
+    }}));
+    let calls=0;
+    globalThis.fetch=async(url)=>{
+      calls++;
+      if(calls===1){
+        assert.equal(url,apiOrigin+'/api/v1/ops/preview-db-identity');
+        return new Response(JSON.stringify({
+          database_name:'iamina925_empty',role_name:'iamina_preview_app',
+          neon_project_id:'noisy-truth-00115950',
+          neon_branch_id:'br-sweet-frog-b9ok6ptp',
+        }),{status:200,headers:{'content-type':'application/json'}});
+      }
+      assert.equal(url,apiOrigin+'/api/v1/auth/register');
+      return new Response(JSON.stringify({detail:'Invalid body'}),{
+        status:422,headers:{'content-type':'application/json'},
+      });
+    };
+    const out=streamingResponse();
+    await proxy(input,out,async()=>'synthetic-oidc');
+    assert.equal(out.statusCode,422);
+    assert.equal(calls,2);
+  });
+});
+
 test('missing OIDC token returns 503 before any egress',async()=>{
   await withEnv(async()=>{
     delete process.env.VERCEL_OIDC_TOKEN;

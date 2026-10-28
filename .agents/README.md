@@ -1,27 +1,29 @@
 # IAmina Agent Team
 
-This directory defines role briefs. `AGENTS.md` remains the canonical repository-wide execution contract.
+`AGENTS.md` is the canonical repository-wide execution contract.
 
-## Mandatory execution chain
+## Mandatory gate for product decisions D: complete FUE
 
-`Builder -> applicable Reviewer(s) -> Release Certifier -> merge -> post-merge verification`
+`Builder → focused/adversarial tests → FUE (FIRST USER EXPERIENCE) across every feature of D → evidence-based Release Certification / Perfection Pass → authorized merge → post-merge verification`.
 
-The Builder may not certify its own LOT. When orchestration supports separate agents, use separate agents. When only one runtime/session is available, roles must still be executed as explicit isolated passes: the Reviewer re-reads evidence without relying on Builder conclusions, and the Certifier independently re-checks the final diff and exact-head evidence.
+**No default independent Reviewer for a D.** Instead, enumerate and test every in-scope feature as a complete first-user experience on real Flutter Web: FR/AR RTL, responsive mobile/tablet/desktop, keyboard, scroll, interactions, negative/recovery cases and persistence/permissions where relevant. Full feature-to-case coverage and observable PASS are mandatory. A Builder may run the FUE and a separate adversarial pass, but must not claim independent review; apply the scoring cap.
 
-## Routing matrix
+## Risk routing and non-D work
 
-| Change surface | Builder | Required Reviewer |
-|---|---|---|
-| Any LOT | Lead Engineer | at least one scope-appropriate Reviewer |
-| UX/UI, navigation, responsive, i18n presentation | Lead Engineer | UX Auditor |
-| Clinical calculation, medical wording, safety behavior | Lead Engineer | Clinical Safety Reviewer |
-| MENA safety corpus, Darija/Arabic/transliteration or multilingual emergency parity | Lead Engineer | MENA Clinical-Linguistic Safety Reviewer + Clinical Safety Reviewer |
-| Models, migrations, persistence, PostgreSQL-sensitive behavior | Lead Engineer | Database & Migration Reviewer |
-| Auth, authorization, privacy, secrets, external egress | Lead Engineer | Security Auditor |
-| Mixed high-risk change | Lead Engineer | every applicable specialist Reviewer |
-| Final merge readiness | — | Release Certifier always required |
+For non-D work, use a critical review and release certification pass. For any D, FUE **does not waive** the following applicable risk-specialist safety gates:
+
+| Surface | Evidence / specialist |
+|---|---|
+| Product decision D, UX/UI | Full FUE for all D features; real-Web BEFORE/AFTER, keyboard, FR/AR/RTL; UX auditor as needed |
+| Clinical calculations/medical advice/safety | Clinical Safety Reviewer, approved clinical sources and any required clinical-human authorization |
+| MENA emergency/medical locale parity | MENA Clinical-Linguistic Safety + Clinical Safety reviews, native-human checks where required |
+| Models, migrations, persistence, PostgreSQL | Database & Migration review plus migration/recovery testing where risk applies |
+| Auth, secrets, patient privacy, external egress | Security/privacy review and required approval gates |
+| Mixed high-risk D | Every applicable safety specialist plus the full D FUE |
+| Merge readiness | Fresh-evidence Release Certification/Perfection Pass, exact-head gates |
 
 ## Role files
+
 - `lead-engineer.md`
 - `ux-auditor.md`
 - `clinical-safety-reviewer.md`
@@ -30,6 +32,4 @@ The Builder may not certify its own LOT. When orchestration supports separate ag
 - `security-auditor.md`
 - `release-certifier.md`
 
-Reviewer findings are evidence, not suggestions: blocking findings must be remediated before certification unless the human owner explicitly accepts the risk and the repository's safety rules permit that acceptance.
-
-The MENA Clinical-Linguistic Safety Reviewer is an AI secondary reviewer. It strengthens corpus evidence but cannot impersonate or replace restricted native-human, clinical-human or safety-owner approval.
+Blocking clinical/privacy/security evidence must be remediated and cannot be overridden by a FUE PASS. AI secondary reviews never impersonate clinical, native-human or safety-owner approval.

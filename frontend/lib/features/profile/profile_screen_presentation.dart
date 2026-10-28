@@ -523,6 +523,25 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   ),
                 ),
               ),
+              if (auth.canEraseSyntheticPreviewAccount) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  key: const Key('w01-preview-synthetic-erasure'),
+                  onPressed: _syntheticErasureBusy
+                      ? null : _confirmSyntheticPreviewErasure,
+                  icon: const Icon(Icons.delete_forever_outlined,
+                    size: 16, color: AminaTheme.dangerFg),
+                  label: Text(_profileActionCopy(context,
+                    fr: 'Supprimer le compte de test',
+                    en: 'Delete test account',
+                    ar: 'حذف الحساب التجريبي')),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    side: BorderSide(
+                      color: AminaTheme.dangerFg.withValues(alpha: 0.4)),
+                  ),
+                ),
+              ],
               Consumer<ConsentService>(
                 builder: (context, consent, _) {
                   if (!consent.hasConsent) return const SizedBox.shrink();

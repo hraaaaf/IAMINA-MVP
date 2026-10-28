@@ -24,6 +24,70 @@ function resolvePreviewApiOrigin() {
 }
 const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
 
+// Opt-in QA mode. Absent by default; this code cannot activate itself or
+// grant access past Vercel Deployment Protection / the existing trusted OIDC.
+const SYNTHETIC_LOGIN_ENABLE_VALUE = 'D2_WEB_SYNTHETIC_ONLY_V1';
+const SYNTHETIC_LOGIN_BRANCH = 'integration/w01-d2-preview-only-20261027';
+const SYNTHETIC_IDENTITY = Object.freeze({
+  database_name: 'iamina925_empty',
+  role_name: 'iamina_preview_app',
+  neon_project_id: 'noisy-truth-00115950',
+  neon_branch_id: 'br-sweet-frog-b9ok6ptp',
+});
+function syntheticLoginRequested() {
+  return process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN ===
+    SYNTHETIC_LOGIN_ENABLE_VALUE;
+}
+function syntheticLoginScopeValid() {
+  const pinnedSha = process.env.IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA;
+  return process.env.VERCEL_ENV === 'preview' &&
+    process.env.VERCEL_PROJECT_ID === WEB_PROJECT &&
+    process.env.VERCEL_GIT_COMMIT_REF === SYNTHETIC_LOGIN_BRANCH &&
+    typeof pinnedSha === 'string' && /^[0-9a-f]{40}$/.test(pinnedSha) &&
+    pinnedSha === process.env.VERCEL_GIT_COMMIT_SHA;
+}
+function syntheticEmailAllowed(email) {
+  return typeof email === 'string' &&
+    /^[a-z0-9][a-z0-9._-]{0,60}@example\.invalid$/.test(email);
+}
+function syntheticLoginPayloadAllowed(path, payload) {
+  if (!['auth/register', 'auth/login'].includes(path)) return false;
+  let parsed;
+  try { parsed = JSON.parse(payload.toString('utf8')); } catch { return false; }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+  // Preserve the already-proven non-mutating Django 422 preflight.
+  if (path === 'auth/register' && Object.keys(parsed).length === 0) return true;
+  // Registration may not accept arbitrary patient profile details in this
+  // test-only flow. Keep only the actual Flutter payload and G5 fixture name.
+  const allowed = path === 'auth/register'
+    ? ['email', 'password', 'first_name', 'last_name']
+    : ['email', 'password'];
+  if (Object.keys(parsed).some(key => !allowed.includes(key))) return false;
+  if (parsed.first_name !== undefined && parsed.first_name !== 'Synthetic')
+    return false;
+  if (parsed.last_name !== undefined &&
+      !/^W01-[AB]$/.test(parsed.last_name)) return false;
+  return syntheticEmailAllowed(parsed.email) &&
+    typeof parsed.password === 'string' && parsed.password.length > 0;
+}
+async function syntheticIdentityVerified(apiOrigin, oidcToken) {
+  try {
+    const reply = await fetch(apiOrigin + '/api/v1/ops/preview-db-identity', {
+      method: 'GET',
+      headers: new Headers({'x-vercel-trusted-oidc-idp-token': oidcToken}),
+      redirect: 'manual', cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (reply.status !== 200 ||
+        !reply.headers.get('content-type')?.toLowerCase().includes('application/json'))
+      return false;
+    const actual = await reply.json();
+    return actual && typeof actual === 'object' &&
+      Object.entries(SYNTHETIC_IDENTITY).every(([key, expected]) =>
+        actual[key] === expected);
+  } catch { return false; }
+}
+
 class PayloadTooLargeError extends Error {}
 
 async function readBoundedBody(request) {
@@ -66,16 +130,25 @@ function requestPath(request) {
   return { path: rawPath, search: original.search };
 }
 
+// Classification only: never echo the raw Origin/Host, cookies or identities.
+function previewGuardFailure(request) {
+  const host = request.headers.host;
+  if (typeof host !== 'string' || !WEB_HOST.test(host)) return 'host-rejected';
+  const origin = request.headers.origin;
+  if (origin !== undefined && origin !== 'https://' + host) return 'origin-mismatch';
+  // A verified hosted browser POST may omit Origin while its browser-generated
+  // Fetch Metadata still proves same-origin. Never accept same-site, cross-site,
+  // none or absent Sec-Fetch-Site as an Origin substitute for mutations.
+  // This is a browser CSRF check, not non-browser authentication: all patient
+  // API requests still require trusted OIDC and the Django IAMINA bearer.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin &&
+      request.headers['sec-fetch-site'] !== 'same-origin') return 'origin-absent';
+  return null;
+}
 function previewOnlyAndSameOrigin(request) {
   if (process.env.VERCEL_ENV !== 'preview' ||
       process.env.VERCEL_PROJECT_ID !== WEB_PROJECT) return 404;
-  const host = request.headers.host;
-  if (typeof host !== 'string' || !WEB_HOST.test(host)) return 403;
-  const origin = request.headers.origin;
-  if (origin !== undefined && origin !== 'https://' + host) return 403;
-  // No cookie transport between Vercel SSO and Django. Django uses IAMINA bearer.
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin) return 403;
-  return 0;
+  return previewGuardFailure(request) ? 403 : 0;
 }
 
 export const config = {
@@ -87,7 +160,20 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   response.setHeader('Cache-Control', 'private, no-store, max-age=0');
   response.setHeader('X-Content-Type-Options', 'nosniff');
   const gate = previewOnlyAndSameOrigin(request);
-  if (gate) return response.status(gate).end();
+  if (gate) {
+    if (gate === 403) {
+      // Diagnostic-only response headers; security denial remains unchanged.
+      response.setHeader('X-Iamina-Preview-Guard', previewGuardFailure(request) || 'unclassified');
+      const site = request.headers['sec-fetch-site'];
+      response.setHeader('X-Iamina-Fetch-Site',
+        ['same-origin', 'same-site', 'cross-site', 'none'].includes(site)
+          ? site : 'unavailable');
+    }
+    return response.status(gate).end();
+  }
+  // A mis-scoped QA opt-in must not silently fall back to ordinary auth.
+  if (syntheticLoginRequested() && !syntheticLoginScopeValid())
+    return response.status(503).end();
   if (!ALLOWED_METHODS.has(request.method)) return response.status(405).end();
   const route = requestPath(request);
   if (!route) return response.status(400).end();
@@ -135,6 +221,28 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     } catch (error) {
       return response.status(error instanceof PayloadTooLargeError ? 413 : 400).end();
     }
+  }
+
+  if (syntheticLoginRequested()) {
+    // The QA Preview must never permit Firebase exchange or password reset.
+    if (route.path === 'auth/firebase' ||
+        route.path.startsWith('auth/firebase/') ||
+        route.path === 'auth/password' ||
+        route.path.startsWith('auth/password/')) return response.status(403).end();
+    if (route.path === 'auth/register' || route.path === 'auth/login') {
+      if (request.method !== 'POST' || route.search !== '' ||
+          !syntheticLoginPayloadAllowed(route.path, payload))
+        return response.status(403).end();
+    }
+    // Verify the exact synthetic DB through the *trusted* API workload before
+    // EVERY patient/API request, including reads, logs, consent and cleanup.
+    // An identity-changing API deployment must never be able to serve a
+    // previously authenticated synthetic browser under the same Web host.
+    // The preflight route itself is exempt to avoid recursion, and carries no
+    // patient data. This QA-only extra egress is deliberately uncached.
+    if (route.path !== 'ops/preview-db-identity' &&
+        !await syntheticIdentityVerified(apiOrigin, oidcToken))
+      return response.status(503).end();
   }
 
   const outgoingHeaders = new Headers();

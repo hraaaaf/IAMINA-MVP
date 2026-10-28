@@ -42,7 +42,29 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       fi
       API_BASE_URL="https://invalid.iamina-preview.invalid"
       IAMINA_PREVIEW_SAME_ORIGIN_API=true
+      # Remote registration is OFF on every ordinary Preview. A single
+      # explicitly approved, project/branch/deployment-scoped synthetic QA
+      # release may opt in; the BFF separately enforces exact Neon identity
+      # before any account mutation, and restricts emails to example.invalid.
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      case "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN:-}" in
+        '')
+          ;;
+        D2_WEB_SYNTHETIC_ONLY_V1)
+          if [ "${VERCEL_GIT_COMMIT_REF:-}" != "integration/w01-d2-preview-only-20261027" ] ||
+            [[ ! "${VERCEL_URL:-}" =~ ^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$ ]] ||
+            [[ ! "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA:-}" =~ ^[0-9a-f]{40}$ ]] ||
+            [ "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA:-}" != "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
+            echo "ERROR: refusing synthetic Preview auth outside exact review branch/host" >&2
+            exit 64
+          fi
+          IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+          ;;
+        *)
+          echo "ERROR: refusing unknown synthetic Preview auth mode" >&2
+          exit 64
+          ;;
+      esac
       ;;
     production)
       # Existing production routing remains unchanged.

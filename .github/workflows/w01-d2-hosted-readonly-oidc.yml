@@ -1,0 +1,119 @@
+name: W01 + D2 hosted Preview four-field read-only proof
+on:
+  push:
+    branches:
+      - integration/w01-d2-preview-only-20261027
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
+
+jobs:
+  hosted-readonly:
+    name: Protected Web BFF → API → Neon identity, no writes
+    if: github.repository == 'hraaaaf/IAMINA-MVP' && github.ref == 'refs/heads/integration/w01-d2-preview-only-20261027'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Obtain short-lived GitHub OIDC
+        id: jwt
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken();
+            core.setSecret(token);
+            core.setOutput('token', token);
+      - name: Read only four Neon IDs and backend health through protected Web
+        env:
+          IAMINA_OIDC: ${{ steps.jwt.outputs.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          // Compare both immutable Preview Web builds: original integration and iPhone-patched.
+          // Only GET requests. The API behind both is the same immutable 12ef1240 Preview.
+          const targets = [
+            ['ORIGINAL_12EF', 'https://iamina-review-f9j940c5d-achraf-benmoussa-s-projects.vercel.app'],
+            ['WEB_2ED', 'https://iamina-review-djfyzp0xt-achraf-benmoussa-s-projects.vercel.app'],
+          ];
+          const expected = Object.freeze({
+            database_name: 'iamina925_empty',
+            role_name: 'iamina_preview_app',
+            neon_project_id: 'noisy-truth-00115950',
+            neon_branch_id: 'br-sweet-frog-b9ok6ptp',
+          });
+          const jwt = process.env.IAMINA_OIDC;
+          assert.ok(typeof jwt === 'string' && jwt.length > 30, 'OIDC_MISSING');
+          // JWT signature remains protected; print only trust-policy claim metadata,
+          // never the token, cookies, bearer, secret, or a response body.
+          const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString('utf8'));
+          const safeFields = ['iss','aud','sub','repository','repository_id',
+            'repository_owner','repository_owner_id','ref','workflow_ref','event_name'];
+          console.log('OIDC_PUBLIC_TRUST_CLAIMS', JSON.stringify(
+            Object.fromEntries(safeFields.map(k => [k, payload[k] ?? null]))
+          ));
+          async function read(base, label, path) {
+            const r = await fetch(base + path, {
+              method: 'GET',
+              headers: {
+                accept: 'application/json',
+                'x-vercel-trusted-oidc-idp-token': jwt,
+              },
+              redirect: 'manual',
+              cache: 'no-store',
+              signal: AbortSignal.timeout(15000),
+            });
+            const type = (r.headers.get('content-type') || '').toLowerCase();
+            // Print only safe, non-secret routing diagnostics. No response bodies.
+            console.log(label, path, 'HTTP', r.status,
+              'JSON', type.includes('application/json'),
+              'HTML', type.includes('text/html'),
+              'VERCEL_ID_PRESENT', !!r.headers.get('x-vercel-id'),
+              'VERCEL_ERROR', (r.headers.get('x-vercel-error') || '').slice(0,80));
+            if (r.status !== 200) {
+              // Safe error classification ONLY. No response bodies, JWTs or
+              // secrets are printed, including on a protected request failure.
+              let errorCode = 'UNAVAILABLE';
+              try {
+                const parsed = await r.clone().json();
+                const candidate = parsed?.error?.code ?? parsed?.code;
+                if (typeof candidate === 'string' && /^[A-Z0-9_]{3,90}$/.test(candidate))
+                  errorCode = candidate;
+              } catch {}
+              console.log(label, 'VERCEL_ERROR_CODE', errorCode);
+            }
+            assert.equal(r.status, 200, label + '_SSO_OR_UPSTREAM_FAIL_CLOSED');
+            assert.ok(type.includes('application/json'), 'NON_JSON_DENIED');
+            const raw = await r.text();
+            assert.ok(raw.length < 16384, 'OVERSIZE_RESPONSE');
+            return JSON.parse(raw);
+          }
+          let originalPass = false;
+          let currentPass = false;
+          for (const [label, base] of targets) {
+            try {
+              const actual = await read(base, label, '/api/v1/ops/preview-db-identity');
+              assert.deepEqual(
+                Object.keys(expected).sort(), Object.keys(actual).sort(),
+                'IDENTITY_RESPONSE_FIELDS_UNEXPECTED'
+              );
+              for (const [field, value] of Object.entries(expected))
+                assert.equal(actual[field], value, 'FOUR_FIELD_NEON_IDENTITY_MISMATCH_STOP');
+              const health = await read(base, label, '/api/v1/health');
+              assert.equal(health.db, 'ok', 'DATABASE_HEALTH_UNAVAILABLE');
+              if (label === 'ORIGINAL_12EF') originalPass = true;
+              if (label === 'WEB_2ED') currentPass = true;
+              console.log(label, 'WEB_BFF_API_NEON_READ_ONLY_PROOF_PASS');
+            } catch (error) {
+              // Do not log JWT, HTTP bodies, cookies, credentials or patient data.
+              console.error(label, 'HOSTED_READ_ONLY_BLOCKED:', error?.message || 'UNKNOWN');
+            }
+          }
+          console.log('OIDC_COMPARISON', JSON.stringify({originalPass, currentPass}));
+          assert.ok(currentPass, 'CURRENT_WEB_PREVIEW_OIDC_NOT_AUTHORIZED');
+          NODE

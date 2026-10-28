@@ -8,7 +8,7 @@ This file is a **stable execution contract for coding agents**, not a session di
 
 - **Only frontend product surface:** Flutter Web/PWA in actual mobile/tablet/desktop browsers, with keyboard, accessibility, RTL, browser persistence/offline and real browser capabilities. No new native iOS/Android-only feature work in this roadmap; preserve legacy work as deferred evidence.
 - **Target topology to design/prove in W01/W02 (not automatically deployed):** separate Vercel frontend and Django/django-ninja backend projects; PostgreSQL on a separately managed Neon database connected to backend. Verify serverless support, consent, auth, migrations, secrets, isolation, encrypted Web storage, backup/restore and browser/offline truth before operational use. Do not claim the two-project production architecture is implemented today.
-- UI evidence: BEFORE → Goal → mockup → implementation → AFTER identical browser viewports → comparison, functional/accessibility/RTL checks and serious score.
+- UI evidence: BEFORE → Goal → mockup → implementation → AFTER identical browser viewports → comparison, functional/accessibility/RTL checks and serious score. **Every D requires a complete FUE covering all its features.**
 - CGM D1/D25 and OCR/Vision D14/D15 require brainstorming and user onboarding designs before any integration; manufacturer/provider/legal and privacy gates still apply.
 - No generated clinical authority, no implicit patient consent or real-patient use. **Never deploy to Vercel without separate explicit owner authorization**. 
 ## Read first
@@ -21,7 +21,7 @@ This file is a **stable execution contract for coding agents**, not a session di
 6. `docs/MISTAKES.md` — durable lessons.
 7. Relevant ADR/spec for the assigned unit.
 8. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
-9. `.agents/README.md` — reviewer routing matrix.
+9. `.agents/README.md` — FUE and risk-review routing matrix.
 10. Every additional `.skills/*/SKILL.md` required by the touched surface.
 
 Do not choose work from old phase numbers, archived plans, assessments, or stale commit notes.
@@ -87,17 +87,19 @@ Never:
 - Update a canonical doc only when a durable truth changes.
 - Historical docs are evidence, not instructions.
 
-## Mandatory Builder → Reviewer → Certifier chain
+## Mandatory Decision FUE — First User Experience (all product decisions D)
 
-Every roadmap LOT, P-level remediation unit, hotfix or governance change must use the following sequence:
+**FUE (FIRST USER EXPERIENCE) replaces the routine independent-Reviewer gate for every product decision D.** Before declaring D `VERIFIED` or `CLOSED`, test the **entire set of features and behaviors covered by that D**, not only the latest diff. A Builder may carry out the FUE; do not represent that as an independent review.
 
-1. **Builder** — normally `.agents/lead-engineer.md`; inspects, reproduces, defines acceptance criteria, implements, tests and prepares evidence.
-2. **Reviewer(s)** — selected from `.agents/README.md` according to the changed surface. Blocking findings must be remediated and affected evidence rerun.
-3. **Release Certifier** — `.agents/release-certifier.md`; independently verifies final diff, reviewer closure, exact-head gates, canonical docs and merge readiness.
-4. **Merge** — expected-head SHA locking is required when supported.
-5. **Post-merge verification** — `main` must point to the expected merge and post-merge CI + migration drift must be green before declaring 100% complete.
+1. **Scope inventory:** enumerate 100% of D features, entry points, actions, settings, permissions, disabled/hidden or retained behavior, user states, error/empty states and integration effects. Explicitly mark keep/adapt/drop/defer and dependencies. No implicit omission.
+2. **First-user scenarios:** trace each in-scope feature to at least one observable journey from the user's first entry through interaction, result, navigation away/back and recovery. Include positive, negative, empty/error, permissions/consent, persistence/offline, account isolation and accessibility as applicable. Deferred/out-of-scope cases must be named, justified and cannot silently count as tested.
+3. **Web reality:** execute on actual Flutter Web/PWA browser surfaces at 390×844 mobile, 768×1024 tablet, 1280×900 desktop, FR and AR/RTL, plus locales touched. Check click/touch, scrolling, keyboard Tab/Shift+Tab, visible focus and direction. UI changes need BEFORE → Goal → mockup/reference → AFTER at the **same** viewport and state, then comparison; inspect runtime/console/network where applicable. Widget or static source tests and green CI do not substitute for FUE.
+4. **Evidence matrix:** `D feature → first-user journey → locale/viewport → expected → observed → screenshot/log/test → PASS/FAIL/NOT_RUN`. **100% of required in-scope FUE cases must PASS**. Any missing, FAIL or NOT_RUN required case yields `FUE_NO_GO`, blocks `VERIFIED` and requires fix + retest on exact HEAD.
+5. **Documented verdict:** record `FUE_PASS`/`FUE_NO_GO`, coverage, all feature results, limits and known risks, exact SHA, GitHub runs/artifacts, BEFORE/AFTER comparison, functionality, RTL/keyboard, score, Perfection Pass and next action in D's canonical file + PR. Do not call a D closed based on a reviewer signoff or CI alone.
 
-The Builder may not certify its own LOT. Prefer separate agents when orchestration supports them. If only one runtime/session is available, roles must still be executed as explicit isolated passes: the Reviewer must re-read evidence without relying on Builder conclusions, and the Certifier must independently re-check the final diff and exact-head evidence.
+**D chain:** Builder → focused tests and critical/adversarial pass → **full FUE** → separate fresh-evidence certification/Perfection Pass → authorized merge → post-merge verification. **No independently staffed code Reviewer is obligatory just because this is a D.** The FUE and certification pass may run in the same executor/session, clearly separated and subject to the `9.4` same-executor score cap. Never invent an independent audit.
+
+**Safety exception, not a shortcut:** risk-specific clinical, security, privacy, database and linguistic checks, and human approvals required by legal/clinical/security/release policies, remain mandatory when applicable. A FUE cannot approve unsafe clinical behavior, authorize patient activation, bypass auth or deploy Vercel. For non-D remediation/hotfix/governance LOTs, retain a critical evidence review and release certification pass, using separate people when available but never inventing an unavailable reviewer.
 
 ## Mandatory quality scoring
 
@@ -107,14 +109,14 @@ The Builder may not certify its own LOT. Prefer separate agents when orchestrati
 - Retained score is the lower admissible value after all caps; never average the two scores.
 - The LOT score is the lowest retained material-step score.
 - A score gap `>0.5` requires investigation, affected remediation/evidence rerun, and rescore.
-- `10/10` is exceptional; `9.5+` requires a genuinely independent review.
+- `10/10` is exceptional; `9.5+` requires a genuinely independent review **to claim that high score**, not as a default D closeout gate. The same-executor cap still applies.
 - Same executor + adversarial reviewer is capped at `9.4/10`.
 - Required red test or missing/stale proof caps at `7.9/10`.
 - Demonstrated regression caps at `6.9/10` until remediated and rerun.
 - Blocking security/privacy/data/clinical-claim finding caps at `5.9/10` and forces `BLOCKED`.
 - UI visual fidelity without real Target ↔ Render comparison is capped at `7.5/10`.
 - No weak critical dimension may be hidden by an average.
-- A LOT may be `VERIFIED` only at retained score `>=9.0/10` with all required binary gates green, no blocker, resolved score discrepancies, and the mandatory final Perfection Pass completed.
+- A LOT may be `VERIFIED` only at retained score `>=9.0/10` with all required binary gates green (**including complete FUE for D**), no blocker, resolved score discrepancies, and the mandatory final Perfection Pass completed.
 - Even at `9.0+`, the Perfection Pass must identify remaining weaknesses, fix every materially improvable in-scope weakness, rerun affected evidence, and rescore before closure.
 
 For UX/UI LOTs, `.skills/ux-ui-certification/SKILL.md` is mandatory and must apply this scoring policy.

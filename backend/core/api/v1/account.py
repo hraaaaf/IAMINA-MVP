@@ -20,7 +20,13 @@ from pydantic import BaseModel
 from core.account_hooks import run_account_delete_hooks
 from core.audit import record_audit, record_audit_required
 from core.consent_notice import profile_has_current_consent, validate_notice_claim
-from core.models import AIConsentReceipt, AIMediaConsentGrant, BasePatientProfile
+from core.models import (
+    AIConsentReceipt,
+    AIMediaConsentGrant,
+    BasePatientProfile,
+    D2InAppNotice,
+    D2PreviewConsentReceipt,
+)
 from core.models.erasure_attempt import ErasureAttempt
 from core.models.erasure_record import ErasureRecord
 
@@ -102,6 +108,10 @@ def give_consent(request, data: ConsentGrantSchema):
             patient=request.user,
             revoked_at__isnull=True,
         ).update(revoked_at=now)
+        D2PreviewConsentReceipt.objects.filter(
+            patient=request.user, revoked_at__isnull=True,
+        ).update(revoked_at=now)
+        D2InAppNotice.objects.filter(patient=request.user).delete()
 
         AIConsentReceipt.objects.create(
             patient=request.user,
@@ -155,6 +165,10 @@ def withdraw_consent(request):
                 patient=request.user,
                 revoked_at__isnull=True,
             ).update(revoked_at=now)
+            D2PreviewConsentReceipt.objects.filter(
+                patient=request.user, revoked_at__isnull=True,
+            ).update(revoked_at=now)
+            D2InAppNotice.objects.filter(patient=request.user).delete()
             if had_consent:
                 record_audit(request.user, "consent_withdrawn", request)
     except BasePatientProfile.DoesNotExist:
