@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -58,14 +59,20 @@ Future<void> main() async {
 
   // The historical mixed-owner DB is inspected solely to keep device-lock
   // recovery fail-closed. Never pass it to any patient-facing Provider.
-  final legacy = AppDatabase.defaults();
+  // Web must never open the historical unencrypted database to check its
+  // contents: that open could auto-migrate it or make plaintext writes.
+  // Unknown legacy Web state is treated as protected (fail-closed) until a
+  // separately reviewed, lossless, encrypted recovery path exists.
   bool legacyProtected = true;
-  try {
-    legacyProtected = await _hasProtectedLocalState(
-      db: legacy, authService: authService, auditAllowed: auditAllowed,
-    );
-  } finally {
-    await legacy.close();
+  if (!kIsWeb) {
+    final legacy = AppDatabase.defaults();
+    try {
+      legacyProtected = await _hasProtectedLocalState(
+        db: legacy, authService: authService, auditAllowed: auditAllowed,
+      );
+    } finally {
+      await legacy.close();
+    }
   }
 
   // A missing app-lock credential must not be treated as a fresh install

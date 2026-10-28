@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:drift/drift.dart';
+import 'package:drift/wasm.dart' show WasmDatabase;
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:sqlite3/wasm.dart' show InMemoryFileSystem, WasmSqlite3;
 import 'package:uuid/uuid.dart';
 
 import 'patient_vault_scope.dart';
@@ -26,6 +28,26 @@ QueryExecutor _w02ProtectedPatientVaultExecutor(PatientVaultScope scope) {
 }
 
 
+// Synthetic unauthenticated/audit-only UI. Never store an unencrypted
+// patient vault in Web IndexedDB/OPFS. The browser guest DB is volatile RAM.
+QueryExecutor _w02GuestAuditExecutor({Uri? sqlite3Wasm}) {
+  if (!kIsWeb) {
+    return _w02ProtectedPatientVaultExecutor(PatientVaultScope.auditOnly());
+  }
+  return LazyDatabase(() async {
+    final sqlite = await WasmSqlite3.loadFromUrl(
+      sqlite3Wasm ?? Uri.parse('sqlite3.wasm'),
+    ).timeout(
+      const Duration(seconds: 12),
+      onTimeout: () => throw StateError('w02_guest_wasm_load_timeout'),
+    );
+    sqlite.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
+    return WasmDatabase.opened(
+      sqlite.openInMemory(),
+      closeUnderlyingOnClose: true,
+    );
+  });
+}
 
 // ============================================================================
 // Database Tables
@@ -156,6 +178,12 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forPatientVault(PatientVaultScope scope)
     : patientVaultScope = scope,
       super(_w02ProtectedPatientVaultExecutor(scope));
+
+  // Guest UI only: on Web uses ephemeral SQLite WASM, not persisted patient data.
+  // The override URI is for CI loopback WASM testing, never clinical storage.
+  AppDatabase.guestAuditOnly({Uri? sqlite3Wasm})
+    : patientVaultScope = PatientVaultScope.auditOnly(),
+      super(_w02GuestAuditExecutor(sqlite3Wasm: sqlite3Wasm));
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django

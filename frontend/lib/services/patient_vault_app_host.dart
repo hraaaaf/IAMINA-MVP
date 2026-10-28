@@ -76,9 +76,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     super.initState();
     // Guest login only: this synthetic audit namespace is never a clinical
     // account, nor can it access quarantined pre-D7 'amina' rows.
-    _guestDatabase = AppDatabase.forPatientVault(
-      PatientVaultScope.auditOnly(),
-    );
+    _guestDatabase = AppDatabase.guestAuditOnly();
     _guestRouter = createAppRouterHolder(authService: widget.auth);
     widget.controller.addListener(_onVaultChanged);
     widget.appLock.addListener(_onLockChanged);
