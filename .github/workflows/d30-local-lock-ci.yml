@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/d30-local-lock-ci.yml
       - scripts/d30_web_boot_smoke.py
+      - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
 
 permissions:
