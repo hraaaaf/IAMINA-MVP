@@ -52,7 +52,9 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
           ;;
         D2_WEB_SYNTHETIC_ONLY_V1)
           if [ "${VERCEL_GIT_COMMIT_REF:-}" != "integration/w01-d2-preview-only-20261027" ] ||
-            [[ ! "${VERCEL_URL:-}" =~ ^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$ ]]; then
+            [[ ! "${VERCEL_URL:-}" =~ ^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$ ]] ||
+            [[ ! "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA:-}" =~ ^[0-9a-f]{40}$ ]] ||
+            [ "${IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA:-}" != "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
             echo "ERROR: refusing synthetic Preview auth outside exact review branch/host" >&2
             exit 64
           fi
