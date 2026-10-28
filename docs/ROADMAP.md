@@ -1,5 +1,16 @@
 # IAMINA — ROADMAP UNIQUE WEB V2 — 15 octobre 2026
 
+## 28/10/2026 — LOT de préparation Web : alignement FUE / intégration PR #1153 (tests hébergés différés)
+
+**Instruction propriétaire :** reporter les tests hébergés A/B et poursuivre le développement Web. Ne pas interpréter ce report comme une dispense de certification ou une autorisation de fusion/déploiement.
+
+**Source constatée avant ce lot :** PR #1153 DRAFT, branche `integration/w01-d2-preview-only-20261027`, HEAD `f3a82f88327faa70ce10cd77cee6073ae80cb4fa` ; compare GitHub `main...HEAD` : 244 commits ahead / 2 behind, 214 chemins changés ; compare inverse `HEAD...main` : les 2 commits divergents modifient seulement **9 documents de gouvernance**. Le contenu de ces neuf documents est aligné exactement sur `main` en un commit documentaire, **sans prétendre intégrer l'historique des 2 commits main**. Règle FUE complète pour toutes les décisions produit D + gates de sécurité/clinique/privacy spécifiques, sans reviewer indépendant systématique pour un D. Aucun changement de code exécutable, API, schéma, CI YAML ni UI sur ce lot.
+
+**État des tests reportés :** sur Neon Preview synthétique `noisy-truth-00115950 / br-sweet-frog-b9ok6ptp / iamina925_empty`, derniers contrôles SQL = 2 comptes fictifs A/B, 2 profils, 0 reçu D2 et 0 notice D2 ; aucune suppression applicative confirmée. Ils sont préservés jusqu'à reprise du test/effacement applicatif. Aucun `auth_user=0` revendiqué. Le dernier HEAD `f3a82f88` avait six gates techniques Web SUCCESS, bilan GitHub 63 SUCCESS / 4 FAILURE / 1 SKIPPED / 0 ACTIVE, ce qui ne certifie pas automatiquement le futur commit documentaire.
+
+**Goal du lot indépendant :** éliminer les contradictions FUE vs ancien Reviewer dans la candidate W01+D2 ; **succès observable** = neuf blobs Git identiques à `main`, diff limité aux neuf fichiers + roadmap + canonique, CI exact nouveau HEAD contrôlée. **Preuve** = GitHub blob SHA/diff et état du run. Il ne s'agit pas d'une clôture D2. **Next** : audit du diff release 214 fichiers et des 2 commits de gouvernance restés divergents dans l'historique, correction ciblée des vrais écarts sans fusion, puis reprise ultérieure des tests A/B → suppression par endpoints → SQL zéro ; revue privacy/clinique, retention J+7, GO merge et GO Vercel distincts restent bloquants.
+
+
 ## W01+D2 — 28/10/2026 — Web candidate 6/6 gates GREEN, release NO-GO
 
 **Verified technical HEAD `8a9f7f19` (PR #1153 DRAFT):** six exact-SHA Web workflows SUCCESS (general CI Flutter/Django/PostgreSQL, BFF, Web→PostgreSQL, W02 Chrome A/B/A, PWA update/recovery, PWA Chrome persistence `sharedIndexedDb` seed/reload/installability). Snapshot: **64 SUCCESS / 3 FAILURE / 1 SKIPPED / 0 ACTIVE**; non-Web gates remain red. [Canonical evidence](assessments/2026-10-27-w01-d2-preview-integration.md). The immutable Vercel Web Preview remains READY on deployed **`8a417041`**, not `8a9f7f19`; Production unchanged and no merge.

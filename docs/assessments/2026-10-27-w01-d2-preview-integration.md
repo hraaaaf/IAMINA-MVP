@@ -303,3 +303,16 @@ The same zero counts were confirmed independently by owner SQL on **both** the d
 **Closeout/NO-GO boundary:** PR #1153 **DRAFT**, no independent formal security/privacy/clinical review, no hosted concurrent authenticated **A+B** D2 opt-in/inbox/withdrawal/isolation test, no live replay of deleted account cookie, no recurring **monitored physical J+7 purge** and provider/CNDP real-patient prerequisites open. Hosted A+B requires a safe user-authorized private sign-in path and **application-only deletion** followed by independent SQL zero. Production, main and the existing immutable Preview are unchanged, no automatic provider egress or clinical notification delivery.
 
 **New HEAD note:** This evidence is now committed **in documentation only**. Its resulting Git SHA differs from the tested `8a9f7f19` and triggers its own new CI; never claim that future run PASS before observation. The code/behavioral proof above belongs to the prior **exact tested SHA**.
+
+
+## 28/10/2026 — reprise Web sans E2E hébergé : réconciliation de la gouvernance FUE
+
+**Goal :** avancer sur la préparation de la candidate W01+D2 pendant le report des tests authentifiés A/B décidé par le propriétaire, sans faux certificat ni interruption de la sécurité.
+
+**Preuve AVANT :** branche PR #1153 HEAD `f3a82f88327faa70ce10cd77cee6073ae80cb4fa` (DRAFT, non mergée), GitHub compare `main...branche` : 244 commits ahead / 2 behind, 214 fichiers modifiés. Les 2 commits de `main` non intégrés dans l'historique branche portent une refonte du protocole de travail (FUE obligatoire pour toutes décisions D). Le compare retour signale exactement neuf fichiers de gouvernance divergents : `AGENTS.md`, `.agents/README.md`, `docs/CONTRIBUTING.md`, `docs/QUALITY_SCORING_POLICY.md`, `.skills/lot-execution/SKILL.md`, `.agents/ux-auditor.md`, `.agents/release-certifier.md`, `.skills/release-certification/SKILL.md`, `.skills/ux-ui-certification/SKILL.md`.
+
+**Action documentaire** : recopier dans la branche le contenu EXACT des 9 fichiers tel que `main`, préserver tous les spécialistes de risque clinique/sécurité/privacy/DB, la FUE complète et l'obligation de preuve sur navigateurs Web réels pour D. Ne pas fusionner `main` et ne pas modifier les binaires UI/API ni déployer. Un alignement de blobs n'efface pas l'écart des 2 commits de l'historique Git. La validation doit comparer les neuf blobs, le diff de commit et la CI exact SHA.
+
+**Contre-preuves à conserver :** l'ancien test hébergé ne prouve ni A↔B, ni D2, ni cleanup. Dernier SQL indépendant sur la branche Neon synthétique `noisy-truth-00115950/br-sweet-frog-b9ok6ptp/iamina925_empty` : 2 comptes A/B, 2 profils, 0 reçu D2, 0 notification D2. Les comptes existent ; aucune suppression applicative n'est prouvée. Le précédent SHA `f3a82f88` avait 63 GitHub SUCCESS / 4 FAILURE / 1 SKIPPED et six gates Web prioritaires SUCCESS ; les futurs workflows ne sont pas anticipés. PR #1153 reste DRAFT ; Production et immutable Preview inchangées.
+
+**Next exact** : vérifier blob/diff/CI du commit documentaire ; poursuivre revue statique du vaste diff avant intégration ; reprendre plus tard A/B hébergé et effacement strictement par application avec SQL `auth_user=0`, puis revue clinique/privacy/retention et GO séparés pour merge/Vercel. **Lot FUE documentaire candidat seulement ; certification D2 globale NON GO.**
