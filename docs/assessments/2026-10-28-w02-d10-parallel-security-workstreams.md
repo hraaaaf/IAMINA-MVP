@@ -25,3 +25,9 @@
 ## Séquence gate
 
 A+B+C peuvent être testés indépendamment en synthétique ; D spécification sans mutation ; E **après** certification du coffre et W01 GO. Prochaine implémentation critique : vrai bridge Dart ↔ JS isolé ; authentification propriétaire et floor durable avec recovery sûre ; tests Chrome E2E + revue indépendante ; W01 closeout ; seulement alors décision de livraison D10.
+
+## Revue adversariale interne — ouverture/fermeture
+
+Contrôle supplémentaire : le premier candidat comparait seulement `revision` entre le ciphertext authentifié restauré et le record relu après `memoryFactory.open`. Or un attaquant qui substitue un autre ciphertext valide **de même révision** pendant cette fenêtre pourrait produire un exécuteur mémoire divergent avec un jeton CAS étranger. Le correctif compare désormais les cinq champs intégraux de l'enveloppe et ferme la mémoire si la relecture échoue. Trois tests injectent substitution, erreur de lecture et révocation entre les deux opérations. Un quatrième teste une fermeture pendant une réservation monotone asynchrone. **Seul un nouveau run sur le SHA corrigé** vaut preuve ; revue de sécurité indépendante toujours absente.
+
+Limitation : un IDB commit déjà engagé n'est pas annulable arbitrairement par `close` ; app-lock facultatif interdit avant conception finale d'un protocole de session/logout et tests hébergés.

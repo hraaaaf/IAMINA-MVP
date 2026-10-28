@@ -17,6 +17,18 @@ export class W02SessionError extends Error {
 }
 const deny = code => { throw new W02SessionError(code); };
 const revisionOk = value => Number.isSafeInteger(value) && value >= 0;
+const sameEnvelope = (a, b) => {
+  if (a === null || b === null) return a === b;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' ||
+      Array.isArray(a) || Array.isArray(b)) return false;
+  const schema = 'ciphertext|format|nonce|revision|version';
+  if (Object.keys(a).sort().join('|') !== schema ||
+      Object.keys(b).sort().join('|') !== schema) return false;
+  return a.format === b.format && a.version === b.version &&
+    a.revision === b.revision && a.nonce === b.nonce &&
+    a.ciphertext === b.ciphertext;
+};
+
 
 export async function openSyntheticVaultSession({
   store, slot, vaultId, key, ownerSession, revisionAuthority,
@@ -42,6 +54,7 @@ export async function openSyntheticVaultSession({
     slot, vaultId, minimumRevision: Math.max(1, floor), key,
   });
   let bytes = restored?.bytes ?? null;
+  const authenticatedEnvelope = restored?.envelope ?? null;
   let memory;
   try {
     assertOwner();
@@ -65,14 +78,19 @@ export async function openSyntheticVaultSession({
     restored = null;
   }
 
-  let expectedEnvelope = await store.readEnvelope(slot);
-  // A second tab could commit between restore and readEnvelope. Never attach
-  // an executor loaded with one version to another version's CAS token.
-  let sessionClosed = false, poisoned = false, revision = floor;
-  if ((expectedEnvelope?.revision ?? 0) !== floor) {
+  // Authentication and volatile SQLite loading are NOT in the same IDB
+  // transaction. Compare the WHOLE authenticated envelope after memory.open:
+  // equal revision alone permits a same-revision ciphertext swap.
+  let expectedEnvelope;
+  try {
+    expectedEnvelope = await store.readEnvelope(slot);
+    assertOwner();
+    if (!sameEnvelope(expectedEnvelope, authenticatedEnvelope)) deny('concurrent_open');
+  } catch (err) {
     await memory.close();
-    deny('concurrent_open');
+    throw err;
   }
+  let sessionClosed = false, poisoned = false, revision = floor;
   const assertOpen = () => {
     if (sessionClosed) deny('session_closed');
     if (poisoned) deny('session_poisoned');
@@ -99,6 +117,8 @@ export async function openSyntheticVaultSession({
         if (advanced !== true) deny('trusted_revision_conflict');
         // Once advanced, NEVER decrement the floor, even if commit fails.
         poisoned = true;
+        // sign-out/close during the trusted reservation must stop the write.
+        if (sessionClosed) deny('session_closed');
         assertOwner();
         const nextEnvelope = await store.commit({
           slot, vaultId, expectedEnvelope, minimumRevision: revision,

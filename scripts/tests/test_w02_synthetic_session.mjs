@@ -147,3 +147,49 @@ test('close is idempotent; never silently allows a post-close commit', async () 
   await assert.rejects(session.commit(), code('session_closed'));
   assert.equal(ctx.opened[0].closed,true);
 });
+
+test('same-revision ciphertext substitution during volatile-open is rejected and memory closed', async () => {
+  const ctx = await setup();
+  const first = await openSyntheticVaultSession(ctx.args);
+  await first.commit(); await first.close();
+  const replacement = await sealVaultSnapshot({
+    bytes: new TextEncoder().encode('SYNTHETIC_OTHER_RECORD'),
+    vaultId, revision:1, key:ctx.args.key,
+  });
+  const originalRead = ctx.store.readEnvelope.bind(ctx.store);
+  ctx.store.readEnvelope = async () => replacement;
+  await assert.rejects(openSyntheticVaultSession(ctx.args), code('concurrent_open'));
+  assert.equal(ctx.opened[1].closed,true);
+  ctx.store.readEnvelope = originalRead;
+});
+test('read-envelope transport failure closes loaded volatile executor', async () => {
+  const ctx = await setup();
+  ctx.store.readEnvelope = async () => { throw Error('read-failure'); };
+  await assert.rejects(openSyntheticVaultSession(ctx.args), /read-failure/);
+  assert.equal(ctx.opened[0].closed,true);
+});
+test('owner revocation during post-restore read rejects and closes memory', async () => {
+  const ctx = await setup();
+  ctx.store.readEnvelope = async () => { ctx.owner.active=false; return null; };
+  await assert.rejects(openSyntheticVaultSession(ctx.args), code('owner_session_changed'));
+  assert.equal(ctx.opened[0].closed,true);
+});
+test('close during asynchronous trusted floor reservation prevents ciphertext commit', async () => {
+  const ctx = await setup();
+  const session = await openSyntheticVaultSession(ctx.args);
+  const advance = ctx.floor.compareAndAdvance.bind(ctx.floor);
+  let release;
+  ctx.floor.compareAndAdvance = async (value) => {
+    const result = await advance(value);
+    await new Promise(resolve => { release = resolve; });
+    return result;
+  };
+  const pending = session.commit();
+  for (let i=0; i<8 && !release; i++) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(typeof release,'function');
+  await session.close();
+  release();
+  await assert.rejects(pending, code('session_closed'));
+  assert.equal(ctx.store.row,null);
+  assert.equal(await ctx.floor.getFloor(ctx.args),1);
+});
