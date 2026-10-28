@@ -98,7 +98,8 @@ final class W02NativeRevisionClient {
     if (origin.scheme != 'https' || origin.hasPort ||
         origin.userInfo.isNotEmpty || origin.path != '' ||
         origin.hasQuery || origin.hasFragment ||
-        (!syntheticTestOnly && !_host.hasMatch(origin.host))) {
+        (!syntheticTestOnly && !_host.hasMatch(origin.host)) ||
+        (syntheticTestOnly && origin.host != 'test-only.invalid')) {
       throw const W02RevisionClientException('preview_origin_rejected');
     }
     final epoch = identity.epoch;
@@ -206,8 +207,14 @@ final class W02NativeRevisionClient {
     final floorHash = value['committed_envelope_sha256'];
     final pendingRev = value['pending_revision'];
     final pendingTicket = value['pending_ticket'];
+    final slot = value['slot'];
     if (!['uninitialized', 'ready', 'pending'].contains(status) ||
         rev is! int || rev < 0 ||
+        (status == 'uninitialized' &&
+            (slot != null || rev != 0 ||
+             pendingRev != null || pendingTicket != null)) ||
+        (status != 'uninitialized' &&
+            (slot is! String || !_slot.hasMatch(slot))) ||
         floorHash is! String ||
         (rev == 0 ? floorHash.isNotEmpty : !_sha256.hasMatch(floorHash)) ||
         (status == 'pending' &&

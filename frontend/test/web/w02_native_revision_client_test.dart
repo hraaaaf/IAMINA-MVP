@@ -144,8 +144,8 @@ void main() {
     await expectLater(first.state(), throwsA(isA<W02RevisionClientException>()));
     final pending = MockClient((_) async =>
         jsonResponse({...answer(), 'status': 'pending',
-            'slot': 'S' * 43, 'pending_revision': 1,
-            'pending_ticket': 'T' * 43}));
+            'slot': List.filled(43, 'S').join(), 'pending_revision': 1,
+            'pending_ticket': List.filled(43, 'T').join()}));
     final second = await capture(owner, pending);
     final state = await second.state();
     expect(state['status'], 'pending');
@@ -162,22 +162,22 @@ void main() {
         expect(payload['expected_revision'], 0);
         return jsonResponse({
           'vault_id': 'amina_vault_v1_native_734',
-          'revision': 1, 'ticket': 'T' * 43,
+          'revision': 1, 'ticket': List.filled(43, 'T').join(),
         });
       }
-      expect(payload['envelope_sha256'], 'a' * 64);
+      expect(payload['envelope_sha256'], List.filled(64, 'a').join());
       return jsonResponse({
         'vault_id': 'amina_vault_v1_native_734',
         'status': 'ready', 'committed_revision': 1,
-        'committed_envelope_sha256': 'a' * 64,
+        'committed_envelope_sha256': List.filled(64, 'a').join(),
       });
     });
     final lease = await capture(owner, client);
-    final ticket = await lease.reserve(slot: 'S' * 43, expectedRevision: 0);
+    final ticket = await lease.reserve(slot: List.filled(43, 'S').join(), expectedRevision: 0);
     expect(ticket['revision'], 1);
     final ok = await lease.finalize(
-        slot: 'S' * 43, revision: 1,
-        ticket: ticket['ticket'], envelopeSha256: 'a' * 64);
+        slot: List.filled(43, 'S').join(), revision: 1,
+        ticket: ticket['ticket'], envelopeSha256: List.filled(64, 'a').join());
     expect(ok['status'], 'ready');
     expect(seen.length, 2);
   });
@@ -198,3 +198,5 @@ void main() {
     );
   });
 }
+
+  // Further replay/host scope checks are covered by the source contract.
