@@ -103,3 +103,20 @@ Branches à **préserver** sans examen/GO spécifique : défaut `br-sweet-frog-b
 **Portée stricte** : le fix est une séparation des imports sans changement voulu de l'UI. Le dernier test TinyFish hébergé (before/after) a démontré l'écran d'accueil réparé au code `3903f5e4`, mais la Preview Vercel **n'a pas été redéployée au commit `35ec53a2`** ; ne pas prétendre un AFTER hébergé au nouveau code. Le `core.0024` Neon QA demeure non appliqué, `auth_user=0` et aucune table W02 ; **patient NO-GO**, PR DRAFT / non mergée.
 
 **Next exact :** vérifier l'issue du screenshot CI ; si vert, ce sous-lot CI est clos, sinon corriger puis retester. Reprendre séparément migration QA autorisée, app-lock première connexion, E2E synthétique A→B→A/cleanup, W01 first-user gate, revue sécurité et décision humaine de merge. Ne pas déployer de nouveau Vercel sans GO spécifique. Pas de pourcentage de chantier certifié.
+
+
+## Final closeout — 5/5 CI Web/native + screenshots — 28/10/2026
+
+**Résultat exact :** W02/D10 sous-lot réparation CI native et stabilité invité Web validé au SHA code `35ec53a2f693cb1f32ac9646d5bb3952694f7faa`. Le HEAD antérieur `776153ac` était rouge sur géométrie pour import WASM/JS dans une VM native ; correction par import conditionnel Web/Native, zéro réouverture de stockage patient Web en clair.
+
+**5 pipelines conclus SUCCESS sur le même SHA de code :**
+1. [UI geometry golden #40750922905](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750922905).
+2. [W02 guest boot VM native + Web release + Chrome #40750940608](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750940608).
+3. [W02 SQLite WASM Chrome #40750914744](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750914744).
+4. [FRUG-1 ingest benchmark #40750922859](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750922859).
+5. [UI browser screenshot certification #40750922810](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40750922810), **3/3 jobs SUCCESS** : 390×844, 768×1024 et 1280×900. Artefacts récupérables dans les sorties GitHub : `iamina-ui-browser-cert-390x844` ID `12843128676`, `iamina-ui-browser-cert-768x1024` ID `12844236486`, `iamina-ui-browser-cert-1280x900` ID `12843738218`. Ces tests certifient leurs propres critères techniques ; **aucun score pixel-à-pixel manuel n'a été établi** ici.
+
+**État externe indépendant vérifié** : Vercel Web Preview `dpl_5UAZBrbp47y6dUd6KVHkhx52yXPH` toujours READY sur le *code antérieur* `3903f5e4` (TinyFish BEFORE blanc / AFTER login présent validé à ce SHA), pas de déploiement de `35ec53a2` ni de l'API. Neon sandbox QA `noisy-truth-00115950` branche `br-green-meadow-b9j6o0bp`, DB `iamina925_empty` et rôle `iamina925_empty_owner`: lecture indépendante `auth_user=0`, `core.0024=0`, `core_w02vaultrevisionanchor` absente. Aucune activation clinique ni donnée patient.
+
+**Closeout proportionné :** lot **CI/native + guest boot** GREEN et documenté. **W02/D10 patient NO-GO** ; PR #1158 toujours DRAFT, aucun merge. Les gates restants sont migration Django QA via canal autorisé (contrôle SQL indépendant), app-lock et première connexion réelle, E2E Web→BFF→API→Neon synthétique A→B→A/révocation/cleanup zéro, résolution W01 first-user FAIL #40739595534, audit de sécurité indépendant, puis décision humaine de release/merge. Ne pas inférer un pourcentage global.
+
