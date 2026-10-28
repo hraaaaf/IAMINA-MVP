@@ -33,3 +33,21 @@ test('browser-only acceptance tests cover real SQLite round trip and no silent r
   assert.match(web, /authenticatedSnapshot: encryptedInput/);
   assert.match(web, /new volatile connection cannot see prior synthetic records/);
 });
+
+test('W02 Chrome WASM diagnostic fetches from explicit loopback-only HTTP endpoint', () => {
+  const pubspec = readFileSync('frontend/pubspec.yaml', 'utf8');
+  assert.match(candidate, /WasmSqlite3\.loadFromUrl\(/);
+  assert.match(candidate, /w02_wasm_load_timeout/);
+  assert.match(web, /String\.fromEnvironment\('W02_TEST_WASM_URL'\)/);
+  assert.match(web, /w02_test_wasm_url_must_be_loopback/);
+  assert.doesNotMatch(web, /rootBundle/);
+  assert.match(pubspec, /sqlite3: 2\.9\.4/);
+});
+
+test('W02 executor is initialized under test-only synthetic schema authority', () => {
+  assert.match(web, /_SyntheticW02QueryExecutorUser extends QueryExecutorUser/);
+  assert.match(web, /candidate\.executor\.ensureOpen\(/);
+  assert.match(web, /await openSyntheticDriftExecutor\(first\)/);
+  assert.match(web, /await openSyntheticDriftExecutor\(reopened\)/);
+  assert.match(web, /await openSyntheticDriftExecutor\(empty\)/);
+});

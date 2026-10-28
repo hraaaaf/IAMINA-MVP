@@ -1,0 +1,54 @@
+name: W02 isolated Flutter SQLite WASM Chrome stage diagnostics
+on:
+  push:
+    branches:
+      - test/w02-sqlite-wasm-stage-diagnostics-20261028
+      - feat/w02-web-bff-readonly-preflight-20261028
+    paths:
+      - 'frontend/lib/data/drift/w02_web_memory_sqlite_candidate.dart'
+      - 'frontend/test/web/w02_web_memory_sqlite_candidate_test.dart'
+      - 'frontend/pubspec.yaml'
+      - 'scripts/tests/test_w02_memory_sqlite_source_contract.mjs'
+      - '.github/workflows/w02-sqlite-wasm-stage-diagnostics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w02-sqlite-memory-diag-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chrome-memory-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static W02 no-plaintext and source guard contracts
+        run: |
+          node --test scripts/tests/test_w02_encrypted_vault_envelope.mjs scripts/tests/test_w02_ciphertext_store.mjs scripts/tests/test_w02_memory_sqlite_source_contract.mjs
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Check pinned binary and available Chrome
+        run: |
+          sha256sum frontend/web/sqlite3.wasm
+          file frontend/web/sqlite3.wasm
+          (google-chrome --version || chromium --version || true)
+      - name: Flutter dependencies and focused analysis
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/data/drift/w02_web_memory_sqlite_candidate.dart test/web/w02_web_memory_sqlite_candidate_test.dart
+      - name: Real Chrome 3-case memory-only SQLite WASM diagnostic
+        working-directory: frontend
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          python -u ../scripts/w02_local_wasm_asset_server.py > /tmp/w02-wasm-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 6 --retry-connrefused --retry-delay 1              --dump-header /tmp/w02-wasm-headers.txt              http://127.0.0.1:7399/sqlite3.wasm -o /dev/null
+          grep -i 'Content-Type: application/wasm' /tmp/w02-wasm-headers.txt
+          grep -i 'Access-Control-Allow-Origin: \*' /tmp/w02-wasm-headers.txt
+          flutter test --no-pub --platform chrome --reporter expanded --timeout 30s              --dart-define=W02_TEST_WASM_URL=http://127.0.0.1:7399/sqlite3.wasm              test/web/w02_web_memory_sqlite_candidate_test.dart

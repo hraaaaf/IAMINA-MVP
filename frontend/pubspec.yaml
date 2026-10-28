@@ -27,6 +27,7 @@ dependencies:
 
   # Offline-first database
   typed_data: ^1.4.0 # volatile SQLite snapshot buffer
+  sqlite3: 2.9.4 # explicit direct WASM binding dependency (W02 diagnostic)
   drift: ^2.20.0
   sqlite3_flutter_libs: ^0.5.25
   path_provider: ^2.1.2

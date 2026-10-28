@@ -28,3 +28,32 @@ Static Node regression contract: scripts/tests/test_w02_memory_sqlite_source_con
 5. Close W01 before W02 merge as required by roadmap; run only one final GitHub CI once integrated; seek separate explicit Vercel Preview GO, then real hosted synthetic Web to BFF to API to Neon with independent SQL cleanup auth_user=0.
 
 **W02 patients/Production NO-GO**. No Vercel deployment, Neon mutation, PR merge, patient data or clinical app-path activation in this subpass. No UI/UX change in the product.
+
+
+## 28/10/2026 — Diagnostic Chrome sur branche de test, non certifié
+
+Rappel du résultat réellement observé dans le sandbox précédent : après correction du chemin WASM via `WasmSqlite3.load(bytes)` et `rootBundle`, Dart analyze 0 issue, mais Chrome encore **1/3 PASS, 2/3 TIMEOUT (30 s)**. L'origine n'a pas été identifiée (aucune trace de l'étape exacte). **Ces modifications sandbox n'avaient pas été publiées**.
+
+Le présent candidat de diagnostic fournit un chargeur de bytes explicite (asset Flutter existant `web/sqlite3.wasm`), la dépendance `sqlite3:2.9.4`, la binding de tests Flutter et une trace par étape `asset_load`, `wasm_load`, `vfs_register`, `sqlite_open`, `pragma`, `drift_executor`, `runCustom`, `insert`, `export`, `reopen`, `select`. Un délai explicite de 12 s sur le chargement asynchrone remplace un gel silencieux par `w02_wasm_load_timeout`. La trace ne contient aucune donnée patient.
+
+**Statut au moment de la préparation : CI Chrome non exécutée sur ce nouveau SHA.** Une branche de test isolée, non mergée, sert uniquement à obtenir le journal GitHub Actions complet. Si la CI révèle une autre étape bloquée, corriger la cause, relancer le test au nouveau SHA et n'appeler 3/3 PASS que sur preuve exacte. Garde clinique Web inchangé, aucune activation de coffre patient, aucun Vercel/Neon/Production.
+
+
+## 28/10/2026 — Résultat CI instrumentée #40710384590 et correction du harness (pré-CI)
+
+Preuve vérifiée au commit `59520a9e` : contrats Node 45/45 PASS, Flutter analyze PASS, mais Chrome 1/3 PASS, 2/3 FAIL. Journal exact du job #122893748668 : `W02_STAGE asset_load:start` puis `TimeoutException after 0:00:12.000000` deux fois. Aucun `asset_load:done` ni `wasm_load:start`. **La panne est la récupération de l'asset `rootBundle.load` dans le harness `flutter test --platform chrome`**, et non une défaillance SQLite WASM prouvée. Le diagnostic précédemment inconnu est maintenant isolé.
+
+Nouvelle stratégie de test (branche uniquement) : supprimer l'appel `rootBundle` du test et fournir les octets WASM exacts déjà commités sous `frontend/web/sqlite3.wasm` via serveur HTTP de fixture lié à 127.0.0.1:7399, Content-Type `application/wasm`, CORS explicite ; `WasmSqlite3.loadFromUrl` reçoit une URL strictement locale injectée avec `--dart-define`. Le serveur ne sert que ce binaire, jamais d'autre fichier. Analyse, contrat Node et trois tests Chrome doivent encore passer au **nouveau SHA** avant toute revendication. Garde patient inchangé, aucun déploiement Vercel ni mutation Neon.
+
+
+## 28/10/2026 — Deuxième CI complète : WASM/SQLite PASS, Drift exige ensureOpen
+
+[Run #40711232856](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40711232856), job 122896788781, exact SHA a122393d : Node 45/45 PASS et analyse Flutter PASS ; **Chrome 1/3 PASS, 2/3 FAIL**. Trace : `wasm_load:done → vfs_register:done → sqlite_open:done → pragma:done → drift_executor:done` (WASM chargé sur HTTP localhost en ~0,31s). Première et troisième requêtes échouent immédiatement : `Bad state: Tried to run an operation without first calling QueryExecutor.ensureOpen()!`. Il ne s'agit donc plus d'un timeout ni d'une indisponibilité WASM : cause confirmée = tests appelant directement le `QueryExecutor` Drift sans protocole d'ouverture.
+
+Correctif suivant **dans le test seulement** : implémentation `QueryExecutorUser` synthétique version 1, `beforeOpen` no-op (sans migrations cliniques), `await executor.ensureOpen(user)` pour les trois connexions créées dans le scénario avant toute requête. Source Drift 2.31.0 vérifiée : interface QueryExecutorUser et exigence d'ensureOpen. N'active ni ne modifie le runtime patient. **CI nouveau SHA requise** pour 3/3 Chrome avant toute validation.
+
+## W02 — Isolated Chrome proof and direct candidate branch integration (2026-10-28)
+
+**Verified diagnostic branch:** [run #40711893615](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40711893615), SHA `30e92e86e3eec97ce20855db04ae07ddd87d2ccf`, Chrome `3/3 PASS` for actual SQLite WASM -> Drift -> synthetic insert -> binary snapshot -> reopen/SELECT and new-connection isolation, Node `46/46 PASS`, focused Flutter analysis PASS. Driver used loopback HTTP fixture for binary WASM load, not `rootBundle.load` under `flutter test`, and explicitly `executor.ensureOpen` before Drift direct queries. This fixes the synthetic test harness only, not a clinical vault. All assertions were run on diagnostic SHA, not yet on the new candidate SHA.
+
+**Candidate branch integration:** these exact Dart/test/Node/fixture files are being copied into `feat/w02-web-bff-readonly-preflight-20261028` with a workflow trigger for that branch. **The new candidate SHA must prove its own CI**; the previous diagnostic PASS must not be represented as proof on the new SHA. The patient Web deny gate in `database.dart` remains unchanged. No JS-Dart encrypted persistence bridge, key recovery, anti-rollback or legacy data migration has been implemented or certified; no Vercel deploy, Neon mutation, real patient or merge. W01 closeout remains prerequisite to W02 merge.
