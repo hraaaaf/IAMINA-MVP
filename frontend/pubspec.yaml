@@ -23,6 +23,7 @@ dependencies:
 
   # Sovereign IAMINA bearer storage
   flutter_secure_storage: ^10.3.1
+  web: ^1.1.1
 
   # Offline-first database
   drift: ^2.20.0
