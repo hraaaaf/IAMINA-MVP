@@ -58,13 +58,23 @@ def main():
                     # Flutter Web does not expose semantic text nodes until
                     # accessibility is activated in some renderer variants.
                     placeholder = page.locator("flt-semantics-placeholder")
-                    if placeholder.count() > 0 and placeholder.is_visible():
-                        placeholder.click(timeout=10000)
+                    print("D30 initial route:", page.url, flush=True)
+                    print("D30 semantics placeholder count:", placeholder.count(), flush=True)
+                    if placeholder.count():
+                        # Flutter CanvasKit/Web may hide its semantic activation
+                        # placeholder visually. Dispatch DOM click directly rather
+                        # than waiting for an element sized only for assistive tech.
+                        placeholder.evaluate("(element) => element.click()")
+                    page.wait_for_timeout(700)
+                    print("D30 semantic button names:", page.get_by_role("button").all_text_contents()[:12], flush=True)
+                    page.screenshot(path="/tmp/d30-enrollment-before-click.png")
                     button = page.get_by_role(
                         "button", name=re.compile(r"Set up this device", re.I)
                     )
                     button.wait_for(state="visible", timeout=30000)
+                    print("D30 CTA located, clicking", flush=True)
                     button.click(timeout=20000)
+                    print("D30 CTA clicked, current URL:", page.url, flush=True)
                     page.wait_for_url(re.compile(r"/app-lock/setup"), timeout=30000)
                     page.wait_for_function(
                         "() => !!document.querySelector('flutter-view, flt-glass-pane')",
