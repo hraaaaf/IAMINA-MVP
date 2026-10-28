@@ -22,15 +22,23 @@ export async function openSyntheticBrowserBridge(vaultId, slot, secret, minimumR
   let restored;
   let originalEnvelope;
   try {
-    restored = await store.restore({
-      slot, vaultId, minimumRevision: Math.max(1, minimumRevision), key,
-    });
-    if (restored === null) {
+    // Empty synthetic enrollment has revision zero; openVaultSnapshot expects
+    // positive floor only when ciphertext already exists. Never call restore
+    // with an invented floor 1 for a brand-new slot.
+    const observedEnvelope = await store.readEnvelope(slot);
+    if (observedEnvelope === null) {
       if (minimumRevision !== 0) throw Error('w02_missing_known_snapshot');
       if (!allowEmpty) throw Error('w02_synthetic_creation_denied');
-    } else if (minimumRevision === 0 || restored.envelope.revision !== minimumRevision) {
-      restored.bytes.fill(0);
-      throw Error('w02_untrusted_revision_floor');
+      restored = null;
+    } else {
+      if (minimumRevision === 0) throw Error('w02_untrusted_revision_floor');
+      restored = await store.restore({
+        slot, vaultId, minimumRevision, key,
+      });
+      if (restored.envelope.revision !== minimumRevision) {
+        restored.bytes.fill(0);
+        throw Error('w02_untrusted_revision_floor');
+      }
     }
     originalEnvelope = await store.readEnvelope(slot);
     // No revised/tampered ciphertext is accepted between authenticated restore
