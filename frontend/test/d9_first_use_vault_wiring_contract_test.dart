@@ -17,9 +17,13 @@ void main() {
     expect(host, contains('current.d9Gate = _D9FirstUseGate.newPatient'));
     expect(host, contains('return _buildD9VerificationGate(bundle)'));
     expect(host, contains('lockNonce != _d9LockNonce'));
+    expect(host, contains('final proofAccepted = current.consent.adoptVerifiedD9FirstUseProof('));
+    expect(host, contains('null, activeOwner: current.scope.nativeDjangoUserId ?? 0'));
+    expect(host, contains('current.d9Gate = _D9FirstUseGate.unresolved'));
+    expect(consent, contains('_d9VerifiedRemoteOwner = verified ? activeOwner : null'));
     expect(host, contains('widget.controller.activeDatabase != current.db'));
-    expect(consent, contains('profile != null || _d9VerifiedRemoteCompletion'));
-    expect(consent, contains('proof.ownerUserId != activeOwner'));
+    expect(consent, contains('profile != null || _d9VerifiedRemoteOwner != null'));
+    expect(consent, contains('proof.ownerUserId == activeOwner'));
     expect(consent, contains('_hasVerifiedEvidence'));
     expect(host, isNot(contains('.into(db.patientProfiles)')));
   });
