@@ -184,12 +184,20 @@ void main() {
       await tester.pump();
       expect(find.byKey(const Key('d2-enable-preview-only')), findsNothing);
       AuthEpoch.advance();
+      // Simulate A's late response saying consent is ON, after session B starts.
+      g.consent = true;
       g.pending!.complete(g.status('fr'));
-      await tester.pumpAndSettle();
-      await tester.pumpWidget(_app(g, 'fr')); // force changed-epoch frame
+      // A loading spinner deliberately remains active when stale data is
+      // discarded. pumpAndSettle() would time out: inspect one settled frame,
+      // not the completion of an intentionally nonsettling spinner.
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.byKey(const Key('d2-enable-preview-only')), findsNothing);
+      expect(find.byKey(const Key('d2-withdraw-consent')), findsNothing);
       expect(find.byKey(const Key('d2-server-notice')), findsNothing);
+      expect(find.byKey(const Key('d2-governed-preview')), findsNothing);
+      expect(g.previews, 0);
+      expect(g.inboxReads, 0);
       expect(g.grants, 0);
       expect(tester.takeException(), isNull);
     });
