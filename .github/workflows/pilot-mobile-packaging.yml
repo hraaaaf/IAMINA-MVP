@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: pilot-mobile-packaging-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   android-debug-compile:

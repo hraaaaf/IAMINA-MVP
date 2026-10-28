@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: login-screenshot-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   screenshot:

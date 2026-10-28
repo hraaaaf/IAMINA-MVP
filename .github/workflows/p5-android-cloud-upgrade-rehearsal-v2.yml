@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: p5-android-cloud-upgrade-rehearsal-v2
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   signed-update-emulator:

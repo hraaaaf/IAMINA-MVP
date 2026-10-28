@@ -19,7 +19,8 @@ permissions:
   contents: read
 concurrency:
   group: w02-vault-chrome-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
+
 jobs:
   chrome-vault:
     name: Real Chrome physical scoped SQLite/IndexedDB A-B-A

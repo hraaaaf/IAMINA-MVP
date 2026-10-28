@@ -39,7 +39,7 @@ permissions:
 
 concurrency:
   group: p5-5-rehearsal-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || (github.event_name == 'push' && github.ref != 'refs/heads/main') }}
 
 jobs:
   p5-5-rehearsal:
