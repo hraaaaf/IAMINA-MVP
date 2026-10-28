@@ -303,6 +303,44 @@ void main() {
     auth.dispose();
   });
 
+  test('D30 re-enrollment preserves vault locator but never bypasses app lock', () async {
+    seedStorage({});
+    final auth = AuthService(
+      httpClient: MockClient((request) async {
+        fail('Local-only re-enrollment must never call remote API');
+      }),
+    );
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final before = await auth.resolvePatientVaultScope();
+    expect(before, isNotNull);
+    expect(auth.hasRemoteApiCredential, isFalse);
+
+    final lock = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      authService: auth,
+    );
+    await lock.initialize();
+    await lock.configure();
+    expect(lock.isUnlocked, isTrue);
+
+    await auth.signOut();
+    expect(lock.isUnlocked, isFalse);
+    expect(await auth.resolvePatientVaultScope(), isNull);
+
+    await auth.enrollLocalDevice();
+    final after = await auth.resolvePatientVaultScope();
+    expect(after?.databaseName, before?.databaseName);
+    expect(lock.isUnlocked, isFalse);
+    expect(lock.isRequired, isTrue);
+    expect(auth.hasRemoteApiCredential, isFalse);
+
+    await lock.unlock();
+    expect(lock.isUnlocked, isTrue);
+    lock.dispose();
+    auth.dispose();
+  });
+
   test('credential parser rejects insecure non-loopback origins', () {
     final payload = _credential.toJson()
       ..['origin'] = 'http://patient.example';
