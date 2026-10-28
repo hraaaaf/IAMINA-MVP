@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:amina/data/drift/w02_web_memory_sqlite_candidate.dart';
+import 'package:drift/drift.dart' show QueryExecutor, QueryExecutorUser, OpeningDetails;
 import 'package:flutter_test/flutter_test.dart';
 
 /// Dedicated Chrome test runner serves the repository-pinned sqlite3.wasm
@@ -18,6 +19,25 @@ Uri browserWasmUri() {
   return uri;
 }
 
+/// Test-only schema owner: no production schema or clinical migrations.
+final class _SyntheticW02QueryExecutorUser extends QueryExecutorUser {
+  @override
+  int get schemaVersion => 1;
+
+  @override
+  Future<void> beforeOpen(QueryExecutor executor, OpeningDetails details) async {}
+}
+
+Future<void> openSyntheticDriftExecutor(
+    W02WebMemorySqliteCandidate candidate) async {
+  print('W02_STAGE drift_ensure_open:start');
+  final opened = await candidate.executor.ensureOpen(
+    _SyntheticW02QueryExecutorUser(),
+  );
+  expect(opened, isTrue);
+  print('W02_STAGE drift_ensure_open:done');
+}
+
 void traceW02(String stage) => print('W02_STAGE $stage');
 
 void main() {
@@ -31,6 +51,7 @@ void main() {
     );
     print('W02_STAGE first_open:done');
     try {
+      await openSyntheticDriftExecutor(first);
       print('W02_STAGE create_table:start');
       await first.executor.runCustom(
         'CREATE TABLE synthetic_logs (id INTEGER PRIMARY KEY, note TEXT NOT NULL)',
@@ -57,6 +78,7 @@ void main() {
       );
       print('W02_STAGE reopen:done');
       try {
+        await openSyntheticDriftExecutor(reopened);
         print('W02_STAGE select:start');
         final rows = await reopened.executor.runSelect(
           'SELECT note FROM synthetic_logs ORDER BY id', [],
@@ -86,6 +108,7 @@ void main() {
       trace: traceW02,
     );
     try {
+      await openSyntheticDriftExecutor(empty);
       final rows = await empty.executor.runSelect(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'synthetic_logs'",
         [],
