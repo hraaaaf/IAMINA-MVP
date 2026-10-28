@@ -9,6 +9,7 @@ on:
       - scripts/d30_web_boot_smoke.py
       - frontend/test/services/app_lock_service_test.dart
       - frontend/test/services/d30_api_egress_denial_test.dart
+      - scripts/d30_web_enrollment_e2e.py
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
 
@@ -55,6 +56,8 @@ jobs:
       # external attempts still fail the test without making a network call.
       - name: Smoke-test locally served Flutter Web in Chromium
         run: python3 ../scripts/d30_web_boot_smoke.py
+      - name: E2E local enrollment navigation in Chromium
+        run: python3 ../scripts/d30_web_enrollment_e2e.py
       - name: Retain Chromium smoke screenshot
         if: always()
         uses: actions/upload-artifact@v4
@@ -63,4 +66,5 @@ jobs:
           path: |
             /tmp/d30-flutter-web-boot.png
             /tmp/d30-flutter-web-reload.png
+            /tmp/d30-local-enrollment-transition.png
           if-no-files-found: ignore
