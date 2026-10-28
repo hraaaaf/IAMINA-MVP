@@ -55,6 +55,8 @@ void main() {
     expect(preview, contains('VERCEL_GIT_COMMIT_REF'));
     expect(preview, contains('integration/w01-d2-preview-only-20261027'));
     expect(preview, contains('VERCEL_URL'));
+    expect(preview, contains('IAMINA_PREVIEW_SYNTHETIC_REMOTE_LOGIN_SHA'));
+    expect(preview, contains('VERCEL_GIT_COMMIT_SHA'));
     expect(preview, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true'));
     expect(preview.indexOf('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false'),
       lessThan(preview.indexOf('D2_WEB_SYNTHETIC_ONLY_V1')));
