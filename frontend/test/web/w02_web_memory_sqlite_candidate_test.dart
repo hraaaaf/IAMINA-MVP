@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:amina/data/drift/w02_web_memory_sqlite_candidate.dart';
 import 'package:drift/drift.dart' show QueryExecutor, QueryExecutorUser, OpeningDetails;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart' show debugPrintSynchronously;
 
 /// Dedicated Chrome test runner serves the repository-pinned sqlite3.wasm
 /// over loopback HTTP with CORS. No hosted/patient data is used.
@@ -30,43 +31,43 @@ final class _SyntheticW02QueryExecutorUser extends QueryExecutorUser {
 
 Future<void> openSyntheticDriftExecutor(
     W02WebMemorySqliteCandidate candidate) async {
-  print('W02_STAGE drift_ensure_open:start');
+  debugPrintSynchronously('W02_STAGE drift_ensure_open:start');
   final opened = await candidate.executor.ensureOpen(
     _SyntheticW02QueryExecutorUser(),
   );
   expect(opened, isTrue);
-  print('W02_STAGE drift_ensure_open:done');
+  debugPrintSynchronously('W02_STAGE drift_ensure_open:done');
 }
 
-void traceW02(String stage) => print('W02_STAGE $stage');
+void traceW02(String stage) => debugPrintSynchronously('W02_STAGE $stage');
 
 void main() {
   test('W02 Drift WASM writes and reopens only a volatile SQLite snapshot', () async {
     final sqlite3Wasm = browserWasmUri();
-    print('W02_STAGE first_open:start');
+    debugPrintSynchronously('W02_STAGE first_open:start');
     final first = await W02WebMemorySqliteCandidate.open(
       authenticatedSnapshot: null,
       sqlite3Wasm: sqlite3Wasm,
       trace: traceW02,
     );
-    print('W02_STAGE first_open:done');
+    debugPrintSynchronously('W02_STAGE first_open:done');
     try {
       await openSyntheticDriftExecutor(first);
-      print('W02_STAGE create_table:start');
+      debugPrintSynchronously('W02_STAGE create_table:start');
       await first.executor.runCustom(
         'CREATE TABLE synthetic_logs (id INTEGER PRIMARY KEY, note TEXT NOT NULL)',
         [],
       );
-      print('W02_STAGE create_table:done');
-      print('W02_STAGE insert:start');
+      debugPrintSynchronously('W02_STAGE create_table:done');
+      debugPrintSynchronously('W02_STAGE insert:start');
       await first.executor.runInsert(
         'INSERT INTO synthetic_logs (note) VALUES (?)',
         ['W02_SYNTHETIC_734'],
       );
-      print('W02_STAGE insert:done');
-      print('W02_STAGE export:start');
+      debugPrintSynchronously('W02_STAGE insert:done');
+      debugPrintSynchronously('W02_STAGE export:start');
       final encryptedInput = first.exportSnapshot();
-      print('W02_STAGE export:done');
+      debugPrintSynchronously('W02_STAGE export:done');
       expect(encryptedInput.sublist(0, 16), orderedEquals([
         83, 81, 76, 105, 116, 101, 32, 102,
         111, 114, 109, 97, 116, 32, 51, 0,
@@ -76,15 +77,15 @@ void main() {
         sqlite3Wasm: sqlite3Wasm,
         trace: traceW02,
       );
-      print('W02_STAGE reopen:done');
+      debugPrintSynchronously('W02_STAGE reopen:done');
       try {
         await openSyntheticDriftExecutor(reopened);
-        print('W02_STAGE select:start');
+        debugPrintSynchronously('W02_STAGE select:start');
         final rows = await reopened.executor.runSelect(
           'SELECT note FROM synthetic_logs ORDER BY id', [],
         );
         expect(rows.single['note'], 'W02_SYNTHETIC_734');
-        print('W02_STAGE select:done');
+        debugPrintSynchronously('W02_STAGE select:done');
       } finally {
         await reopened.close();
         encryptedInput.fillRange(0, encryptedInput.length, 0);

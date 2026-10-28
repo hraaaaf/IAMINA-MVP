@@ -39,7 +39,7 @@ jobs:
         working-directory: frontend
         run: |
           flutter pub get
-          flutter analyze --no-fatal-infos lib/data/drift/w02_web_memory_sqlite_candidate.dart test/web/w02_web_memory_sqlite_candidate_test.dart
+          flutter analyze --fatal-infos lib/data/drift/w02_web_memory_sqlite_candidate.dart test/web/w02_web_memory_sqlite_candidate_test.dart
       - name: Real Chrome 3-case memory-only SQLite WASM diagnostic
         working-directory: frontend
         timeout-minutes: 5
