@@ -3,7 +3,7 @@ name: P5-4A PWA update and recovery proof
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, feat/w02-web-option-a-preview-20261028]
     paths:
       - 'frontend/web/**'
       - 'frontend/lib/ui_pwa_persistence_probe_main.dart'
