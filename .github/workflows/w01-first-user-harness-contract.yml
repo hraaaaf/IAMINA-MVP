@@ -1,0 +1,20 @@
+name: W01 first-user Web harness source alignment
+on:
+  push:
+    branches: [fix/w01-first-user-country-search-harness-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web-first-user-harness-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate script syntax without launching browser or creating user
+        run: node --check tools/first_user_prod_e2e.js
+      - name: Check searchable country dropdown, FR copy and removed tone
+        run: node --test scripts/tests/test_w01_first_user_harness_contract.cjs

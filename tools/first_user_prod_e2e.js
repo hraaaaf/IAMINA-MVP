@@ -116,6 +116,38 @@ async function clickText(page, texts, timeout = 12000) {
   throw new Error(`None of controls clickable: ${texts.join(' | ')}`);
 }
 
+// Flutter's country selector is a searchable DropdownMenu, not a static
+// button. Free text alone does not save the country code.
+async function selectCountrySearch(page, country, timeout = 15000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    const fields = [
+      page.getByRole('textbox', { name: /Rechercher un pays/i }),
+      page.getByRole('combobox', { name: /Rechercher un pays/i }),
+      page.getByRole('textbox').last(),
+    ];
+    for (const field of fields) {
+      if (!(await field.count())) continue;
+      if (!(await field.first().isVisible().catch(() => false))) continue;
+      if (!(await field.first().isEnabled().catch(() => false))) continue;
+      try {
+        await field.first().scrollIntoViewIfNeeded().catch(() => {});
+        await field.first().click({ timeout: 2000 });
+        await page.keyboard.press('ControlOrMeta+A');
+        await page.keyboard.type(country, { delay: 35 });
+        await clickText(page, [country], 6000);
+        // A real menu selection is required before the next question appears.
+        await expectText(page, 'Quel type de diabète gérez-vous au quotidien ?', 6000);
+        return;
+      } catch (_) {
+        // Try a different Flutter semantics locator before deadline.
+      }
+    }
+    await sleep(300);
+  }
+  throw new Error('Searchable onboarding country selection was not confirmed');
+}
+
 async function activateButton(page, name, timeout = 15000) {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
@@ -281,8 +313,8 @@ async function waitForChatResponse(page, timeout = 60000) {
   await expectText(page, 'Bonjour ! Je suis IAmina', 20000);
   await capture(page, '02-onboarding-arrival');
   await clickText(page, ['Français']);
-  await clickText(page, ['Maroc']);
-  await clickText(page, ['Simple et chaleureux', 'Neutre et professionnel']);
+  await selectCountrySearch(page, 'Maroc');
+  // D6 tone controls were removed from Web first-use.
   await clickText(page, ['Diabète Type 2']);
   await clickText(page, ['Comprimés']);
   await clickText(page, ['mg/dL']);
