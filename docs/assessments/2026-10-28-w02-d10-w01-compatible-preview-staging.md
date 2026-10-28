@@ -51,3 +51,37 @@ Vérification via `list_branches`, `get_branch`, `list_branch_computes`, et rech
 Branches à **préserver** sans examen/GO spécifique : défaut `br-sweet-frog-b9ok6ptp` ; `br-royal-wave-b9d5eaw1` QA D2 récente avec compute ; `br-delicate-truth-b9jwiqfd` photo pré-cleanup G5 ; `br-soft-rain-b9bs5and` photo pré-migration D2 ; `br-sweet-mountain-b9skxry9` sauvegarde pré-0036 ; `br-autumn-*` et `br-lingering-shape-b9gh0xn6` reprises G6. Snapshot Neon existant `snap-orange-mode-b9tjsdd1` sur défaut, **pas une sauvegarde vérifiée de la branche candidate**. Ne pas le présenter comme tel.
 
 **Human gate :** autoriser explicitement « supprimer uniquement `br-spring-hat-b9hm0c47` du projet `noisy-truth-00115950` ». Avant l'action, relire le détail et l'absence d'enfant; STOP si la cible ou l'usage ont changé. Si GO, supprimer cette branche seulement, puis créer `w02-d10-option-a-preview-qa-20261028`, vérifier les quatre identifiants de connexion isolée, et seulement ensuite poursuivre migration `0024`, E2E, révocation, cleanup et SQL `auth_user=0`. Aucune écriture Production.
+
+
+## Supersession vérifiée — W02/D10 Web guest boot AFTER — 28/10/2026
+
+**Portée / Goal exact :** rendre le Web Preview accessible à l'invité SANS ouvrir de coffre patient Web en clair. Ce closeout **supplante** les anciens constats « quota Neon à résoudre », « W02 Chrome encore queued » et « legacy Web toujours ouvert au boot ». Le quota QA a été résolu par création d'une branche spécifique, mais la migration QA n'a PAS été faite.
+
+### Correctif source (GitHub)
+
+- **Code commit exact :** [`3903f5e42b2abdb9dc829dfd677ab0edc6ed858d`](https://github.com/hraaaaf/IAMINA-MVP/commit/3903f5e42b2abdb9dc829dfd677ab0edc6ed858d), branche `feat/w02-d10-option-a-w01-preview-20261028`, [PR #1158](https://github.com/hraaaaf/IAMINA-MVP/pull/1158) DRAFT, **non mergée**.
+- `PatientVaultAppHost.initState` invité ouvre désormais `AppDatabase.guestAuditOnly()` en mémoire SQLite WASM sur Web. Le garde `AppDatabase.forPatientVault` continue à lancer `encrypted_web_patient_vault_unavailable` sur Web patient non chiffré. `main.dart` ne déclenche plus `AppDatabase.defaults()` legacy plaintext au démarrage Web.
+- **Risques résiduels :** `AppDatabase.defaults()` reste un constructeur possible ailleurs ; le statut Web `legacyProtected=true` impose une récupération app-lock conservatrice et n'est pas validé par un parcours de première authentification. Aucune donnée patient clinique prête pour Production.
+
+### CI exact-SHA et observation BEFORE/AFTER
+
+- [GitHub #40747416807](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40747416807) **SUCCESS** : 4 tests statiques source, analyse Flutter ciblée, compilation release Web du vrai `main.dart`, vrai Chrome guest WASM volatile/recréation sans lignes, et refus `forPatientVault` Web patient.
+- [GitHub #40747416583](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40747416583) **SUCCESS** : garde WASM et 3 tests Chrome mémoire synthétiques.
+- **BEFORE** [TinyFish `55ccac03-81c5-4de4-b85e-afec0d0babcc`](https://agent.tinyfish.ai/runs/55ccac03-81c5-4de4-b85e-afec0d0babcc) : code Preview antérieur `1e2a2409`, `flutter-view` présent mais écran gris/blanc et login absent après attente → **FAIL**.
+- **AFTER** [TinyFish `5fa9f5bc-a4d8-4f07-abed-d12f9cf755e5`](https://agent.tinyfish.ai/runs/5fa9f5bc-a4d8-4f07-abed-d12f9cf755e5) : Web Preview `dpl_5UAZBrbp47y6dUd6KVHkhx52yXPH`, commit `3903f5e4` READY ; URL finale `/#/login`, écran « Set up IAmina here » et bouton « Set up this device » réellement visibles, pas d'écran blanc → **PASS**. Même navigateur TinyFish *lite* demandé ; pixels/viewports chiffrés des captures non obtenus, ne pas présenter une comparaison géométrique pixel parfaite. **Score d'acceptation visuelle sur le seul critère boot : PASS (1/1).** Aucun compte, formulaire ni donnée patient ; pas d'E2E authentifié.
+- Préviews maintenues en SSO. Lien d'accès temporaire pour TinyFish révoqué via API Vercel ensuite. Aucun déploiement de l'API ni de Production.
+
+### QA Neon : gate toujours BLOQUÉ
+
+- **Projet** `noisy-truth-00115950` ; branche QA créée `br-green-meadow-b9j6o0bp` (distincte du parent `br-sweet-frog-b9ok6ptp`) ; DB `iamina925_empty` ; rôle `iamina925_empty_owner`. Le quota n'est plus le blocage actuel.
+- Sandbox Vercel isolé et non persistant `sbx_BPUoaCGdR5KggdtfBTTKsolu2hQY` au code exact : Python 3.12 + Django, préflight **lecture seule PASS** sur quatre identités, compte 0, migration planifiée uniquement `core.0024`. Exécution de migration **refusée par les contrôles de sécurité** : aucune instruction de contournement, aucun DDL manuel. Session **STOPPED** pour arrêter les ressources.
+- **SQL Neon indépendant après le refus :** `auth_user=0`, `core.0024=0`, `to_regclass('public.core_w02vaultrevisionanchor') IS NULL`. Aucun compte ni table W02 ajouté. **NO-GO patient**.
+
+### Séquence restante réelle
+
+1. Voie de migration QA Django autorisée sur exactement cette branche et ces identités, puis SQL indépendant post-migration `auth_user=0`, ancre W02 vide et `core.0024=1`.
+2. Revoir l'app-lock première connexion/remote recovery et le legacy Web avant toute autorisation patient ; confirmer tests Chrome et captures BEFORE/AFTER à mêmes dimensions explicites si score géométrique demandé.
+3. Valider E2E hosted Web→BFF→API→Neon QA : compte synthétique A→logout→B→A, bearer invalide, crash/commit/recovery, révocation, suppression applicative, SQL final `auth_user=0`. Flag W02 exclusivement QA, jamais Production sans GO distinct.
+4. Résoudre le gate W01 first-user : [run #40739595534](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40739595534) **FAIL** sur « Maroc » et inscription. Refaire suite W01, audit sécurité indépendant, revue PR DRAFT, décision humaine GO, puis merge/post-merge et closeout.
+5. **Aucun % lot/chantier certifié** tant que ces gates échouent ou ne sont pas exécutés. Pas de GO clinique, pas de main, pas de données réelles.
+
