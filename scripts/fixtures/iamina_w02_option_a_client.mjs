@@ -232,10 +232,14 @@ export async function finalizePendingSynthetic({
     restored.bytes.fill(0);
   }
   const digest = await envelopeSha256(record);
+  // A logout while computing the hash must not authorize a new network call.
+  requireOwner(ownerSession, vaultId, slot);
   const final = await api.finalize({
     slot, revision: state.pending_revision,
     ticket: state.pending_ticket, envelope_sha256: digest,
   });
+  // A server ACK may race logout. Never authorize a session for the old owner.
+  requireOwner(ownerSession, vaultId, slot);
   if (final?.vault_id !== vaultId ||
       final?.status !== 'ready' || final.committed_revision !== state.pending_revision ||
       final.committed_envelope_sha256 !== digest) deny('invalid_finalization_receipt');
