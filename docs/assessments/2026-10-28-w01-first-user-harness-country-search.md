@@ -73,3 +73,12 @@ Vercel historical synthetic deployment pair **READY / Preview**, both at source 
 - API source `backend/amina/preview_db_identity.py` provides read-only 4-field SQL identity attestation but requires **normal Preview SSO/OIDC**. Its successful response through BFF has **not** been independently observed. Do not override SSO or bypass OIDC.
 
 **Outcome:** A/B users located, 4 independent QA DB values verified. **Remaining gate:** authenticated Web → BFF → API Preview actual DB attestation = NOT_VERIFIED; no login A/B, no writes, no delete, no deploy. Once normal SSO access and live identity response are established, run authorized A→B→A only with explicit nonpatient boundary, then any clean-up requires exact authorization and application-owned deletion plus independent SQL proof. W01 G5/D9 still OPEN; patient NO-GO.
+
+
+## 28/10/2026 — Hosted Preview Web→BFF→API→Neon identity: observed via ordinary browser GET
+
+**Live read-only browser evidence:** [TinyFish run de176950-49d4-455c-a2be-1c8630deae24](https://agent.tinyfish.ai/runs/de176950-49d4-455c-a2be-1c8630deae24) opened historical W01 Web `iamina-review-r8m9yx2jk-achraf-benmoussa-s-projects.vercel.app`, then same-origin GET `/api/v1/ops/preview-db-identity`. Browser observed exact 4-field JSON `database_name=iamina925_empty`, `role_name=iamina_preview_app`, `neon_project_id=noisy-truth-00115950`, `neon_branch_id=br-sweet-frog-b9ok6ptp`. **Independent direct Neon read-only SQL as restricted role corroborated all four**. Browser did not use app credentials or create/change users; historical QA branch retains both known A/B test accounts. This closes **identity observation only**, not G5 E2E product.
+
+**Critical protection discrepancy:** the browser reported no SSO login barrier for Web Preview or identity GET, despite Vercel Web project config `ssoProtection.enabled=true`, `deploymentType=preview`. This is **not proof the SSO configuration is globally ineffective** (could be deployment scope, cached session, tool auth, indirect access, or another cause), but protection behavior is **NOT_VERIFIED**. Do not weaken/remove security, do not assume a login has been authenticated. **STOP before A/B authenticated API writes until the preview protection expectation is independently reconciled.**
+
+D9 remains OPEN, patient NO-GO, no new Vercel deployment/Neon mutations. Next: review precise deployment protection effective state, session behavior from fully fresh browser and API unauthenticated negatives; only then test A→B→A on isolated synthetic QA with user-approved cleanup protocol.
