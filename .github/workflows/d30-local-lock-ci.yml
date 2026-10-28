@@ -53,5 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d30-flutter-web-boot
-          path: /tmp/d30-flutter-web-boot.png
+          path: |
+            /tmp/d30-flutter-web-boot.png
+            /tmp/d30-flutter-web-reload.png
           if-no-files-found: ignore
