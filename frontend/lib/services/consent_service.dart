@@ -12,7 +12,10 @@ class ConsentService extends ChangeNotifier {
   bool _hasVerifiedEvidence;
   bool _profileHasTimestamp = false;
   bool _hasCompletedOnboarding = false;
-  bool _d9VerifiedRemoteCompletion = false;
+  // A D9 marker is only valid for the explicitly verified patient owner.
+  // A failed/revoked revalidation must never preserve a previous marker.
+  int? _d9VerifiedRemoteOwner;
+  int? _localProfileOwner;
   StreamSubscription<PatientProfileData?>? _sub;
 
   ConsentService({bool hasVerifiedEvidence = false})
@@ -30,10 +33,22 @@ class ConsentService extends ChangeNotifier {
   bool _profileCompletesOnboarding(PatientProfileData? profile) {
     // D7: diagnosis and treatment are optional patient declarations. The
     // clinical engine must independently fail closed when they are missing.
-    return profile != null || _d9VerifiedRemoteCompletion;
+    return profile != null || _d9VerifiedRemoteOwner != null;
+  }
+
+  void _trackLocalProfileOwner(PatientProfileData? profile) {
+    _localProfileOwner = profile?.userId;
+    // A different physical profile must not retain this service's A proof.
+    if (profile != null && _d9VerifiedRemoteOwner != null &&
+        _d9VerifiedRemoteOwner != profile.userId) {
+      _d9VerifiedRemoteOwner = null;
+    }
+    // A null event has no owner information. A remote proof for the SAME
+    // active owner survives it; auth transitions must revalidate explicitly.
   }
 
   void _applyProfile(PatientProfileData? profile) {
+    _trackLocalProfileOwner(profile);
     final nextCompletedOnboarding = _profileCompletesOnboarding(profile);
     final onboardingChanged =
         nextCompletedOnboarding != _hasCompletedOnboarding;
@@ -58,6 +73,7 @@ class ConsentService extends ChangeNotifier {
 
   /// Seed synchronously to avoid a redirect flicker on app start.
   void seedInitialProfile(PatientProfileData? profile) {
+    _trackLocalProfileOwner(profile);
     _hasCompletedOnboarding = _profileCompletesOnboarding(profile);
     _profileHasTimestamp = profile?.aiConsentGivenAt != null;
     _hasConsent = _profileHasTimestamp && _hasVerifiedEvidence;
@@ -65,24 +81,28 @@ class ConsentService extends ChangeNotifier {
 
   /// D9: accept an explicit server proof for THIS owner only. No PatientProfile
   /// row is fabricated, and AI consent must remain independently verified.
-  /// This instance is scoped to one physical vault and disposed on auth switch.
+  /// This instance should be disposed on auth switch. Defensively expire
+  /// stale completion on every failed revalidation or different owner too.
+  /// The caller must revalidate after auth changes; null profile events alone
+  /// carry no identity and cannot prove which owner is active.
   bool adoptVerifiedD9FirstUseProof(
     D9FirstUseProof? proof, {
     required int activeOwner,
   }) {
-    if (proof == null ||
-        !proof.completed ||
-        activeOwner <= 0 ||
-        proof.ownerUserId != activeOwner ||
-        proof.completedAt == null) {
-      return false;
-    }
-    _d9VerifiedRemoteCompletion = true;
-    if (!_hasCompletedOnboarding) {
-      _hasCompletedOnboarding = true;
+    final verified = proof != null &&
+        proof.completed &&
+        activeOwner > 0 &&
+        proof.ownerUserId == activeOwner &&
+        proof.completedAt != null;
+    _d9VerifiedRemoteOwner = verified ? activeOwner : null;
+    // A local profile is acceptable only if it belongs to this owner.
+    final nextCompletedOnboarding =
+        verified || (activeOwner > 0 && _localProfileOwner == activeOwner);
+    if (_hasCompletedOnboarding != nextCompletedOnboarding) {
+      _hasCompletedOnboarding = nextCompletedOnboarding;
       notifyListeners();
     }
-    return true;
+    return verified;
   }
 
   /// Called only after server acceptance, exact response verification, secure
