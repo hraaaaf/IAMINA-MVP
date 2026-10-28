@@ -211,20 +211,23 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   }
 
   if (syntheticLoginRequested()) {
-    // The QA Preview must never permit Firebase exchange, password reset or
-    // any other account bootstrap than native synthetic @example.invalid.
+    // The QA Preview must never permit Firebase exchange or password reset.
     if (route.path === 'auth/firebase' ||
         route.path.startsWith('auth/password/')) return response.status(403).end();
     if (route.path === 'auth/register' || route.path === 'auth/login') {
       if (request.method !== 'POST' || route.search !== '' ||
           !syntheticLoginPayloadAllowed(route.path, payload))
         return response.status(403).end();
-      // Enforced by the trusted server-side BFF, not by a user-supplied
-      // browser header or a stale UI toggle. No registration/login egress if
-      // Neon deployment identity fails or the identity endpoint is blocked.
-      if (!await syntheticIdentityVerified(apiOrigin, oidcToken))
-        return response.status(503).end();
     }
+    // Verify the exact synthetic DB through the *trusted* API workload before
+    // EVERY patient/API request, including reads, logs, consent and cleanup.
+    // An identity-changing API deployment must never be able to serve a
+    // previously authenticated synthetic browser under the same Web host.
+    // The preflight route itself is exempt to avoid recursion, and carries no
+    // patient data. This QA-only extra egress is deliberately uncached.
+    if (route.path !== 'ops/preview-db-identity' &&
+        !await syntheticIdentityVerified(apiOrigin, oidcToken))
+      return response.status(503).end();
   }
 
   const outgoingHeaders = new Headers();
