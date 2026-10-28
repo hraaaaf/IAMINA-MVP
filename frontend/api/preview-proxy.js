@@ -57,6 +57,16 @@ function syntheticLoginPayloadAllowed(path, payload) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
   // Preserve the already-proven non-mutating Django 422 preflight.
   if (path === 'auth/register' && Object.keys(parsed).length === 0) return true;
+  // Registration may not accept arbitrary patient profile details in this
+  // test-only flow. Keep only the actual Flutter payload and G5 fixture name.
+  const allowed = path === 'auth/register'
+    ? ['email', 'password', 'first_name', 'last_name']
+    : ['email', 'password'];
+  if (Object.keys(parsed).some(key => !allowed.includes(key))) return false;
+  if (parsed.first_name !== undefined && parsed.first_name !== 'Synthetic')
+    return false;
+  if (parsed.last_name !== undefined &&
+      !/^W01-[AB]$/.test(parsed.last_name)) return false;
   return syntheticEmailAllowed(parsed.email) &&
     typeof parsed.password === 'string' && parsed.password.length > 0;
 }
@@ -216,6 +226,8 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   if (syntheticLoginRequested()) {
     // The QA Preview must never permit Firebase exchange or password reset.
     if (route.path === 'auth/firebase' ||
+        route.path.startsWith('auth/firebase/') ||
+        route.path === 'auth/password' ||
         route.path.startsWith('auth/password/')) return response.status(403).end();
     if (route.path === 'auth/register' || route.path === 'auth/login') {
       if (request.method !== 'POST' || route.search !== '' ||
