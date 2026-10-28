@@ -84,7 +84,8 @@ void main() {
         'read_at': null,
       }],
     };
-    expect(D2SavedNotice.parseInbox(valid).single.kind, 'context');
+    expect(D2SavedNotice.parseInbox(valid,
+      now: DateTime.utc(2026, 10, 28)).single.kind, 'context');
     expect(() => D2SavedNotice.parseInbox(
         {...valid, 'delivery_enabled': true}), throwsStateError);
     expect(() => D2SavedNotice.parseInbox({
@@ -94,6 +95,39 @@ void main() {
       }],
     }), throwsStateError);
   });
+  test('expired D2 previews never reappear from delayed API responses', () {
+    final expired = <String, dynamic>{
+      'id': 1, 'kind': 'context',
+      'created_at': '2026-10-21T10:00:00Z',
+      'expires_at': '2026-10-28T10:00:00Z',
+      'read_at': null,
+    };
+    final active = <String, dynamic>{
+      'id': 2, 'kind': 'meal',
+      'created_at': '2026-10-27T10:00:00Z',
+      'expires_at': '2026-11-03T10:00:00Z',
+      'read_at': null,
+    };
+    final payload = <String, dynamic>{
+      'delivery_enabled': false,
+      'items': [expired, active],
+    };
+    final before = D2SavedNotice.parseInbox(
+      payload, now: DateTime.utc(2026, 10, 28, 9, 59, 59));
+    expect(before.map((item) => item.id), [1, 2]);
+
+    // Exactly at expiry, hide the item; a replay of the stale payload
+    // cannot make it visible again.
+    final atExpiry = D2SavedNotice.parseInbox(
+      payload, now: DateTime.utc(2026, 10, 28, 10));
+    expect(atExpiry.map((item) => item.id), [2]);
+    final replay = D2SavedNotice.parseInbox(
+      payload, now: DateTime.utc(2026, 10, 29));
+    expect(replay.map((item) => item.id), [2]);
+    expect(D2SavedNotice.parseInbox(
+      payload, now: DateTime.utc(2026, 11, 3, 10)), isEmpty);
+  });
+
   test('reject malformed backend payload or delivery-enabled flag', () {
     final valid = <String, dynamic>{
       'purpose': 'proactive_in_app_preview',

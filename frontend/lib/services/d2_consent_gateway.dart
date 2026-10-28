@@ -21,7 +21,7 @@ class D2SavedNotice {
   final bool read;
   const D2SavedNotice({required this.id, required this.kind, this.read = false});
 
-  static List<D2SavedNotice> parseInbox(dynamic body) {
+  static List<D2SavedNotice> parseInbox(dynamic body, {DateTime? now}) {
     if (body is! Map<String, dynamic> ||
         body['delivery_enabled'] != false ||
         body['items'] is! List) {
@@ -29,7 +29,8 @@ class D2SavedNotice {
     }
     final items = body['items'] as List;
     if (items.length > 20) throw StateError('Too many D2 inbox items');
-    return items.map((raw) {
+    final cutoff = (now ?? DateTime.now()).toUtc();
+    return items.map<D2SavedNotice?>((raw) {
       if (raw is! Map<String, dynamic> ||
           raw['id'] is! int || (raw['id'] as int) <= 0 ||
           !const ['context', 'meal'].contains(raw['kind']) ||
@@ -44,12 +45,15 @@ class D2SavedNotice {
           !expiresAt.isAfter(createdAt)) {
         throw StateError('Invalid D2 inbox time window');
       }
+      // A delayed/cached response must never revive expired observations.
+      // The backend additionally enforces this on every authenticated read.
+      if (!expiresAt.isAfter(cutoff)) return null;
       return D2SavedNotice(
         id: raw['id'] as int,
         kind: raw['kind'] as String,
         read: raw['read_at'] != null,
       );
-    }).toList(growable: false);
+    }).whereType<D2SavedNotice>().toList(growable: false);
   }
 }
 
