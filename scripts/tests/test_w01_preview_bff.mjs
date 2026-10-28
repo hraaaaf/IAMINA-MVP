@@ -397,8 +397,15 @@ test('synthetic auth rejects real email and Firebase / reset before any upstream
       assert.equal(output.statusCode,403,email);
     }
     for (const path of ['auth/firebase','auth/firebase/','auth/password','auth/password/','auth/password/reset/request','auth/password/reset/confirm']) {
+      // A real POST must supply a readable request body. Without a stream,
+      // readBoundedBody rejects the malformed fixture as HTTP 400 before the
+      // synthetic-only route guard can intentionally return HTTP 403.
+      const input=Readable.from([Buffer.from('{}')]);
+      Object.assign(input,req(path,{method:'POST',headers:{
+        origin,'content-type':'application/json',
+      }}));
       const output=res();
-      await proxy(req(path,{method:'POST',headers:{origin}}),output,async()=>'synthetic-oidc');
+      await proxy(input,output,async()=>'synthetic-oidc');
       assert.equal(output.statusCode,403,path);
     }
     for (const payload of [
