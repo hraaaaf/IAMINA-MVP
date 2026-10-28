@@ -51,6 +51,16 @@ def main():
                     timeout=60000,
                 )
                 page.screenshot(path="/tmp/d30-flutter-web-reload.png")
+                # The isolated Web build must never contact external origins.
+                external = [
+                    (method, url) for method, url in requests
+                    if not (url.startswith(origin + "/") or
+                            url.startswith("data:") or url.startswith("blob:"))
+                ]
+                if external:
+                    raise AssertionError(
+                        f"D30 unexpected external Web request: {external[:4]}"
+                    )
                 clinical_paths = (
                     "/api/v1/logs", "/api/v1/profile",
                     "/api/v1/chat", "/api/v1/ai", "/api/v1/medical",
