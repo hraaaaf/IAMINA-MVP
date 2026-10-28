@@ -51,3 +51,10 @@ test('W02 executor is initialized under test-only synthetic schema authority', (
   assert.match(web, /await openSyntheticDriftExecutor\(reopened\)/);
   assert.match(web, /await openSyntheticDriftExecutor\(empty\)/);
 });
+
+test('volatile WASM VFS buffers receive best-effort zeroing before release', () => {
+  assert.match(candidate, /static void _wipeReachableFiles\(InMemoryFileSystem memory\)/);
+  assert.match(candidate, /buffer\?\.fillRange\(0, buffer\.length, 0\)/);
+  assert.match(candidate, /_wipeReachableFiles\(memory\)/);
+  assert.match(candidate, /_wipeReachableFiles\(_memory\)/);
+});

@@ -24,6 +24,15 @@ final class W02WebMemorySqliteCandidate {
 
   W02WebMemorySqliteCandidate._(this._memory, this._sqlite, this.executor);
 
+  // Best-effort overwrite of reachable WASM VFS byte arrays before dropping
+  // references. Not a proof of RAM zeroization (GC, copies and engine buffers).
+  static void _wipeReachableFiles(InMemoryFileSystem memory) {
+    for (final buffer in memory.fileData.values) {
+      buffer?.fillRange(0, buffer.length, 0);
+    }
+    memory.fileData.clear();
+  }
+
   static void _assertSnapshot(Uint8List bytes) {
     if (bytes.length < 100 || bytes.length > maxSnapshotBytes) {
       throw const FormatException('w02_invalid_sqlite_snapshot_size');
@@ -88,8 +97,11 @@ final class W02WebMemorySqliteCandidate {
       trace?.call('drift_executor:done');
       return W02WebMemorySqliteCandidate._(memory, raw, executor);
     } catch (_) {
-      raw?.dispose();
-      memory.fileData.clear();
+      try {
+        raw?.dispose();
+      } finally {
+        _wipeReachableFiles(memory);
+      }
       rethrow;
     }
   }
@@ -120,8 +132,11 @@ final class W02WebMemorySqliteCandidate {
     try {
       await executor.close();
     } finally {
-      _sqlite.dispose();
-      _memory.fileData.clear();
+      try {
+        _sqlite.dispose();
+      } finally {
+        _wipeReachableFiles(_memory);
+      }
     }
   }
 }

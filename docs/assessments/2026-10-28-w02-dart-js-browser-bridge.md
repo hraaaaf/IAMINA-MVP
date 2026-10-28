@@ -12,3 +12,7 @@ In real Chrome test only, pass actual Drift SQLite WASM bytes Dart→JS Uint8Arr
 
 ## Remaining gates
 Authenticated owner and auth-epoch contract with verified principal, reliable monotonic revision authority OUTSIDE browser/local storage, recovery UX following crash/quota, permanent key/backup lifecycle, migration legacy with verified owner and no-loss, E2E A→B→A hosted, independent security/privacy audit, W01 closeout, then user-approved Preview and UI BEFORE/AFTER. No D10-B Web patient enablement.
+
+## Accessible in-memory VFS byte arrays — best-effort scrub
+
+On closing or aborting initialization, the candidate overwrites reachable VFS file data buffers with zeros before dropping the entries. This is not a verified wipe of all SQLite/WASM/JS/GC memory copies and does NOT eliminate XSS or debugger exposure. New Chrome CI must confirm unchanged SQL restore behavior and analyzer status. Patient Web guard unchanged.
