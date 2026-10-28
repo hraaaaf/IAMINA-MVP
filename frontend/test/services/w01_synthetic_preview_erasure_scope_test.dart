@@ -40,6 +40,17 @@ void main() {
       body: '{"detail":"Account and all associated data deleted."}'), isTrue);
   });
 
+  test('only exact @example.invalid emails may be erased', () {
+    expect(syntheticPreviewEmailAllowed('w01-test@example.invalid'), isTrue);
+    expect(syntheticPreviewEmailAllowed('w01.test_123@example.invalid'), isTrue);
+    expect(syntheticPreviewEmailAllowed('real@example.com'), isFalse);
+    expect(syntheticPreviewEmailAllowed('real@example.invalid.evil.com'), isFalse);
+    expect(syntheticPreviewEmailAllowed('Real@example.invalid'), isFalse);
+    expect(syntheticPreviewEmailAllowed('test+tag@example.invalid'), isFalse);
+    expect(syntheticPreviewEmailAllowed('test@example.invalid '), isFalse);
+    expect(syntheticPreviewEmailAllowed(null), isFalse);
+  });
+
   test('cannot erase on Production or arbitrary/insecure host', () {
     expect(allowed(Uri.parse('https://iamina-review.vercel.app/#/profile')), isFalse);
     expect(allowed(Uri.parse('https://iamina-certified-abcd-achraf-benmoussa-s-projects.vercel.app')), isFalse);
