@@ -518,13 +518,19 @@ class _GreetingHeader extends StatelessWidget {
   const _GreetingHeader({required this.periodDays});
 
   String _firstName() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.isAnonymous) return '';
-    final display = user.displayName ?? '';
-    if (display.isEmpty) return '';
-    return display
-        .split(RegExp(r'[\s@.]'))
-        .firstWhere((p) => p.isNotEmpty, orElse: () => '');
+    // Optional Firebase migration identity must never gate a local-first
+    // clinical report. An unconfigured Firebase app is normal on this path.
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.isAnonymous) return '';
+      final display = user.displayName ?? '';
+      if (display.isEmpty) return '';
+      return display
+          .split(RegExp(r'[\s@.]'))
+          .firstWhere((p) => p.isNotEmpty, orElse: () => '');
+    } catch (_) {
+      return '';
+    }
   }
 
   @override

@@ -28,6 +28,13 @@ void main() {
     expect(source, contains('if (cards.isEmpty) return const SizedBox.shrink();'));
   });
 
+  test('D19: AI Summary greeting remains available without Firebase app', () {
+    // Local-only sessions do not initialize optional Firebase migration.
+    expect(source, contains('Optional Firebase migration identity must never gate'));
+    expect(source, contains('FirebaseAuth.instance.currentUser'));
+    expect(source, contains('} catch (_) {'));
+  });
+
   test('D19: no AGP card without verified CGM metadata', () {
     expect(source, contains('final hasEligibleAgp = agpData.isNotEmpty'));
     expect(source, contains('kpis?.tirPct == null || kpis?.tarPct == null'));
