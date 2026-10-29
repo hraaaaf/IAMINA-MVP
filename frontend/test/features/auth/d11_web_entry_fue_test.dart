@@ -229,6 +229,15 @@ void main() {
         expect(find.byType(AlertDialog), findsNothing);
         expect(auth.isRemoteCredentialVerified, isFalse);
         expect(tester.takeException(), isNull);
+        // Successful reset shows a floating SnackBar. Retire it before
+        // the next viewport's pointer hit-test: never allow an overlay
+        // from one synthetic scenario to intercept another.
+        final messenger = ScaffoldMessenger.of(
+          tester.element(find.byType(Scaffold).first),
+        );
+        messenger.removeCurrentSnackBar();
+        await tester.pumpAndSettle();
+        expect(find.byType(SnackBar), findsNothing);
       });
     }
   }
