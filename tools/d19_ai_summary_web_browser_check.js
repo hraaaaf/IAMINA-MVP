@@ -28,7 +28,7 @@ const tests=[];
           page.on('pageerror',err=>errors.push(err.message.slice(0,400)));
           page.on('console',msg=>{
             const message=msg.text();
-            const match=message.match(/D19_SYNTHETIC_AI_DAYS=(\\d+)/);
+            const match=message.match(/D19_SYNTHETIC_AI_DAYS=(\d+)/);
             if(match) requestedDays.push(Number(match[1]));
             if(msg.type()==='error'||message.includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(message.slice(0,2500));
           });
@@ -73,8 +73,6 @@ const tests=[];
       const items=tests.filter(t=>t.locale===loc&&t.viewport===v.name);
       if(new Set(items.map(t=>t.sha256)).size<2)failed.push({locale:loc,viewport:v.name,reason:'no distinct clinical state render'});
     }
-    fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
-    console.log(JSON.stringify({tested:tests.length,failures:failed.length,details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason,errors:f.errors}))},null,2));
     if(process.env.D19_AI_WEB_BASELINE!=='1') {
       const keyboard=tests.filter(t=>t.keyboardPeriod7!==undefined);
       if(keyboard.length!==2 || keyboard.some(t=>!t.keyboardPeriod7)) {
@@ -83,6 +81,7 @@ const tests=[];
     }
     // Save the complete result, including keyboard outcome, after all assertions.
     fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
+    console.log(JSON.stringify({tested:tests.length,failures:failed.length,keyboard:tests.filter(t=>t.keyboardPeriod7!==undefined).map(t=>({locale:t.locale,pass:t.keyboardPeriod7,days:t.keyboardRequests})),details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason}))},null,2));
     if(process.env.D19_AI_WEB_BASELINE!=='1' && failed.length)process.exitCode=1;
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
