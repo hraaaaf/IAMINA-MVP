@@ -125,8 +125,8 @@ class DemoSeedPatientIsolationTests(TestCase):
             )
             self.assertEqual(before.status_code, 200)
             self.assertEqual(before.json()["total"], 1)
-            self.assertIn(str(expected_id), str(before.json()))
-            self.assertNotEqual(expected_id, foreign_id)
+            self.assertEqual([item["id"] for item in before.json()["items"]], [expected_id])
+            self.assertNotIn(foreign_id, [item["id"] for item in before.json()["items"]])
             self.assertEqual(self._seed(token).status_code, 403)
             after = self.client.get(
                 "/api/v1/logs",
@@ -137,6 +137,8 @@ class DemoSeedPatientIsolationTests(TestCase):
             self.assertEqual(LogEntry.objects.filter(patient=patient).count(), 1)
 
     def test_anonymous_seed_request_stays_unauthorized(self):
+        # setUp logs in both fixtures through the HTTP route; clear its session.
+        self.client.logout()
         response = self.client.post(
             "/api/v1/demo/seed", data={}, content_type="application/json",
         )
