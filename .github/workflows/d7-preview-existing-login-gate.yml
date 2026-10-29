@@ -1,0 +1,52 @@
+name: D7 protected Preview existing-account login gate (Web)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/vercel_build.sh'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/lib/features/auth/login_screen.dart'
+      - 'frontend/lib/features/auth/login_screen_fr_certified.dart'
+      - 'frontend/lib/features/auth/login_screen_mena.dart'
+      - 'frontend/test/features/auth/d7_preview_existing_login_only_test.dart'
+      - '.github/workflows/d7-preview-existing-login-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-preview-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  login-only-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify Vercel build script syntax, isolation and exact branch
+        run: |
+          set -euo pipefail
+          bash -n frontend/vercel_build.sh
+          grep -Fq 'cert/d7-web-fue-preview-20261029' frontend/vercel_build.sh
+          grep -Fq 'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true' frontend/vercel_build.sh
+          grep -Fq 'IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false' frontend/vercel_build.sh
+          grep -Fq 'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app' frontend/vercel_build.sh
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Real Chrome UI / iPhone viewport / login only / signup hidden
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter test --platform chrome --reporter expanded \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+            test/features/auth/d7_preview_existing_login_only_test.dart
