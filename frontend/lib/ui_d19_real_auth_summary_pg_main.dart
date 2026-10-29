@@ -58,6 +58,39 @@ Future<void> main() async {
     requireTrue(vault.activeScope!.nativeDjangoUserId == auth.boundNativeAccountId,
         'cross_patient_vault');
 
+    // D11: explicit real logout / other-account login / logout / return
+    // within each synthetic B browser scene. Reusing 3 B scenes per locale
+    // adds only six logins: 15 total per isolated job (IP cap 20, A cap 10).
+    // The real anti-abuse thresholds are not disabled or changed.
+    if (principal == 'b') {
+      stage = 'logout_switch';
+      final ownerB = auth.boundNativeAccountId;
+      await auth.signOut();
+      requireTrue(!auth.isAuthenticated && !auth.hasRemoteApiCredential &&
+          auth.boundNativeAccountId == null &&
+          await auth.resolvePatientVaultScope() == null,
+          'logout_kept_patient_vault');
+      await auth.signInWithEmail(ciA, ciPassword);
+      requireTrue(auth.isRemoteCredentialVerified &&
+          auth.boundNativeAccountId != null &&
+          auth.boundNativeAccountId != ownerB &&
+          (await auth.resolvePatientVaultScope())!.nativeDjangoUserId ==
+              auth.boundNativeAccountId,
+          'stale_owner_after_switch_to_a');
+      await auth.signOut();
+      requireTrue(!auth.isAuthenticated && !auth.hasRemoteApiCredential &&
+          auth.boundNativeAccountId == null,
+          'logout_a_kept_credential');
+      await auth.signInWithEmail(ciB, ciPassword);
+      requireTrue(auth.isRemoteCredentialVerified &&
+          auth.boundNativeAccountId == ownerB,
+          'stale_owner_after_return_to_b');
+      await vault.reconcile();
+      requireTrue(vault.activeDatabase != null &&
+          vault.activeScope!.nativeDjangoUserId == ownerB,
+          'vault_not_restored_to_b');
+    }
+
     final api = ApiClient(
       baseUrl: ciApiBase,
       authService: auth,
