@@ -92,7 +92,7 @@ async function proof(page, width) {
     await typeField(page,0,testEmail);
     await typeField(page,1,'Wrong-2026!');
     await labelClick(page,locale==='fr'?'Se connecter':'الدخول');
-    await page.waitForFunction(() => false,{timeout:1600}).catch(()=>{});
+    await page.waitForTimeout(750);
     if(!responses.some(x=>x.path.endsWith('/auth/login')&&x.status===401))
       throw new Error('negative login must generate native HTTP 401');
 
@@ -108,7 +108,7 @@ async function proof(page, width) {
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText(testEmail);
     await labelClick(page,locale==='fr'?'Envoyer':'إرسال');
-    await page.waitForFunction(() => false,{timeout:1800}).catch(()=>{});
+    await page.waitForTimeout(750);
     if(!responses.some(x=>x.path.endsWith('/password/reset/request')&&x.status===200))
       throw new Error('native password recovery POST 200 missing');
 
@@ -122,7 +122,7 @@ async function proof(page, width) {
     await typeField(page,1,password,true);
     await typeField(page,2,password,true);
     await labelClick(page,locale==='fr'?'Créer':'إنشاء');
-    await page.waitForFunction(() => false,{timeout:2400}).catch(()=>{});
+    await page.waitForTimeout(750);
     if(!responses.some(x=>x.path.endsWith('/auth/register')&&x.status===200))
       throw new Error('native Django account registration HTTP 200 missing');
     await screenshot(page,'05-signup-success');
@@ -140,7 +140,7 @@ async function proof(page, width) {
       await labelClick(page,locale==='fr'?'Se déconnecter':'تسجيل الخروج');
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
-    await page.waitForFunction(() => false,{timeout:1300}).catch(()=>{});
+    await page.waitForTimeout(750);
     if(!responses.some(x=>x.path.endsWith('/auth/logout')&&x.status===200))
       throw new Error('real navigation logout did not revoke native token');
     await screenshot(page,'07-logged-out');
@@ -150,7 +150,7 @@ async function proof(page, width) {
     await typeField(page,0,testEmail);
     await typeField(page,1,password);
     await labelClick(page,locale==='fr'?'Se connecter':'الدخول');
-    await page.waitForFunction(() => false,{timeout:1600}).catch(()=>{});
+    await page.waitForTimeout(750);
     if(!responses.some(x=>x.path.endsWith('/auth/login')&&x.status===200))
       throw new Error('native login HTTP 200 missing after logout');
     const filename=await screenshot(page,'08-returned');
