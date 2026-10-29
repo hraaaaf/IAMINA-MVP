@@ -31,6 +31,25 @@
 - CI: [D19 isolated Actions workflow](https://github.com/hraaaaf/IAMINA-MVP/actions/workflows/d19-clinical-authority-ci.yml) — **result must be verified before labeling PASS**.
 - Decision: never merge clinical calculation changes without qualified review / authorization.
 
+## Second isolated lot — CAL-02 public AI summary KPI gate (candidate)
+
+- Shared helper `project_patient_kpis` now applies the exact same CGM window
+  sufficiency and source-qualified projection to GET `/kpis/` and POST
+  `/ai/summary` on the isolated D19 branch. This prevents raw SQL
+  sample-count fractions from being serialized as time-based normative CGM
+  `tir_pct`, `tar_pct`, `tbr_pct`, `cv_pct` or `gmi` for manual-only data.
+- Legacy mixed/manual SQL AGP is withheld when the governed CGM metric proof
+  is absent; a verified-CGM-only AGP producer still needs review.
+- Synthetic oracles cover manual-only with 60 readings/14 days, a verified
+  sensor session, non-standard target range and the model-free API response.
+  CI [D19 workflow](https://github.com/hraaaaf/IAMINA-MVP/actions/workflows/d19-clinical-authority-ci.yml)
+  is required to pass at the final patch HEAD.
+- **Open clinical risk**: the upstream `compress(...)` → LLM insight text
+  may still contain descriptive raw metrics, and the current
+  `/ai/doctor-brief` generates free-form clinical claims. This patch does
+  **not** certify AI narration or remote egress; further adversarial tests,
+  typed provenance contracts and clinician/privacy sign-off are mandatory.
+
 ## Next critical path
 
 1. Verify and repair CAL-01 isolated CI; add PostgreSQL parity before claiming complete calculation correctness.
