@@ -69,6 +69,8 @@ MIDDLEWARE = [
     'amina.middleware.csrf_exempt_api.CsrfExemptApiMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # D11: reject contradictory cookie/bearer identities before any API view.
+    'amina.vercel_session_auth.ExplicitBearerCookieIdentityMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # ── Diabetes Clinical Shield ──────────────────────────────
