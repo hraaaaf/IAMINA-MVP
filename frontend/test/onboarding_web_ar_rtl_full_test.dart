@@ -134,6 +134,18 @@ void main() {
       rtlTitle('ما وحدة القياس التي تفضلها؟',
         revealed: size.width < 900);
       expect(find.text('ابدأ'), findsOneWidget);
+      if (size.width >= 900) {
+        // Desktop intentionally avoids forced scrolling between answers.
+        // One explicit scroll must nevertheless reveal its complete CTA.
+        final cta = find.ancestor(
+          of: find.text('ابدأ'), matching: find.byType(FilledButton),
+        ).first;
+        await tester.ensureVisible(cta);
+        await tester.pumpAndSettle();
+        final rect = tester.getRect(cta);
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.bottom, lessThanOrEqualTo(size.height));
+      }
       expect(find.text('Dashboard'), findsNothing);
       expect(tester.takeException(), isNull);
     });
