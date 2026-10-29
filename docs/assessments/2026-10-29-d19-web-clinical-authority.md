@@ -43,7 +43,11 @@
 - Synthetic oracles cover manual-only with 60 readings/14 days, a verified
   sensor session, non-standard target range and the model-free API response.
   CI [D19 workflow](https://github.com/hraaaaf/IAMINA-MVP/actions/workflows/d19-clinical-authority-ci.yml)
-  is required to pass at the final patch HEAD.
+  **PASS at candidate code HEAD `0ef26675`:**
+  [GitHub run 40840255556](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40840255556),
+  6 tests plus 6 subtests passed on synthetic SQLite, with no target
+  threshold modification. Workflow run on `0ef2667598a93324da19bbed0e23156230f33978`;
+  subsequent documentation updates are non-runtime changes.
 - **Open clinical risk**: the upstream `compress(...)` → LLM insight text
   may still contain descriptive raw metrics, and the current
   `/ai/doctor-brief` generates free-form clinical claims. This patch does
