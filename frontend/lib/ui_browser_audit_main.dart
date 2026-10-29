@@ -34,6 +34,7 @@ import 'features/reminders/reminders_screen.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
+import 'services/app_lock_service.dart';
 import 'services/auth_service.dart';
 import 'services/companion_service.dart';
 import 'services/consent_service.dart';
@@ -169,6 +170,10 @@ Future<void> main() async {
 
   final db = AppDatabase.defaults();
   final auth = AuthService();
+  // The synthetic screenshot fixture must use the same profile dependencies
+  // as the real application; no patient identity or backend auth is created.
+  final appLock = AppLockService();
+  await appLock.initialize();
   final api = ApiClient(authService: auth);
   final consent = ConsentService()
     ..seedInitialProfile(null)
@@ -185,6 +190,7 @@ Future<void> main() async {
       providers: [
         Provider<AppDatabase>.value(value: db),
         ChangeNotifierProvider<AuthService>.value(value: auth),
+        ChangeNotifierProvider<AppLockService>.value(value: appLock),
         Provider<ApiClient>.value(value: api),
         Provider<SyncService>.value(value: sync),
         ChangeNotifierProvider<ConsentService>.value(value: consent),

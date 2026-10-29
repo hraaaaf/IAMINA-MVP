@@ -46,7 +46,7 @@ jobs:
         working-directory: before/frontend
         run: |
           flutter pub get
-          flutter build web --release --no-web-resources-cdn
+          flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
 
       - name: Build AFTER
         working-directory: after/frontend
@@ -54,7 +54,7 @@ jobs:
           flutter pub get
           flutter analyze --no-fatal-infos
           flutter test --no-pub test/services/auth_service_local_first_test.dart test/local_device_enrollment_ui_contract_test.dart
-          flutter build web --release --no-web-resources-cdn
+          flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
 
       - name: Install Playwright Chromium
         working-directory: after

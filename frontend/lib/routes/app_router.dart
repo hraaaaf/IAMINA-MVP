@@ -25,10 +25,9 @@ bool hostedRemoteLoginRequired({
   required bool isAuditSession,
   required bool hasRemoteApiCredential,
 }) {
-  return remoteAccountEnrollmentEnabled &&
-      isLoggedIn &&
-      !isAuditSession &&
-      !hasRemoteApiCredential;
+  // Remote accounts are available but never mandatory for a local vault.
+  // Native API access still requires a validated remote credential.
+  return false;
 }
 
 bool shouldApplyAppLockGate({
@@ -53,6 +52,25 @@ bool shouldApplyConsentGate({
       !isAnonymous &&
       !requiresHostedRemoteLogin &&
       hasConsentService;
+}
+
+/// A local-only device has no remote clinical identity and cannot send
+/// governed AI data. Do not interrupt local glucose recording with an AI
+/// consent prompt; keep the existing consent gate for remote-capable sessions.
+bool shouldRequireRemoteAIConsentGate({
+  required bool isLoggedIn,
+  required bool isAnonymous,
+  required bool requiresHostedRemoteLogin,
+  required bool hasConsentService,
+  required bool hasRemoteApiCredential,
+}) {
+  return hasRemoteApiCredential &&
+      shouldApplyConsentGate(
+        isLoggedIn: isLoggedIn,
+        isAnonymous: isAnonymous,
+        requiresHostedRemoteLogin: requiresHostedRemoteLogin,
+        hasConsentService: hasConsentService,
+      );
 }
 
 bool shouldApplyOnboardingGate({
@@ -146,7 +164,8 @@ AppRouterHolder createAppRouterHolder({
             requiresHostedRemoteLogin: requiresHostedRemoteLogin,
             isAuditSession: authService.isAuditSession,
             hasLockService: true,
-          )) {
+          ) &&
+          !activeLock.isExplicitlySkipped) {
         if (activeLock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
         } else if (!activeLock.isConfigured) {
@@ -179,14 +198,36 @@ AppRouterHolder createAppRouterHolder({
         if (!isOnboardingPage && !isAppLockPage) return '/onboarding';
       }
 
+      // A completed local profile must leave first-use even when no remote
+      // consent gate runs. The profile stream may update after the attempted
+      // navigation to /dashboard; redirect the still-open onboarding route.
+      if (isOnboardingPage &&
+          activeConsent?.hasCompletedOnboarding == true &&
+          isLoggedIn &&
+          !isAnonymous &&
+          !authService.isAuditSession &&
+          !authService.hasRemoteApiCredential) {
+        return _homeRoute();
+      }
+
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
-      // Consent is requested only after minimum onboarding is persisted.
+      // No mandatory AI dialog for the local-only path: remote AI transport
+      // has no bearer and is denied by ApiClient independently of routing.
+      // A direct stale /consent bookmark must not reintroduce this gate.
+      if (isLoggedIn &&
+          !authService.hasRemoteApiCredential &&
+          !authService.isAuditSession &&
+          isConsentPage) {
+        return _homeRoute();
+      }
+      // Remote-capable sessions retain the verified consent gate.
       if (activeConsent != null &&
-          shouldApplyConsentGate(
+          shouldRequireRemoteAIConsentGate(
             isLoggedIn: isLoggedIn,
             isAnonymous: isAnonymous,
             requiresHostedRemoteLogin: requiresHostedRemoteLogin,
             hasConsentService: true,
+            hasRemoteApiCredential: authService.hasRemoteApiCredential,
           )) {
         final hasConsent = activeConsent.hasConsent;
         final hasDeclined = activeConsent.hasDeclinedLocally;

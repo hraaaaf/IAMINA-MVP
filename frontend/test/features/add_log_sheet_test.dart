@@ -58,6 +58,30 @@ void main() {
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(69), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(70), GlucoseEntrySafety.nonLow);
+      expect(classifyGlucoseEntrySafety(112), GlucoseEntrySafety.nonLow);
+    });
+
+    testWidgets('112 mg/dL is saved without a low-glucose warning', (tester) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('glucose-input')), '112');
+      await tester.pumpAndSettle();
+      final input = tester.widget<TextField>(
+        find.byKey(const Key('glucose-input')),
+      );
+      expect(input.controller?.text, '112');
+
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('level2-low-dialog')), findsNothing);
+      expect(find.byKey(const Key('level1-low-dialog')), findsNothing);
+      final logs = await db.select(db.logEntries).get();
+      expect(logs, hasLength(1));
+      expect(logs.single.bloodSugar, 112);
+      expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
     });
 
     test('uses Opus/WebM on web and AAC/MP4 on mobile', () {

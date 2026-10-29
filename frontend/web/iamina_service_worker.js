@@ -10,17 +10,26 @@ const PRECACHE = [
   './',
   './index.html',
   './flutter_bootstrap.js',
+  './iamina_app_lock.js',
   './main.dart.js',
   './manifest.json',
   './favicon.png',
   './sqlite3.wasm',
   './drift_worker.js',
+  // Bundle font subsets with the offline shell before any clinical UI opens.
+  './assets/assets/fonts/Inter.ttf',
+  './assets/assets/fonts/InterTight.ttf',
+  './assets/assets/fonts/Roboto.ttf',
+  './assets/assets/fonts/NotoSansArabic.ttf',
+  './assets/assets/fonts/NotoSansSymbols.ttf',
+  './assets/assets/fonts/NotoSansSymbols2.ttf',
 ];
 
 const STATIC_FILES = new Set([
   '/',
   '/index.html',
   '/flutter_bootstrap.js',
+  '/iamina_app_lock.js',
   '/main.dart.js',
   '/manifest.json',
   '/favicon.png',

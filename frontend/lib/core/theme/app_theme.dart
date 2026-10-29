@@ -1,6 +1,16 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+/// Explicit local fallback chain to keep Web/PWA labels readable offline.
+/// The fonts and their OFL licenses are vendored in assets/fonts.
+const List<String> kOfflineFontFallbacks = <String>[
+  'Roboto',
+  'NotoSansArabic',
+  'NotoSansSymbols',
+  'NotoSansSymbols2',
+];
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tweaks State
 // ─────────────────────────────────────────────────────────────────────────────
@@ -373,17 +383,17 @@ class AminaTheme {
         elevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: ink700),
-        titleTextStyle: TextStyle(color: ink900, fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+        titleTextStyle: TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink900, fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
       ),
       textTheme: const TextTheme(
-        displayLarge: TextStyle(fontFamily: 'Inter Tight', color: ink900, fontWeight: FontWeight.w700, fontSize: 32, letterSpacing: -0.5, fontFeatures: [FontFeature.tabularFigures()]),
-        displayMedium: TextStyle(fontFamily: 'Inter Tight', color: ink900, fontWeight: FontWeight.w700, fontSize: 28, letterSpacing: -0.4, fontFeatures: [FontFeature.tabularFigures()]),
-        titleLarge:   TextStyle(color: ink900, fontWeight: FontWeight.w600, fontSize: 18),
-        titleMedium:  TextStyle(color: ink800, fontWeight: FontWeight.w600, fontSize: 15),
-        bodyLarge:    TextStyle(color: ink700, fontSize: 14),
-        bodyMedium:   TextStyle(color: ink700, fontSize: 13),
-        bodySmall:    TextStyle(color: ink500, fontSize: 12),
-        labelSmall:   TextStyle(color: ink500, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.08),
+        displayLarge: TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontFamily: 'Inter Tight', color: ink900, fontWeight: FontWeight.w700, fontSize: 32, letterSpacing: -0.5, fontFeatures: [FontFeature.tabularFigures()]),
+        displayMedium: TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontFamily: 'Inter Tight', color: ink900, fontWeight: FontWeight.w700, fontSize: 28, letterSpacing: -0.4, fontFeatures: [FontFeature.tabularFigures()]),
+        titleLarge:   TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink900, fontWeight: FontWeight.w600, fontSize: 18),
+        titleMedium:  TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink800, fontWeight: FontWeight.w600, fontSize: 15),
+        bodyLarge:    TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink700, fontSize: 14),
+        bodyMedium:   TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink700, fontSize: 13),
+        bodySmall:    TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink500, fontSize: 12),
+        labelSmall:   TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: ink500, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.08),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -398,7 +408,7 @@ class AminaTheme {
         backgroundColor: cardBg,
         indicatorColor: teal50,
         labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink700, fontFamily: 'Inter'),
+          const TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontSize: 11, fontWeight: FontWeight.w600, color: ink700, fontFamily: 'Inter'),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return const IconThemeData(color: teal600, size: 22);
@@ -417,7 +427,7 @@ class AminaTheme {
         style: FilledButton.styleFrom(
           backgroundColor: teal500,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+          textStyle: const TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
     );
@@ -447,17 +457,17 @@ class AminaTheme {
         elevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: dark200),
-        titleTextStyle: TextStyle(color: dark100, fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+        titleTextStyle: TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark100, fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
       ),
       textTheme: const TextTheme(
-        displayLarge: TextStyle(fontFamily: 'Inter Tight', color: dark100, fontWeight: FontWeight.w700, fontSize: 32, letterSpacing: -0.5, fontFeatures: [FontFeature.tabularFigures()]),
-        displayMedium: TextStyle(fontFamily: 'Inter Tight', color: dark100, fontWeight: FontWeight.w700, fontSize: 28, letterSpacing: -0.4, fontFeatures: [FontFeature.tabularFigures()]),
-        titleLarge:   TextStyle(color: dark100, fontWeight: FontWeight.w600, fontSize: 18),
-        titleMedium:  TextStyle(color: dark200, fontWeight: FontWeight.w600, fontSize: 15),
-        bodyLarge:    TextStyle(color: dark300, fontSize: 14),
-        bodyMedium:   TextStyle(color: dark300, fontSize: 13),
-        bodySmall:    TextStyle(color: dark400, fontSize: 12),
-        labelSmall:   TextStyle(color: dark400, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.08),
+        displayLarge: TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontFamily: 'Inter Tight', color: dark100, fontWeight: FontWeight.w700, fontSize: 32, letterSpacing: -0.5, fontFeatures: [FontFeature.tabularFigures()]),
+        displayMedium: TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontFamily: 'Inter Tight', color: dark100, fontWeight: FontWeight.w700, fontSize: 28, letterSpacing: -0.4, fontFeatures: [FontFeature.tabularFigures()]),
+        titleLarge:   TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark100, fontWeight: FontWeight.w600, fontSize: 18),
+        titleMedium:  TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark200, fontWeight: FontWeight.w600, fontSize: 15),
+        bodyLarge:    TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark300, fontSize: 14),
+        bodyMedium:   TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark300, fontSize: 13),
+        bodySmall:    TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark400, fontSize: 12),
+        labelSmall:   TextStyle(fontFamilyFallback: kOfflineFontFallbacks, color: dark400, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.08),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -472,7 +482,7 @@ class AminaTheme {
         backgroundColor: darkCard,
         indicatorColor: teal700.withValues(alpha: 0.3),
         labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: dark200, fontFamily: 'Inter'),
+          const TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontSize: 11, fontWeight: FontWeight.w600, color: dark200, fontFamily: 'Inter'),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return const IconThemeData(color: teal400, size: 22);
@@ -491,7 +501,7 @@ class AminaTheme {
         style: FilledButton.styleFrom(
           backgroundColor: teal500,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+          textStyle: const TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
         ),
       ),
     );

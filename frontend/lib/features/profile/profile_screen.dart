@@ -75,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _ramadanStartDate;
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
+  bool _savingLockPreference = false;
 
   // Fail closed when no clinical transport provider is mounted (e.g. offline
   // pilot widget tests). The remote conflict action stays unavailable until
@@ -205,6 +206,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '${value.year}-$mm-$dd';
   }
 
+
+  Future<void> _changeAppLockPreference() async {
+    if (_savingLockPreference) return;
+    final lock = context.read<AppLockService>();
+    final disabling = lock.isConfigured && !lock.isExplicitlySkipped;
+    if (lock.recoveryRequired) return;
+    final question = disabling
+        ? _profileUiText(context,
+            fr: 'Désactiver le verrouillage pour ce profil ? Une nouvelle vérification sera exigée. Toute personne ayant accès à ce navigateur pourra consulter vos données de santé locales. La synchronisation clinique demeure suspendue sans verrouillage actif.',
+            en: 'Disable the lock for this profile? Fresh verification is required. Anyone using this browser could read your local health data. Clinical sync stays paused without an active lock.',
+            ar: 'هل تريد إيقاف القفل لهذا الملف؟ ستُطلب مصادقة جديدة. قد يتمكن أي مستخدم لهذا المتصفح من قراءة بياناتك الصحية المحلية.')
+        : _profileUiText(context,
+            fr: 'Activer le verrouillage de ce profil ? Une vérification ou une nouvelle configuration sera demandée.',
+            en: 'Enable the lock for this profile? You will be asked to verify or set up the device lock.',
+            ar: 'هل تريد تفعيل القفل لهذا الملف؟ ستُطلب مصادقة أو إعداد حماية جديدة.');
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_profileUiText(context,
+            fr: 'Protection du profil', en: 'Profile protection',
+            ar: 'حماية الملف الشخصي')),
+        content: Text(question),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(_profileUiText(context,
+                fr: 'Annuler', en: 'Cancel', ar: 'إلغاء')),
+          ),
+          FilledButton(
+            key: const Key('d30-confirm-profile-lock-choice'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(_profileUiText(context,
+                fr: 'Confirmer', en: 'Confirm', ar: 'تأكيد')),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted) return;
+    setState(() => _savingLockPreference = true);
+    try {
+      if (disabling) {
+        await lock.disableForCurrentVault();
+      } else if (lock.isExplicitlySkipped) {
+        await lock.enableForCurrentVault();
+      } else {
+        await lock.configure();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_profileUiText(context,
+          fr: disabling ? 'Verrouillage désactivé pour ce profil.' : 'Verrouillage activé.',
+          en: disabling ? 'Lock disabled for this profile.' : 'Lock enabled.',
+          ar: disabling ? 'تم إيقاف القفل لهذا الملف.' : 'تم تفعيل القفل.',
+        )),
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_profileUiText(context,
+          fr: 'Modification refusée : vérification ou accès au coffre non validé.',
+          en: 'Change denied: verification or vault access could not be confirmed.',
+          ar: 'تم رفض التغيير: تعذر تأكيد المصادقة أو الوصول إلى الخزنة.',
+        )),
+      ));
+    } finally {
+      if (mounted) setState(() => _savingLockPreference = false);
+    }
+  }
 
   void _confirmSignOut() {
     final l10n = AppLocalizations.of(context)!;

@@ -68,9 +68,9 @@ extension AuthLocalizedCopy on AppLocalizations {
       );
 
   String get localEnrollmentSecurity => _pick(
-        en: 'Next, IAmina will ask this device to protect access with its secure unlock.',
-        fr: 'Ensuite, IAmina demandera à cet appareil de protéger l’accès avec son déverrouillage sécurisé.',
-        ar: 'بعد ذلك سيطلب IAmina من هذا الجهاز حماية الوصول باستخدام فتح القفل الآمن.',
+        en: 'Next, choose whether to enable this device’s secure app lock. You can also continue without a lock after reviewing the risks.',
+        fr: 'Ensuite, vous pourrez choisir d’activer le verrouillage sécurisé ou de continuer sans, après avoir pris connaissance des risques.',
+        ar: 'بعد ذلك يمكنك اختيار تفعيل القفل الآمن أو المتابعة بدونه بعد مراجعة المخاطر.',
       );
 
   String get localEnrollmentAction => _pick(

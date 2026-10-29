@@ -56,6 +56,64 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
     }
   }
 
+  Future<void> _continueWithoutLock() async {
+    final lang = Localizations.localeOf(context).languageCode;
+    final warning = switch (lang) {
+      'fr' => 'Sans verrouillage, toute personne ayant accès à ce navigateur peut consulter vos données de santé locales. La synchronisation clinique reste indisponible sans déverrouillage et les données uniquement locales peuvent être perdues si vous effacez le navigateur. Le mot de passe de votre compte reste requis. Continuer ?',
+      'ar' => 'بدون قفل التطبيق، يمكن لأي شخص يستخدم هذا المتصفح الاطلاع على بياناتك الصحية المحلية. تظل المزامنة الطبية غير متاحة دون فتح القفل وقد تُفقد البيانات المحلية عند مسح المتصفح. تبقى كلمة مرور الحساب مطلوبة. هل تريد المتابعة؟',
+      _ => 'Without an app lock, anyone using this browser could read locally stored health data. Clinical sync remains unavailable without unlocking, and browser clearing may erase local-only records. Your account password is still required. Continue?',
+    };
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(switch (lang) {
+          'fr' => 'Continuer sans verrouillage ?',
+          'ar' => 'المتابعة بدون قفل؟',
+          _ => 'Continue without app lock?',
+        }),
+        content: Text(warning),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(switch (lang) {
+              'fr' => 'Annuler',
+              'ar' => 'إلغاء',
+              _ => 'Cancel',
+            }),
+          ),
+          FilledButton(
+            key: const Key('d30-confirm-no-lock'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(switch (lang) {
+              'fr' => 'Je comprends, continuer',
+              'ar' => 'أفهم، متابعة',
+              _ => 'I understand, continue',
+            }),
+          ),
+        ],
+      ),
+    );
+    if (confirmation != true || !mounted) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<AppLockService>().continueWithoutAppLock();
+      if (mounted) context.go('/onboarding');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = switch (lang) {
+          'fr' => 'Ce coffre contient déjà une protection ou des données à sécuriser. Déverrouillez-le pour continuer.',
+          'ar' => 'هذا الخزنة محمية بالفعل. افتح القفل للمتابعة.',
+          _ => 'This vault has existing protection or data that must remain locked. Unlock it to continue.',
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -224,6 +282,23 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                 foregroundColor: Colors.white,
                                 textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              key: const Key('d30-skip-app-lock'),
+                              onPressed: _busy ? null : _continueWithoutLock,
+                              icon: const Icon(Icons.lock_open_outlined),
+                              label: Text(switch (Localizations.localeOf(context).languageCode) {
+                                'fr' => 'Continuer sans verrouillage',
+                                'ar' => 'المتابعة بدون قفل',
+                                _ => 'Continue without app lock',
+                              }),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
                               ),
                             ),
                           ],

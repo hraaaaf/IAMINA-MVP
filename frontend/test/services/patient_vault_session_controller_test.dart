@@ -155,4 +155,63 @@ void main() {
     expect(recoveredA.codes, isNot(contains('insulin')));
   });
 
+  test('D30 synthetic glucose persists across local A B A vault reopening', () async {
+    final folder = await Directory.systemTemp.createTemp('iamina-d30-glucose-');
+    addTearDown(() => folder.delete(recursive: true));
+    final auth = _AuthTestNotifier();
+    addTearDown(auth.dispose);
+    const a = 'ab234567-1234-4abc-8def-123456789abc';
+    const b = 'ab234567-1234-4abc-8def-123456789abd';
+    var selected = a;
+    final controller = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: () async => PatientVaultScope.deviceLocal(selected),
+      openDatabase: (scope) => AppDatabase.testPatientVault(
+        NativeDatabase(File('${folder.path}/${scope.databaseName}.sqlite')),
+        scope,
+      ),
+    );
+    addTearDown(controller.dispose);
+    await controller.reconcile();
+    final dbA = controller.activeDatabase!;
+    await dbA.into(dbA.logEntries).insert(
+      LogEntriesCompanion.insert(
+        createdAt: DateTime.utc(2026, 10, 28, 12),
+        bloodSugar: 112.0,
+        clientUuid: 'd30-synthetic-glucose-a',
+      ),
+    );
+    expect((await dbA.select(dbA.logEntries).get()).single.bloodSugar, 112.0);
+
+    // Closing A's patient vault must not expose its record to device B.
+    selected = b;
+    AuthEpoch.advance();
+    auth.changed();
+    expect(controller.activeDatabase, isNull);
+    await controller.reconcile();
+    final dbB = controller.activeDatabase!;
+    expect(await dbB.select(dbB.logEntries).get(), isEmpty);
+    await dbB.into(dbB.logEntries).insert(
+      LogEntriesCompanion.insert(
+        createdAt: DateTime.utc(2026, 10, 28, 13),
+        bloodSugar: 156.0,
+        clientUuid: 'd30-synthetic-glucose-b',
+      ),
+    );
+
+    // Return to A: original SQLite record survives close/reopen, B stays isolated.
+    selected = a;
+    AuthEpoch.advance();
+    auth.changed();
+    expect(controller.activeDatabase, isNull);
+    await controller.reconcile();
+    final recovered = await controller.activeDatabase!.select(
+      controller.activeDatabase!.logEntries,
+    ).get();
+    expect(recovered, hasLength(1));
+    expect(recovered.single.bloodSugar, 112.0);
+    expect(recovered.single.clientUuid, 'd30-synthetic-glucose-a');
+    expect(recovered.single.syncStatus, 'pending');
+  });
+
 }

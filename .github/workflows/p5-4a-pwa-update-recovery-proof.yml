@@ -110,8 +110,9 @@ jobs:
 
           broken = root / 'v2-broken' / 'iamina_service_worker.js'
           text = broken.read_text(encoding='utf-8')
-          needle = "  './drift_worker.js',\n];"
-          replacement = "  './drift_worker.js',\n  './missing-v2.asset',\n];"
+          # Keep broken-v2 fixture stable when new precache fonts are appended.
+          needle = "  './drift_worker.js',\n"
+          replacement = needle + "  './missing-v2.asset',\n"
           if needle not in text:
               raise SystemExit('unable to inject deterministic broken-v2 precache entry')
           broken.write_text(text.replace(needle, replacement, 1), encoding='utf-8')

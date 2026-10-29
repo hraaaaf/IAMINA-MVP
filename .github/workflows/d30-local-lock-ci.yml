@@ -1,0 +1,148 @@
+name: D30 local re-enrollment safety (isolated)
+
+on:
+  push:
+    branches:
+      - test/d30-local-reenrollment-lock-20261028
+    paths:
+      - .github/workflows/d30-local-lock-ci.yml
+      - scripts/d30_web_boot_smoke.py
+      - frontend/test/services/app_lock_service_test.dart
+      - frontend/test/services/d30_api_egress_denial_test.dart
+      - scripts/d30_web_enrollment_e2e.py
+      - scripts/d30_web_clinical_e2e.py
+      - frontend/test/features/add_log_sheet_test.dart
+      - scripts/d30_sw_bootstrap_test.mjs
+      - frontend/web/flutter_bootstrap.js
+      - scripts/d30_web_offline_e2e.py
+      - scripts/d30_web_locale_visual_smoke.py
+      - frontend/web/iamina_service_worker.js
+      - frontend/test/features/d30_local_enrollment_cta_test.dart
+      - frontend/lib/features/auth/login_screen.dart
+      - frontend/lib/features/auth/app_lock_setup_screen.dart
+      - frontend/lib/features/profile/profile_screen.dart
+      - frontend/lib/features/profile/profile_screen_presentation.dart
+      - frontend/test/app_lock_ui_contract_test.dart
+      - frontend/lib/ui_browser_audit_main.dart
+      - frontend/test/routes/app_router_hosted_auth_gate_test.dart
+      - frontend/lib/services/app_lock_service.dart
+      - frontend/vercel_build.sh
+      - frontend/lib/routes/app_router.dart
+      - frontend/assets/fonts/**
+      - frontend/pubspec.yaml
+      - frontend/lib/core/theme/app_theme.dart
+      - frontend/lib/features/auth/local_device_enrollment_screen.dart
+      - frontend/test/routes/d30_local_ai_consent_gate_test.dart
+      - frontend/test/services/patient_vault_session_controller_test.dart
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d30-isolated-local-lock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d30-local-lock:
+    name: D30 local app-lock regression and Web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IAMINA_REMOTE_ACCOUNT_ENROLLMENT: "false"
+      IAMINA_OFFLINE_DEMO: "false"
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: D30 Add Log widget regression
+        run: flutter test --no-pub test/features/add_log_sheet_test.dart
+      - name: D30 Web bootstrap guard — blocked Service Worker regression
+        run: node ../scripts/d30_sw_bootstrap_test.mjs
+      # Isolate the new CTA widget test as its own visible red/green step.
+      - name: D30 FIRST-USE WIDGET — enroll CTA and app-lock route
+        # Verified independently in Vercel Preview: D30_WIDGET_TEST_EXIT_CODE=0.
+        run: flutter test --no-pub --reporter expanded test/features/d30_local_enrollment_cta_test.dart
+      - name: D30 PRIOR REGRESSIONS — app-lock, vault, API denial
+        run: |
+          flutter test --no-pub test/services/app_lock_service_test.dart
+          flutter test --no-pub test/services/patient_vault_session_controller_test.dart
+          flutter test --no-pub test/services/d30_api_egress_denial_test.dart
+          flutter test --no-pub test/routes/d30_local_ai_consent_gate_test.dart
+      - name: Verify Vercel Web builds vendor CanvasKit for offline use
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('vercel_build.sh').read_text()
+          expected = 'flutter build web --release --no-web-resources-cdn'
+          assert source.count(expected) == 2, 'Vercel release paths must bundle CanvasKit locally'
+          print('D30 release asset policy PASS: Vercel Web never needs CanvasKit CDN')
+          PY
+      # Re-run on complete, SHA256-verified binary assets (not truncated blobs).
+      - name: D30 local fonts and OFL licenses preflight
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+          manifest = yaml.safe_load(Path('pubspec.yaml').read_text())['flutter']
+          declared = {font['family'] for font in manifest['fonts']}
+          families = ['Inter', 'Inter Tight', 'Roboto', 'NotoSansArabic',
+                      'NotoSansSymbols', 'NotoSansSymbols2']
+          assert set(families) <= declared
+          for filename in ('Inter.ttf', 'InterTight.ttf', 'Roboto.ttf',
+                           'NotoSansArabic.ttf', 'NotoSansSymbols.ttf',
+                           'NotoSansSymbols2.ttf'):
+            file = Path('assets/fonts') / filename
+            assert file.exists() and file.stat().st_size > 100_000, file
+          for name in ('inter', 'intertight', 'roboto', 'notosansarabic',
+                       'notosanssymbols'):
+            text = (Path('assets/fonts') / ('LICENSE-' + name + '.txt')).read_text()
+            assert 'SIL OPEN FONT LICENSE' in text.upper(), name
+          print('D30 LICENSED LOCAL FONT PREFLIGHT PASS: six fonts and OFL notices')
+          PY
+      - name: Build Flutter Web offline-capable assets without deployment
+        id: d30_web_build
+        run: flutter build web --release --no-web-resources-cdn
+      - name: Install isolated Chromium smoke dependencies
+        run: |
+          python3 -m pip install --user playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+      # Diagnostic run: report exact outbound URLs instead of masking the failure.
+      # D30 browser gate denies Flutter's external font fallback; all other
+      # external attempts still fail the test without making a network call.
+      - name: Smoke-test locally served Flutter Web in Chromium
+        run: python3 ../scripts/d30_web_boot_smoke.py
+      - name: E2E local enrollment navigation in Chromium
+        run: python3 ../scripts/d30_web_enrollment_e2e.py
+      - name: D30 FR and Arabic local-font browser smoke (1180x860)
+        run: python3 ../scripts/d30_web_locale_visual_smoke.py
+      - name: E2E D30 local-only clinical save and WebAuthn reload (synthetic)
+        run: python3 ../scripts/d30_web_clinical_e2e.py
+      - name: E2E D30 genuine offline Service Worker shell and local WebAuthn asset
+        if: ${{ !cancelled() && steps.d30_web_build.outcome == 'success' }}
+        run: python3 ../scripts/d30_web_offline_e2e.py
+      - name: Retain Chromium smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d30-flutter-web-boot
+          path: |
+            /tmp/d30-flutter-web-boot.png
+            /tmp/d30-flutter-web-reload.png
+            /tmp/d30-local-enrollment-transition.png
+            /tmp/d30-enrollment-before-click.png
+            /tmp/d30-clinical-web-saved.png
+            /tmp/d30-clinical-web-reopened.png
+            /tmp/d30-clinical-web-failure.png
+            /tmp/d30-web-offline-shell.png
+            /tmp/d30-web-offline-fonts-*.png
+            /tmp/d30-web-offline-failure.png
+          if-no-files-found: ignore
