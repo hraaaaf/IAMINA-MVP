@@ -61,6 +61,7 @@ Future<void> main() async {
 
   final auth = AuthService();
   PatientVaultSessionController? controller;
+  var completed = false;
   try {
     await auth.initialize();
     must(!auth.hasRemoteApiCredential);
@@ -122,7 +123,7 @@ Future<void> main() async {
           ['oral_meds', 'lifestyle']);
     }
 
-    html.document.title = 'IAMINA_D7_NATIVE_' + phase.toUpperCase() + '_PASS';
+    completed = true;
   } catch (e) {
     html.document.title = 'IAMINA_D7_NATIVE_FAIL:' + e.runtimeType.toString();
   } finally {
@@ -131,5 +132,8 @@ Future<void> main() async {
     } catch (_) {}
     controller?.dispose();
     auth.dispose();
+  }
+  if (completed) {
+    html.document.title = 'IAMINA_D7_NATIVE_' + phase.toUpperCase() + '_PASS';
   }
 }
