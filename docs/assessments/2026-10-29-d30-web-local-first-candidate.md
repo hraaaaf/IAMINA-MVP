@@ -63,3 +63,18 @@ regressions and GitHub-only workflow. No change to glucose alert thresholds.
    Notion Chantier A and canonical roadmap. D19 audit can proceed independently.
 
 **Do not mark D30 closed until these gates have been satisfied.**
+
+## 2026-10-29 — Exact candidate recheck and real Chrome BEFORE/AFTER
+
+The earlier notes about unreadable offline glyphs describe an older run, **not the corrected candidate**. The FR/AR 1180×860 readability correction is supported by screenshot artifact 12864909639 on code SHA 222cf7e0. This does not establish every locale or every offline clinical UI view.
+
+- PR [#1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169), candidate code HEAD before this documentation update: `bf1917c5f543d2ec896be99f571027453d823a2d`.
+- GitHub Actions at that exact code SHA: 18/18 workflows SUCCESS, including [CI #40841416752](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40841416752), [PWA update/recovery #40841416694](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40841416694), [offline shell #40841416673](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40841416673), and [auth visual #40841416802](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40841416802).
+- Auth visual artifact `iamina-auth-local-first-before-after` ID `12882997602`: Chromium BEFORE and AFTER PNGs at identical 390×844, 768×1024, 1280×900 viewports. The captured first-use local-enrolment screen has no horizontal overflow in either state. Both states are legible; the visible delta is modest and primarily typography. Screenshots were directly inspected, not inferred merely from a green status.
+- Local-first, WebAuthn, synthetic 112 mg/dL retention and offline app-shell behavior have separate earlier browser evidence, including [#40795479155](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40795479155) and [#40799852678](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40799852678). Do not claim that the visual artifact itself proves these clinical workflow assertions.
+- Repository `vercel.json` on main has `git.deploymentEnabled=false`. Vercel projects `iamina-review` and `iamina-certified` are both GitHub-linked. No deployment or release promotion was authorized or performed by this audit.
+- **Release-scope gap:** `frontend/vercel_build.sh` still builds Vercel Production with `IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true` while the D30 isolated workflow exercises `false`. Thus merging the current candidate alone would **not** prove the public Production Web path allows local enrollment without a remote account. Existing remote-account flows must remain safe; resolve deliberately rather than silently flipping the production flag.
+- **Independent-review gap:** GitHub returned no submitted reviews for #1169. An automated green CI and a single-agent static review do not constitute independent security/privacy review.
+- Code branch is diverged from main (69 ahead / 5 behind at inspection); any merge result requires its own exact-SHA/post-merge evidence.
+
+**Status remains OPEN / NO-GO for a certified D30 closure** until independent security/privacy review, the Web Production scope decision, authorized merge without Vercel deployment, and post-merge checks are recorded. This appendix is evidence documentation only and does not alter clinical behavior, credentials, storage, consent, or deployment configuration.
