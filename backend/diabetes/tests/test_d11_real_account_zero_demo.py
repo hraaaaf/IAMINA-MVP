@@ -161,6 +161,16 @@ class DemoSeedPatientIsolationTests(TestCase):
             "/api/v1/logs", HTTP_AUTHORIZATION=f"Bearer {self.token_b}",
         )
         self.assertEqual(bearer_b.status_code, 401)
+        # Conflicting identities must fail before *writes*, not just GET.
+        mismatched_write = self.client_a.post(
+            "/api/v1/logs",
+            data={"blood_sugar": 180, "source": "manual"},
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {self.token_b}",
+        )
+        self.assertEqual(mismatched_write.status_code, 401)
+        self.assertEqual(LogEntry.objects.filter(patient=self.patient_a).count(), 1)
+        self.assertEqual(LogEntry.objects.filter(patient=self.patient_b).count(), 1)
         # B with B's own session and bearer still reads only B.
         b_own_session = self.client_b.get(
             "/api/v1/logs", HTTP_AUTHORIZATION=f"Bearer {self.token_b}",
