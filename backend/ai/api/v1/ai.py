@@ -39,6 +39,7 @@ from core.llm_gateway import get_gateway_llm
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
+from diabetes.api.v1.kpis import project_patient_kpis
 from diabetes.models import LogEntry
 from diabetes.services.clinical.engine import run_clinical_analysis
 from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
@@ -198,25 +199,41 @@ def get_summary(request, data: SummaryRequest):
         patient_language,
     )
 
-    # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
-    agp_profile = compute_agp_profile(user.id, data.days)
+    # CAL-02: never serialize raw row fractions as CGM time-based KPIs.
+    # The public KPI endpoint already requires verified CGM session coverage.
+    public_kpis = project_patient_kpis(
+        patient_id=user.id,
+        days=data.days,
+        target_low=data.target_low,
+        target_high=data.target_high,
+        kpis=kpis,
+    )
+    # The legacy SQL AGP includes manual LogEntry samples. Do not present it
+    # as CGM AGP unless the governed projection establishes CGM eligibility.
+    # Further source/consumer authorization for mixed CGM remains under D19.
+    agp_profile = (
+        compute_agp_profile(user.id, data.days)
+        if all(public_kpis[field] is not None for field in
+               ("tir_pct", "tar_pct", "tbr_pct"))
+        else []
+    )
     daily_avgs = compute_daily_averages(user.id, data.days)
 
     track(EVT_SUMMARY_VIEWED, patient_id=user.id, props={"days": data.days})
 
     return {
         "kpis": {
-            "avg_glucose": kpis.avg_glucose,
-            "std_dev": kpis.std_dev,
-            "cv_pct": kpis.cv_pct,
-            "tir_pct": kpis.tir_pct,
-            "tar_pct": kpis.tar_pct,
-            "tbr_pct": kpis.tbr_pct,
-            "gmi": kpis.gmi,
-            "log_count": kpis.log_count,
-            "days_with_data": kpis.days_with_data,
-            "gmi_confidence": kpis.gmi_confidence,
-            "gmi_basis": kpis.gmi_basis,
+            "avg_glucose": public_kpis["avg_glucose"],
+            "std_dev": public_kpis["std_dev"],
+            "cv_pct": public_kpis["cv_pct"],
+            "tir_pct": public_kpis["tir_pct"],
+            "tar_pct": public_kpis["tar_pct"],
+            "tbr_pct": public_kpis["tbr_pct"],
+            "gmi": public_kpis["gmi"],
+            "log_count": public_kpis["log_count"],
+            "days_with_data": public_kpis["days_with_data"],
+            "gmi_confidence": public_kpis["gmi_confidence"],
+            "gmi_basis": public_kpis["gmi_basis"],
         },
         "insights": insights,
         "daily_averages": daily_avgs,
