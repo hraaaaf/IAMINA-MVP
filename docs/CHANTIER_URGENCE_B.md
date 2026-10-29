@@ -102,3 +102,12 @@
 5. **Revue et CI FUE exact SHA, fusion et postmerge** pour chaque lot ; résultat documenté, pas de verdict basé seulement sur le nombre de tests verts.
 
 **Verdict actuel : D7 OPEN / FUE_NO_GO ; sous-lots #1179, #1180 et #1182 test-only MERGED ; aucune fermeture de décision complète.** D22 OPEN/FUE_NO_GO dépend toujours de D19 (chantier A) et des décisions G1–G7. D8 OPEN dépend D5 (A) et D22 (B). **Next exact :** sous-lot #1182 techniquement clos avec CI pré/postmerge exact SHA SUCCESS. Compléter FUE **vraie application Web** avec comptes tests et environnements QA explicitement attestés, ou déclarer chaque gate inaccessible au lieu d'inventer un PASS ; revue clinique/privacy requise. Aucun Vercel sans autorisation et aucune intervention sur A.
+
+
+## 29/10/2026 — D7 Web : FUE réelle, verdict borné après postmerge #1182
+
+**Décision D7 : FUE_NO_GO / OPEN.** Les sous-lots test-only **#1179**, **#1180**, **#1182** sont **MERGED**, et leurs tests ciblés Chrome/Flutter/SQLite WASM/IndexedDB sont verts. [#1182 postmerge CI #40858356581](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40858356581) **SUCCESS sur `563788f58d62dcadef89b12017376de18843c2b7`** ; [closeout #1184](https://github.com/hraaaaf/IAMINA-MVP/pull/1184) **MERGED** `main@b30eb164099e83756c30bfae89a6fae8f4f04509`, [CI prémerge #40859289298](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40859289298) et [postmerge #40859345133](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40859345133) **SUCCESS** (docs-only).
+
+**Rapport FUE Web / matrice F01–F08 :** [`docs/assessments/2026-10-29-d7-web-fue-gate-signed-evidence.md`](assessments/2026-10-29-d7-web-fue-gate-signed-evidence.md). Ce rapport distingue chaque preuve synthétique du parcours authentifié hébergé **NOT_RUN**. Le SSO Vercel Preview est encore actif ; l'unique Preview QA W01+D2 observée, deployment `dpl_4o5sLYhZywjthETgPbmtAmbo6SNr` au SHA `8a417041...`, **ne correspond pas** au `main@b30eb164...` courant. La Preview contient 2 comptes fictifs et 2 profils confirmés par SQL SELECT **seulement**, aucune session QA A/B exécutée ni mot de passe inspecté.
+
+**BLOQUÉ HUMAN GATE :** accès privé SSO QA pour un navigateur autorisé **et** GO distinct Vercel Preview au SHA courant avant FUE hébergée certifiante ; ensuite préflight BFF/Neon 4/4, F01–F06 sur 390/768/1280 FR/AR, F07 sécurité/clinique/privacy, closeout F08. Sans ces gates, **ne pas déclarer la FUE terminée**. Ni déploiement Vercel, ni code runtime, ni mutation Neon lors de cette consolidation.
