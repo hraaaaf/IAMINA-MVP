@@ -59,6 +59,13 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   bool _countryTouched = false;
   bool _countrySuggestedByIp = false;
 
+  // Isolated from W01 PR #1128: reveal the next question only after an
+  // explicit user action, never after an asynchronous country suggestion.
+  final GlobalKey _countryStepKey = GlobalKey(debugLabel: 'onboarding-country');
+  final GlobalKey _typeStepKey = GlobalKey(debugLabel: 'onboarding-type');
+  final GlobalKey _treatmentStepKey = GlobalKey(debugLabel: 'onboarding-treatment');
+  final GlobalKey _unitStepKey = GlobalKey(debugLabel: 'onboarding-unit');
+
   AppLocalizations get l10n => AppLocalizations.of(context)!;
 
   @override
@@ -97,6 +104,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       _countryTouched = true;
       _countrySuggestedByIp = false;
     });
+    if (!widget.preferencesOnly) _revealStep(_typeStepKey);
   }
 
   void _clearCountry() {
@@ -108,10 +116,43 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     });
   }
 
-  Future<void> _selectLanguage(String value) async {
-    _language = value;
-    await context.read<LocalePreferenceService>().setLanguageOnly(value);
-    if (mounted) setState(() {});
+  void _selectLanguage(String value) {
+    // W01 #1128: show the following question without waiting for Web storage.
+    setState(() => _language = value);
+    unawaited(
+      context.read<LocalePreferenceService>().setLanguageOnly(value).catchError(
+        (Object error, StackTrace stackTrace) {
+          developer.log(
+            'Language preference persistence failed.',
+            name: 'iamina.onboarding.language',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        },
+      ),
+    );
+    _revealStep(_countryStepKey);
+  }
+
+  void _selectDiabetesType(String value) {
+    setState(() => _diabetesType = value);
+    _revealStep(_treatmentStepKey);
+  }
+
+  void _revealStep(GlobalKey stepKey) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = stepKey.currentContext;
+      if (!mounted || target == null) return;
+      final reduceMotion = MediaQuery.of(context).disableAnimations;
+      unawaited(Scrollable.ensureVisible(
+        target,
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0.12,
+      ));
+    });
   }
 
   Future<void> _finish() async {
@@ -242,6 +283,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ],
       ),
       _Question(
+        key: _countryStepKey,
         title: l10n.onboardingChooseCountry,
         children: [
           _CountrySearchField(
@@ -277,6 +319,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       ),
       if (_language != null)
         _Question(
+          key: _countryStepKey,
           title: l10n.onboardingChooseCountry,
           children: [
             _CountrySearchField(
@@ -289,27 +332,28 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ),
       if (_country != null)
         _Question(
+          key: _typeStepKey,
           title: l10n.onboardingTypeQuestion,
           children: [
             _Choice(
               label: l10n.diabetesType1,
               selected: _diabetesType == 'type1',
-              onTap: () => setState(() => _diabetesType = 'type1'),
+              onTap: () => _selectDiabetesType('type1'),
             ),
             _Choice(
               label: l10n.diabetesType2,
               selected: _diabetesType == 'type2',
-              onTap: () => setState(() => _diabetesType = 'type2'),
+              onTap: () => _selectDiabetesType('type2'),
             ),
             _Choice(
               label: l10n.diabetesGestational,
               selected: _diabetesType == 'gestational',
-              onTap: () => setState(() => _diabetesType = 'gestational'),
+              onTap: () => _selectDiabetesType('gestational'),
             ),
             _Choice(
               label: l10n.diabetesPreDiabetes,
               selected: _diabetesType == 'pre',
-              onTap: () => setState(() => _diabetesType = 'pre'),
+              onTap: () => _selectDiabetesType('pre'),
             ),
             _Choice(
               label: _preferencesCopy(context,
@@ -318,7 +362,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
                 ar: 'تشخيص آخر مصرّح به',
               ),
               selected: _diabetesType == 'other',
-              onTap: () => setState(() => _diabetesType = 'other'),
+              onTap: () => _selectDiabetesType('other'),
             ),
             _Choice(
               label: _preferencesCopy(context,
@@ -327,30 +371,50 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
                 ar: 'لا أعرف / لاحقًا',
               ),
               selected: _diabetesType == 'unknown',
-              onTap: () => setState(() => _diabetesType = 'unknown'),
+              onTap: () => _selectDiabetesType('unknown'),
             ),
           ],
         ),
       if (_country != null)
         _Question(
+          key: _treatmentStepKey,
           title: _preferencesCopy(context,
             fr: 'Quels traitements suivez-vous actuellement ? (facultatif)',
             en: 'Which treatments do you currently follow? (optional)',
             ar: 'ما العلاجات التي تتبعها حاليًا؟ (اختياري)',
           ),
           children: [
-            MedicalTreatmentMultiSelector(
-              diabetesType: _diabetesType,
-              value: _declaredTreatments,
-              onChanged: (value) => setState(() {
-                _declaredTreatments = value;
-                _treatmentTouched = true;
-              }),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MedicalTreatmentMultiSelector(
+                  diabetesType: _diabetesType,
+                  value: _declaredTreatments,
+                  onChanged: (value) => setState(() {
+                    _declaredTreatments = value;
+                    _treatmentTouched = true;
+                  }),
+                ),
+                const SizedBox(height: 8),
+                // Multi-choice is patient-driven: never jump after one chip.
+                // The patient explicitly advances when finished or skips it.
+                TextButton.icon(
+                  key: const Key('onboarding-treatment-next'),
+                  onPressed: () => _revealStep(_unitStepKey),
+                  icon: const Icon(Icons.arrow_downward_rounded, size: 18),
+                  label: Text(_preferencesCopy(context,
+                    fr: 'Continuer vers les unités',
+                    en: 'Continue to units',
+                    ar: 'المتابعة إلى الوحدات',
+                  )),
+                ),
+              ],
             ),
           ],
         ),
       if (_country != null)
         _Question(
+          key: _unitStepKey,
           title: l10n.onboardingUnitQuestion,
           children: [
             _Choice(
@@ -723,7 +787,7 @@ class _Question extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _Question({required this.title, required this.children});
+  const _Question({super.key, required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) => Padding(
