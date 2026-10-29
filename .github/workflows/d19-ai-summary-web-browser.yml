@@ -1,0 +1,56 @@
+name: D19 real Web AI summary synthetic clinical presentation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_d19_ai_summary_browser_main.dart'
+      - 'frontend/lib/features/journal/ai_summary_screen.dart'
+      - 'frontend/lib/features/journal/ai_summary_screen_presentation.dart'
+      - 'tools/d19_ai_summary_web_browser_check.js'
+      - '.github/workflows/d19-ai-summary-web-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d19-ai-summary-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build D19 real patient-facing AISummaryScreen with fake local-only API
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_d19_ai_summary_browser_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/ui_d19_ai_summary_browser_main.dart
+      - name: Install Chrome for synthetic browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Exercise FR and AR RTL actual AISummaryScreen across Web viewports
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7358 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d19-ai-summary-web.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:7358/ >/dev/null
+          node tools/d19_ai_summary_web_browser_check.js
+      - name: Upload synthetic clinic UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d19-ai-summary-real-flutter-web-fr-ar
+          path: d19-ai-summary-browser/*
+          if-no-files-found: warn
+          retention-days: 7
