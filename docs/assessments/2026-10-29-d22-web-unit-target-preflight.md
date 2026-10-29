@@ -50,7 +50,7 @@ Conversion documentaire du glucose : `mmol/L ≈ (mg/dL) ÷ 18` ; `mg/dL ≈ (mm
 ## Statut et chemin restant
 
 - **Présent préflight :** test/dossier seulement, non corrigeant ; PR #1173 MERGED et CI prémerge/postmerge exactes SUCCESS. Aucun Vercel, DB, API ou produit modifié.
-- **D22 total : OPEN / FUE_NO_GO**, BLOQUÉ côté changement clinique par D19. **Next exact :** fermer le closeout Markdown du préflight, puis arbitrer humainement D19 (contrat d'unité/provenance/legacy) avant d'implémenter le lot UI/stockage D22 avec vrai BEFORE/AFTER et FUE complète.
+- **D22 total : OPEN / FUE_NO_GO**, BLOQUÉ côté changement clinique par D19. **Next exact :** obtenir les arbitrages qualifiés G1–G7 sur [la fiche de décision D19→D22](2026-10-29-d19-d22-web-clinical-decision-gate.md), puis seulement implémenter le lot UI/stockage D22 avec vrai BEFORE/AFTER et FUE complète.
 - **Fichier canonique provisoire :** ce document, subordonné au suivi [GitHub #1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165) et à `docs/ROADMAP.md`. Ne pas inventer de pourcentage global.
 
 ## Closeout technique du préflight — 29 octobre 2026
@@ -67,3 +67,8 @@ Conversion documentaire du glucose : `mmol/L ≈ (mg/dL) ÷ 18` ; `mg/dL ≈ (mm
 **Préflight test-only (sans changement patient) :** Goal : caractérisation reproductible de la conversion d'affichage et consignation des risques. Success : diff limité à 2 fichiers, CI prémerge et postmerge exacts SUCCESS, aucun code runtime touché. Preuve : [#1173](https://github.com/hraaaaf/IAMINA-MVP/pull/1173), [#40845031719](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40845031719), [#40845836231](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40845836231) et commit `d5d95c6`. Dimensions : portée/test/sécurité des changements documentaires OK ; FUE clinique non applicable à ce sous-lot **uniquement**. `EXECUTION_SCORE: 9.1/10`, `ADVERSARIAL_SCORE: 9.0/10`, écart `0.1`, cap même exécutant `9.4`, `RETAINED_SCORE: 9.0/10`. Cette évaluation est une **revue critique du même exécutant**, pas une revue indépendante. Perfection Pass : périmètre relu ; aucun changement d'algorithme, schéma, patient ou écran ; les contrôles de source et la future FUE restent explicitement hors du GO limité. **GO technique du préflight uniquement.**
 
 **Décision produit D22 : `BLOCKED / FUE_NO_GO`**, pas `VERIFIED`. Le risque d'interprétation clinique, le gate humain D19 et toutes les vérifications Web marquées `NOT_RUN` restent des blockers binaires. Le sous-lot de test ne fournit **aucune certification clinique ni livraison fonctionnelle D22**. Les scores du préflight ne se transfèrent pas à la décision D22.
+
+## Handover après closeout documentaire
+
+- **CI postmerge #1174 :** [#40848461692](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40848461692) **SUCCESS**, SHA exact `main@278159a2988c860861e24301c6db37588f1b4eb8` ; closeout du préflight documentaire achevé, sans changement de code clinique.
+- **Gate suivant documenté (NON APPROUVÉ) :** [Fiche D19→D22 : G1–G7, oracles F01–F07, signataires et séquence restante](2026-10-29-d19-d22-web-clinical-decision-gate.md). Le présent fichier reste canonique pour D22 ; l'autre fiche est le dossier de décision soumis aux humains. PR #920 reste DRAFT ; D22 FUE_NO_GO.
