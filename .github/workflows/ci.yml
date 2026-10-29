@@ -223,10 +223,10 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: D11 negative/recovery keyboard FUE — fail fast
-        run: flutter test --no-pub --timeout 1m test/features/auth/d11_web_entry_fue_test.dart
+        run: timeout --signal=TERM 180s flutter test --no-pub --timeout 1m test/features/auth/d11_web_entry_fue_test.dart
 
       - name: D11 optional hosted account signup UI — FR/AR x 3 Web viewports
-        run: flutter test --no-pub --timeout 1m --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true test/features/auth/d11_web_positive_signup_test.dart
+        run: timeout --signal=TERM 180s flutter test --no-pub --timeout 1m --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true test/features/auth/d11_web_positive_signup_test.dart
 
       - name: Run Flutter tests
         run: flutter test --no-pub
