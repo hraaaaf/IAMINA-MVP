@@ -9,8 +9,17 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
         alignment: AlignmentDirectional.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
-          child: AminaFirstUsePanel(
-            icon: Icons.auto_graph_rounded,
+          child: DefaultTextStyle.merge(
+            // Use the locally bundled Arabic font for the degraded first-use
+            // state. This report must remain readable with no network.
+            style: TextStyle(
+              fontFamily: Localizations.localeOf(context).languageCode == 'ar'
+                  ? 'NotoSansArabic'
+                  : null,
+              fontFamilyFallback: kOfflineFontFallbacks,
+            ),
+            child: AminaFirstUsePanel(
+              icon: Icons.auto_graph_rounded,
             eyebrow: l10n.navIamina,
             title: l10n.emptyDashboardTitle,
             body: AuditedPageCopy.of(context).emptyAnalysis,
@@ -18,7 +27,8 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
             onPrimaryAction: () => context.go('/ajouter'),
             secondaryActionLabel: l10n.importDocument,
             onSecondaryAction: () => context.go('/importer'),
-            note: l10n.firstUseTruthNote,
+              note: l10n.firstUseTruthNote,
+            ),
           ),
         ),
       ),
@@ -326,19 +336,24 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
     SummaryResponse summary,
     KpisResponse? kpis,
   ) {
-    final agpData = summary.agpProfile.isNotEmpty
-        ? summary.agpProfile
-        : summary.dailyAverages;
-    final useHourly = summary.agpProfile.isNotEmpty;
+    // Daily manual-reading averages are never a certified CGM AGP.
+    final agpData = summary.agpProfile;
+    final hasEligibleCgmKpis = kpis != null &&
+        kpis.hasSufficientData &&
+        (kpis.tirPct != null || kpis.cvPct != null || kpis.gmi != null);
+    final hasEligibleAgp = agpData.isNotEmpty &&
+        kpis?.tirPct != null &&
+        kpis?.tarPct != null &&
+        kpis?.tbrPct != null;
     return [
-      if (kpis != null && kpis.hasSufficientData) ...[
+      if (kpis != null && hasEligibleCgmKpis) ...[
         _KpiRow(kpis: kpis),
         const SizedBox(height: 16),
       ],
-      if (agpData.isNotEmpty) ...[
+      if (hasEligibleAgp) ...[
         _AgpCard(
           agpData: agpData,
-          isHourly: useHourly,
+          isHourly: true,
           periodDays: _periodDays,
           kpis: kpis,
         ),
@@ -483,9 +498,13 @@ class _PeriodTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onTap(days),
-      child: AnimatedContainer(
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: () => onTap(days),
+        borderRadius: BorderRadius.circular(99),
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -503,6 +522,7 @@ class _PeriodTab extends StatelessWidget {
             color: selected ? Colors.white : AminaTheme.textSecondary(context),
           ),
         ),
+        ),
       ),
     );
   }
@@ -513,13 +533,19 @@ class _GreetingHeader extends StatelessWidget {
   const _GreetingHeader({required this.periodDays});
 
   String _firstName() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.isAnonymous) return '';
-    final display = user.displayName ?? '';
-    if (display.isEmpty) return '';
-    return display
-        .split(RegExp(r'[\s@.]'))
-        .firstWhere((p) => p.isNotEmpty, orElse: () => '');
+    // Optional Firebase migration identity must never gate a local-first
+    // clinical report. An unconfigured Firebase app is normal on this path.
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.isAnonymous) return '';
+      final display = user.displayName ?? '';
+      if (display.isEmpty) return '';
+      return display
+          .split(RegExp(r'[\s@.]'))
+          .firstWhere((p) => p.isNotEmpty, orElse: () => '');
+    } catch (_) {
+      return '';
+    }
   }
 
   @override
@@ -568,7 +594,7 @@ class _HeroInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis?.tirPct ?? 0.0;
+    final tir = kpis?.tirPct;
     final discussionCount = summary.insightCards
         .where((c) => c.action.isNotEmpty)
         .length;
@@ -615,7 +641,11 @@ class _HeroInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            tir >= 70 ? l10n.mostlyInTarget : l10n.someReadingsNeedReview,
+            tir == null
+                ? l10n.insufficientData
+                : tir >= 70
+                    ? l10n.mostlyInTarget
+                    : l10n.someReadingsNeedReview,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -638,20 +668,44 @@ class _HeroInsightCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-          Row(
-            children: [
-              _HeroButton(
-                label: l10n.seeFindings,
-                onTap: onDiscoverTap,
-                isPrimary: true,
-              ),
-              const SizedBox(width: 12),
-              _HeroButton(
-                label: l10n.discussWithIamina,
-                onTap: onChatTap,
-                isPrimary: false,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Avoid clipping the French second action at 390 px; preserve
+              // the same button order, affordance and styling at every size.
+              if (constraints.maxWidth < 430) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _HeroButton(
+                      label: l10n.seeFindings,
+                      onTap: onDiscoverTap,
+                      isPrimary: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _HeroButton(
+                      label: l10n.discussWithIamina,
+                      onTap: onChatTap,
+                      isPrimary: false,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  _HeroButton(
+                    label: l10n.seeFindings,
+                    onTap: onDiscoverTap,
+                    isPrimary: true,
+                  ),
+                  const SizedBox(width: 12),
+                  _HeroButton(
+                    label: l10n.discussWithIamina,
+                    onTap: onChatTap,
+                    isPrimary: false,
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -672,8 +726,9 @@ class _HeroButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
@@ -702,33 +757,34 @@ class _KpiRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis.tirPct ?? 0.0;
-    final gmi = kpis.gmi ?? 0.0;
-    final cv = kpis.cvPct ?? 0.0;
     final coverage = l10n.coverage(kpis.logCount, kpis.daysWithData);
-
+    // Never print 0% for a missing normative CGM value.
     final cards = <Widget>[
-      _KpiCard(
-        label: l10n.readingsInRange,
-        value: '${tir.toStringAsFixed(0)}%',
-        color: AminaTheme.teal500,
-        reference: l10n.generalRangeReference,
-      ),
-      _KpiCard(
-        label: l10n.estimatedGmi,
-        value: '${gmi.toStringAsFixed(1)}%',
-        color: AminaTheme.ocean500,
-        reference: kpis.gmiBasis.isNotEmpty
-            ? l10n.gmiBasis(kpis.gmiBasis)
-            : l10n.gmiAvailableMean,
-      ),
-      _KpiCard(
-        label: l10n.variabilityCv,
-        value: '${cv.toStringAsFixed(0)}%',
-        color: AminaTheme.ambre500,
-        reference: l10n.generalCvReference,
-      ),
+      if (kpis.tirPct != null)
+        _KpiCard(
+          label: l10n.readingsInRange,
+          value: '${kpis.tirPct!.toStringAsFixed(0)}%',
+          color: AminaTheme.teal500,
+          reference: l10n.generalRangeReference,
+        ),
+      if (kpis.gmi != null)
+        _KpiCard(
+          label: l10n.estimatedGmi,
+          value: '${kpis.gmi!.toStringAsFixed(1)}%',
+          color: AminaTheme.ocean500,
+          reference: kpis.gmiBasis.isNotEmpty
+              ? l10n.gmiBasis(kpis.gmiBasis)
+              : l10n.gmiAvailableMean,
+        ),
+      if (kpis.cvPct != null)
+        _KpiCard(
+          label: l10n.variabilityCv,
+          value: '${kpis.cvPct!.toStringAsFixed(0)}%',
+          color: AminaTheme.ambre500,
+          reference: l10n.generalCvReference,
+        ),
     ];
+    if (cards.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,6 +917,10 @@ class _AgpCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    // Caller and widget both require verified CGM metrics for the AGP label.
+    if (kpis?.tirPct == null || kpis?.tarPct == null || kpis?.tbrPct == null) {
+      return const SizedBox.shrink();
+    }
     final hasData = agpData.any((e) {
       final m = e as Map<String, dynamic>;
       final v = (m['p50'] ?? m['avg'] ?? m['avg_glucose'] ?? 0);

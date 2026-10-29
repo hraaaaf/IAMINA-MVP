@@ -1,0 +1,110 @@
+/* D19 real Chrome *actual AISummaryScreen* synthetic visual FUE.
+ * No patient session, no external network or LLM; GET requests are all local.
+ */
+'use strict';
+const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const out = path.resolve(process.env.D19_AI_WEB_OUT || 'd19-ai-summary-browser');
+const origin = process.env.D19_AI_WEB_ORIGIN || 'http://127.0.0.1:7358';
+fs.mkdirSync(out, { recursive: true });
+const viewports = [
+  {name:'mobile',width:390,height:844},
+  {name:'tablet',width:768,height:1024},
+  {name:'desktop',width:1280,height:900},
+];
+const tests=[];
+(async()=>{
+  const browser=await chromium.launch({headless:true});
+  try{
+    for(const loc of ['fr','ar']){
+      for(const v of viewports){
+        for(const scenario of (process.env.D19_AI_WEB_BASELINE==='1'
+          ? ['manual','verified','unavailable']
+          : ['manual','verified','unavailable','recover'])){
+          if(process.env.D19_DIAGNOSTIC_ONLY==='1' && (loc!=='fr'||v.name!=='mobile'||scenario!=='manual'))continue;
+          const context=await browser.newContext({viewport:{width:v.width,height:v.height},locale:loc==='ar'?'ar-MA':'fr-FR',deviceScaleFactor:1,serviceWorkers:'block'});
+          const page=await context.newPage();
+          const errors=[], outbound=[], requestedDays=[], recoveryDays=[];
+          page.on('pageerror',err=>errors.push(err.message.slice(0,400)));
+          page.on('console',msg=>{
+            const message=msg.text();
+            const match=message.match(/D19_SYNTHETIC_AI_DAYS=(\d+)/);
+            if(match) requestedDays.push(Number(match[1]));
+            const recovered=message.match(/D19_SYNTHETIC_AI_RECOVERED_DAYS=(\d+)/);
+            if(recovered) recoveryDays.push(Number(recovered[1]));
+            if(msg.type()==='error'||message.includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(message.slice(0,2500));
+          });
+          await page.route('**/*',route=>{
+            const u=route.request().url();
+            if(u.startsWith(origin)||u.startsWith('data:')||u.startsWith('blob:'))return route.continue();
+            outbound.push(u.slice(0,120));return route.abort();
+          });
+          const url=origin+'/?locale='+loc+'&scenario='+scenario;
+          const response=await page.goto(url,{waitUntil:'load',timeout:60000});
+          await page.waitForSelector('flt-glass-pane',{state:'attached',timeout:60000});
+          await page.waitForTimeout(4500);
+          const file=loc+'-'+v.name+'-'+v.width+'x'+v.height+'-'+scenario+'.png';
+          const bytes=await page.screenshot({path:path.join(out,file),fullPage:false});
+          const hash=crypto.createHash('sha256').update(bytes).digest('hex');
+          const dims=await page.evaluate(()=>({w:window.innerWidth,h:window.innerHeight,scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth}));
+          const observation={locale:loc,viewport:v.name,scenario,status:response.status(),filename:file,bytes:bytes.length,sha256:hash,errors,outbound,overflow:dims.scrollWidth>dims.w||dims.bodyWidth>dims.w};
+          // FUE: genuinely use the physical keyboard on real Flutter Web (not a
+          // synthetic JavaScript click). Assert an observable 7-day API request.
+          if (v.name==='mobile' && scenario==='verified') {
+            await page.mouse.click(v.width-6,v.height-8); // focus the Flutter surface
+            for(let i=0;i<5&&!requestedDays.includes(7);i++) {
+              await page.keyboard.press('Tab');
+              await page.keyboard.press('Enter');
+              await page.waitForTimeout(300);
+            }
+            observation.keyboardPeriod7=requestedDays.includes(7);
+            observation.keyboardRequests=requestedDays.slice();
+            observation.keyboardScreenshot=loc+'-keyboard-focus-verified.png';
+            await page.screenshot({path:path.join(out,observation.keyboardScreenshot)});
+          }
+          if (scenario==='recover') {
+            // Real keyboard navigation of Flutter: the three 7/21/90 tabs
+            // precede the retry button. Four physical Tab presses target the
+            // retry action; Enter must refresh the SAME 21-day analysis.
+            await page.mouse.click(v.width-6,v.height-8);
+            for (let i=0;i<4;i++) await page.keyboard.press('Tab');
+            await page.keyboard.press('Enter');
+            await page.waitForTimeout(1600);
+            observation.recoveryRequestedDays=requestedDays.slice();
+            observation.recoveryDays=recoveryDays.slice();
+            observation.recoveryPass=recoveryDays.includes(21) &&
+              requestedDays.filter(x=>x===21).length>=2;
+            observation.afterRecoveryScreenshot=loc+'-'+v.name+'-after-recovery.png';
+            await page.screenshot({path:path.join(out,observation.afterRecoveryScreenshot)});
+          }
+          tests.push(observation);
+          await context.close();
+        }
+      }
+    }
+    const failed=[];
+    for(const t of tests){
+      if(t.status!==200||t.bytes<15000||t.errors.length||t.outbound.length||t.overflow)failed.push(t);
+    }
+    if(process.env.D19_DIAGNOSTIC_ONLY!=='1')for(const loc of ['fr','ar'])for(const v of viewports){
+      const items=tests.filter(t=>t.locale===loc&&t.viewport===v.name);
+      if(new Set(items.map(t=>t.sha256)).size<2)failed.push({locale:loc,viewport:v.name,reason:'no distinct clinical state render'});
+    }
+    if(process.env.D19_AI_WEB_BASELINE!=='1') {
+      const recovered=tests.filter(t=>t.scenario==='recover');
+      if(recovered.length!==6||recovered.some(t=>!t.recoveryPass)) {
+        failed.push({reason:'Real Flutter retry failed to recover the same 21-day analysis',cases:recovered.map(t=>({locale:t.locale,viewport:t.viewport,days:t.recoveryRequestedDays,recovered:t.recoveryDays}))});
+      }
+      const keyboard=tests.filter(t=>t.keyboardPeriod7!==undefined);
+      if(keyboard.length!==2 || keyboard.some(t=>!t.keyboardPeriod7)) {
+        failed.push({reason:'Real Chrome keyboard Tab+Enter did not activate 7-day range',keyboard:keyboard.map(t=>({locale:t.locale,requested:t.keyboardRequests}))});
+      }
+    }
+    // Save the complete result, including keyboard outcome, after all assertions.
+    fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
+    console.log(JSON.stringify({tested:tests.length,failures:failed.length,recovery:tests.filter(t=>t.scenario==='recover').map(t=>({locale:t.locale,viewport:t.viewport,pass:t.recoveryPass,days:t.recoveryRequestedDays})),keyboard:tests.filter(t=>t.keyboardPeriod7!==undefined).map(t=>({locale:t.locale,pass:t.keyboardPeriod7,days:t.keyboardRequests})),details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason}))},null,2));
+    if(process.env.D19_AI_WEB_BASELINE!=='1' && failed.length)process.exitCode=1;
+  }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

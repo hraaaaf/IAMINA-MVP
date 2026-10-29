@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import replace
 from datetime import timedelta
 from typing import List, Optional
 
@@ -39,11 +40,11 @@ from core.llm_gateway import get_gateway_llm
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
+from diabetes.api.v1.kpis import project_patient_kpis
 from diabetes.models import LogEntry
 from diabetes.services.clinical.engine import run_clinical_analysis
 from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
 from diabetes.services.clinical.sql_analytics import (
-    compute_agp_profile,
     compute_daily_averages,
     compute_kpis,
 )
@@ -153,6 +154,30 @@ class GlucometerOcrResponse(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 
+def _descriptive_only_kpis(kpis):
+    """Only descriptive row statistics may enter clinical narrators.
+
+    CGM normative fields require verified sensor-session provenance and are
+    deliberately suppressed until a separately governed narration packet exists.
+    """
+    return replace(
+        kpis,
+        cv_pct=None,
+        tir_pct=None,
+        tar_pct=None,
+        tbr_pct=None,
+        gmi=None,
+        gri=None,
+        gri_zone=None,
+        gri_label=None,
+        tbr_level2_pct=None,
+        tbr_level1_pct=None,
+        tar_level1_pct=None,
+        tar_level2_pct=None,
+        cgm_active_pct=None,
+    )
+
+
 @router.post("/ai/summary", response=SummaryResponse)
 @patient_ai_egress_scope("clinical_summary", TEXT)
 def get_summary(request, data: SummaryRequest):
@@ -175,6 +200,18 @@ def get_summary(request, data: SummaryRequest):
         target_high=data.target_high,
     )
 
+    # Project before any narration or clinical pattern generation. CGM
+    # aggregates from LogEntry rows alone never authorize TIR/CV/GMI claims.
+    public_kpis = project_patient_kpis(
+        patient_id=user.id,
+        days=data.days,
+        target_low=data.target_low,
+        target_high=data.target_high,
+        kpis=kpis,
+    )
+    # The doctor-facing and patient summaries share this strict authority gate.
+    narration_kpis = _descriptive_only_kpis(kpis)
+
     # ── Step 2: Pattern detection (requires ORM entries for time-aware rules) ──
     since = timezone.now() - timedelta(days=data.days)
     entries = list(
@@ -185,10 +222,10 @@ def get_summary(request, data: SummaryRequest):
             blood_sugar__gt=0,
         ).order_by("logged_at", "created_at")
     )
-    report = run_clinical_analysis(entries, kpis)
+    report = run_clinical_analysis(entries, narration_kpis)
 
     # ── Step 3: Semantic Compression → English Pivot ──
-    compressed = compress(kpis, report.patterns, patient_language)
+    compressed = compress(narration_kpis, report.patterns, patient_language)
 
     # ── Step 4: LLM formatting (Groq GPT-OSS-120B narrates; it does not calculate) ──
     from core.medical_safety import sanitize_patient_visible
@@ -199,24 +236,25 @@ def get_summary(request, data: SummaryRequest):
     )
 
     # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
-    agp_profile = compute_agp_profile(user.id, data.days)
+    # The legacy row-based AGP is not a verified CGM time profile.
+    agp_profile = []
     daily_avgs = compute_daily_averages(user.id, data.days)
 
     track(EVT_SUMMARY_VIEWED, patient_id=user.id, props={"days": data.days})
 
     return {
         "kpis": {
-            "avg_glucose": kpis.avg_glucose,
-            "std_dev": kpis.std_dev,
-            "cv_pct": kpis.cv_pct,
-            "tir_pct": kpis.tir_pct,
-            "tar_pct": kpis.tar_pct,
-            "tbr_pct": kpis.tbr_pct,
-            "gmi": kpis.gmi,
-            "log_count": kpis.log_count,
-            "days_with_data": kpis.days_with_data,
-            "gmi_confidence": kpis.gmi_confidence,
-            "gmi_basis": kpis.gmi_basis,
+            "avg_glucose": public_kpis["avg_glucose"],
+            "std_dev": public_kpis["std_dev"],
+            "cv_pct": public_kpis["cv_pct"],
+            "tir_pct": public_kpis["tir_pct"],
+            "tar_pct": public_kpis["tar_pct"],
+            "tbr_pct": public_kpis["tbr_pct"],
+            "gmi": public_kpis["gmi"],
+            "log_count": public_kpis["log_count"],
+            "days_with_data": public_kpis["days_with_data"],
+            "gmi_confidence": public_kpis["gmi_confidence"],
+            "gmi_basis": public_kpis["gmi_basis"],
         },
         "insights": insights,
         "daily_averages": daily_avgs,
@@ -280,20 +318,23 @@ def get_doctor_brief(request, days: int = 14):
             blood_sugar__isnull=False,
         ).order_by("logged_at", "created_at")
     )
-    report = run_clinical_analysis(entries, kpis)
+    # Doctor-facing reports must obey the same sensor-source authority gate.
+    safe_kpis = _descriptive_only_kpis(kpis)
+    report = run_clinical_analysis(entries, safe_kpis)
 
     IAminaMemory.load(user)
-    tone_ctx = select_tone(tir_pct=kpis.tir_pct, cv_pct=kpis.cv_pct)
+    tone_ctx = select_tone(tir_pct=safe_kpis.tir_pct, cv_pct=safe_kpis.cv_pct)
     # The structured JSON response remains endpoint-specific, but provider access
     # now goes through GatewayLLM so capability, PHI and egress controls are shared.
     llm = get_gateway_llm()
 
+    # Never present manual TIR/GMI/CV as continuous CGM evidence to a clinician
+    # or feed those labels into the external LLM context.
     stats_lines = [
-        f"AVG_GLUCOSE: {kpis.avg_glucose} mg/dL" if kpis.avg_glucose else "",
-        f"TIR: {kpis.tir_pct}%" if kpis.tir_pct else "",
-        f"GMI_EST_HBA1C: {kpis.gmi}%" if kpis.gmi else "",
-        f"CV: {kpis.cv_pct}%" if kpis.cv_pct else "",
-        f"LOGS: {kpis.log_count} entries over {kpis.days_with_data} days",
+        f"AVG_GLUCOSE: {safe_kpis.avg_glucose} mg/dL"
+        if safe_kpis.avg_glucose is not None else "",
+        f"LOGS: {safe_kpis.log_count} entries over {safe_kpis.days_with_data} days",
+        "CGM TIR/CV/GMI unavailable: sensor coverage not established for this brief",
     ]
     stats = "\n".join(s for s in stats_lines if s)
     patterns_text = (

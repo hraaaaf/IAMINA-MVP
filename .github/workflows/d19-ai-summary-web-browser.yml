@@ -1,0 +1,86 @@
+name: D19 real Web AI summary synthetic clinical presentation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_d19_ai_summary_browser_main.dart'
+      - 'frontend/lib/features/journal/ai_summary_screen.dart'
+      - 'frontend/lib/features/journal/ai_summary_screen_presentation.dart'
+      - 'frontend/lib/core/widgets/first_use_panel.dart'
+      - 'tools/d19_ai_summary_web_browser_check.js'
+      - '.github/workflows/d19-ai-summary-web-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d19-ai-summary-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare identical D19 screen fixture and audit historical BEFORE source
+        run: |
+          set -euo pipefail
+          cd frontend
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_d19_ai_summary_browser_main.dart
+          cd ..
+          git cat-file -e a80bf8042c8d47d5bc1812f21b067989388b75a8:frontend/lib/features/journal/ai_summary_screen_presentation.dart
+      - name: Install Chrome and PNG visual comparator
+        run: |
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
+          npx playwright install chromium
+      - name: Build controlled BEFORE presentation at same synthetic state/viewport
+        run: |
+          set -euo pipefail
+          git show a80bf8042c8d47d5bc1812f21b067989388b75a8:frontend/lib/features/journal/ai_summary_screen_presentation.dart > frontend/lib/features/journal/ai_summary_screen_presentation.dart
+          cd frontend
+          flutter build web --release --no-web-resources-cdn -t lib/ui_d19_ai_summary_browser_main.dart
+      - name: Capture controlled BEFORE Chrome visuals (allow historical defects)
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7358 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d19-before.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:7358/ >/dev/null
+          D19_AI_WEB_BASELINE=1 D19_AI_WEB_OUT=d19-before-browser node tools/d19_ai_summary_web_browser_check.js
+      - name: Restore release candidate and build real D19 AFTER
+        if: always()
+        run: |
+          set -euo pipefail
+          git restore --source=HEAD -- frontend/lib/features/journal/ai_summary_screen_presentation.dart
+          cd frontend
+          flutter build web --release --no-web-resources-cdn -t lib/ui_d19_ai_summary_browser_main.dart
+      - name: Exercise AFTER real Flutter screen in Chrome at 3 viewports FR AR
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7358 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d19-after.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:7358/ >/dev/null
+          D19_AI_WEB_OUT=d19-after-browser node tools/d19_ai_summary_web_browser_check.js
+      - name: Compare BEFORE and AFTER screenshots at exact matching viewports and scenarios
+        run: node tools/d19_ai_summary_visual_compare.js
+      - name: Upload synthetic clinic UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d19-ai-summary-real-flutter-web-fr-ar
+          path: |
+            d19-before-browser/*
+            d19-after-browser/*
+            d19-visual-comparison.json
+          if-no-files-found: warn
+          retention-days: 7
