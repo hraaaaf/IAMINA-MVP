@@ -1,0 +1,81 @@
+name: W02 D10 Option A isolated PostgreSQL revision CAS
+on:
+  push:
+    branches:
+      - feat/w02-web-bff-readonly-preflight-20261028
+      - feat/w02-d10-option-a-w01-preview-20261028
+    paths:
+      - 'backend/core/models/w02_revision_anchor.py'
+      - 'scripts/fixtures/iamina_w02_option_a_client.mjs'
+      - 'scripts/tests/test_w02_option_a_client.mjs'
+      - 'backend/core/models/__init__.py'
+      - 'backend/core/migrations/0024_w02_vault_revision_anchor.py'
+      - 'backend/core/w02_revision_service.py'
+      - 'backend/core/api/v1/w02_revision.py'
+      - 'backend/diabetes/api/main.py'
+      - 'backend/core/tests/test_w02_revision_anchor.py'
+      - '.github/workflows/w02-d10-option-a-revision.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w02-d10-option-a-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-pg-revision:
+    name: Native-bearer only CAS and recovery contract on PostgreSQL 16
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_w02_synthetic
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_w02_synthetic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: w02-option-a-ci-synthetic-only
+      DEBUG: "True"
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w02_synthetic
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      IAMINA_W02_REVISION_ANCHOR_ENABLED: "false"
+      VERCEL_ENV: "development"
+      IAMINA_ENV: "development"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: JS synthetic server-floor protocol and crash recovery
+        run: node --test scripts/tests/test_w02_option_a_client.mjs
+      - name: Install pinned project dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Static parse and no pending migration drift
+        working-directory: backend
+        run: |
+          python -m compileall -q core/w02_revision_service.py core/api/v1/w02_revision.py core/models/w02_revision_anchor.py core/tests/test_w02_revision_anchor.py
+          python manage.py makemigrations --check --dry-run
+      - name: Create isolated synthetic PostgreSQL schema
+        working-directory: backend
+        run: |
+          python manage.py migrate --noinput
+          python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'"
+      - name: Real PostgreSQL and Native Bearer API security tests
+        working-directory: backend
+        run: |
+          python -m pytest -q core/tests/test_w02_revision_anchor.py
+      - name: No synthetic users survive isolated CI database tests
+        working-directory: backend
+        run: |
+          python manage.py shell -c "from django.contrib.auth.models import User; from core.models.w02_revision_anchor import W02VaultRevisionAnchor; assert User.objects.count() == 0 and W02VaultRevisionAnchor.objects.count() == 0"

@@ -1,11 +1,41 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'patient_vault_scope.dart';
+import 'guest_audit_executor_native.dart'
+    if (dart.library.js_interop) 'guest_audit_executor_web.dart' as guest_executor;
 
 part 'database.g.dart';
+
+// D10 W02 Preview safety: never initialize the old plaintext Web patient
+// IndexedDB/Drift path. Only the separate, authenticated AES-GCM WASM candidate
+// may eventually replace this after explicit E2E + clinical security approval.
+// Native SQLite semantics remain unchanged.
+QueryExecutor _w02ProtectedPatientVaultExecutor(PatientVaultScope scope) {
+  if (kIsWeb) {
+    throw StateError('encrypted_web_patient_vault_unavailable');
+  }
+  return driftDatabase(
+    name: scope.databaseName,
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
+}
+
+
+// Synthetic unauthenticated/audit-only UI. Never store an unencrypted
+// patient vault in Web IndexedDB/OPFS. The browser guest DB is volatile RAM.
+QueryExecutor _w02GuestAuditExecutor({Uri? sqlite3Wasm}) {
+  if (!kIsWeb) {
+    return _w02ProtectedPatientVaultExecutor(PatientVaultScope.auditOnly());
+  }
+  return guest_executor.openVolatileGuestWeb(sqlite3Wasm: sqlite3Wasm);
+}
 
 // ============================================================================
 // Database Tables
@@ -135,15 +165,13 @@ class AppDatabase extends _$AppDatabase {
   // A→logout→B certification before any real patient use.
   AppDatabase.forPatientVault(PatientVaultScope scope)
     : patientVaultScope = scope,
-      super(
-        driftDatabase(
-          name: scope.databaseName,
-          web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
-          ),
-        ),
-      );
+      super(_w02ProtectedPatientVaultExecutor(scope));
+
+  // Guest UI only: on Web uses ephemeral SQLite WASM, not persisted patient data.
+  // The override URI is for CI loopback WASM testing, never clinical storage.
+  AppDatabase.guestAuditOnly({Uri? sqlite3Wasm})
+    : patientVaultScope = PatientVaultScope.auditOnly(),
+      super(_w02GuestAuditExecutor(sqlite3Wasm: sqlite3Wasm));
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django

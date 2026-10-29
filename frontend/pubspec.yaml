@@ -25,6 +25,10 @@ dependencies:
   flutter_secure_storage: ^10.3.1
 
   # Offline-first database
+  # W02 synthetic-only Web memory SQLite / typed-array interop.
+  web: ^1.1.1
+  typed_data: ^1.4.0
+  sqlite3: 2.9.4
   drift: ^2.20.0
   sqlite3_flutter_libs: ^0.5.25
   path_provider: ^2.1.2

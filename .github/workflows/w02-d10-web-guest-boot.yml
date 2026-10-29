@@ -1,0 +1,56 @@
+name: W02 D10 Web guest boot and plaintext fail-closed Chrome
+on:
+  push:
+    branches:
+      - feat/w02-d10-option-a-w01-preview-20261028
+    paths:
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/data/drift/guest_audit_executor_web.dart'
+      - 'frontend/lib/data/drift/guest_audit_executor_native.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/main.dart'
+      - 'frontend/test/web/w02_guest_boot_test.dart'
+      - 'scripts/tests/test_w02_web_guest_bootstrap_source.py'
+      - '.github/workflows/w02-d10-web-guest-boot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: w02-d10-web-guest-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web-guest-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guest / patient isolation source tripwires
+        run: python -m unittest discover -s scripts/tests -p test_w02_web_guest_bootstrap_source.py -v
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies and guest focused analysis
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/data/drift/database.dart lib/data/drift/guest_audit_executor_native.dart lib/data/drift/guest_audit_executor_web.dart lib/services/patient_vault_app_host.dart lib/main.dart test/web/w02_guest_boot_test.dart
+      - name: Native VM visual-golden regression (JS interop must not leak)
+        working-directory: frontend
+        run: |
+          flutter test --no-pub --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart test/features/cgm_how_to_visual_test.dart
+      - name: Flutter release Web compiles against actual main
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn
+      - name: Real Chrome synthetic-only guest RAM SQLite and patient fail-closed
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          python -u ../scripts/w02_local_wasm_asset_server.py > /tmp/w02-guest-wasm-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 8 --retry-connrefused --retry-delay 1 http://127.0.0.1:7399/sqlite3.wasm -o /dev/null
+          flutter test --no-pub --platform chrome --reporter expanded --timeout 45s \
+            --dart-define=W02_TEST_WASM_URL=http://127.0.0.1:7399/sqlite3.wasm \
+            test/web/w02_guest_boot_test.dart
