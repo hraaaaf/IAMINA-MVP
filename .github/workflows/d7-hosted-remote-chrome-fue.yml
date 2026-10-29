@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
@@ -48,11 +48,8 @@ jobs:
     timeout-minutes: 20
     env:
       D7_PREVIEW_SHA: c10e6e69acb322820227b630a1efaf5c834e2f74
-      D7_QA_SSO_ACCESS: ${{ secrets.D7_QA_SSO_ACCESS }}
-      D7_QA_A_EMAIL: ${{ secrets.D7_QA_A_EMAIL }}
-      D7_QA_A_PASSWORD: ${{ secrets.D7_QA_A_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -64,10 +61,14 @@ jobs:
       - name: Install pinned Playwright on disposable runner
         run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.0
       - name: Run real Chrome against Vercel-protected QA Web
+        env:
+      D7_QA_SSO_ACCESS: ${{ secrets.D7_QA_SSO_ACCESS }}
+      D7_QA_A_EMAIL: ${{ secrets.D7_QA_A_EMAIL }}
+      D7_QA_A_PASSWORD: ${{ secrets.D7_QA_A_PASSWORD }}
         run: node scripts/d7_hosted_remote_chrome_fue.mjs
       - name: Upload bounded public-login evidence only
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: d7-qa-chrome-preflight-public
           path: |
