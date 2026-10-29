@@ -45,4 +45,10 @@ class SessionAuth(NinjaSessionAuth):
         request: HttpRequest,
         key: Optional[str],
     ) -> Optional[Any]:
+        # Django-Ninja 1.7.3's APIKeyBase.__call__ invokes authenticate
+        # even when _get_key returned None. Its SessionAuth.authenticate
+        # checks request.user but ignores key entirely. Guard both methods:
+        # an invalid explicit bearer must NEVER authorize via cookie.
+        if "HTTP_AUTHORIZATION" in request.META:
+            return None
         return super().authenticate(request, key)
