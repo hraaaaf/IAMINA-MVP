@@ -36,6 +36,21 @@ jobs:
           grep -Fq 'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true' frontend/vercel_build.sh
           grep -Fq 'IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false' frontend/vercel_build.sh
           grep -Fq 'https://iamina-certified-i8v18ds1r-achraf-benmoussa-s-projects.vercel.app' frontend/vercel_build.sh
+      - name: Static QA route + proxy syntax gate
+        run: |
+          set -euo pipefail
+          node --check frontend/api/preview-proxy.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          config=json.loads(Path('frontend/vercel.json').read_text())
+          assert config['rewrites'][0]['source'].startswith('/api/v1/')
+          assert config['rewrites'][0]['destination'].startswith('/api/preview-proxy')
+          code=Path('frontend/api/preview-proxy.js').read_text()
+          for marker in ('QA_BRANCH', 'QA_BACKEND', 'getVercelOidcToken', 'auth/login', 'auth/logout'):
+              assert marker in code, marker
+          assert "API_BASE_URL=\"https://iamina-review-git-cert-" in Path('frontend/vercel_build.sh').read_text()
+          PY
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
