@@ -10,7 +10,7 @@
       "destination": "/api/preview-proxy?path=:path"
     },
     {
-      "source": "/:path((?!api(?:/|$)).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
