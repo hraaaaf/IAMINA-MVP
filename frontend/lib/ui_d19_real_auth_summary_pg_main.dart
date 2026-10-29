@@ -42,12 +42,15 @@ Future<void> main() async {
     html.document.title = 'IAMINA_D19_REAL_HTTP_FAIL:bad_fixture';
     return;
   }
+  var stage = 'auth_initialize';
   try {
     final auth = AuthService();
     await auth.initialize();
+    stage = 'native_login';
     await auth.signInWithEmail(principal == 'a' ? ciA : ciB, ciPassword);
     requireTrue(auth.isRemoteCredentialVerified && auth.hasRemoteApiCredential,
         'not_native_authenticated');
+    stage = 'vault_reconcile';
     final vault = PatientVaultSessionController.forAuth(auth);
     await vault.reconcile();
     requireTrue(vault.activeDatabase != null && vault.activeScope != null,
@@ -62,6 +65,7 @@ Future<void> main() async {
       allowClinicalTransportForSyntheticTests: () => true,
       canUsePatientSyncTransport: () => true,
     );
+    stage = 'clinical_http';
     final summary = await api.getAiSummary(days: 21);
     final kpis = await api.getKpis(days: 21);
     if (summary == null || kpis == null) {
@@ -77,6 +81,7 @@ Future<void> main() async {
         summary.kpis['tir_pct'] == null && summary.kpis['gmi'] == null,
         'non_sensor_cgm_promoted');
     requireTrue(summary.agpProfile.isEmpty, 'unverified_agp');
+    stage = 'widget_render';
     runApp(MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: vault.activeDatabase!),
@@ -102,6 +107,7 @@ Future<void> main() async {
     ));
     // A successful HTTP assertion is not a rendered clinical screen.
     // Fail closed unless the actual Flutter widget has painted a sized frame.
+    stage = 'frame_paint';
     await WidgetsBinding.instance.endOfFrame;
     await Future<void>.delayed(const Duration(milliseconds: 900));
     await WidgetsBinding.instance.endOfFrame;
@@ -115,6 +121,6 @@ Future<void> main() async {
   } catch (error) {
     // Do not expose account identities or credentials to browser/title/logs.
     html.document.title =
-        'IAMINA_D19_REAL_HTTP_FAIL:' + error.runtimeType.toString();
+        'IAMINA_D19_REAL_HTTP_FAIL:' + stage + ':' + error.runtimeType.toString();
   }
 }
