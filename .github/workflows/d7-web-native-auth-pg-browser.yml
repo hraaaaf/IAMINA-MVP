@@ -65,6 +65,8 @@ jobs:
           }
           with open(os.path.join(os.environ['RUNNER_TEMP'], 'd7-ci-credentials.json'), 'w') as out:
               json.dump(values, out)
+          # Register a runner-side mask before later steps echo their env.
+          print('::add-mask::' + values['D7_CI_PASS'])
           with open(os.environ['GITHUB_ENV'], 'a') as out:
               for key, value in values.items():
                   out.write(key + '=' + value + '\n')
