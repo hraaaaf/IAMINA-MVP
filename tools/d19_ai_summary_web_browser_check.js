@@ -20,16 +20,20 @@ const tests=[];
   try{
     for(const loc of ['fr','ar']){
       for(const v of viewports){
-        for(const scenario of ['manual','verified','unavailable']){
+        for(const scenario of (process.env.D19_AI_WEB_BASELINE==='1'
+          ? ['manual','verified','unavailable']
+          : ['manual','verified','unavailable','recover'])){
           if(process.env.D19_DIAGNOSTIC_ONLY==='1' && (loc!=='fr'||v.name!=='mobile'||scenario!=='manual'))continue;
           const context=await browser.newContext({viewport:{width:v.width,height:v.height},locale:loc==='ar'?'ar-MA':'fr-FR',deviceScaleFactor:1,serviceWorkers:'block'});
           const page=await context.newPage();
-          const errors=[], outbound=[], requestedDays=[];
+          const errors=[], outbound=[], requestedDays=[], recoveryDays=[];
           page.on('pageerror',err=>errors.push(err.message.slice(0,400)));
           page.on('console',msg=>{
             const message=msg.text();
             const match=message.match(/D19_SYNTHETIC_AI_DAYS=(\d+)/);
             if(match) requestedDays.push(Number(match[1]));
+            const recovered=message.match(/D19_SYNTHETIC_AI_RECOVERED_DAYS=(\d+)/);
+            if(recovered) recoveryDays.push(Number(recovered[1]));
             if(msg.type()==='error'||message.includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(message.slice(0,2500));
           });
           await page.route('**/*',route=>{
@@ -60,6 +64,21 @@ const tests=[];
             observation.keyboardScreenshot=loc+'-keyboard-focus-verified.png';
             await page.screenshot({path:path.join(out,observation.keyboardScreenshot)});
           }
+          if (scenario==='recover') {
+            // Real keyboard navigation of Flutter: the three 7/21/90 tabs
+            // precede the retry button. Four physical Tab presses target the
+            // retry action; Enter must refresh the SAME 21-day analysis.
+            await page.mouse.click(v.width-6,v.height-8);
+            for (let i=0;i<4;i++) await page.keyboard.press('Tab');
+            await page.keyboard.press('Enter');
+            await page.waitForTimeout(1600);
+            observation.recoveryRequestedDays=requestedDays.slice();
+            observation.recoveryDays=recoveryDays.slice();
+            observation.recoveryPass=recoveryDays.includes(21) &&
+              requestedDays.filter(x=>x===21).length>=2;
+            observation.afterRecoveryScreenshot=loc+'-'+v.name+'-after-recovery.png';
+            await page.screenshot({path:path.join(out,observation.afterRecoveryScreenshot)});
+          }
           tests.push(observation);
           await context.close();
         }
@@ -74,6 +93,10 @@ const tests=[];
       if(new Set(items.map(t=>t.sha256)).size<2)failed.push({locale:loc,viewport:v.name,reason:'no distinct clinical state render'});
     }
     if(process.env.D19_AI_WEB_BASELINE!=='1') {
+      const recovered=tests.filter(t=>t.scenario==='recover');
+      if(recovered.length!==6||recovered.some(t=>!t.recoveryPass)) {
+        failed.push({reason:'Real Flutter retry failed to recover the same 21-day analysis',cases:recovered.map(t=>({locale:t.locale,viewport:t.viewport,days:t.recoveryRequestedDays,recovered:t.recoveryDays}))});
+      }
       const keyboard=tests.filter(t=>t.keyboardPeriod7!==undefined);
       if(keyboard.length!==2 || keyboard.some(t=>!t.keyboardPeriod7)) {
         failed.push({reason:'Real Chrome keyboard Tab+Enter did not activate 7-day range',keyboard:keyboard.map(t=>({locale:t.locale,requested:t.keyboardRequests}))});
@@ -81,7 +104,7 @@ const tests=[];
     }
     // Save the complete result, including keyboard outcome, after all assertions.
     fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
-    console.log(JSON.stringify({tested:tests.length,failures:failed.length,keyboard:tests.filter(t=>t.keyboardPeriod7!==undefined).map(t=>({locale:t.locale,pass:t.keyboardPeriod7,days:t.keyboardRequests})),details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason}))},null,2));
+    console.log(JSON.stringify({tested:tests.length,failures:failed.length,recovery:tests.filter(t=>t.scenario==='recover').map(t=>({locale:t.locale,viewport:t.viewport,pass:t.recoveryPass,days:t.recoveryRequestedDays})),keyboard:tests.filter(t=>t.keyboardPeriod7!==undefined).map(t=>({locale:t.locale,pass:t.keyboardPeriod7,days:t.keyboardRequests})),details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason}))},null,2));
     if(process.env.D19_AI_WEB_BASELINE!=='1' && failed.length)process.exitCode=1;
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

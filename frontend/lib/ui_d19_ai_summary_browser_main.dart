@@ -11,7 +11,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+// The negative/recovery scenario needs locally recorded data so the actual
+// analysis screen shows its retry control rather than the first-use panel.
+class _D19LocalLogsPresentDatabase extends AppDatabase {
+  _D19LocalLogsPresentDatabase() : super.defaults();
+
+  @override
+  Future<int> countLogs() async => 1;
+}
+
 class _D19SyntheticApi extends ApiClient {
+  int _summaryCalls = 0;
   final String scenario;
 
   _D19SyntheticApi(this.scenario)
@@ -45,7 +55,12 @@ class _D19SyntheticApi extends ApiClient {
   Future<SummaryResponse?> getAiSummary({int days = 21}) async {
     // Observable in Chrome when the real period control is activated by Tab+Enter.
     print('D19_SYNTHETIC_AI_DAYS=$days');
+    _summaryCalls += 1;
     if (scenario == 'unavailable') return null;
+    if (scenario == 'recover' && _summaryCalls == 1) return null;
+    if (scenario == 'recover') {
+      print('D19_SYNTHETIC_AI_RECOVERED_DAYS=$days');
+    }
     return SummaryResponse.fromJson({
       'insights': <dynamic>[],
       'kpis': _kpis,
@@ -88,13 +103,15 @@ Future<void> main() async {
     ),
   );
   final scenario = Uri.base.queryParameters['scenario'] ?? 'manual';
-  if (!{'manual', 'verified', 'unavailable'}.contains(scenario)) {
+  if (!{'manual', 'verified', 'unavailable', 'recover'}.contains(scenario)) {
     throw ArgumentError.value(scenario, 'scenario', 'Unapproved synthetic scenario');
   }
   final locale = Uri.base.queryParameters['locale'] == 'ar'
       ? const Locale('ar')
       : const Locale('fr');
-  final db = AppDatabase.defaults();
+  final AppDatabase db = scenario == 'recover'
+      ? _D19LocalLogsPresentDatabase()
+      : AppDatabase.defaults();
   final api = _D19SyntheticApi(scenario);
   runApp(
     MultiProvider(

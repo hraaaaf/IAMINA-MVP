@@ -12,7 +12,7 @@ const load = dir => JSON.parse(fs.readFileSync(path.join(dir, 'report.json'), 'u
 const a = load(before), b = load(after);
 const pairs = [];
 let invalid = 0;
-for (const t of b.tests) {
+for (const t of b.tests.filter(t=>t.scenario!=='recover')) {
   const prior = a.tests.find(q => q.filename === t.filename);
   if (!prior) { invalid++;continue; }
   const old = PNG.sync.read(fs.readFileSync(path.join(before,t.filename)));
@@ -41,7 +41,9 @@ const result={
   visuallyChangedPairs:pairs.filter(x=>x.changedPixels>2000).length,
   keyboardPositiveAfter:b.tests.filter(t=>t.keyboardPeriod7===true).length,
   keyboardNegativeBefore:a.tests.filter(t=>t.keyboardPeriod7===false).length,
+  recoveryCasesAfter:b.tests.filter(t=>t.scenario==='recover').length,
+  recoveryPassAfter:b.tests.filter(t=>t.scenario==='recover'&&t.recoveryPass===true).length,
 };
 fs.writeFileSync('d19-visual-comparison.json',JSON.stringify(result,null,2));
 console.log('D19_BEFORE_AFTER='+JSON.stringify({pairs:pairs.length,invalid,afterFailures:b.failed.length,visuallyChangedPairs:result.visuallyChangedPairs}));
-if(pairs.length!==18||invalid||b.failed.length||result.visuallyChangedPairs<6||result.keyboardPositiveAfter!==2)process.exitCode=1;
+if(pairs.length!==18||invalid||b.failed.length||result.visuallyChangedPairs<6||result.keyboardPositiveAfter!==2||result.recoveryPassAfter!==6)process.exitCode=1;
