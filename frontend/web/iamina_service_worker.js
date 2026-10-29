@@ -1,5 +1,5 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const IAMINA_CACHE_SCHEMA = '0.1.0+1';
+const IAMINA_CACHE_SCHEMA = '0.1.0+1-d30-offline-lock';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 const IAMINA_HOSTED_REVIEW =
   self.location.hostname === 'iamina-review.vercel.app' ||
@@ -10,6 +10,7 @@ const PRECACHE = [
   './',
   './index.html',
   './flutter_bootstrap.js',
+  './iamina_app_lock.js',
   './main.dart.js',
   './manifest.json',
   './favicon.png',
@@ -21,6 +22,7 @@ const STATIC_FILES = new Set([
   '/',
   '/index.html',
   '/flutter_bootstrap.js',
+  '/iamina_app_lock.js',
   '/main.dart.js',
   '/manifest.json',
   '/favicon.png',
