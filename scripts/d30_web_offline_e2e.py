@@ -81,12 +81,20 @@ def main():
                       const urls = (await cache.keys()).map(r => r.url);
                       return { name:key, count:urls.length,
                                hasLock:urls.some(u => u.endsWith('/iamina_app_lock.js')),
-                               hasCanvasKit:urls.some(u => u.includes('/canvaskit/')) };
+                               hasCanvasKit:urls.some(u => u.includes('/canvaskit/')),
+                               fontAssets: ['Inter.ttf', 'InterTight.ttf', 'Roboto.ttf',
+                                 'NotoSansArabic.ttf', 'NotoSansSymbols.ttf',
+                                 'NotoSansSymbols2.ttf'].filter(n =>
+                                 urls.some(u => u.endsWith('/assets/assets/fonts/' + n))) };
                     }"""
                 )
                 print("D30 offline cache:", cache_meta, flush=True)
                 assert cache_meta["hasLock"], "Offline WebAuthn verifier not precached"
                 assert cache_meta["hasCanvasKit"], "CanvasKit assets not cached during online prime"
+                assert len(cache_meta["fontAssets"]) == 6, (
+                    "Multilingual offline fonts missing from PWA cache: " +
+                    repr(cache_meta["fontAssets"])
+                )
 
                 context.set_offline(True)
                 page.reload(wait_until="domcontentloaded", timeout=60000)
