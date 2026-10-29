@@ -19,6 +19,9 @@ on:
       - frontend/test/features/d30_local_enrollment_cta_test.dart
       - frontend/vercel_build.sh
       - frontend/lib/routes/app_router.dart
+      - frontend/assets/fonts/**
+      - frontend/pubspec.yaml
+      - frontend/lib/core/theme/app_theme.dart
       - frontend/test/routes/d30_local_ai_consent_gate_test.dart
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
@@ -72,6 +75,27 @@ jobs:
           expected = 'flutter build web --release --no-web-resources-cdn'
           assert source.count(expected) == 2, 'Vercel release paths must bundle CanvasKit locally'
           print('D30 release asset policy PASS: Vercel Web never needs CanvasKit CDN')
+          PY
+      - name: D30 local fonts and OFL licenses preflight
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+          manifest = yaml.safe_load(Path('pubspec.yaml').read_text())['flutter']
+          declared = {font['family'] for font in manifest['fonts']}
+          families = ['Inter', 'Inter Tight', 'Roboto', 'NotoSansArabic',
+                      'NotoSansSymbols', 'NotoSansSymbols2']
+          assert set(families) <= declared
+          for filename in ('Inter.ttf', 'InterTight.ttf', 'Roboto.ttf',
+                           'NotoSansArabic.ttf', 'NotoSansSymbols.ttf',
+                           'NotoSansSymbols2.ttf'):
+            file = Path('assets/fonts') / filename
+            assert file.exists() and file.stat().st_size > 100_000, file
+          for name in ('inter', 'intertight', 'roboto', 'notosansarabic',
+                       'notosanssymbols'):
+            text = (Path('assets/fonts') / ('LICENSE-' + name + '.txt')).read_text()
+            assert 'SIL OPEN FONT LICENSE' in text.upper(), name
+          print('D30 LICENSED LOCAL FONT PREFLIGHT PASS: six fonts and OFL notices')
           PY
       - name: Build Flutter Web offline-capable assets without deployment
         id: d30_web_build
