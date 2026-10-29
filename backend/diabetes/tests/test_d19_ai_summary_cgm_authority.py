@@ -91,7 +91,11 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
         self.assertEqual(window_check.call_args.kwargs["patient_id"], 42)
         verified_metric_engine.assert_not_called()
         agp_engine.assert_not_called()
-        self.assertEqual(SummaryResponse.model_validate(response).model_dump()["agp_profile"], [])
+        self.assertEqual(response["agp_profile"], [])
+        # Current public SummaryResponse intentionally has no AGP field:
+        # Ninja strips undeclared keys. Do not claim an AGP is serialized.
+        serialized = SummaryResponse.model_validate(response).model_dump()
+        self.assertNotIn("agp_profile", serialized)
 
 
     def test_verified_sensor_metrics_replace_raw_row_metrics_but_not_candidate_gmi(self):
