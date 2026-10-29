@@ -96,6 +96,78 @@ class APISummaryTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
 
 
+
+class D19AuthenticatedSummaryIsolationTestCase(TestCase):
+    """Real Django HTTP session switching, entirely synthetic DB and no LLM egress."""
+
+    def setUp(self):
+        self.patient_a = create_patient("d19-a", "d19-a@example.invalid")
+        self.patient_b = create_patient("d19-b", "d19-b@example.invalid")
+        now = timezone.now()
+        for _ in range(6):
+            LogEntry.objects.create(
+                patient=self.patient_a, blood_sugar=95, logged_at=now,
+                source="manual",
+            )
+            LogEntry.objects.create(
+                patient=self.patient_b, blood_sugar=210, logged_at=now,
+                source="manual",
+            )
+        self.client = Client()
+
+    def _request_as(self, user, *, days=14, target_low=70):
+        self.client.force_login(user)
+        return self.client.post(
+            "/api/v1/ai/summary",
+            data={"days": days, "target_low": target_low, "target_high": 180},
+            content_type="application/json",
+        )
+
+    def test_real_http_a_to_b_to_a_keeps_patient_values_separate(self):
+        # The LLM renderer is stubbed; HTTP authentication, ORM/SQL,
+        # per-user authorization and CGM projection remain real.
+        with patch(
+            "ai.api.v1.ai._call_llm_for_summary", return_value=[]
+        ) as llm:
+            first_a = self._request_as(self.patient_a)
+            only_b = self._request_as(self.patient_b)
+            second_a = self._request_as(self.patient_a)
+
+        for response in (first_a, only_b, second_a):
+            self.assertEqual(response.status_code, 200, response.content[:300])
+        first = loads(first_a.content)
+        second = loads(only_b.content)
+        third = loads(second_a.content)
+        self.assertEqual(first["kpis"]["log_count"], 6)
+        self.assertEqual(second["kpis"]["log_count"], 6)
+        self.assertEqual(first["kpis"]["avg_glucose"], 95.0)
+        self.assertEqual(second["kpis"]["avg_glucose"], 210.0)
+        self.assertEqual(third["kpis"], first["kpis"])
+        for data in (first, second, third):
+            for forbidden in ("tir_pct", "tar_pct", "tbr_pct", "cv_pct", "gmi"):
+                self.assertIsNone(data["kpis"][forbidden])
+            self.assertNotIn("agp_profile", data)
+        self.assertEqual(llm.call_count, 3)
+        for call in llm.call_args_list:
+            prompt = call.args[0]
+            for unsupported in ("TIR: ", "GMI_EST_HBA1C:", "CV: 24."):
+                self.assertNotIn(unsupported, prompt)
+
+    def test_session_is_required_and_custom_target_cannot_authorize_cgm(self):
+        self.client.logout()
+        response = self.client.post(
+            "/api/v1/ai/summary", data={"days": 14}, content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 401)
+        with patch("ai.api.v1.ai._call_llm_for_summary", return_value=[]):
+            response = self._request_as(self.patient_b, target_low=72.5)
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        data = loads(response.content)
+        self.assertEqual(data["kpis"]["avg_glucose"], 210.0)
+        self.assertIsNone(data["kpis"]["tir_pct"])
+        self.assertIsNone(data["kpis"]["gmi"])
+
+
 class APIChatTestCase(TestCase):
     def setUp(self):
         self.user = create_patient("p2", "p2@ex.com")
