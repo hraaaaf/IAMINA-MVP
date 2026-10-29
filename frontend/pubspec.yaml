@@ -86,6 +86,26 @@ flutter:
     - assets/food/pictograms/v1/
 
   fonts:
+    # Locally vendored OFL fonts — no network dependency for English/French,
+    # Arabic and common UI symbol glyphs on Web/PWA.
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+    - family: Inter Tight
+      fonts:
+        - asset: assets/fonts/InterTight.ttf
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto.ttf
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic.ttf
+    - family: NotoSansSymbols
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols.ttf
+    - family: NotoSansSymbols2
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols2.ttf
     - family: Georgia
       fonts:
         - asset: assets/fonts/IAMINASerif-Bold-subset.ttf
