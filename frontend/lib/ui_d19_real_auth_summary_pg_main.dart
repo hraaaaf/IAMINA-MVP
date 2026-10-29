@@ -57,10 +57,12 @@ Future<void> main() async {
     );
     final summary = await api.getAiSummary(days: 21);
     final kpis = await api.getKpis(days: 21);
-    requireTrue(summary != null && kpis != null, 'http_summary_unavailable');
+    if (summary == null || kpis == null) {
+      throw StateError('http_summary_unavailable');
+    }
     final expected = principal == 'a' ? 95.0 : 210.0;
-    final got = (summary!.kpis['avg_glucose'] as num?)?.toDouble();
-    requireTrue(got == expected && kpis!.avgGlucose == expected,
+    final got = (summary.kpis['avg_glucose'] as num?)?.toDouble();
+    requireTrue(got == expected && kpis.avgGlucose == expected,
         'owner_kpi_mismatch');
     requireTrue(kpis.logCount >= 6 && summary.kpis['log_count'] == kpis.logCount,
         'owner_log_count_mismatch');
