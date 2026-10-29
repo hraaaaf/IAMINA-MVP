@@ -225,6 +225,9 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --no-pub
 
+      - name: D11 optional hosted account signup UI — FR/AR x 3 Web viewports
+        run: flutter test --no-pub --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true test/features/auth/d11_web_positive_signup_test.dart
+
       - name: Build self-contained PWA release bundle
         run: flutter build web --release --no-web-resources-cdn
 
