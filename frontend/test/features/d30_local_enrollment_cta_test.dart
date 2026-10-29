@@ -1,4 +1,7 @@
 import 'package:amina/features/auth/local_device_enrollment_screen.dart';
+import 'package:amina/features/auth/app_lock_setup_screen.dart';
+import 'package:amina/services/app_lock_authenticator.dart';
+import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +12,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 
 class _MockAuthService extends Mock implements AuthService {}
+class _MockAppLockService extends Mock implements AppLockService {}
 
 void main() {
   testWidgets('D30 local CTA calls device enrollment and goes to app-lock setup',
@@ -85,5 +89,56 @@ void main() {
     await tester.tap(remote);
     expect(accountSelected, isTrue);
     verifyNever(() => auth.enrollLocalDevice());
+  });
+  testWidgets('D30 no-lock choice needs confirmation and navigates to onboarding',
+      (tester) async {
+    final lock = _MockAppLockService();
+    when(() => lock.capability())
+        .thenAnswer((_) async => AppLockCapability.supported);
+    when(() => lock.continueWithoutAppLock()).thenAnswer((_) async {});
+
+    final router = GoRouter(initialLocation: '/app-lock/setup', routes: [
+      GoRoute(
+        path: '/app-lock/setup',
+        builder: (_, __) => const AppLockSetupScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, __) => const Scaffold(
+          body: Center(child: Text('D30_ONBOARDING_AFTER_OPT_OUT')),
+        ),
+      ),
+    ]);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(ChangeNotifierProvider<AppLockService>.value(
+      value: lock,
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('fr'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final skip = find.byKey(const Key('d30-skip-app-lock'));
+    expect(skip, findsOneWidget);
+    await tester.ensureVisible(skip);
+    await tester.pumpAndSettle();
+    await tester.tap(skip);
+    await tester.pumpAndSettle();
+    expect(find.text('Continuer sans verrouillage ?'), findsOneWidget);
+    verifyNever(() => lock.continueWithoutAppLock());
+
+    await tester.tap(find.byKey(const Key('d30-confirm-no-lock')));
+    await tester.pumpAndSettle();
+    verify(() => lock.continueWithoutAppLock()).called(1);
+    expect(find.text('D30_ONBOARDING_AFTER_OPT_OUT'), findsOneWidget);
   });
 }
