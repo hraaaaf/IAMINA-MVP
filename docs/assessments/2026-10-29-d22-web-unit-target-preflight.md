@@ -49,8 +49,8 @@ Conversion documentaire du glucose : `mmol/L ≈ (mg/dL) ÷ 18` ; `mg/dL ≈ (mm
 
 ## Statut et chemin restant
 
-- **Présent préflight :** test/dossier seulement, non corrigeant ; verdict exact HEAD CI à compléter. Aucun Vercel, DB, API ou produit modifié.
-- **D22 total : OPEN / FUE_NO_GO**, BLOQUÉ côté changement clinique par D19. **Next exact :** vérifier le test et CI du préflight ; audit ciblé des modèles/exports si indépendant ; soumettre la décision A/B, revue clinique D19, puis implémenter le lot UI/stockage D22 avec vrai BEFORE/AFTER et FUE complète.
+- **Présent préflight :** test/dossier seulement, non corrigeant ; PR #1173 MERGED et CI prémerge/postmerge exactes SUCCESS. Aucun Vercel, DB, API ou produit modifié.
+- **D22 total : OPEN / FUE_NO_GO**, BLOQUÉ côté changement clinique par D19. **Next exact :** fermer le closeout Markdown du préflight, puis arbitrer humainement D19 (contrat d'unité/provenance/legacy) avant d'implémenter le lot UI/stockage D22 avec vrai BEFORE/AFTER et FUE complète.
 - **Fichier canonique provisoire :** ce document, subordonné au suivi [GitHub #1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165) et à `docs/ROADMAP.md`. Ne pas inventer de pourcentage global.
 
 ## Closeout technique du préflight — 29 octobre 2026
