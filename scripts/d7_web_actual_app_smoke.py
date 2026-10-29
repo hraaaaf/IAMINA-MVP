@@ -5,7 +5,9 @@ Does NOT prove hosted SSO, authenticated A/B, clinical consent, encrypted vault,
 patient treatment save in a deployed session, or full offline app workflows.
 This smoke deliberately uses an isolated browser profile and synthetic/no data.
 """
+import base64
 import json
+import struct
 import shutil
 import subprocess
 import tempfile
@@ -48,6 +50,8 @@ def main():
         "hosted_patient_A_B_A": "NOT_RUN",
         "clinical_privacy_review": "NOT_RUN",
         "checks": [],
+        "responsive": "screenshots only; visual review pending",
+        "locale_coverage": "default app locale only; FR/AR covered by separate widget checks",
     }
     try:
         with Path(profile, "chrome.log").open("w") as log:
@@ -106,6 +110,49 @@ def main():
                 check("boot")
                 cdpmethod("Page.reload", {"ignoreCache": True})
                 check("hard_reload")
+                # Actual production entrypoint (not a synthetic probe): capture
+                # three physical Chrome viewport screenshots for later human
+                # BEFORE/AFTER review. These are not automatic pixel-match PASSes.
+                # No credentials or patient data are ever entered.
+                Path("d7-web-viewport-captures").mkdir(exist_ok=True)
+                for width, height in ((390, 844), (768, 1024), (1280, 900)):
+                    cdpmethod("Emulation.setDeviceMetricsOverride", {
+                        "width": width, "height": height, "deviceScaleFactor": 1,
+                        "mobile": width == 390,
+                    })
+                    # Give Flutter a real render frame after resize; do not
+                    # mistake a mounted host element for responsive QA.
+                    time.sleep(3)
+                    result = cdpmethod("Runtime.evaluate", {
+                        "expression": "({innerWidth: innerWidth, innerHeight: innerHeight, host: !!document.querySelector('flutter-view, flt-glass-pane, flt-scene-host')})",
+                        "returnByValue": True,
+                    })
+                    observed = result.get("result", {}).get("value") or {}
+                    if (observed.get("innerWidth") != width or
+                            observed.get("innerHeight") != height or
+                            not observed.get("host")):
+                        raise RuntimeError(f"Real app viewport failed: {width}x{height} {observed}")
+                    captured = cdpmethod("Page.captureScreenshot", {
+                        "format": "png", "captureBeyondViewport": False,
+                        "fromSurface": True,
+                    })
+                    data = base64.b64decode(captured["data"])
+                    if data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+                        raise RuntimeError(f"Missing PNG screenshot {width}x{height}")
+                    png_width, png_height = struct.unpack(">II", data[16:24])
+                    if (png_width, png_height) != (width, height):
+                        raise RuntimeError(
+                            f"Screenshot geometry mismatch {width}x{height}: "
+                            f"{png_width}x{png_height}"
+                        )
+                    Path(f"d7-web-viewport-captures/app-{width}x{height}.png").write_bytes(data)
+                    proof["checks"].append({
+                        "phase": f"viewport_{width}x{height}",
+                        "result": "CAPTURED_NOT_VISUALLY_CERTIFIED",
+                        "pixel_dimensions": [png_width, png_height],
+                        "actual_flutter_host": True,
+                    })
+
                 # Network offline *after* app boot only: demonstrates shell already
                 # in memory; not full PWA offline restoration from a cold start.
                 cdpmethod("Network.emulateNetworkConditions", {
