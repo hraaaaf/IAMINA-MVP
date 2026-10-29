@@ -7,12 +7,14 @@ const fs = require('fs');
 const path = require('path');
 const origin='http://127.0.0.1:7383', api='http://127.0.0.1:8000';
 const directory='d19-real-auth-web-proof';
+const localeToTest=process.env.D19_CI_LOCALE;
+if(!['fr','ar'].includes(localeToTest))throw Error('CI locale must be fr or ar');
 fs.mkdirSync(directory,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true});
  const report={scope:'Flutter AuthService + ApiClient + scoped IndexedDB + Django PG16',hosted_vercel:'NOT_RUN',patient_data:'synthetic',tests:[],failed:[]};
  try{
-  for(const locale of ['fr','ar']){
+  for(const locale of [localeToTest]){
    for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1280,height:900}]){
    const context=await browser.newContext({viewport,locale:locale==='fr'?'fr-FR':'ar-MA',serviceWorkers:'block'});
    for(const principal of ['a','b','a']){
@@ -61,5 +63,5 @@ fs.mkdirSync(directory,{recursive:true});
  }finally{await browser.close();}
  fs.writeFileSync(path.join(directory,'report.json'),JSON.stringify(report,null,2));
  console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,loginStatuses:x.loginStatuses,loginTransportFailures:x.loginTransportFailures,requests:x.backendRequestCount,errors:x.consoleErrors,external:x.blockedExternal}))}));
- if(report.failed.length||report.tests.length!==18)process.exitCode=1;
+ if(report.failed.length||report.tests.length!==9)process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
