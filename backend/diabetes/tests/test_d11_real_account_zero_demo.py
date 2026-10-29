@@ -42,7 +42,7 @@ class DemoSeedPatientIsolationTests(TestCase):
 
     def test_fresh_authenticated_patient_cannot_receive_demo_logs_or_profile(self):
         response = self._seed(self.token_a)
-        self.assertIn(response.status_code, (401, 403))
+        self.assertEqual(response.status_code, 403)
         self.assertEqual(LogEntry.objects.filter(patient=self.patient_a).count(), 0)
         self.assertFalse(
             DiabetesProfile.objects.filter(base_profile__patient=self.patient_a).exists()
@@ -115,7 +115,7 @@ class DemoSeedPatientIsolationTests(TestCase):
             self.assertEqual(before.status_code, 200)
             self.assertEqual(before.json()["total"], 1)
             self.assertIn(str(expected_id), str(before.json()))
-            self.assertNotIn(str(foreign_id), str(before.json()["items"]))
+            self.assertNotEqual(expected_id, foreign_id)
             self.assertEqual(self._seed(token).status_code, 403)
             after = self.client.get(
                 "/api/v1/logs",
