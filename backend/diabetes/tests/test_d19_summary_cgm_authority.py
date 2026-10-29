@@ -44,8 +44,8 @@ class SummaryCgmAuthorityTests(SimpleTestCase):
             evidence_id="synthetic-test-source",
         )
 
-    def _summary(self, *, verified=False, target_low=70.0, target_high=180.0):
-        request = SimpleNamespace(user=SimpleNamespace(id=42))
+    def _summary(self, *, verified=False, target_low=70.0, target_high=180.0, patient_id=42):
+        request = SimpleNamespace(user=SimpleNamespace(id=patient_id))
         prompts = []
         observed = VerifiedCgmMetrics(
             cv_pct=17.3,
@@ -138,3 +138,53 @@ class SummaryCgmAuthorityTests(SimpleTestCase):
         self.assertIsNone(analysis.call_args.args[1].tir_pct)
         sensor.assert_not_called()
         window.assert_called_once()
+
+    def test_patient_a_b_scope_verified_sensor_per_request(self):
+        for patient_id in (41, 42):
+            with self.subTest(patient_id=patient_id):
+                result, prompts, analysis, window, sensor = self._summary(
+                    verified=True, patient_id=patient_id
+                )
+                self.assertEqual(window.call_args.kwargs["patient_id"], patient_id)
+                self.assertEqual(sensor.call_args.kwargs["patient_id"], patient_id)
+                self.assertIsNone(analysis.call_args.args[1].tir_pct)
+                self.assertEqual(result["kpis"]["tir_pct"], 84.4)
+
+    def test_doctor_brief_keeps_manual_cgm_values_out_of_ai_narrator(self):
+        from ai.api.v1.ai import get_doctor_brief
+
+        request = SimpleNamespace(user=SimpleNamespace(id=42))
+        prompts = []
+        provider = SimpleNamespace(
+            complete=lambda system, prompt, **kwargs: (
+                prompts.append(prompt)
+                or SimpleNamespace(content='{"narrative":"Mesures décrites.","key_insight":"Données ponctuelles.","doctor_brief":"Relevés ponctuels."}')
+            )
+        )
+        with (
+            patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
+            patch("diabetes.services.clinical.sql_analytics.compute_kpis", return_value=self._raw()),
+            patch("ai.api.v1.ai.run_clinical_analysis", return_value=SimpleNamespace(patterns=[])) as analysis,
+            patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
+            patch("companion.memory.IAminaMemory.load"),
+            patch("companion.tone.select_tone", return_value=SimpleNamespace(mode=SimpleNamespace(value="neutral"))) as tone,
+            patch("companion.tone.get_tone_instruction", return_value=""),
+            patch("ai.api.v1.ai.get_gateway_llm", return_value=provider),
+            patch("companion.parser.parse_llm_json", return_value={
+                "narrative": "Mesures décrites.",
+                "key_insight": "Données ponctuelles.",
+                "doctor_brief": "Relevés ponctuels.",
+            }),
+        ):
+            logs.return_value.order_by.return_value = []
+            result = get_doctor_brief.__wrapped__(request, days=14)
+        self.assertTrue(result["has_sufficient_data"])
+        safe = analysis.call_args.args[1]
+        for field in ("tir_pct", "cv_pct", "gmi", "tar_pct", "tbr_pct", "cgm_active_pct"):
+            with self.subTest(field=field):
+                self.assertIsNone(getattr(safe, field))
+        self.assertIsNone(tone.call_args.kwargs["tir_pct"])
+        self.assertIsNone(tone.call_args.kwargs["cv_pct"])
+        self.assertEqual(len(prompts), 1)
+        for raw in ("TIR: 78", "GMI_EST_HBA1C", "CV: 24.6"):
+            self.assertNotIn(raw, prompts[0])
