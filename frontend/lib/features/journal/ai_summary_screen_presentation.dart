@@ -336,7 +336,7 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
         kpis?.tarPct != null &&
         kpis?.tbrPct != null;
     return [
-      if (hasEligibleCgmKpis) ...[
+      if (kpis != null && hasEligibleCgmKpis) ...[
         _KpiRow(kpis: kpis),
         const SizedBox(height: 16),
       ],
