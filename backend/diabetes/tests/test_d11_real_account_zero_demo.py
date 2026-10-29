@@ -96,7 +96,7 @@ class DemoSeedPatientIsolationTests(TestCase):
     def test_even_demo_named_authenticated_account_cannot_seed_patient_history(self):
         demo = User.objects.create_user(
             username="patient1",
-            password="synthetic-demo-only",
+            password="synthetic-password-never-used",
         )
         token = issue_native_token(demo)
         demo_client = Client()
