@@ -42,6 +42,7 @@ class _LocalDeviceEnrollmentScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final arabic = l10n.localeName.split(RegExp('[-_]')).first == 'ar';
     final dark = AminaTheme.isDark(context);
 
     return Scaffold(
@@ -166,11 +167,10 @@ class _LocalDeviceEnrollmentScreenState
                                       Text(
                                         l10n.localEnrollmentTitle,
                                         style: TextStyle(
-                                          fontFamily: 'Georgia',
-                                          fontFamilyFallback: const [
-                                            'Times New Roman',
-                                            'serif',
-                                          ],
+                                          fontFamily: arabic ? 'NotoSansArabic' : 'Georgia',
+                                          fontFamilyFallback: arabic
+                                              ? kOfflineFontFallbacks
+                                              : const ['Times New Roman', 'serif'],
                                           fontSize: 27,
                                           height: 1.08,
                                           fontWeight: FontWeight.w700,
@@ -236,7 +236,12 @@ class _LocalDeviceEnrollmentScreenState
                                       ),
                                     )
                                   : const Icon(Icons.arrow_forward_rounded),
-                              label: Text(l10n.localEnrollmentAction),
+                              label: Text(
+                                l10n.localEnrollmentAction,
+                                style: arabic
+                                    ? const TextStyle(fontFamily: 'NotoSansArabic')
+                                    : null,
+                              ),
                               style: FilledButton.styleFrom(
                                 minimumSize: const Size.fromHeight(52),
                                 backgroundColor: AminaTheme.teal700,
