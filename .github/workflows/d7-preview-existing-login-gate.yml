@@ -51,6 +51,25 @@ jobs:
               assert marker in code, marker
           assert "API_BASE_URL=\"https://iamina-review-git-cert-" in Path('frontend/vercel_build.sh').read_text()
           PY
+      - name: Verify protected same-origin API route and BFF syntax
+        run: |
+          set -euo pipefail
+          node --check frontend/api/preview-proxy.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          config = json.loads(Path('frontend/vercel.json').read_text())
+          rules = config['rewrites']
+          assert rules[0]['source'].startswith('/api/v1/')
+          assert rules[0]['destination'].startswith('/api/preview-proxy')
+          source = Path('frontend/api/preview-proxy.js').read_text()
+          for term in ('getVercelOidcToken', 'QA_BRANCH', 'QA_BACKEND',
+                       'auth/login', 'auth/logout', 'no-store'):
+              assert term in source, f'missing QA BFF gate: {term}'
+          auth = Path('frontend/lib/services/auth_service.dart').read_text()
+          assert "Uri.base.origin" in auth
+          assert "Uri.parse('$_nativeAuthOrigin$path')" in auth
+          PY
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
