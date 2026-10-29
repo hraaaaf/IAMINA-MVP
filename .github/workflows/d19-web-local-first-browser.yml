@@ -1,0 +1,55 @@
+name: D19 synthetic Web local-first real Chrome diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/d19_web_local_first_browser_diagnostics.js'
+      - '.github/workflows/d19-web-local-first-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-first-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exact-head local-only Flutter Web (no remote auth, no patient API)
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      - name: Install isolated Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Test real first-use click; capture errors and route in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7358 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d19-web-local-first.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:7358/ >/dev/null
+          D19_BROWSER_EVIDENCE=d19-browser-evidence node tools/d19_web_local_first_browser_diagnostics.js
+      - name: Upload synthetic diagnostic and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d19-local-first-browser-diagnostic
+          path: |
+            d19-browser-evidence/*
+          if-no-files-found: warn
+          retention-days: 7
