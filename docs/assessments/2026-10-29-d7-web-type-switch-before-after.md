@@ -38,7 +38,7 @@ Date : 29 octobre 2026. Périmètre : PR [#1164](https://github.com/hraaaaf/IAMI
 ## Gates et limites
 
 - Tests prémerge #1164 : **2/2 SUCCESS** sur `9da10a6f0056cd16cdc5c7c2df506e3c2ce91b77`.
-- Runs post-merge sur `538ec3f555e4f2699f402b093533f781048c8118` au moment de création : [CI #40842001176](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40842001176) et [E2E #40842001292](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40842001292) **IN_PROGRESS** (snapshots historiques, à recontrôler).
+- Runs post-merge vérifiés sur `538ec3f555e4f2699f402b093533f781048c8118` : [CI #40842001176](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40842001176) **COMPLETED/SUCCESS** (frontend analyze, Flutter tests et PWA build) et [E2E pilote #40842001292](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40842001292) **COMPLETED/SUCCESS**. Les tests E2E génériques ne remplacent pas la matrice FUE complète de la décision D7.
 - Aucun changement sur `frontend/vercel.json` ni `backend/vercel.json` : `git.deploymentEnabled=false` dans les fichiers ; ce paramètre code ne prouve pas à lui seul l'absence de toute automatisation cloud. **Aucun déploiement Vercel n'a été lancé par ce lot.**
 - **D7 reste OPEN / FUE_NO_GO** pour son périmètre complet : vraie première utilisation FR/AR, vues 390×844/768×1024/1280×900, clavier/tactile, comptes, offline, persistance et validation risque santé / confidentialité. Ne jamais confondre merge d'un test et validation médicale.
 - **Next exact :** conclure CI/E2E postmerge D7, puis test FUE Web réel de transition et persistance sur sandbox synthétique, revues clinique/privacy ; reprendre ensuite D22 sous dépendance D19, sans fixer arbitrairement de cibles ni déployer Vercel sans GO.
