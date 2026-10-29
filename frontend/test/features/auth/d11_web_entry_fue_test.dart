@@ -157,12 +157,19 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         final fields = find.byType(TextField);
+        final editableFields = find.byType(EditableText);
+        final emailFocus =
+            tester.widget<EditableText>(editableFields.at(0)).focusNode;
+        final passwordFocus =
+            tester.widget<EditableText>(editableFields.at(1)).focusNode;
         await tester.tap(fields.first);
         await tester.pump();
+        expect(emailFocus.hasFocus, isTrue);
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
-        // Tab must move focus off email, without submitting credentials.
-        expect(Focus.of(tester.element(fields.first)).hasFocus, isFalse);
+        // Keyboard Tab must traverse from email to password with no egress.
+        expect(emailFocus.hasFocus, isFalse);
+        expect(passwordFocus.hasFocus, isTrue);
         expect(rejectedLogins, 0);
 
         await tester.enterText(fields.at(0), 'patient@example.invalid');
