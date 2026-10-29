@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {runHostedAuthGate} from '../../scripts/d7_qa_hosted_auth_gate.mjs';
+import {runHostedAuthGate} from '../../../scripts/d7_qa_hosted_auth_gate.mjs';
 
 const origin = 'https://iamina-review-ggdtqis0g-achraf-benmoussa-s-projects.vercel.app';
 const creds = Object.freeze({
