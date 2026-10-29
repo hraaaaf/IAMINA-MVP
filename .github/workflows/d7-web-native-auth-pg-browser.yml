@@ -1,0 +1,119 @@
+name: D7 free REAL Django native login A-B-A Web Chrome + PG16
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_d7_local_native_auth_pg_probe_main.dart'
+      - 'scripts/d7_web_native_auth_pg_browser_probe.py'
+      - '.github/workflows/d7-web-native-auth-pg-browser.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-real-native-auth-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  d7-native-pg-chrome:
+    name: Real Flutter AuthService + Django PG16 + Web IndexedDB A-B-A
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_d7_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_d7_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-d7-web-ephemeral-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:7382
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_d7_ci
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Create disposable random local auth fixture without printing credentials
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, secrets
+          values = {
+            'D7_CI_A': 'd7-ci-a@example.invalid',
+            'D7_CI_B': 'd7-ci-b@example.invalid',
+            'D7_CI_PASS': secrets.token_urlsafe(30) + '_A1!',
+          }
+          with open(os.path.join(os.environ['RUNNER_TEMP'], 'd7-ci-credentials.json'), 'w') as out:
+              json.dump(values, out)
+          # Register a runner-side mask before later steps echo their env.
+          print('::add-mask::' + values['D7_CI_PASS'])
+          with open(os.environ['GITHUB_ENV'], 'a') as out:
+              for key, value in values.items():
+                  out.write(key + '=' + value + '\n')
+          PY
+      - name: Install isolated Django backend + Chrome driver
+        run: |
+          set -euo pipefail
+          python3 -m pip install -r backend/requirements.txt
+          python3 -m pip install websocket-client
+      - name: Create disposable Postgres schema and two synthetic native accounts
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python manage.py migrate --noinput
+          python manage.py shell -c "import os; from django.contrib.auth.models import User; [User.objects.create_user(username=os.environ[name], email=os.environ[name], password=os.environ['D7_CI_PASS']) for name in ('D7_CI_A','D7_CI_B')]"
+          python manage.py shell -c "from django.contrib.auth.models import User; assert User.objects.count() == 2"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Analyze/build REAL Flutter AuthService probe for Chrome
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_d7_local_native_auth_pg_probe_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/ui_d7_local_native_auth_pg_probe_main.dart \
+            --dart-define=API_BASE_URL=http://127.0.0.1:8000 \
+            --dart-define-from-file="$RUNNER_TEMP/d7-ci-credentials.json"
+      - name: Browser real native A-B-A login, owner-scoped persistence, logout
+        run: |
+          set -euo pipefail
+          (cd backend && exec python manage.py runserver 127.0.0.1:8000 --noreload > /tmp/d7-auth-api.log 2>&1) &
+          API_PID=$!
+          python3 -m http.server 7382 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d7-auth-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" "$API_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /dev/null
+          curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7382/ > /dev/null
+          python3 scripts/d7_web_native_auth_pg_browser_probe.py
+      - name: Upload bounded non-sensitive proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d7-real-native-django-pg16-chrome-synthetic
+          path: d7-web-controller-aba-proof.json
+          if-no-files-found: warn
+          retention-days: 14
