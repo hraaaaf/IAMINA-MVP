@@ -1,6 +1,6 @@
 # D30 — Web local-first, isolated validation (2026-10-29)
 
-**Status: EXACT-HEAD CI + FR/AR 1180x860 browser screenshots GREEN; MERGE/POST-MERGE NOT performed.**
+**Latest 29 October status: D30 WEB PRODUCT SCOPE MERGED + PRODUCTION DEPLOYMENT READY (Vercel). Historical candidate evidence below is superseded by closeout at end of file.**
 Not a Production or hosted patient certification. Live backend/Neon identity is not attested.
 
 ## Goal
@@ -139,3 +139,17 @@ No merge to main and no Vercel deploy is authorized by this commit. D30 OPEN.
 - Complete exact-HEAD CI, browser/profile BEFORE/AFTER, independent security/privacy review, scoped shared-device assessment, and controlled merge + post-merge verification. No Vercel deployment authorized; no Neon/patient mutation.
 
 **Status: D30 OPEN, DRAFT PR #1169, not merged, not a production claim.**
+
+
+## D30 Web closeout — 29 October 2026 (verified production release)
+
+**Decision D30 — user choice, local-first Web.** Goal: allow patient to select local/no account or remote account; app/device lock is optional, reversible in Profile, subject to a fresh WebAuthn verification when disabling an existing lock. Neither remote login password nor clinical egress authorization is waived.
+
+**Observable delivery evidence (source GitHub and Vercel):**
+- [PR #1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169) **MERGED** at 2026-10-29 09:46:14 UTC; exact merge SHA `9ba0f737e184e1c65ca83a4db14b3b22f220c0ae` (branch candidate `afdcc52a0630792c01eedf530320c59c97e80792`).
+- 22/22 candidate branch GitHub workflows **SUCCESS** at last check for the candidate SHA, including [frontend CI #40851505334](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40851505334), [TD-014 WebAuthn #40851501157](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40851501157), [local-first Chrome BEFORE/AFTER #40851501170](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40851501170), and [browser viewport certification #40851501128](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40851501128).
+- [Vercel deployment `dpl_6vsc8S6QnxW9tF7GApkvGNkp4kna`](https://vercel.com/achraf-benmoussa-s-projects/iamina-review/6vsc8S6QnxW9tF7GApkvGNkp4kna): project `iamina-review`, target **production**, status **READY**, `githubCommitSha=9ba0f737...`, domain alias **`iamina-review.vercel.app`** attached to this deployment and domain verified by Vercel. The distinct backend `iamina-certified` is not part of this deployment.
+- Postmerge: [Login screenshot](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852236206), [UI geometry](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852236273), [W01 architecture guard](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852236490), [missing routes](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852236194): **SUCCESS** on merge SHA; merge-SHA browser screenshots and TD-008 remain in progress at last verification. Later mainline CI [#40852619779](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852619779) **SUCCESS** and [#40853019060](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40853019060) **SUCCESS** on successive main commits containing the D30 merge.
+- Production alias was validated via Vercel deployment inspection, not live HTTP/interaction: direct HTTP smoke was not verifiable from this environment (DNS/network resolution unavailable). Vercel runtime log scan not verifiable due Hobby retention API 400. Do not claim these external checks passed.
+
+**D30 scoped release status: CLOSED for requested Web product choices, merge, and Vercel deployment; no patient-production/clinical certification is implied.** Shared-browser multi-owner identity/audit, independent privacy/legal review, clinical egress/sync without active app-lock and full backend/Neon safety are separate technical or regulatory gates, *not newly added blockers to this D30 Web UI scope*. The prior historical `D30 OPEN` statements elsewhere in this assessment described earlier checkpoints, not the final release state.
