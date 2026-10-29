@@ -147,6 +147,34 @@ class DemoSeedPatientIsolationTests(TestCase):
             self.assertEqual(after.json(), before.json())
             self.assertEqual(LogEntry.objects.filter(patient=patient).count(), 1)
 
+    def test_conflicting_cookie_and_bearer_never_fall_back(self):
+        """A stale/invalid explicit bearer must not silently read cookie A."""
+        entry_a = LogEntry.objects.create(
+            patient=self.patient_a, blood_sugar=Decimal("95"), source="manual",
+        )
+        entry_b = LogEntry.objects.create(
+            patient=self.patient_b, blood_sugar=Decimal("210"), source="manual",
+        )
+        # HTTP session belongs to A. A valid explicit bearer B must select B.
+        bearer_b = self.client_a.get(
+            "/api/v1/logs", HTTP_AUTHORIZATION=f"Bearer {self.token_b}",
+        )
+        self.assertEqual(bearer_b.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in bearer_b.json()["items"]], [entry_b.pk],
+        )
+        # An explicitly invalid bearer is never a license to fall back to A.
+        invalid_bearer = self.client_a.get(
+            "/api/v1/logs", HTTP_AUTHORIZATION="Bearer iamina.invalid",
+        )
+        self.assertEqual(invalid_bearer.status_code, 401)
+        # Cookie-only login stays supported for the Web/PWA session mode.
+        cookie_only = self.client_a.get("/api/v1/logs")
+        self.assertEqual(cookie_only.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in cookie_only.json()["items"]], [entry_a.pk],
+        )
+
     def test_anonymous_seed_request_stays_unauthorized(self):
         # setUp logs in both fixtures through the HTTP route; clear its session.
         response = Client().post(
