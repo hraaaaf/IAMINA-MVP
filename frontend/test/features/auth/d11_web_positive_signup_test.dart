@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -40,8 +41,12 @@ void main() {
           if (request.url.path.contains('demo')) forbiddenDemoCalls++;
           fail('Unexpected endpoint for account registration UI');
         }));
-        await auth.initialize();
-        final db = AppDatabase.defaults();
+        // Secure-storage plugin futures must run outside FakeAsync in widget tests.
+        await tester.runAsync(() async {
+          await auth.initialize();
+        });
+        // No shared real/legacy patient database in FUE widget tests.
+        final db = AppDatabase(NativeDatabase.memory());
         final api = ApiClient(authService: auth);
         final router = GoRouter(routes: [
           GoRoute(path: '/', builder: (_, __) => const LoginScreen()),
