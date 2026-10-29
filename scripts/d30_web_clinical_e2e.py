@@ -120,6 +120,7 @@ def main():
                 glucose.click()
                 glucose.press_sequentially("112", delay=110)
                 page.wait_for_timeout(650)
+                print("D30 actual textbox contents:", repr(glucose.input_value()), flush=True)
                 save = page.get_by_role("button", name="Save reading")
                 assert save.is_enabled(), "112 did not enable local Save reading"
                 save.click(timeout=18000)
