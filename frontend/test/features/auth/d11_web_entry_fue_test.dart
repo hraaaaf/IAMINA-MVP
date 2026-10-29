@@ -81,15 +81,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsNothing);
 
-        // D11 FUE: text-entry may leave the keyboard/selection overlay
-        // above the recovery action. Dismiss it through the user-facing
-        // focus path, then verify the actual button is hit-testable.
-        FocusManager.instance.primaryFocus?.unfocus();
-        tester.testTextInput.hide();
-        await tester.pumpAndSettle();
-        final forgot = find.widgetWithText(TextButton, l10n.forgotPassword);
+        final forgot = find.text(l10n.forgotPassword);
         await tester.ensureVisible(forgot);
-        await tester.pumpAndSettle();
         await tester.tap(forgot);
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsOneWidget);
@@ -207,8 +200,15 @@ void main() {
         expect(auth.boundNativeAccountId, isNull);
         expect(tester.takeException(), isNull);
 
-        final forgot = find.text(l10n.forgotPassword);
+        // After the rejected login, a focused EditableText can own an
+        // overlay at tablet width. Dismiss text input before the pointer
+        // click and hit-test the actual action rather than the text span.
+        FocusManager.instance.primaryFocus?.unfocus();
+        tester.testTextInput.hide();
+        await tester.pumpAndSettle();
+        final forgot = find.widgetWithText(TextButton, l10n.forgotPassword);
         await tester.ensureVisible(forgot);
+        await tester.pumpAndSettle();
         await tester.tap(forgot);
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsOneWidget);
