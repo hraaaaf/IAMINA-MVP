@@ -4,6 +4,15 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/api_client.dart';
+import 'package:amina/data/drift/database.dart';
 
 /// D11: real FR/AR first-entry widgets, no clinical network or patient writes.
 void main() {
@@ -88,4 +97,110 @@ void main() {
       });
     }
   }
+  // Actual login controls, keyboard focus and negative/recovery behavior are
+  // verified with transport-only synthetic HTTP responses. Separate PG16
+  // Chrome runs test real login and patient-vault isolation end-to-end.
+  for (final locale in const ['fr', 'ar']) {
+    for (final viewport in const <(double, double)>[
+      (390, 844), (768, 1024), (1280, 900),
+    ]) {
+      testWidgets('D11 login keyboard negative and recovery $locale $viewport',
+          (tester) async {
+        tester.view.physicalSize = Size(viewport.$1, viewport.$2);
+        tester.view.devicePixelRatio = 1;
+        FlutterSecureStorage.setMockInitialValues({});
+        var rejectedLogins = 0;
+        var recoveryRequests = 0;
+        final auth = AuthService(
+          httpClient: MockClient((request) async {
+            if (request.url.path == '/api/v1/auth/login') {
+              rejectedLogins++;
+              return http.Response('{"error":"invalid_credentials"}', 401);
+            }
+            if (request.url.path ==
+                '/api/v1/auth/password/reset/request') {
+              recoveryRequests++;
+              return http.Response('{}', 200);
+            }
+            fail('Unexpected auth request: ${request.url.path}');
+          }),
+        );
+        await auth.initialize();
+        final db = AppDatabase.defaults();
+        final api = ApiClient(authService: auth);
+        addTearDown(() async {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+          await db.close();
+          auth.dispose();
+        });
+        await tester.pumpWidget(MultiProvider(
+          providers: [
+            Provider<AuthService>.value(value: auth),
+            Provider<AppDatabase>.value(value: db),
+            Provider<ApiClient>.value(value: api),
+          ],
+          child: MaterialApp(
+            locale: Locale(locale),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: locale == 'fr'
+                ? const fr.LoginScreen()
+                : const mena.LoginScreen(),
+          ),
+        ));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final fields = find.byType(TextField);
+        await tester.tap(fields.first);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        // Tab must move focus off email, without submitting credentials.
+        expect(Focus.of(tester.element(fields.first)).hasFocus, isFalse);
+        expect(rejectedLogins, 0);
+
+        await tester.enterText(fields.at(0), 'patient@example.invalid');
+        await tester.enterText(fields.at(1), 'bad-password');
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+        final submit = find.text(l10n.signIn);
+        await tester.ensureVisible(submit);
+        await tester.tap(submit);
+        await tester.pumpAndSettle();
+        expect(rejectedLogins, 1);
+        expect(find.text(l10n.loginError), findsOneWidget);
+        expect(auth.isRemoteCredentialVerified, isFalse);
+        expect(auth.boundNativeAccountId, isNull);
+        expect(tester.takeException(), isNull);
+
+        final forgot = find.text(l10n.forgotPassword);
+        await tester.ensureVisible(forgot);
+        await tester.tap(forgot);
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+        final dialogField = find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        );
+        await tester.enterText(dialogField, 'patient@example.invalid');
+        final send = find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(FilledButton),
+        );
+        await tester.tap(send);
+        await tester.pumpAndSettle();
+        expect(recoveryRequests, 1);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(auth.isRemoteCredentialVerified, isFalse);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
 }
