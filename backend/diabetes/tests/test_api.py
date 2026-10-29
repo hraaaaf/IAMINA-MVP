@@ -159,21 +159,20 @@ class D19AuthenticatedSummaryIsolationTestCase(TestCase):
         No actual provider call is made. Its consent gate runs inside the real
         Django HTTP endpoint's egress context, with two synthetic patients.
         """
-        from core.ai_egress import AIConsentRequired, TEXT, assert_ai_egress_allowed
-        from core.consent_notice import expected_notice_claim
+        from core import ai_egress, consent_notice
 
         attempts = []
 
         def provider_boundary(*args, **kwargs):
             try:
-                context = assert_ai_egress_allowed(TEXT)
-            except AIConsentRequired:
+                context = ai_egress.assert_ai_egress_allowed(ai_egress.TEXT)
+            except ai_egress.AIConsentRequired:
                 attempts.append(("denied", None))
                 return []  # No external call without consent.
             attempts.append(("authorized", context.patient_id, context.purpose))
             return []
 
-        notice = expected_notice_claim("fr")
+        notice = consent_notice.expected_notice_claim("fr")
         profile = self.patient_a.base_profile
         profile.ai_consent_given_at = timezone.now()
         profile.ai_consent_notice_version = notice.version
