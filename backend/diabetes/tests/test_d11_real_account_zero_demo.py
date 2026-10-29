@@ -155,13 +155,19 @@ class DemoSeedPatientIsolationTests(TestCase):
         entry_b = LogEntry.objects.create(
             patient=self.patient_b, blood_sugar=Decimal("210"), source="manual",
         )
-        # HTTP session belongs to A. A valid explicit bearer B must select B.
+        # A has a valid session cookie, but an explicit B bearer is a
+        # conflicting authority: deny rather than choosing either patient.
         bearer_b = self.client_a.get(
             "/api/v1/logs", HTTP_AUTHORIZATION=f"Bearer {self.token_b}",
         )
-        self.assertEqual(bearer_b.status_code, 200)
+        self.assertEqual(bearer_b.status_code, 401)
+        # B with B's own session and bearer still reads only B.
+        b_own_session = self.client_b.get(
+            "/api/v1/logs", HTTP_AUTHORIZATION=f"Bearer {self.token_b}",
+        )
+        self.assertEqual(b_own_session.status_code, 200)
         self.assertEqual(
-            [item["id"] for item in bearer_b.json()["items"]], [entry_b.pk],
+            [item["id"] for item in b_own_session.json()["items"]], [entry_b.pk],
         )
         # An explicitly invalid bearer is never a license to fall back to A.
         invalid_bearer = self.client_a.get(
