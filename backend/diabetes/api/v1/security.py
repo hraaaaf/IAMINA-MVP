@@ -10,6 +10,7 @@ import os
 
 import firebase_admin
 from firebase_admin import credentials
+from ninja.errors import HttpError
 from ninja.security import HttpBearer
 
 from core.auth_migration import (
@@ -36,6 +37,17 @@ def _ensure_firebase_admin_initialized() -> None:
     firebase_admin.initialize_app(credential)
 
 
+def _deny_conflicting_cookie_identity(request, user) -> None:
+    """A cookie from another patient cannot silently select clinical records."""
+    session_user = getattr(request, "user", None)
+    if (
+        session_user is not None
+        and session_user.is_authenticated
+        and session_user.pk != user.pk
+    ):
+        raise HttpError(401, "Conflicting authentication identities")
+
+
 class HybridBearerAuth(HttpBearer):
     """Resolve sovereign IAMINA tokens, then optional linked Firebase tokens."""
 
@@ -46,6 +58,7 @@ class HybridBearerAuth(HttpBearer):
             except NativeTokenError:
                 logger.warning("IAMINA bearer rejected: invalid or revoked credential")
                 return None
+            _deny_conflicting_cookie_identity(request, user)
             request.user = user
             return user
 
@@ -64,6 +77,7 @@ class HybridBearerAuth(HttpBearer):
             logger.warning("Firebase bearer rejected: invalid credential")
             return None
 
+        _deny_conflicting_cookie_identity(request, user)
         request.user = user
         return user
 
