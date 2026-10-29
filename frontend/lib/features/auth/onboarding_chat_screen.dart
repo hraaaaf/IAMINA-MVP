@@ -140,6 +140,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   void _revealStep(GlobalKey stepKey) {
+    // Desktop already shows the full form; forcing an alignment would clip
+    // the intro at 1280x900 (verified BEFORE/AFTER Chrome #40793238189).
+    if (MediaQuery.sizeOf(context).width >= 900) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final target = stepKey.currentContext;
       if (!mounted || target == null) return;
