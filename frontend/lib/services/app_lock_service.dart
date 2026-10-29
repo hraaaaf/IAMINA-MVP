@@ -10,6 +10,9 @@ typedef ProtectedLocalStateProbe = Future<bool> Function();
 class AppLockService extends ChangeNotifier {
   static const _credentialKey = 'iamina_app_lock_credential_v1';
   static const _requiredKey = 'iamina_app_lock_required_v1';
+  // New explicit choice, separate from the deprecated untrusted opt-out marker.
+  static const _choiceKey = 'iamina_app_lock_initial_choice_v2';
+  static const _skippedChoice = 'skipped_explicitly';
   static const _requiredValue = 'required';
   static const Duration defaultGracePeriod = Duration(seconds: 60);
 
@@ -23,6 +26,7 @@ class AppLockService extends ChangeNotifier {
   bool _initialized = false;
   bool _configured = false;
   bool _required = false;
+  bool _explicitlySkipped = false;
   bool _unlocked = false;
   bool _recoveryRequired = false;
   AppLockCredential? _credential;
@@ -47,19 +51,22 @@ class AppLockService extends ChangeNotifier {
   bool get isInitialized => _initialized;
   bool get isConfigured => _configured;
   bool get isRequired => _required;
+  bool get isExplicitlySkipped => _explicitlySkipped;
   bool get isUnlocked => _unlocked;
   bool get recoveryRequired => _recoveryRequired;
-  bool get needsSetup => _initialized && !_configured && !_recoveryRequired;
+  bool get needsSetup => _initialized && !_configured && !_explicitlySkipped && !_recoveryRequired;
 
   Future<void> initialize() async {
     _configured = false;
     _required = false;
+    _explicitlySkipped = false;
     _unlocked = false;
     _recoveryRequired = false;
     _credential = null;
 
     try {
       final requiredValue = await _storage.read(key: _requiredKey);
+      final choiceValue = await _storage.read(key: _choiceKey);
       final rawCredential = await _storage.read(key: _credentialKey);
       _required = requiredValue == _requiredValue;
 
@@ -68,6 +75,7 @@ class AppLockService extends ChangeNotifier {
           _credential = AppLockCredential.decode(rawCredential);
           _configured = true;
           _required = true;
+          _explicitlySkipped = false;
           if (requiredValue != _requiredValue) {
             await _storage.write(key: _requiredKey, value: _requiredValue);
           }
@@ -79,6 +87,10 @@ class AppLockService extends ChangeNotifier {
         }
       } else if (_required) {
         _recoveryRequired = true;
+      } else if (choiceValue == _skippedChoice) {
+        // A consciously unprotected installation does not require WebAuthn.
+        // The legacy opt-out key is NOT accepted. Existing locks always win.
+        _explicitlySkipped = true;
       } else if (await _hasProtectedLocalState()) {
         // Secure app-lock state disappeared while patient-local state still
         // exists. Treat that as rollback/ambiguity, never as a fresh install.
@@ -91,6 +103,7 @@ class AppLockService extends ChangeNotifier {
       _credential = null;
       _configured = false;
       _required = true;
+      _explicitlySkipped = false;
       _recoveryRequired = true;
     } finally {
       _initialized = true;
@@ -137,6 +150,23 @@ class AppLockService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// An explicit choice on a brand-new unprotected installation only.
+  /// Never use it to bypass an installed credential, a required marker, or
+  /// an ambiguous/recovery vault. A compromised browser profile is out of
+  /// scope for device-local data when the user deliberately declines a lock.
+  Future<void> continueWithoutAppLock() async {
+    if (!_initialized || _configured || _required || _recoveryRequired) {
+      throw const AppLockException('protected_vault_cannot_skip_lock');
+    }
+    if (await _hasProtectedLocalState() && !_explicitlySkipped) {
+      throw const AppLockException('existing_local_data_requires_lock');
+    }
+    await _storage.write(key: _choiceKey, value: _skippedChoice);
+    _explicitlySkipped = true;
+    _unlocked = false;
+    notifyListeners();
+  }
+
   Future<void> configure() async {
     if (!_initialized) {
       throw StateError('App lock requires initialized state');
@@ -157,6 +187,7 @@ class AppLockService extends ChangeNotifier {
     await _storage.write(key: _requiredKey, value: _requiredValue);
 
     _credential = credential;
+    _explicitlySkipped = false;
     _configured = true;
     _required = true;
     _recoveryRequired = false;

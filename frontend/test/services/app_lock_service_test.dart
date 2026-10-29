@@ -303,6 +303,56 @@ void main() {
     auth.dispose();
   });
 
+  test('D30 explicit no-lock choice persists only on a fresh vault', () async {
+    seedStorage({});
+    final first = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => false,
+    );
+    await first.initialize();
+    expect(first.needsSetup, isTrue);
+    await first.continueWithoutAppLock();
+    expect(first.isExplicitlySkipped, isTrue);
+    expect(first.needsSetup, isFalse);
+    expect(first.isConfigured, isFalse);
+    first.dispose();
+
+    final restart = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => true,
+    );
+    await restart.initialize();
+    expect(restart.isExplicitlySkipped, isTrue);
+    expect(restart.isUnlocked, isFalse);
+    expect(restart.recoveryRequired, isFalse);
+    restart.dispose();
+  });
+
+  test('D30 no-lock action never bypasses protected vault or recovery', () async {
+    seedStorage({});
+    final presentData = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => true,
+    );
+    await presentData.initialize();
+    expect(
+      presentData.continueWithoutAppLock(),
+      throwsA(isA<AppLockException>()),
+    );
+    presentData.dispose();
+
+    seedStorage({_credentialKey: _credential.encode(), _requiredKey: 'required'});
+    final configured = AppLockService(authenticator: _FakeAuthenticator());
+    await configured.initialize();
+    await expectLater(
+      configured.continueWithoutAppLock(),
+      throwsA(isA<AppLockException>()),
+    );
+    expect(configured.isRequired, isTrue);
+    expect(configured.isExplicitlySkipped, isFalse);
+    configured.dispose();
+  });
+
   test('D30 re-enrollment preserves vault locator but never bypasses app lock', () async {
     seedStorage({});
     final auth = AuthService(

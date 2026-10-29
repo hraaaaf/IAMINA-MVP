@@ -2,6 +2,18 @@ import 'package:amina/routes/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('D30 remote login availability must not force identity', () {
+    expect(
+      hostedRemoteLoginRequired(
+        remoteAccountEnrollmentEnabled: true,
+        isLoggedIn: true,
+        isAuditSession: false,
+        hasRemoteApiCredential: false,
+      ),
+      isFalse,
+    );
+  });
+
   test('D30 local-only enrollment never forces optional remote AI consent', () {
     expect(
       shouldRequireRemoteAIConsentGate(

@@ -25,10 +25,9 @@ bool hostedRemoteLoginRequired({
   required bool isAuditSession,
   required bool hasRemoteApiCredential,
 }) {
-  return remoteAccountEnrollmentEnabled &&
-      isLoggedIn &&
-      !isAuditSession &&
-      !hasRemoteApiCredential;
+  // Remote accounts are available but never mandatory for a local vault.
+  // Native API access still requires a validated remote credential.
+  return false;
 }
 
 bool shouldApplyAppLockGate({
@@ -165,7 +164,8 @@ AppRouterHolder createAppRouterHolder({
             requiresHostedRemoteLogin: requiresHostedRemoteLogin,
             isAuditSession: authService.isAuditSession,
             hasLockService: true,
-          )) {
+          ) &&
+          !activeLock.isExplicitlySkipped) {
         if (activeLock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
         } else if (!activeLock.isConfigured) {

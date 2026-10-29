@@ -8,7 +8,8 @@ import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
 
 class LocalDeviceEnrollmentScreen extends StatefulWidget {
-  const LocalDeviceEnrollmentScreen({super.key});
+  final VoidCallback? onChooseAccount;
+  const LocalDeviceEnrollmentScreen({super.key, this.onChooseAccount});
 
   @override
   State<LocalDeviceEnrollmentScreen> createState() =>
@@ -255,6 +256,26 @@ class _LocalDeviceEnrollmentScreenState
                                 ),
                               ),
                             ),
+                            if (widget.onChooseAccount != null) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                key: const Key('d30-choose-account'),
+                                onPressed: _isLoading ? null : widget.onChooseAccount,
+                                icon: const Icon(Icons.person_outline_rounded),
+                                label: Text(switch (Localizations.localeOf(context).languageCode) {
+                                  'fr' => 'Se connecter ou créer un compte',
+                                  'ar' => 'تسجيل الدخول أو إنشاء حساب',
+                                  _ => 'Sign in or create an account',
+                                }),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(52),
+                                  foregroundColor: AminaTheme.teal700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
