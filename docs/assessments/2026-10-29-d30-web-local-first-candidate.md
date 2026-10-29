@@ -78,3 +78,34 @@ The earlier notes about unreadable offline glyphs describe an older run, **not t
 - Code branch is diverged from main (69 ahead / 5 behind at inspection); any merge result requires its own exact-SHA/post-merge evidence.
 
 **Status remains OPEN / NO-GO for a certified D30 closure** until independent security/privacy review, the Web Production scope decision, authorized merge without Vercel deployment, and post-merge checks are recorded. This appendix is evidence documentation only and does not alter clinical behavior, credentials, storage, consent, or deployment configuration.
+
+## 2026-10-29 — Owner-directed two-choice Web entry and optional app lock (candidate)
+
+User decision: always offer two entry journeys when remote account service is
+available: (1) set up a device-local vault without name/email/remote credential,
+(2) sign in or create an authenticated remote account. A separate, explicit
+first-use choice offers secure device lock or continue without app lock.
+No-lock is not a bypass for an already-configured credential, recovery-required
+vault, unidentified patient scope or known preexisting protected data.
+
+- Scope: Web/PWA source and synthetic QA on PR #1169, not deployed or merged.
+- Code implemented via commits c51158e2, 5c1c5ce3 and associated tests.
+- No-lock acknowledgement is scoped to the active typed patient-vault namespace
+  and revoked on sign-out / identity change; the remote account password is
+  still required for login and does not become a local vault credential.
+- Privacy warning explicitly states browser-profile exposure, possible loss of
+  unsynced local records on browser clearing, and the existing limitation that
+  clinical network sync requires an unlocked app-lock (do not bypass egress gates).
+- Local and remote flows remain separated by remote bearer and owner binding.
+- Earlier 18/18 GREEN on bf1917c5 does not apply to this feature change.
+  The updated product/UI/CI HEAD needs exact-SHA tests and 390×844, 768×1024,
+  1280×900 Chromium BEFORE/AFTER with remote accounts enabled.
+- Historic TD-014 static test incorrectly barred even the word "skip" in UI;
+  replaced with checks that only a fresh owner-scoped vault can choose no-lock,
+  and existing protection/recovery can never be bypassed.
+- Operational note: the opt-out is an *explicitly less secure* product mode.
+  Independent privacy/security review, shared-browser A→B→A, storage deletion,
+  offline clinical save/reopen, accessibility, and clinical sync limitations
+  remain must-prove. Do not certify without new evidence.
+
+No merge to main and no Vercel deploy is authorized by this commit. D30 OPEN.
