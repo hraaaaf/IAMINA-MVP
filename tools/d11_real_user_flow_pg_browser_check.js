@@ -29,16 +29,23 @@ async function labelClick(page, label) {
   if (await bySemantic.count()) return bySemantic.first().click({timeout:8000});
   throw new Error('no user-visible control: ' + label);
 }
-async function typeField(page, index, value) {
-  const fields = page.getByRole('textbox');
+async function typeField(page, index, value, inDialog=false) {
+  // Search only the top modal for signup inputs; the underlying login form
+  // remains mounted and must not receive the typed secret.
+  const modal = page.getByRole('dialog');
+  const fields = inDialog && await modal.count()
+    ? modal.last().getByRole('textbox')
+    : page.getByRole('textbox');
   if (await fields.count() > index) {
     await fields.nth(index).click({timeout:8000});
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText(value);
     return;
   }
   const semantics = page.locator('flt-semantics[role="textField"], flt-semantics[role="textbox"]');
   if (await semantics.count() > index) {
     await semantics.nth(index).click({timeout:8000});
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText(value);
     return;
   }
@@ -84,7 +91,7 @@ async function proof(page, width) {
     stage.value='negative_login';
     await typeField(page,0,testEmail);
     await typeField(page,1,'Wrong-2026!');
-    await labelClick(page,locale==='fr'?'Se connecter':'تسجيل الدخول');
+    await labelClick(page,locale==='fr'?'Se connecter':'الدخول');
     await page.waitForFunction(() => false,{timeout:1600}).catch(()=>{});
     if(!responses.some(x=>x.path.endsWith('/auth/login')&&x.status===401))
       throw new Error('negative login must generate native HTTP 401');
@@ -98,6 +105,7 @@ async function proof(page, width) {
     const n = await textboxes.count();
     if(n===0)throw new Error('password recovery dialog missing text field');
     await textboxes.last().click({timeout:8000});
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText(testEmail);
     await labelClick(page,locale==='fr'?'Envoyer':'إرسال');
     await page.waitForFunction(() => false,{timeout:1800}).catch(()=>{});
@@ -107,11 +115,12 @@ async function proof(page, width) {
     stage.value='positive_signup';
     await labelClick(page,locale==='fr'?'Créer un compte':'إنشاء حساب');
     await screenshot(page,'04-signup-dialog');
-    const f = page.getByRole('textbox');
+    const modal = page.getByRole('dialog');
+    const f = await modal.count() ? modal.last().getByRole('textbox') : page.getByRole('textbox');
     if(await f.count()<3)throw new Error('signup fields missing');
-    await typeField(page,0,testEmail);
-    await typeField(page,1,password);
-    await typeField(page,2,password);
+    await typeField(page,0,testEmail,true);
+    await typeField(page,1,password,true);
+    await typeField(page,2,password,true);
     await labelClick(page,locale==='fr'?'Créer':'إنشاء');
     await page.waitForFunction(() => false,{timeout:2400}).catch(()=>{});
     if(!responses.some(x=>x.path.endsWith('/auth/register')&&x.status===200))
@@ -127,9 +136,9 @@ async function proof(page, width) {
       await labelClick(page,locale==='fr'?'Déconnexion':'تسجيل الخروج');
     }else{
       await labelClick(page,locale==='fr'?'Profil':'الملف الشخصي');
-      await labelClick(page,locale==='fr'?'Compte':'الحساب');
+      await labelClick(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
       await labelClick(page,locale==='fr'?'Se déconnecter':'تسجيل الخروج');
-      await labelClick(page,locale==='fr'?'Confirmer':'تأكيد');
+      await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
     await page.waitForFunction(() => false,{timeout:1300}).catch(()=>{});
     if(!responses.some(x=>x.path.endsWith('/auth/logout')&&x.status===200))
@@ -140,7 +149,7 @@ async function proof(page, width) {
     await labelClick(page,locale==='fr'?'Se connecter ou créer un compte':'تسجيل الدخول أو إنشاء حساب');
     await typeField(page,0,testEmail);
     await typeField(page,1,password);
-    await labelClick(page,locale==='fr'?'Se connecter':'تسجيل الدخول');
+    await labelClick(page,locale==='fr'?'Se connecter':'الدخول');
     await page.waitForFunction(() => false,{timeout:1600}).catch(()=>{});
     if(!responses.some(x=>x.path.endsWith('/auth/login')&&x.status===200))
       throw new Error('native login HTTP 200 missing after logout');
