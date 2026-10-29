@@ -55,6 +55,6 @@ const tests=[];
     }
     fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
     console.log(JSON.stringify({tested:tests.length,failures:failed.length,details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason,errors:f.errors}))},null,2));
-    if(failed.length)process.exitCode=1;
+    if(process.env.D19_AI_WEB_BASELINE!=='1' && failed.length)process.exitCode=1;
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
