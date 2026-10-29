@@ -164,7 +164,7 @@ class SummaryCgmAuthorityTests(SimpleTestCase):
         with (
             patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
             patch("diabetes.services.clinical.sql_analytics.compute_kpis", return_value=self._raw()),
-            patch("ai.api.v1.ai.run_clinical_analysis", return_value=SimpleNamespace(patterns=[])) as analysis,
+            patch("diabetes.services.clinical.engine.run_clinical_analysis", return_value=SimpleNamespace(patterns=[])) as analysis,
             patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
             patch("companion.memory.IAminaMemory.load"),
             patch("companion.tone.select_tone", return_value=SimpleNamespace(mode=SimpleNamespace(value="neutral"))) as tone,
