@@ -66,7 +66,7 @@ class DemoSeedPatientIsolationTests(TestCase):
 
         for token in (self.token_a, self.token_b):
             for _ in range(2):
-                self.assertIn(self._seed(token).status_code, (401, 403))
+                self.assertEqual(self._seed(token).status_code, 403)
 
         self.assertEqual(
             list(LogEntry.objects.filter(patient=self.patient_a).values_list("id", flat=True)),
@@ -83,7 +83,7 @@ class DemoSeedPatientIsolationTests(TestCase):
             password="synthetic-demo-only",
         )
         token = issue_native_token(demo)
-        self.assertIn(self._seed(token).status_code, (401, 403))
+        self.assertEqual(self._seed(token).status_code, 403)
         self.assertFalse(LogEntry.objects.filter(patient=demo).exists())
 
     def test_actual_seed_handler_denies_authenticated_request_with_403(self):
@@ -94,6 +94,36 @@ class DemoSeedPatientIsolationTests(TestCase):
             seed_demo_data(SimpleNamespace(user=self.patient_a))
         self.assertEqual(error.exception.status_code, 403)
         self.assertEqual(LogEntry.objects.filter(patient=self.patient_a).count(), 0)
+
+    def test_authenticated_a_b_a_logs_are_isolated_after_repeated_denied_seeding(self):
+        """Native bearer switch A→B→A never returns the other account's readings."""
+        entry_a = LogEntry.objects.create(
+            patient=self.patient_a, blood_sugar=Decimal("95.0"), source="manual",
+        )
+        entry_b = LogEntry.objects.create(
+            patient=self.patient_b, blood_sugar=Decimal("210.0"), source="manual",
+        )
+        for patient, token, expected_id, foreign_id in (
+            (self.patient_a, self.token_a, entry_a.pk, entry_b.pk),
+            (self.patient_b, self.token_b, entry_b.pk, entry_a.pk),
+            (self.patient_a, self.token_a, entry_a.pk, entry_b.pk),
+        ):
+            before = self.client.get(
+                "/api/v1/logs",
+                HTTP_AUTHORIZATION=f"Bearer {token}",
+            )
+            self.assertEqual(before.status_code, 200)
+            self.assertEqual(before.json()["total"], 1)
+            self.assertIn(str(expected_id), str(before.json()))
+            self.assertNotIn(str(foreign_id), str(before.json()["items"]))
+            self.assertEqual(self._seed(token).status_code, 403)
+            after = self.client.get(
+                "/api/v1/logs",
+                HTTP_AUTHORIZATION=f"Bearer {token}",
+            )
+            self.assertEqual(after.status_code, 200)
+            self.assertEqual(after.json(), before.json())
+            self.assertEqual(LogEntry.objects.filter(patient=patient).count(), 1)
 
     def test_anonymous_seed_request_stays_unauthorized(self):
         response = self.client.post(
