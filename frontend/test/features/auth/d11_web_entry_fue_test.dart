@@ -81,8 +81,15 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsNothing);
 
-        final forgot = find.text(l10n.forgotPassword);
+        // D11 FUE: text-entry may leave the keyboard/selection overlay
+        // above the recovery action. Dismiss it through the user-facing
+        // focus path, then verify the actual button is hit-testable.
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.testTextInput.hide();
+        await tester.pumpAndSettle();
+        final forgot = find.widgetWithText(TextButton, l10n.forgotPassword);
         await tester.ensureVisible(forgot);
+        await tester.pumpAndSettle();
         await tester.tap(forgot);
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsOneWidget);
