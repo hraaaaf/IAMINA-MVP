@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 import time
 import urllib.request
 from pathlib import Path
@@ -44,10 +45,22 @@ def _tab():
     raise RuntimeError("Synthetic Chrome tab did not start")
 
 
+@contextmanager
+def _ephemeral_chrome_profile():
+    # Chrome can keep asynchronously-created Default/* files briefly alive
+    # even after the PID exits. Test result must not be mistaken for an I/O
+    # permission regression during temporary profile cleanup.
+    temp = tempfile.mkdtemp(prefix="iamina-d7-indexeddb-")
+    try:
+        yield temp
+    finally:
+        shutil.rmtree(temp, ignore_errors=True)
+
+
 def main() -> None:
     from websocket import create_connection
 
-    with tempfile.TemporaryDirectory(prefix="iamina-d7-indexeddb-") as tmp:
+    with _ephemeral_chrome_profile() as tmp:
         with Path(tmp, "chrome.log").open("w", encoding="utf-8") as logfile:
             proc = subprocess.Popen(
                 [
