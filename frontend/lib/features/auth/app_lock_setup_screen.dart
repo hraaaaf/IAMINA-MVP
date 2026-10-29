@@ -59,9 +59,9 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
   Future<void> _continueWithoutLock() async {
     final lang = Localizations.localeOf(context).languageCode;
     final warning = switch (lang) {
-      'fr' => 'Sans verrouillage, toute personne ayant accès à ce navigateur peut consulter les données de santé enregistrées ici. Cela ne supprime pas le mot de passe de votre compte. Continuer ?',
-      'ar' => 'بدون قفل التطبيق، يمكن لأي شخص لديه إمكانية الوصول إلى هذا المتصفح الاطلاع على بياناتك الصحية المحلية. لن يتم إزالة كلمة مرور حسابك. هل تريد المتابعة؟',
-      _ => 'Without an app lock, anyone with access to this browser could read locally saved health data. This does not remove your account password. Continue?',
+      'fr' => 'Sans verrouillage, toute personne ayant accès à ce navigateur peut consulter vos données de santé locales. La synchronisation clinique reste indisponible sans déverrouillage et les données uniquement locales peuvent être perdues si vous effacez le navigateur. Le mot de passe de votre compte reste requis. Continuer ?',
+      'ar' => 'بدون قفل التطبيق، يمكن لأي شخص يستخدم هذا المتصفح الاطلاع على بياناتك الصحية المحلية. تظل المزامنة الطبية غير متاحة دون فتح القفل وقد تُفقد البيانات المحلية عند مسح المتصفح. تبقى كلمة مرور الحساب مطلوبة. هل تريد المتابعة؟',
+      _ => 'Without an app lock, anyone using this browser could read locally stored health data. Clinical sync remains unavailable without unlocking, and browser clearing may erase local-only records. Your account password is still required. Continue?',
     };
     final confirmation = await showDialog<bool>(
       context: context,
