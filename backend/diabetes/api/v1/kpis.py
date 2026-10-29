@@ -7,6 +7,7 @@ Cached response shape remains backward-compatible.
 from __future__ import annotations
 
 import logging
+import math
 from datetime import timedelta
 from typing import Optional
 
@@ -47,7 +48,12 @@ class KPIsOut(BaseModel):
 
 
 def _kpi_cache_key(user_id: int, days: int, target_low: float, target_high: float) -> str:
-    return f"kpis:u{user_id}:d{days}:l{int(target_low)}:h{int(target_high)}"
+    # Preserve fail-closed behavior of the previous int(...) conversion for NaN/Inf.
+    if not (math.isfinite(target_low) and math.isfinite(target_high)):
+        raise ValueError("Non-finite glucose target bound")
+    # Keep fractional ranges distinct; avoid truncating to the same integer.
+    return f"kpis:u{user_id}:d{days}:l{float(target_low)!r}:h{float(target_high)!r}"
+
 
 
 def invalidate_kpi_cache(user_id: int) -> None:
