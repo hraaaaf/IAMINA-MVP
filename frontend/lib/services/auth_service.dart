@@ -17,6 +17,15 @@ const String kAuthBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+class NativeLoginRejected implements Exception {
+  const NativeLoginRejected();
+}
+
+class NativeLoginServiceUnavailable implements Exception {
+  final int statusCode;
+  const NativeLoginServiceUnavailable(this.statusCode);
+}
+
 const bool kOfflineDemo = bool.fromEnvironment(
   'IAMINA_OFFLINE_DEMO',
   defaultValue: false,
@@ -326,7 +335,10 @@ class AuthService extends ChangeNotifier {
         return;
       }
     }
-    throw StateError('Authentication failed');
+    if (nativeResponse.statusCode == 401 || nativeResponse.statusCode == 403) {
+      throw const NativeLoginRejected();
+    }
+    throw NativeLoginServiceUnavailable(nativeResponse.statusCode);
   }
 
   Future<void> registerWithEmail(String email, String password) async {
