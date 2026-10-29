@@ -364,6 +364,78 @@ void main() {
     configured.dispose();
   });
 
+  test('D30 settings disabling requires fresh verification and persists per-vault only', () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      fail('No network allowed in app-lock preference test');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final owner = (await auth.resolvePatientVaultScope())!.databaseName;
+    final authenticator = _FakeAuthenticator();
+    final lock = AppLockService(
+      authService: auth,
+      authenticator: authenticator,
+      protectedLocalStateProbe: () async => false,
+    );
+    await lock.initialize();
+    await lock.configure();
+    expect(lock.isConfigured, isTrue);
+    expect(authenticator.enrollCalls, 1);
+
+    authenticator.unlockError = const AppLockException('user_cancelled');
+    await expectLater(lock.disableForCurrentVault(),
+        throwsA(isA<AppLockException>()));
+    expect(lock.isExplicitlySkipped, isFalse);
+    authenticator.unlockError = null;
+    await lock.disableForCurrentVault();
+    expect(authenticator.unlockCalls, 2);
+    expect(lock.isExplicitlySkipped, isTrue);
+    expect(lock.isUnlocked, isFalse);
+    expect(await const FlutterSecureStorage().read(
+        key: 'iamina_app_lock_choice_v3_$owner'), 'skipped_explicitly');
+    expect(await const FlutterSecureStorage().read(key: _credentialKey),
+        isNotNull);
+
+    lock.dispose();
+    final reopened = AppLockService(
+      authService: auth,
+      authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => true,
+    );
+    await reopened.initialize();
+    expect(reopened.isConfigured, isTrue);
+    expect(reopened.isExplicitlySkipped, isTrue);
+    await reopened.enableForCurrentVault();
+    expect(reopened.isExplicitlySkipped, isFalse);
+    expect(reopened.isUnlocked, isTrue);
+    expect(await const FlutterSecureStorage().read(
+        key: 'iamina_app_lock_choice_v3_$owner'), isNull);
+    reopened.dispose();
+    auth.dispose();
+  });
+
+  test('D30 opting out never survives logout into another account', () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      fail('No network allowed in cross-account opt-out test');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final lock = AppLockService(authService: auth,
+        authenticator: _FakeAuthenticator());
+    await lock.initialize();
+    await lock.configure();
+    await lock.disableForCurrentVault();
+    expect(lock.isExplicitlySkipped, isTrue);
+    await auth.signOut();
+    expect(lock.isExplicitlySkipped, isFalse);
+    expect(lock.isUnlocked, isFalse);
+    expect(lock.isConfigured, isTrue);
+    lock.dispose();
+    auth.dispose();
+  });
+
   test('D30 re-enrollment preserves vault locator but never bypasses app lock', () async {
     seedStorage({});
     final auth = AuthService(

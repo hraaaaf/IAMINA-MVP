@@ -475,6 +475,28 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           icon: Icons.privacy_tip_outlined,
           label: consentLabel,
         ),
+        const SizedBox(height: 12),
+        Consumer<AppLockService>(
+          builder: (context, lock, _) {
+            final enabled = lock.isConfigured && !lock.isExplicitlySkipped;
+            return _buildSettingsAction(
+              key: const ValueKey('d30-profile-lock-preference'),
+              icon: enabled ? Icons.lock_outline : Icons.lock_open_outlined,
+              label: lock.recoveryRequired
+                  ? _profileUiText(context,
+                      fr: 'Verrouillage à récupérer',
+                      en: 'Lock recovery required',
+                      ar: 'يجب استعادة القفل')
+                  : _profileUiText(context,
+                      fr: enabled ? 'Désactiver le verrouillage' : 'Activer le verrouillage',
+                      en: enabled ? 'Disable app lock' : 'Enable app lock',
+                      ar: enabled ? 'إيقاف قفل التطبيق' : 'تفعيل قفل التطبيق'),
+              onTap: (lock.recoveryRequired || _savingLockPreference)
+                  ? () {}
+                  : _changeAppLockPreference,
+            );
+          },
+        ),
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
