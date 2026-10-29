@@ -8,6 +8,12 @@ on:
       - '.github/workflows/d19-real-auth-summary-pg-browser.yml'
       - 'backend/ai/api/v1/ai.py'
       - 'backend/diabetes/api/v1/kpis.py'
+      # D11 Web: real native Django/PG authenticated A-B-A Flutter smoke.
+      - 'backend/amina/vercel_session_auth.py'
+      - 'backend/diabetes/api/v1/demo.py'
+      - 'backend/diabetes/tests/test_d11_real_account_zero_demo.py'
+      - 'frontend/lib/services/offline_demo_audit_seed.dart'
+      - 'frontend/lib/data/drift/database.dart'
   workflow_dispatch:
 
 permissions:
