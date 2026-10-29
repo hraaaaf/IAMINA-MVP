@@ -71,6 +71,19 @@ class _D19SyntheticApi extends ApiClient {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Fail visibly if the *real* AI Summary throws during a browser render.
+  // Release-mode Flutter defaults to a neutral grey ErrorWidget, which could
+  // otherwise be mistaken for a loading state in a screenshot-only test.
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('D19_AI_SUMMARY_RENDER_ERROR: ${details.exceptionAsString()}');
+  };
+  ErrorWidget.builder = (details) => Material(
+    color: const Color(0xFFFFE0E0),
+    child: Center(
+      child: Text('D19 browser fixture failure: ${details.exceptionAsString()}'),
+    ),
+  );
   final scenario = Uri.base.queryParameters['scenario'] ?? 'manual';
   if (!{'manual', 'verified', 'unavailable'}.contains(scenario)) {
     throw ArgumentError.value(scenario, 'scenario', 'Unapproved synthetic scenario');
@@ -91,6 +104,9 @@ Future<void> main() async {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        theme: AminaTheme.light,
+        darkTheme: AminaTheme.dark,
+        themeMode: ThemeMode.light,
         locale: locale,
         localizationsDelegates: const [
           AppLocalizations.delegate,

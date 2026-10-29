@@ -25,7 +25,7 @@ const tests=[];
           const page=await context.newPage();
           const errors=[], outbound=[];
           page.on('pageerror',err=>errors.push(err.message.slice(0,400)));
-          page.on('console',msg=>{if(msg.type()==='error') errors.push(msg.text().slice(0,400));});
+          page.on('console',msg=>{if(msg.type()==='error'||msg.text().includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(msg.text().slice(0,400));});
           await page.route('**/*',route=>{
             const u=route.request().url();
             if(u.startsWith(origin)||u.startsWith('data:')||u.startsWith('blob:'))return route.continue();
