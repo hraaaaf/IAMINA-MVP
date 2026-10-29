@@ -1,6 +1,6 @@
 # IAMINA — Urgence B / D22 Web : préflight unités et cibles (non clinique)
 
-**Date :** 29 octobre 2026. **Base contrôlée :** `main@3c99f1401844d3da6dac8d7298425492eb255751`. **Statut : PREPARED / D22 NO-GO, D19 GATE HUMAIN.** Le présent lot ne touche ni aux valeurs cliniques, ni aux écrans, ni aux données patients. D22 est la prochaine décision du chantier B après D7 ; issue P0 [#1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165).
+**Date :** 29 octobre 2026. **Base contrôlée :** `main@3c99f1401844d3da6dac8d7298425492eb255751`. **Statut historique de prémerge : PREPARED. Préflight test-only MERGED dans main ; D22 décision produit OPEN / FUE_NO_GO, D19 GATE HUMAIN.** Le présent lot ne touche ni aux valeurs cliniques, ni aux écrans, ni aux données patients. D22 est la prochaine décision du chantier B après D7 ; issue P0 [#1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165).
 
 ## Goal / critère / preuve du préflight
 
@@ -52,3 +52,12 @@ Conversion documentaire du glucose : `mmol/L ≈ (mg/dL) ÷ 18` ; `mg/dL ≈ (mm
 - **Présent préflight :** test/dossier seulement, non corrigeant ; verdict exact HEAD CI à compléter. Aucun Vercel, DB, API ou produit modifié.
 - **D22 total : OPEN / FUE_NO_GO**, BLOQUÉ côté changement clinique par D19. **Next exact :** vérifier le test et CI du préflight ; audit ciblé des modèles/exports si indépendant ; soumettre la décision A/B, revue clinique D19, puis implémenter le lot UI/stockage D22 avec vrai BEFORE/AFTER et FUE complète.
 - **Fichier canonique provisoire :** ce document, subordonné au suivi [GitHub #1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165) et à `docs/ROADMAP.md`. Ne pas inventer de pourcentage global.
+
+## Closeout technique du préflight — 29 octobre 2026
+
+- **Prémerge exact :** [PR #1173](https://github.com/hraaaaf/IAMINA-MVP/pull/1173), candidate `834a61e6f8d0e66b7ee816eb0fd6371a9e99a654`, [CI #40845031719](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40845031719) **SUCCESS**. Les jobs analyse Flutter, tests Flutter et build PWA ont exécuté et réussi ; secrets/scope ont réussi ; backend non sélectionné par la classification de portée (test frontend + documentation uniquement).
+- **Merge vérifié :** squash `d5d95c6fcfef4ce1e4254c280bcd7a0fae114fd9` vers `main` le 29/10/2026 à 08:56 UTC. [Commit](https://github.com/hraaaaf/IAMINA-MVP/commit/d5d95c6fcfef4ce1e4254c280bcd7a0fae114fd9). Diff exact : un test Flutter et ce rapport de risques ; **zéro fichier runtime clinique/UI/backend/DB modifié**.
+- **Postmerge `main@d5d95c6` :** [CI #40845836231](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40845836231) relevée **IN_PROGRESS / not concluded** ; si non SUCCESS, ne pas conclure le closeout postmerge avant résultat exact. Pas de déploiement Vercel.
+- **Audit complémentaire sans mutation :** [issue #1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165#issuecomment-6492412675). Le profil sauvegarde `low/high` sans normalisation, le dashboard Premium classe les mesures brutes avec ces bornes brutes, et les rapports font de même. Une borne saisie en mmol/L peut donc être utilisée comme mg/dL pour une classification ; **risque de code**, sans preuve d'un affichage patient réel. Unités 18.0 (dashboard/rapports), 18.018 (formatter actuel) et 18.016 (D19 proposé) non harmonisées. `ClinicalEngine.calcTIR` étiquette une fraction d'entrées manuelles comme TIR : dépend de la revue CAL/D19.
+- **Pass adversarial périmètre étroit :** tests de formatage indépendant d'une valeur de facteur au millième, mais aucune vérification FUE, provenance historique, synchronisation ou statut clinique ; ne pas interpréter la réussite de CI comme validation des objectifs. Révision d'approbation indépendante non revendiquée. La décision D22 reste bloquée, en attente de gate D19/clinicien et FUE Web réelle.
+- **Prochaine étape :** fermer la preuve postmerge CI de ce préflight, puis arbitrer humainement D19 le contrat (unité intrinsèque des bornes, provenance, arrondi, legacy inconnu, migration/rollback) avant tout patch fonctionnel D22.
