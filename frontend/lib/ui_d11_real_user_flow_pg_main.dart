@@ -67,9 +67,9 @@ Future<void> main() async {
         final path = state.uri.path;
         if (!auth.isRemoteCredentialVerified && path != '/login' &&
             path != '/reset-password') return '/login';
-        if (auth.isRemoteCredentialVerified && path == '/login') {
-          return '/dashboard';
-        }
+        // LoginScreen itself routes successful login to /dashboard and
+        // successful registration to /onboarding. Never preempt those
+        // user-visible navigation steps when AuthService notifies GoRouter.
         return null;
       },
       routes: [
