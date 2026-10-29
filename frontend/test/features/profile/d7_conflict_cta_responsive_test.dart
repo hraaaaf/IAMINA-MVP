@@ -7,6 +7,7 @@ import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/features/profile/profile_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -95,6 +96,7 @@ void main() {
                 Provider<AppDatabase>.value(value: db),
                 ChangeNotifierProvider<ConsentService>.value(value: consent),
                 ChangeNotifierProvider<AuthService>.value(value: auth),
+                ChangeNotifierProvider<AppLockService>(create: (_) => AppLockService()),
               ],
               child: const ProfileScreen(),
             ),
@@ -172,6 +174,7 @@ void main() {
           Provider<AppDatabase>.value(value: db),
           ChangeNotifierProvider<ConsentService>.value(value: consent),
           ChangeNotifierProvider<AuthService>.value(value: auth),
+                ChangeNotifierProvider<AppLockService>(create: (_) => AppLockService()),
         ],
         child: const ProfileScreen(),
       ),
