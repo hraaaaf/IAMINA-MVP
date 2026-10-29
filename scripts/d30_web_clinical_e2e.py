@@ -46,7 +46,13 @@ def main():
                     service_workers="block",
                 )
                 page = context.new_page()
-                page.on("pageerror", lambda error: errors.append(str(error)))
+                def record_pageerror(error):
+                    # Report exact browser exception stack without suppressing it.
+                    stack = getattr(error, "stack", None) or ""
+                    errors.append(f"route={page.url} message={error}\\nstack={stack}")
+                    print("D30 UNCAUGHT JS:", errors[-1][:2500], flush=True)
+
+                page.on("pageerror", record_pageerror)
 
                 def local_only(route):
                     method = route.request.method
@@ -143,7 +149,7 @@ def main():
                     if "fonts.gstatic.com" not in url.lower()
                 ]
                 assert not non_font_external, f"Unexpected non-font outbound request: {non_font_external[:5]}"
-                assert not errors, f"Flutter Web page errors: {errors[:4]}"
+                assert not errors, "Flutter Web page errors with stack: " + repr(errors[:4])
                 print(
                     "D30 PASS clinical E2E: 112 survives reload + actual WebAuthn unlock; "
                     f"zero non-font outbound requests; {len(external)} blocked font fallback requests",
