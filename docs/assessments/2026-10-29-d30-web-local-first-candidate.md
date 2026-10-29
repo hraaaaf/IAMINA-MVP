@@ -1,6 +1,6 @@
 # D30 — Web local-first, isolated validation (2026-10-29)
 
-**Status: CI GREEN on isolated branch; merge and post-merge NOT performed.**
+**Status: EXACT-HEAD CI + FR/AR 1180x860 browser screenshots GREEN; MERGE/POST-MERGE NOT performed.**
 Not a Production or hosted patient certification. Live backend/Neon identity is not attested.
 
 ## Goal
@@ -26,6 +26,15 @@ reload, logout, or re-enrollment.
   verifier and packaged CanvasKit available with networking disabled: PASS.
   Cache `iamina-app-shell-0.1.0+1-d30-offline-lock`, 14 items.
 
+## Final visual regression evidence (2026-10-29)
+- [GitHub Actions run 40799852678](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40799852678), **SUCCESS** on code SHA `222cf7e002d053b0815d4829fe42c3a013e8cae4`.
+- Screenshot artifact `d30-flutter-web-boot`, ID `12864909639`, contains first-use FR and Arabic screenshots and clinical/offline shell.
+- Browser **1180x860** comparison: BEFORE missing Arabic glyphs in first-use heading and primary CTA; AFTER both render complete readable Arabic, RTL orientation preserved, same viewport. French remains intact.
+- Actual screenshot reviewed (not inferred from accessibility semantics): Arabic title `إعداد IAmina هنا`; button `إعداد هذا الجهاز` present and legible.
+- Offline shell cache 20 assets, including all six self-hosted OFL fonts, packaged CanvasKit and local WebAuthn verifier; all outbound font requests blocked.
+- Visual score **9/10** for these inspected first-use/dashboard screens. Other viewports and independent Arabic medical-copy review remain separate scope.
+- [Visual font issue #1167](https://github.com/hraaaaf/IAMINA-MVP/issues/1167) is fixed within this isolated candidate; not merged to main yet.
+
 ## QA / limitations
 - Data were **synthetic only**, with no remote patient account, Neon mutation,
   Production deployment, or remotely approved clinical sync.
@@ -47,11 +56,10 @@ safe Service Worker registration update; synthetic Flutter/Chromium/Node
 regressions and GitHub-only workflow. No change to glucose alert thresholds.
 
 ## Remaining gates
-1. Resolve missing-glyph visual accessibility under no-network conditions;
-   repeat screenshots at 1180×860 on the same route, compare and record score.
-2. Complete review/security check of the isolated diff.
-3. **Human gate:** explicit approval before merge or any Production deployment.
-4. If merge approved, merge, verify exact main SHA and post-merge CI; update
-   Notion Chantier A and canonical roadmap, then proceed to D19.
+1. Complete independent security/privacy review of isolated local-first diff.
+2. **Human gate:** explicit approval before merge because a merge can trigger
+   downstream deployments, including Production Vercel. No deployment GO given.
+3. If merge approved, merge, verify exact main SHA and post-merge CI; update
+   Notion Chantier A and canonical roadmap. D19 audit can proceed independently.
 
 **Do not mark D30 closed until these gates have been satisfied.**
