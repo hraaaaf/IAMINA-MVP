@@ -26,6 +26,7 @@ import 'package:amina/features/reminders/reminders_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/companion_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/modules_provider.dart';
@@ -167,6 +168,9 @@ class _GoldenHarness extends StatelessWidget {
       providers: [
         Provider<AppDatabase>.value(value: deps.db),
         ChangeNotifierProvider<AuthService>.value(value: deps.auth),
+        // Profile now renders an optional app-lock preference; synthetic audit
+        // provides a non-patient lock instance for geometry only.
+        ChangeNotifierProvider<AppLockService>(create: (_) => AppLockService()),
         Provider<ApiClient>.value(value: deps.api),
         Provider<SyncService>.value(value: deps.sync),
         ChangeNotifierProvider<ConsentService>.value(value: deps.consent),
