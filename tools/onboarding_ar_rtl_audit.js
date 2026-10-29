@@ -81,13 +81,21 @@ async function mustBeInViewport(page,label,size,name) {
       try {
         const page=await context.newPage();
         const exceptions=[];
-        page.on('pageerror',e=>exceptions.push(String(e)));
+        let phase='browser_boot';
+        page.on('pageerror', e => {
+          const entry={phase,message:String(e),stack:String(e.stack||'')};
+          exceptions.push(entry);
+          fs.writeFileSync(out+'/page-errors-'+width+'x'+height+'.json',
+            JSON.stringify(exceptions,null,2));
+        });
         await page.goto(base+'/?surface=onboarding&seed=0&locale=ar',{
           waitUntil:'domcontentloaded',timeout:30000,
         });
         await sleep(6500);
         await enableSemantics(page);
+        phase='initial_arabic_language';
         await mustBeInViewport(page,'العربية',size,'arabic-initial');
+        phase='language_to_country';
         await choose(page,'العربية');
         await sleep(450);
         const countryProbes=[
@@ -110,12 +118,14 @@ async function mustBeInViewport(page,label,size,name) {
         await page.keyboard.insertText('المغر');
         await sleep(400);
         await screenshot(page,'arabic-country-search',size);
+        phase='country_to_diabetes';
         await choose(page,'المغرب');
         await sleep(450);
         if(width<900)
           await mustBeInViewport(page,'السكري النوع 2',size,'arabic-type-revealed');
         else
           await screenshot(page,'arabic-type-desktop',size);
+        phase='diabetes_to_treatment';
         await choose(page,'السكري النوع 2');
         await sleep(450);
         if(width<900)
@@ -123,11 +133,13 @@ async function mustBeInViewport(page,label,size,name) {
         else
           await screenshot(page,'arabic-treatment-desktop',size);
         // Multi-choice: each chip must remain patient-driven, not auto-advance.
+        phase='treatment_multi_chips';
         await choose(page,'أدوية فموية أتناولها');
         await choose(page,'نمط الحياة');
         const continueLink=await locate(page,'المتابعة إلى الوحدات');
         if(width<900){
           if(!continueLink)throw new Error('Missing Arabic explicit unit continuation');
+          phase='treatments_to_units';
           await continueLink.control.click({timeout:2500});
           await sleep(450);
           await mustBeInViewport(page,'mg/dL',size,'arabic-units-revealed');
@@ -135,6 +147,7 @@ async function mustBeInViewport(page,label,size,name) {
           if(continueLink)throw new Error('Redundant continuation on RTL desktop');
           await screenshot(page,'arabic-units-desktop',size);
         }
+        phase='final_start_cta';
         const start=await locate(page,'ابدأ');
         if(!start)throw new Error('Missing Arabic start CTA');
         const rect=start.rect;
@@ -142,7 +155,8 @@ async function mustBeInViewport(page,label,size,name) {
            rect.y+rect.height>height+1)
            throw new Error('Arabic start CTA clipped '+JSON.stringify({size,rect}));
         await screenshot(page,'arabic-final',size);
-        if(exceptions.length) throw new Error('Flutter Web uncaught browser exceptions: '+exceptions.join(' | '));
+        if(exceptions.length) throw new Error(
+          'Flutter Web uncaught browser exceptions: '+JSON.stringify(exceptions));
         results.push({width,height,locale:'ar',country:'MA',
           type:'type2',treatmentChips:2,unitsAdvanced:width<900,
           ctaRect:rect,pageErrors:exceptions.length});
