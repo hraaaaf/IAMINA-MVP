@@ -50,3 +50,18 @@
 - **Gates hors technique :** données médicales/identité/consentement, clinique, sécurité/privacy, revue arabe RTL par personnes qualifiées. Aucun des tests CI ne remplace leurs signatures.
 - **Next exact :** obtenir (1) session SSO QA Preview autorisée et (2) GO explicite d'un déploiement Preview au code Web courant si la FUE doit certifier le HEAD actuel ; puis préflight BFF/Neon 4/4 en lecture seule → tests F01–F06 3 viewports FR/AR → preuves et revue F07 → closeout F08 → seulement alors décider D7 GO / NO_GO et passage à D22 après gate D19.
 - **Verdict au 29/10/2026 : D7 OPEN / FUE_NO_GO.** Aucun pourcentage inventé, aucune action Production/Neon mutation/Vercel déploiement.
+
+
+## 29/10/2026 — Gate HTTP hébergé A→B→A : préparation sans secrets (PR #1196)
+
+**Résultat de cette préparation :** ajout du testeur read-only `scripts/d7_qa_hosted_auth_gate.mjs`, de ses tests unitaires synthétiques `frontend/test/qa/d7_hosted_auth_gate.test.mjs` et du workflow `.github/workflows/d7-qa-hosted-auth-gate.yml` dans la branche QA. Ce travail n'est **ni une connexion réelle A/B ni une certification FUE**.
+
+**Contrat prouvable lors d'une future exécution autorisée :** cibler uniquement la Preview Web immuable `dpl_9VU7T2APzWXH6PSqzJ4xE472pcek` (URL épinglée), préflight POST faux identifiants → 401 JSON Django, puis trois POST login A→B→A → 200 JSON et IDs distincts/stables. Ne pas afficher ni écrire email, mot de passe, bearer, cookies ou réponse utilisateur ; aucun appel clinique, aucune mutation de profil, pas de faux FUE GREEN.
+
+**Human gate sécurité et exécution :**
+1. Le propriétaire crée un environnement GitHub **`d7-qa` protégé par approbation** et restreint à `cert/d7-web-fue-preview-20261029`, configure via l'interface cinq secrets d'environnement : `D7_QA_A_EMAIL`, `D7_QA_A_PASSWORD`, `D7_QA_B_EMAIL`, `D7_QA_B_PASSWORD` et `D7_QA_SSO_ACCESS`. Les valeurs ne doivent pas passer par les commits, issues, Notion ni logs ; les mots de passe restent dans le fichier utilisateur, jamais reproduits dans le dépôt.
+2. `D7_QA_SSO_ACCESS` est un **accès Vercel QA temporaire explicitement autorisé**. Aucun lien ou bypass SSO n'a été créé ici ; l'accès doit être approuvé séparément et limité dans sa durée/portée. Ne jamais désactiver SSO global ni cibler Production.
+3. Le workflow comporte un job de contrat sans secrets sur PR, et un job identités uniquement sur déclenchement **manuel** `workflow_dispatch` depuis la branche QA et après gate d'environnement. Le déclenchement manuel GitHub nécessite que le workflow soit enregistré sur la branche par défaut ; la PR n'est pas fusionnée et aucun dispatch réel n'est revendiqué.
+4. Vérifier les runs à SHA exact ; une réussite de ce gate couvre l'authentification API hébergée seulement. Les FUE F01–F08 sur UI Safari/Chrome, Type2→Type1, traitements, persistance, FR/AR, offline, confidentialité et validation clinique sont toujours nécessaires.
+
+**État exact :** `D7 OPEN / FUE_NO_GO`. Production inchangée ; aucun compte hébergé A ou B authentifié par ce lot.
