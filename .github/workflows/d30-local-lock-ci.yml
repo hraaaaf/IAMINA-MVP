@@ -23,6 +23,7 @@ on:
       - frontend/assets/fonts/**
       - frontend/pubspec.yaml
       - frontend/lib/core/theme/app_theme.dart
+      - frontend/lib/features/auth/local_device_enrollment_screen.dart
       - frontend/test/routes/d30_local_ai_consent_gate_test.dart
       - frontend/test/services/patient_vault_session_controller_test.dart
   workflow_dispatch:
