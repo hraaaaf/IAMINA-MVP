@@ -24,3 +24,13 @@ test('real hosted browser smoke cannot claim clinical FUE certification',()=>{
   assert.equal(proof.result,'NOT_RUN');
   assert.doesNotMatch(JSON.stringify(proof),/share-token|patient@gmail.com|@example/);
 });
+
+test('protected QA secrets exist only in the Chrome execution step', async () => {
+  const {readFileSync} = await import('node:fs');
+  const workflow = readFileSync('.github/workflows/d7-hosted-remote-chrome-fue.yml', 'utf8');
+  const before = workflow.split('      - name: Run real Chrome against Vercel-protected QA Web')[0];
+  assert.doesNotMatch(before, /secrets\.D7_QA_/);
+  assert.match(workflow, /Run real Chrome against Vercel-protected QA Web\n        env:/);
+  assert.match(workflow, /actions\/checkout@11bd71901bbe5b1630ceea73d27597364c9af683/);
+  assert.match(workflow, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
+});
