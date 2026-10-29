@@ -63,6 +63,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d7-free-web-app-smoke-evidence
-          path: d7-web-app-smoke-proof.json
+          path: |
+            d7-web-app-smoke-proof.json
+            d7-web-viewport-captures/*.png
           retention-days: 14
           if-no-files-found: warn
