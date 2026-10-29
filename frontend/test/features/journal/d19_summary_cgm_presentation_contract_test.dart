@@ -46,6 +46,13 @@ void main() {
     expect(source, contains("'NotoSansArabic'"));
   });
 
+  test('D19: the shared first-use AR secondary CTA uses local glyphs', () {
+    final shared = File('lib/core/widgets/first_use_panel.dart').readAsStringSync();
+    expect(shared, contains('secondaryActionLabel!'));
+    expect(shared, contains('fontFamilyFallback: kOfflineFontFallbacks'));
+    expect(shared, contains("'NotoSansArabic'"));
+  });
+
   test('D19: no AGP card without verified CGM metadata', () {
     expect(source, contains('final hasEligibleAgp = agpData.isNotEmpty'));
     expect(source, contains('kpis?.tirPct == null || kpis?.tarPct == null'));

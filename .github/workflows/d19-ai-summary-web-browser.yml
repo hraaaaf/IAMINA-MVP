@@ -6,6 +6,7 @@ on:
       - 'frontend/lib/ui_d19_ai_summary_browser_main.dart'
       - 'frontend/lib/features/journal/ai_summary_screen.dart'
       - 'frontend/lib/features/journal/ai_summary_screen_presentation.dart'
+      - 'frontend/lib/core/widgets/first_use_panel.dart'
       - 'tools/d19_ai_summary_web_browser_check.js'
       - '.github/workflows/d19-ai-summary-web-browser.yml'
   workflow_dispatch:
