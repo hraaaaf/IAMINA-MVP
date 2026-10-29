@@ -95,9 +95,9 @@
 
 ### D7 — critères de clôture produit encore **NOT_RUN** / NON CERTIFIÉS
 
-1. **FUE Chrome intégrée 390×844 / 768×1024 / 1280×900, FR/AR RTL** : vrai parcours avec coffre synthétique isolé Onboarding → Profil → édition déclarative → Enregistrer → retour/rafraîchissement ; prouver affichage sans overflow, clavier et choix accessibles. Captures BEFORE/AFTER si toute UI modifiée.
+1. **FUE Chrome intégrée adaptée à D7** : commencer depuis l'état réellement pertinent (Profil existant ou nouvel arrivant **si l'onboarding est dans le périmètre modifié**), éditer le type déclaré et les traitements, enregistrer, quitter/revenir, recharger et vérifier la conservation des déclarations. FR/AR RTL et 390×844 / 768×1024 / 1280×900 **sur les écrans concernés** ; affichage, clavier et choix accessibles. Captures BEFORE/AFTER aux mêmes états/viewports si UI modifiée. **Aucun parcours Onboarding ni A→B→A systématique**.
 2. **Persistance navigateur/offline** : fermer/recharger le navigateur, vérifier `PatientTreatmentDeclarationStore` et le type dans le même coffre IndexedDB réel, sans code/heure/valeur imputée à tort ; traitement `not_answered` / `unsure` / `none_declared` distinct.
-3. **Changement de coffre A→B→A** : ne voir ni écrire les données de A dans B ni inversement ; protéger epoch et refus d'accès sans identité/coffre ; tests d'isolement sans données personnelles.
+3. **Isolation et gestion de session (contrôle sécurité lié au risque, pas étape FUE universelle)** : ne voir ni écrire les données d'un autre patient ; vérifier le refus sans identité/coffre et la protection epoch. **A→B→A** appartient notamment à W02 et peut servir de régression ciblée **si D7 modifie l'isolation, les sessions ou le stockage multi-propriétaires, ou si la preuve disponible ne couvre pas le risque**. Ne pas exiger ce parcours par défaut dans la recette fonctionnelle de changement de type/traitements ; conserver toute preuve de sécurité pertinente et son SHA.
 4. **Confidentialité / clinique** : prouver garde-fou egress des données déclarées en local-only, absence de confirmation serveur fictive ; avis qualifiés clinique, sécurité/privacy et libellés arabes natifs si nécessaire avant tout GO santé.
 5. **Revue et CI FUE exact SHA, fusion et postmerge** pour chaque lot ; résultat documenté, pas de verdict basé seulement sur le nombre de tests verts.
 
