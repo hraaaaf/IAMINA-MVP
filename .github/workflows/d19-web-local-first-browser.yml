@@ -33,7 +33,7 @@ jobs:
             --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
       - name: Install isolated Playwright Chromium
         run: |
-          npm install --no-save playwright@1.55.0
+          npm install --no-save playwright@1.55.0 pngjs@7.0.0
           npx playwright install chromium
       - name: Test real first-use click; capture errors and route in Chrome
         shell: bash

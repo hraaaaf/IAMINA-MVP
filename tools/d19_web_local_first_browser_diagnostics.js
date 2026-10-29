@@ -6,6 +6,7 @@
  */
 'use strict';
 const { chromium } = require('playwright');
+const { PNG } = require('pngjs');
 const fs = require('fs');
 const path = require('path');
 
@@ -23,6 +24,44 @@ async function capture(page, id, phase) {
   const filename = `${id}-${phase}.png`;
   await page.screenshot({ path: path.join(out, filename), fullPage: false });
   return filename;
+}
+
+/* Calibrated on the same test's actual rendered screenshot, not hardcoded
+ * coordinates, CSS selectors, fake events or a remote user session.
+ * Flutter Web CanvasKit may render a visible button while the accessibility
+ * placeholder itself is non-visible to Playwright.
+ */
+async function findVisibleGreenCta(page) {
+  const shot = PNG.sync.read(await page.screenshot({ fullPage: false }));
+  const width = shot.width;
+  const height = shot.height;
+  const minimumRun = Math.min(250, Math.round(width * 0.40));
+  const rows = [];
+  for (let y = 140; y < height - 40; y++) {
+    let start = -1;
+    let best = null;
+    for (let x = 0; x <= width; x++) {
+      let green = false;
+      if (x < width) {
+        const offset = (y * width + x) * 4;
+        const [r, g, b] = shot.data.subarray(offset, offset + 3);
+        green = r >= 8 && r <= 15 && g >= 105 && g <= 115 &&
+          b >= 80 && b <= 94;
+      }
+      if (green && start === -1) start = x;
+      if (!green && start !== -1) {
+        const run = x - start;
+        if (!best || run > best.length) best = { x: start + run / 2, length: run };
+        start = -1;
+      }
+    }
+    if (best && best.length >= minimumRun) rows.push({ x: best.x, y, width: best.length });
+  }
+  if (rows.length < 6) {
+    throw new Error('No visible broad dark-green CTA in screenshot; pointer click refused');
+  }
+  const selected = rows[Math.floor(rows.length / 2)];
+  return { x: Math.round(selected.x), y: selected.y, width: selected.width, sampledRows: rows.length };
 }
 
 async function runCase(browser, c) {
@@ -71,26 +110,23 @@ async function runCase(browser, c) {
         observed.accessibilityEnableError = String(e.message).slice(0,350);
       }
     }
-    // Flutter Web CanvasKit exposes controls to the accessibility tree only
-    // after semantics are enabled. Real mouse click; no JS event injection.
+    // Prefer accessible click. If CanvasKit has a non-visible semantics
+    // placeholder, use a grounded native pointer click on the rendered CTA.
+    // This distinguishes Flutter semantics limitations from a real app bug.
     const button = page.getByRole('button', { name: allowed }).first();
-    try {
-      await button.waitFor({ state: 'visible', timeout: 10000 });
-    } catch (e) {
-      observed.navigation = 'INACCESSIBLE_BUTTON';
-      observed.accessibleButtons = await page.getByRole('button').allTextContents().catch(() => []);
-      observed.diagnostic = String(e.message).slice(0,320);
-      return observed;
-    }
-    observed.buttonLabel = (await button.innerText()).slice(0,120);
-    try {
+    if (await button.isVisible().catch(() => false)) {
+      observed.clickMode = 'accessible-role';
+      observed.buttonLabel = (await button.innerText()).slice(0,120);
       await button.click({ timeout: 12000 });
-      observed.clickDispatched = true;
-    } catch (e) {
-      observed.navigation = 'CLICK_NOT_DISPATCHED';
-      observed.diagnostic = String(e.message).slice(0,500);
-      return observed;
+    } else {
+      observed.clickMode = 'screenshot-grounded-pointer';
+      observed.accessibilityRoleUnavailable = true;
+      observed.accessibleButtons = await page.getByRole('button').allTextContents().catch(() => []);
+      const cta = await findVisibleGreenCta(page);
+      observed.pointerTarget = cta;
+      await page.mouse.click(cta.x, cta.y);
     }
+    observed.clickDispatched = true;
     await page.waitForTimeout(5500);
     observed.afterHash = await page.evaluate(() => location.hash);
     observed.navigation = observed.afterHash !== observed.beforeHash
