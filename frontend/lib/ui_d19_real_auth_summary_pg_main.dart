@@ -26,6 +26,13 @@ void requireTrue(bool condition, String reason) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  var flutterRenderError = false;
+  FlutterError.onError = (details) {
+    flutterRenderError = true;
+    FlutterError.presentError(details);
+    html.document.title = 'IAMINA_D19_REAL_HTTP_FAIL:flutter_render';
+  };
+  final screenKey = GlobalKey();
   html.document.title = 'IAMINA_D19_REAL_HTTP_PENDING';
   final principal = Uri.base.queryParameters['principal'] ?? '';
   final language = Uri.base.queryParameters['locale'] ?? 'fr';
@@ -70,9 +77,6 @@ Future<void> main() async {
         summary.kpis['tir_pct'] == null && summary.kpis['gmi'] == null,
         'non_sensor_cgm_promoted');
     requireTrue(summary.agpProfile.isEmpty, 'unverified_agp');
-    html.document.title = 'IAMINA_D19_REAL_HTTP_' +
-        principal.toUpperCase() + '_PASS';
-
     runApp(MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: vault.activeDatabase!),
@@ -93,9 +97,21 @@ Future<void> main() async {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const AISummaryScreen(),
+        home: AISummaryScreen(key: screenKey),
       ),
     ));
+    // A successful HTTP assertion is not a rendered clinical screen.
+    // Fail closed unless the actual Flutter widget has painted a sized frame.
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    await WidgetsBinding.instance.endOfFrame;
+    final rendered = screenKey.currentContext?.findRenderObject();
+    requireTrue(!flutterRenderError && rendered is RenderBox &&
+        rendered.attached && rendered.hasSize &&
+        rendered.size.width >= 300 && rendered.size.height >= 600,
+        'clinical_screen_not_rendered');
+    html.document.title = 'IAMINA_D19_REAL_HTTP_' +
+        principal.toUpperCase() + '_PASS';
   } catch (error) {
     // Do not expose account identities or credentials to browser/title/logs.
     html.document.title =
