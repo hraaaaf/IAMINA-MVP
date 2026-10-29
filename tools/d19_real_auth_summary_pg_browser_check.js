@@ -17,9 +17,17 @@ fs.mkdirSync(directory,{recursive:true});
    const context=await browser.newContext({viewport,locale:locale==='fr'?'fr-FR':'ar-MA',serviceWorkers:'block'});
    for(const principal of ['a','b','a']){
     const page=await context.newPage();
-    const errors=[],external=[],requests=[];
+    const errors=[],external=[],requests=[],loginStatuses=[],loginTransportFailures=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,300)));
     page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,300));});
+    page.on('response',r=>{
+      if(r.url().startsWith(api+'/api/v1/auth/login'))
+        loginStatuses.push(r.status());
+    });
+    page.on('requestfailed',r=>{
+      if(r.url().startsWith(api+'/api/v1/auth/login'))
+        loginTransportFailures.push('auth login transport failed');
+    });
     page.on('request',r=>{
       if(r.url().startsWith(api) && /\/api\/v1\/(ai\/summary|kpis\/)/.test(r.url()))
         requests.push(r.url().split('?')[0]);
@@ -41,7 +49,7 @@ fs.mkdirSync(directory,{recursive:true});
     await page.screenshot({path:path.join(directory,file)});
     const observation={locale,viewport:viewport.width+'x'+viewport.height,principal,expectedTitle:target,
       pass:title===target&&requests.length>=4&&errors.length===0&&external.length===0,
-      backendRequestCount:requests.length,consoleErrors:errors.length,
+      backendRequestCount:requests.length,loginStatuses,loginTransportFailures:loginTransportFailures.length,consoleErrors:errors.length,
       blockedExternal:external.length,file};
     report.tests.push(observation);
     if(!observation.pass)report.failed.push({...observation,actualTitle:title});
@@ -52,6 +60,6 @@ fs.mkdirSync(directory,{recursive:true});
   }
  }finally{await browser.close();}
  fs.writeFileSync(path.join(directory,'report.json'),JSON.stringify(report,null,2));
- console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,requests:x.backendRequestCount,errors:x.consoleErrors,external:x.blockedExternal}))}));
+ console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,loginStatuses:x.loginStatuses,loginTransportFailures:x.loginTransportFailures,requests:x.backendRequestCount,errors:x.consoleErrors,external:x.blockedExternal}))}));
  if(report.failed.length||report.tests.length!==18)process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
