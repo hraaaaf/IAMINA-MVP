@@ -47,7 +47,9 @@ class KPIsOut(BaseModel):
 
 
 def _kpi_cache_key(user_id: int, days: int, target_low: float, target_high: float) -> str:
-    return f"kpis:u{user_id}:d{days}:l{int(target_low)}:h{int(target_high)}"
+    # D19/CAL-01: fractional patient target bounds must not alias each other.
+    # This is a cache-identity fix, NOT a clinical threshold change.
+    return f"kpis:u{user_id}:d{days}:l{float(target_low)!r}:h{float(target_high)!r}"
 
 
 def invalidate_kpi_cache(user_id: int) -> None:
