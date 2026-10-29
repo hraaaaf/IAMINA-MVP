@@ -137,7 +137,7 @@ def main():
                         "fromSurface": True,
                     })
                     data = base64.b64decode(captured["data"])
-                    if data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+                    if data[:8] != bytes.fromhex("89504e470d0a1a0a"):
                         raise RuntimeError(f"Missing PNG screenshot {width}x{height}")
                     png_width, png_height = struct.unpack(">II", data[16:24])
                     if (png_width, png_height) != (width, height):
