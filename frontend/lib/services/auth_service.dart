@@ -43,6 +43,13 @@ const bool kRemoteAccountLoginEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+// The protected D7 Preview proxy is same-origin; direct cross-project
+// browser fetches cannot carry the Vercel server-to-server OIDC identity.
+String get _nativeAuthOrigin => kIsWeb && kRemoteAccountLoginEnabled
+    ? Uri.base.origin
+    : kAuthBaseUrl;
+
+
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
@@ -380,7 +387,7 @@ class AuthService extends ChangeNotifier {
     if (token != null) {
       try {
         await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          Uri.parse('$_nativeAuthOrigin/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
       } catch (error, stackTrace) {
@@ -440,7 +447,7 @@ class AuthService extends ChangeNotifier {
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('$_nativeAuthOrigin$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
