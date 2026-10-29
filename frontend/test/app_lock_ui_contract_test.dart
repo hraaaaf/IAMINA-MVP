@@ -17,25 +17,29 @@ void main() {
     expect(router, contains('!activeLock.isUnlocked'));
   });
 
-  test('app-lock UI exposes no weak patient bypass', () {
+  test('app-lock opt-out is an explicit fresh-vault decision, never a recovery bypass', () {
     final setup = File(
       'lib/features/auth/app_lock_setup_screen.dart',
     ).readAsStringSync();
     final unlock = File(
       'lib/features/auth/app_lock_unlock_screen.dart',
     ).readAsStringSync();
+    final service = File(
+      'lib/services/app_lock_service.dart',
+    ).readAsStringSync();
 
-    for (final weakSecret in <String>[
-      'password',
-      'mot de passe',
-      'code PIN',
-      'forgot',
-      'skip',
-      'ignorer',
-    ]) {
-      expect(setup.toLowerCase(), isNot(contains(weakSecret.toLowerCase())));
-      expect(unlock.toLowerCase(), isNot(contains(weakSecret.toLowerCase())));
-    }
+    expect(setup, contains("Key('d30-skip-app-lock')"));
+    expect(setup, contains("Key('d30-confirm-no-lock')"));
+    expect(setup, contains('continueWithoutAppLock()'));
+    expect(service, contains("protected_vault_cannot_skip_lock"));
+    expect(service, contains("existing_local_data_requires_lock"));
+    expect(service, contains("patient_vault_identity_required"));
+    expect(service, contains("_choiceOwnerKey"));
+    expect(service, contains("owner == scope?.databaseName"));
+    // Device re-verification cannot be replaced by password/PIN shortcuts.
+    expect(unlock.toLowerCase(), isNot(contains('code pin')));
+    expect(unlock.toLowerCase(), isNot(contains('forgot')));
+    expect(unlock.toLowerCase(), isNot(contains('skip')));
     expect(unlock, contains('if (!recovery)'));
     expect(unlock, contains('recoveryRequired'));
     expect(unlock, contains("appLockPreview'] == 'recovery'"));
