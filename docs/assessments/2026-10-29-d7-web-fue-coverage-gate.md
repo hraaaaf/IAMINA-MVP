@@ -8,7 +8,7 @@
 
 **Décision D7 :** une personne déclare librement son type de diabète et les traitements *effectivement pris* ; changer le type ne prescrit, n'infère ni n'efface aucun traitement ; les changements sont persistés uniquement pour le bon propriétaire, en local-first et sans fausse confirmation de synchronisation.
 
-**Succès FUE complet attendu :** utiliser le **vrai produit Web** sur une Preview QA autorisée, au SHA effectivement déployé, avec identité A et B distinctes, navigation Onboarding → Profil → choix → sauvegarde → sortie/retour/rechargement/offline → A→B→A ; captures adaptées à 390×844, 768×1024, 1280×900, en FR/AR RTL (EN selon le contrat), vérification de lecture/écriture owner-scoped, aucune fuite de données/egress non consentie, puis revue clinique, sécurité et privacy qualifiée. **État : NOT_RUN pour la session hébergée intégrée**, donc **FUE_NO_GO**.
+**Succès FUE complet attendu (parcours adapté à D7) :** sur le **vrai produit Web** QA au SHA déployé, partir d'un **profil patient existant** (ou de l'onboarding uniquement si cette entrée est effectivement touchée), changer le type déclaré Type 2 → Type 1 → inconnu, vérifier la conservation des traitements sans inférence ou prescription, modifier explicitement un traitement, enregistrer, quitter/revenir et recharger ; tester la persistance/offline et les états vide/erreur **selon la surface D7 réellement concernée**. Captures et interactions FR/AR RTL sur les écrans concernés à 390×844, 768×1024, 1280×900 (EN seulement si concerné), avec accessibilité et contrôles cliniques/privacy adaptés. **Les tests de login A→B→A ne sont PAS un prérequis universel du FUE D7 : ce sont des tests de sécurité owner/session, requis séparément quand D7 touche ce risque ou si les preuves W02 sont insuffisantes.** Toute exigence restée applicable doit avoir une preuve. **État de la recette D7 Web intégrée : NOT_RUN / FUE_NO_GO.**
 
 ### Preuves réelles obtenues sur le code de test
 
@@ -32,12 +32,12 @@
 
 | ID | Scénario de recette **vrai site Web** | État |
 | --- | --- | --- |
-| D7-F01 | Login QA A via la Preview reliée au bon backend/branche QA ; ouvrir le Profil (390×844, FR) ; vérifier état initial et libellés patients non prescriptifs | **NOT_RUN — SSO + SHA Preview** |
+| D7-F01 | Accéder au Profil D7 dans un état pertinent (patient existant par défaut, login QA comme prérequis technique si nécessaire) ; vérifier l'état initial et les libellés non prescriptifs (390×844, FR) | **NOT_RUN — Web Preview intégrée** |
 | D7-F02 | A : modifier type2→type1 ; enregistrer ; vérifier traitements auto-conservés, pas de nouvelle prescription, save local-only/pending non annoncé « serveur confirmé » | **NOT_RUN — SSO + SHA Preview** |
 | D7-F03 | A : choisir explicitement none/unsure/unknown puis revenir à un traitement ; vérifier aucun écrasement implicite, rechargement dur et réouverture | **NOT_RUN — SSO + SHA Preview** |
-| D7-F04 | B : login distinct, stockage et traitements distincts ; bascule A→B→A avec logout/auth epoch, onglets, session périmée ; 0 fuite, 0 écriture croisée | **NOT_RUN — SSO + SHA Preview** |
+| D7-F04 | **Sécurité transversale conditionnelle, hors parcours fonctionnel FUE D7** : vérifier identité/propriétaire, changement de compte et fuite croisée avec une preuve W02 existante valide ou un test A→B→A ciblé **si D7 modifie ces frontières ou si le risque n'est pas couvert**. Ne pas imposer deux comptes au parcours type/traitements par défaut | **NON CERTIFIÉ pour le risque owner/session ; ne compte pas comme FUE D7 fonctionnel** |
 | D7-F05 | Réseau offline/reload/persistance du **vrai client** ; vérification mode local, zéro sync/égress clinique non approuvé ; re-synchronisation uniquement après autorisation et ACK vérifiable | **NOT_RUN — SSO + SHA Preview** |
-| D7-F06 | Même parcours aux viewports 768×1024 et 1280×900, FR/AR RTL, accessibilité/clavier ; captures comparables et revue visuelle | **NOT_RUN — SSO + SHA Preview** |
+| D7-F06 | Parcours **pertinents de D7** sur écrans concernés aux viewports 768×1024 et 1280×900, FR/AR RTL, accessibilité/clavier ; captures comparables et revue visuelle | **NOT_RUN — Web Preview intégrée** |
 | D7-F07 | Revue indépendante clinique, confidentialité, stockage/chiffrement, CNDP/personnes qualifiées, traçabilité des captures anonymisées et suppression contrôlée de QA si ordonnée | **HUMAN GATE — NON VALIDÉ** |
 | D7-F08 | Bilan exact SHA prémerge, merge, postmerge, déploiement Preview **autorisé séparément** au SHA testé, publication du verdict avec preuves sans secrets | **NON ATTEINT** |
 
@@ -48,7 +48,7 @@
 - **Blocage n°1 (accès) :** la Preview D7 accessible à la FUE est sous SSO Vercel, aucun navigateur autorisé n'est actuellement prouvé connecté. Un propriétaire doit ouvrir une session SSO Preview via le navigateur/profil autorisé, ou approuver explicitement un autre accès limité équivalent. **Ne pas désactiver SSO ni créer de lien partage sans autorisation.**
 - **Blocage n°2 (SHA) :** Preview isolée existante SHA `8a417041...` ≠ Git `main@b30eb164...`. Une Preview Web QA au SHA testé serait à déployer **seulement après GO Vercel distinct** et après confirmation du backend Preview vers la branche Neon synthétique 4/4.
 - **Gates hors technique :** données médicales/identité/consentement, clinique, sécurité/privacy, revue arabe RTL par personnes qualifiées. Aucun des tests CI ne remplace leurs signatures.
-- **Next exact :** obtenir (1) session SSO QA Preview autorisée et (2) GO explicite d'un déploiement Preview au code Web courant si la FUE doit certifier le HEAD actuel ; puis préflight BFF/Neon 4/4 en lecture seule → tests F01–F06 3 viewports FR/AR → preuves et revue F07 → closeout F08 → seulement alors décider D7 GO / NO_GO et passage à D22 après gate D19.
+- **Next exact (mis à jour — FUE adaptatif)** : préparer l'état patient D7 approprié et le SHA Preview QA autorisé → F01-F03 + F05-F06 sur le **vrai Web** (type et traitements, réouverture/reload/offline et FR/AR/viewport là où applicables) ; évaluer séparément le risque owner/session D7-F04 et réutiliser W02 sur code pertinent ou exécuter un test ciblé si nécessaire ; revue clinique/privacy D7-F07 ; closeout F08 uniquement sur preuves. Pas de scénario A→B→A imposé par défaut ni de déploiement sans GO.
 - **Verdict au 29/10/2026 : D7 OPEN / FUE_NO_GO.** Aucun pourcentage inventé, aucune action Production/Neon mutation/Vercel déploiement.
 
 
@@ -95,3 +95,11 @@
 - **Cloud :** Vercel `dpl_9VU7T2APzWXH6PSqzJ4xE472pcek` **READY**, source `ec523447`, `target=null` ; **aucun nouveau déploiement** de Production/Preview dans cette opération.
 - **Next exact humain :** vérifier que `d7-qa` contient les 4 secrets A/B déclarés configurés ; y saisir le **5e `D7_QA_SSO_ACCESS`** avec uniquement la valeur `_vercel_share` d'un lien QA spécifique et non expiré (nouvel accès temporaire nécessite GO séparé). Puis déclencher sur GitHub Actions le workflow manuel en sélectionnant `cert/d7-web-fue-preview-20261029`, approuver l'environnement et recueillir les HTTP 401 Django + A→B→A. Les outils GitHub connectés ici **n'exposent ni la gestion des secrets ni `workflow_dispatch`**, donc ces actions sont un **human gate** et non une exécution revendiquée.
 - **Certification :** authentification A/B réelle non exécutée, FUE écran Web Type2→Type1/traitements/reload/offline/FR-AR/privacy/clinique toujours non signée : **D7 OPEN / FUE_NO_GO**.
+
+## 29/10/2026 — Décision de gouvernance FUE adaptatif : rectification explicite
+
+**Cette section prévaut sur les formulations historiques du présent rapport** mentionnant « FUE D7 = A→B→A obligatoire ». Le test A→B→A vient de l'isolation des propriétaires/coffres (W02 et anciennes régressions D7/D9), **pas de la définition du First User Experience**. Il a été repris trop systématiquement dans la matrice F01–F08 et dans les handovers.
+
+**Nouveau contrat opérationnel D7 :** FUE fonctionnel = comportement de déclaration Type 2→Type 1→inconnu, traitements conservés sans prescription automatique, édition expresse, sauvegarde locale exacte, retour/rechargement, états pertinents et accessibilité Web FR/AR selon les écrans touchés. **Pas d'onboarding forcé pour patient existant.** Les vérifications de session/identité, y compris A→B→A, restent un **test de sécurité indépendant, conditionnel au risque propriétaire et aux changements effectifs**, jamais un parcours FUE générique. Les preuves W02 déjà valides peuvent être réutilisées avec SHA/portée, sinon une nouvelle vérification ciblée est requise.
+
+**Aucune preuve ancienne effacée, aucun PASS ajouté.** Les statuts existants de la vraie recette intégrée restent **NOT_RUN / FUE_NO_GO**. Référence : `AGENTS.md` section « Mandatory Decision FUE » et `.agents/README.md`. Tout test clinique, de confidentialité ou de sécurité réellement applicable reste obligatoire.
