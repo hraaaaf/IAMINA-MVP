@@ -42,6 +42,16 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       fi
       API_BASE_URL="${IAMINA_REVIEW_PREVIEW_API_BASE_URL%/}"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      # D7 Web certification: enable the REAL native login UI only on the
+      # one protected QA branch, with the exact isolated synthetic backend.
+      # Every other Preview remains local-first; Production stays untouched.
+      if [ "${VERCEL_GIT_COMMIT_REF:-}" = "cert/d7-web-fue-preview-20261029" ]; then
+        if [ "$API_BASE_URL" != "https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app" ]; then
+          echo "ERROR: D7 FUE QA branch cannot target another backend" >&2
+          exit 64
+        fi
+        IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+      fi
       ;;
     production)
       # Existing production routing remains unchanged.
