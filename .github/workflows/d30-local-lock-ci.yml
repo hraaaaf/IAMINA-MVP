@@ -67,6 +67,7 @@ jobs:
           print('D30 release asset policy PASS: Vercel Web never needs CanvasKit CDN')
           PY
       - name: Build Flutter Web offline-capable assets without deployment
+        id: d30_web_build
         run: flutter build web --release --no-web-resources-cdn
       - name: Install isolated Chromium smoke dependencies
         run: |
@@ -82,6 +83,7 @@ jobs:
       - name: E2E D30 local-only clinical save and WebAuthn reload (synthetic)
         run: python3 ../scripts/d30_web_clinical_e2e.py
       - name: E2E D30 genuine offline Service Worker shell and local WebAuthn asset
+        if: ${{ !cancelled() && steps.d30_web_build.outcome == 'success' }}
         run: python3 ../scripts/d30_web_offline_e2e.py
       - name: Retain Chromium smoke screenshot
         if: always()
