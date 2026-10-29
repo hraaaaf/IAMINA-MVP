@@ -35,6 +35,17 @@ void main() {
     expect(source, contains('} catch (_) {'));
   });
 
+  test('D19: hero actions fit mobile and are keyboard focusable', () {
+    expect(source, contains('if (constraints.maxWidth < 430)'));
+    expect(source, contains('crossAxisAlignment: CrossAxisAlignment.stretch'));
+    expect(source, contains('return InkWell('));
+  });
+
+  test('D19: Arabic first-use report uses a bundled offline font', () {
+    expect(source, contains('fontFamilyFallback: kOfflineFontFallbacks'));
+    expect(source, contains("'NotoSansArabic'"));
+  });
+
   test('D19: no AGP card without verified CGM metadata', () {
     expect(source, contains('final hasEligibleAgp = agpData.isNotEmpty'));
     expect(source, contains('kpis?.tirPct == null || kpis?.tarPct == null'));

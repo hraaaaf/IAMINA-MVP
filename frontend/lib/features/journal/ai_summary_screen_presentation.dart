@@ -9,8 +9,17 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
         alignment: AlignmentDirectional.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
-          child: AminaFirstUsePanel(
-            icon: Icons.auto_graph_rounded,
+          child: DefaultTextStyle.merge(
+            // Use the locally bundled Arabic font for the degraded first-use
+            // state. This report must remain readable with no network.
+            style: TextStyle(
+              fontFamily: Localizations.localeOf(context).languageCode == 'ar'
+                  ? 'NotoSansArabic'
+                  : null,
+              fontFamilyFallback: kOfflineFontFallbacks,
+            ),
+            child: AminaFirstUsePanel(
+              icon: Icons.auto_graph_rounded,
             eyebrow: l10n.navIamina,
             title: l10n.emptyDashboardTitle,
             body: AuditedPageCopy.of(context).emptyAnalysis,
@@ -18,7 +27,8 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
             onPrimaryAction: () => context.go('/ajouter'),
             secondaryActionLabel: l10n.importDocument,
             onSecondaryAction: () => context.go('/importer'),
-            note: l10n.firstUseTruthNote,
+              note: l10n.firstUseTruthNote,
+            ),
           ),
         ),
       ),
@@ -653,20 +663,44 @@ class _HeroInsightCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-          Row(
-            children: [
-              _HeroButton(
-                label: l10n.seeFindings,
-                onTap: onDiscoverTap,
-                isPrimary: true,
-              ),
-              const SizedBox(width: 12),
-              _HeroButton(
-                label: l10n.discussWithIamina,
-                onTap: onChatTap,
-                isPrimary: false,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Avoid clipping the French second action at 390 px; preserve
+              // the same button order, affordance and styling at every size.
+              if (constraints.maxWidth < 430) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _HeroButton(
+                      label: l10n.seeFindings,
+                      onTap: onDiscoverTap,
+                      isPrimary: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _HeroButton(
+                      label: l10n.discussWithIamina,
+                      onTap: onChatTap,
+                      isPrimary: false,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  _HeroButton(
+                    label: l10n.seeFindings,
+                    onTap: onDiscoverTap,
+                    isPrimary: true,
+                  ),
+                  const SizedBox(width: 12),
+                  _HeroButton(
+                    label: l10n.discussWithIamina,
+                    onTap: onChatTap,
+                    isPrimary: false,
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -687,8 +721,9 @@ class _HeroButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
