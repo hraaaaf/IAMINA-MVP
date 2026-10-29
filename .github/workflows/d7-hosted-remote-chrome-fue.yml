@@ -1,0 +1,77 @@
+name: D7 Web — remote Chrome QA (protected, read-only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d7-hosted-remote-chrome-fue.yml'
+      - 'scripts/d7_hosted_remote_chrome_fue.mjs'
+      - 'frontend/test/qa/d7_hosted_remote_chrome_fue.test.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chrome-synthetic:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify no-secret browser contract
+        run: |
+          set -euo pipefail
+          node --check scripts/d7_hosted_remote_chrome_fue.mjs
+          node --test frontend/test/qa/d7_hosted_remote_chrome_fue.test.mjs
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Run D7 functional treatment UI tests in real remote Chrome
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter test --platform chrome --reporter expanded test/features/profile/d7_web_treatment_choice_responsive_test.dart
+          flutter test --platform chrome --reporter expanded test/features/profile/d7_web_type_transition_contract_test.dart
+
+  hosted-preview-chrome:
+    # No secrets on pull requests. Manual QA branch only; protected approval.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029'
+    environment: d7-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      D7_PREVIEW_SHA: c10e6e69acb322820227b630a1efaf5c834e2f74
+      D7_QA_SSO_ACCESS: ${{ secrets.D7_QA_SSO_ACCESS }}
+      D7_QA_A_EMAIL: ${{ secrets.D7_QA_A_EMAIL }}
+      D7_QA_A_PASSWORD: ${{ secrets.D7_QA_A_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify privacy/scope before Chrome login
+        run: |
+          set -euo pipefail
+          node --check scripts/d7_hosted_remote_chrome_fue.mjs
+          node --test frontend/test/qa/d7_hosted_remote_chrome_fue.test.mjs
+      - name: Install pinned Playwright on disposable runner
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.0
+      - name: Run real Chrome against Vercel-protected QA Web
+        run: node scripts/d7_hosted_remote_chrome_fue.mjs
+      - name: Upload bounded public-login evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d7-qa-chrome-preflight-public
+          path: |
+            d7-qa-chrome-proof/result.json
+            d7-qa-chrome-proof/login-*.png
+          retention-days: 7
+          if-no-files-found: warn
