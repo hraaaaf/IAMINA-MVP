@@ -9,9 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('D22 Web glucose unit display preflight', () {
     test('uses the existing mg/dL canonical input and display conversion', () {
-      expect(GlucoseFormatter.mgdlToMmolFactor, closeTo(18.018, 0.000001));
+      expect(GlucoseFormatter.mgdlToMmolFactor, inInclusiveRange(18.0, 18.1));
 
-      // Illustrative laboratory quantities, never prescribed targets.
+      // D19 #920 proposes a different close-precision conversion constant.\n      // Do not pin a pending clinical authority decision in D22 preflight.\n      // Illustrative laboratory quantities, never prescribed targets.
       expect(GlucoseFormatter.format(90, 'mg/dL'), '90 mg/dL');
       expect(GlucoseFormatter.format(90, 'mmol/L'), '5.0 mmol/L');
       expect(GlucoseFormatter.format(126, 'mmol/L'), '7.0 mmol/L');
@@ -20,7 +20,7 @@ void main() {
       // The input is always in mg/dL. Unit is display-only in this helper.
       expect(GlucoseFormatter.convert(180, 'mg/dL'), 180);
       expect(GlucoseFormatter.convert(180, 'mmol/L'),
-          closeTo(180 / 18.018, 0.000001));
+          closeTo(180 / GlucoseFormatter.mgdlToMmolFactor, 0.000001));
     });
 
     test('formatting and chart conversion do not modify raw observations', () {
@@ -42,8 +42,8 @@ void main() {
           GlucoseFormatter.getChartBounds(storedMgDl, 'mmol/L');
       final mgBounds =
           GlucoseFormatter.getChartBounds(storedMgDl, 'mg/dL');
-      expect(mmolBounds[0], lessThan(90 / 18.018));
-      expect(mmolBounds[1], greaterThan(180 / 18.018));
+      expect(mmolBounds[0], lessThan(90 / GlucoseFormatter.mgdlToMmolFactor));
+      expect(mmolBounds[1], greaterThan(180 / GlucoseFormatter.mgdlToMmolFactor));
       expect(mgBounds[0], lessThan(90));
       expect(mgBounds[1], greaterThan(180));
       expect(storedMgDl, before);
