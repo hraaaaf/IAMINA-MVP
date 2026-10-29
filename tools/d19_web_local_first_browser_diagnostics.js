@@ -68,6 +68,57 @@ async function findVisibleGreenCta(page, minRunOverride) {
 // On the app-lock screen, the *outlined* lower button is drawn as two broad
 // horizontal teal strokes. Only click when both edges are observed with
 // consistent coordinates in the same real screenshot (not a guessed position).
+// The privacy confirmation is intentionally darker than the local-enrollment
+// CTA. Identify a dark-green filled rectangle in the *visible screenshot*
+// rather than assuming its locale-dependent horizontal placement. The
+// screenshot supplies the target; no DOM injection or clinical bypass.
+async function findPrivacyDialogConfirm(page) {
+  const shot = PNG.sync.read(await page.screenshot({ fullPage: false }));
+  const { width, height } = shot;
+  const rows = [];
+  for (let y = Math.floor(height * 0.27); y < Math.floor(height * 0.72); y++) {
+    let best = { length: 0, center: 0 };
+    let start = -1;
+    for (let x = 0; x <= width; x++) {
+      let dark = false;
+      if (x < width) {
+        const offset = (y * width + x) * 4;
+        const [r, g, b] = shot.data.subarray(offset, offset + 3);
+        dark = r <= 12 && g >= 58 && g <= 82 &&
+          b >= 43 && b <= 66;
+      }
+      if (dark && start < 0) start = x;
+      if (!dark && start >= 0) {
+        const length = x - start;
+        if (length > best.length) best = { length, center: start + length / 2 };
+        start = -1;
+      }
+    }
+    if (best.length >= 80) rows.push({ y, x: best.center, len: best.length });
+  }
+  // Require an actual filled, multi-row rectangle rather than a thin border,
+  // an icon or a background element from the dimmed underlying screen.
+  const groups = [];
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && row.y === last[last.length - 1].y + 1 &&
+        Math.abs(row.x - last[last.length - 1].x) <= 5) {
+      last.push(row);
+    } else {
+      groups.push([row]);
+    }
+  }
+  const filled = groups.filter(group => group.length >= 12 &&
+    group.length <= 85 && Math.max(...group.map(r => r.len)) >= 90);
+  if (filled.length !== 1) {
+    throw new Error('Expected one visible dark-green privacy confirmation, found ' + filled.length);
+  }
+  const group = filled[0];
+  const row = group[Math.floor(group.length / 2)];
+  return { x: Math.round(row.x), y: row.y,
+    height: group.length, width: Math.max(...group.map(r => r.len)) };
+}
+
 async function findAppLockSkipOutline(page) {
   const shot = PNG.sync.read(await page.screenshot({ fullPage: false }));
   const { width, height } = shot;
@@ -189,7 +240,7 @@ async function runCase(browser, c) {
       // A confirmation dialog is a privacy gate. Only a visible, sufficiently
       // wide teal primary action is acceptable. Do not bypass via script.
       try {
-        const confirm = await findVisibleGreenCta(page, 90);
+        const confirm = await findPrivacyDialogConfirm(page);
         observed.appLockConfirmPointer = confirm;
         await page.mouse.click(confirm.x, confirm.y);
         await page.waitForTimeout(3500);
