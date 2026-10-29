@@ -198,6 +198,18 @@ AppRouterHolder createAppRouterHolder({
         if (!isOnboardingPage && !isAppLockPage) return '/onboarding';
       }
 
+      // A completed local profile must leave first-use even when no remote
+      // consent gate runs. The profile stream may update after the attempted
+      // navigation to /dashboard; redirect the still-open onboarding route.
+      if (isOnboardingPage &&
+          activeConsent?.hasCompletedOnboarding == true &&
+          isLoggedIn &&
+          !isAnonymous &&
+          !authService.isAuditSession &&
+          !authService.hasRemoteApiCredential) {
+        return _homeRoute();
+      }
+
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
       // No mandatory AI dialog for the local-only path: remote AI transport
       // has no bearer and is denied by ApiClient independently of routing.
