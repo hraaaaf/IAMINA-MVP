@@ -228,6 +228,9 @@ jobs:
       - name: D11 optional hosted account signup UI — FR/AR x 3 Web viewports
         run: timeout --signal=TERM 180s flutter test --no-pub --timeout 1m --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true test/features/auth/d11_web_positive_signup_test.dart
 
+      - name: D11 real navigation logout controls — FR/AR tablet/desktop
+        run: timeout --signal=TERM 120s flutter test --no-pub test/features/navigation/d11_main_shell_real_logout_test.dart
+
       - name: Run Flutter tests
         run: flutter test --no-pub
 
