@@ -28,6 +28,12 @@ class SessionAuth(NinjaSessionAuth):
     """Preserve Django session auth while using IAMINA's narrow Vercel CSRF policy."""
 
     def _get_key(self, request: HttpRequest) -> Optional[str]:
+        # An explicit Authorization header selects bearer authentication.
+        # When that bearer is invalid, never silently fall back to another
+        # patient who happens to have a valid Django session cookie. A request
+        # with no Authorization header retains the Web/PWA session + CSRF path.
+        if "HTTP_AUTHORIZATION" in request.META:
+            return None
         if self.csrf and not getattr(request, "_ninja_csrf_exempt", False):
             error_response = check_iamina_csrf(request)
             if error_response:
