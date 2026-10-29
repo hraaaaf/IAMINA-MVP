@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""D7 Chrome real controller / IndexedDB integration with ephemeral real-Django-auth A-B-A.
+"""CI-only D7: REAL AuthService native login → local Django/Postgres → Web IndexedDB.
 
-No real login, UI clicks, Vercel access, secrets or real patient data.
+Temporary synthetic accounts only; no hosted Vercel, real clinical data or UI clicks.
 """
 import json
 import shutil
