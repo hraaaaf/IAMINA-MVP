@@ -236,9 +236,14 @@ class _LoginScreenState extends State<LoginScreen> {
         await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
       }
       if (mounted) context.go('/dashboard');
+    } on NativeLoginRejected {
+      if (mounted) setState(() => _error = AppLocalizations.of(context)!.loginError);
+    } on NativeLoginServiceUnavailable {
+      if (mounted) setState(() => _error =
+          'Le service de connexion QA ne répond pas correctement. Réessayez après correction du serveur.');
     } catch (_) {
-      if (mounted)
-        setState(() => _error = AppLocalizations.of(context)!.loginError);
+      if (mounted) setState(() => _error =
+          'Connexion au serveur QA impossible. Vérifiez la connexion réseau et réessayez.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
