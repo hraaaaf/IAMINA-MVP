@@ -18,6 +18,9 @@ on:
       - scripts/d30_web_locale_visual_smoke.py
       - frontend/web/iamina_service_worker.js
       - frontend/test/features/d30_local_enrollment_cta_test.dart
+      - frontend/lib/features/auth/login_screen.dart
+      - frontend/lib/features/auth/app_lock_setup_screen.dart
+      - frontend/lib/services/app_lock_service.dart
       - frontend/vercel_build.sh
       - frontend/lib/routes/app_router.dart
       - frontend/assets/fonts/**

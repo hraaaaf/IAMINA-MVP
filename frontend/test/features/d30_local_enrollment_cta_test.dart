@@ -55,4 +55,35 @@ void main() {
     expect(find.text('D30_LOCK_ROUTE_REACHED'), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, '/app-lock/setup');
   });
+  testWidgets('D30 offers remote account as a separate choice when available',
+      (tester) async {
+    final auth = _MockAuthService();
+    var accountSelected = false;
+    await tester.pumpWidget(ChangeNotifierProvider<AuthService>.value(
+      value: auth,
+      child: MaterialApp(
+        locale: const Locale('fr'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: LocalDeviceEnrollmentScreen(
+          onChooseAccount: () => accountSelected = true,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final remote = find.byKey(const Key('d30-choose-account'));
+    expect(remote, findsOneWidget);
+    expect(find.text('Se connecter ou créer un compte'), findsOneWidget);
+    await tester.ensureVisible(remote);
+    await tester.pumpAndSettle();
+    await tester.tap(remote);
+    expect(accountSelected, isTrue);
+    verifyNever(() => auth.enrollLocalDevice());
+  });
 }
