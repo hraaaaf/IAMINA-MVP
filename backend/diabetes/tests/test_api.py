@@ -184,8 +184,11 @@ class APISummaryEdgeCasesTestCase(TestCase):
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
         data = loads(resp.content)
-        # High glucose (350 mg/dL > 180 threshold) → TAR% must be > 0
-        self.assertGreater(data["kpis"]["tar_pct"], 0)
+        # A single manual high reading is NOT a verified CGM time-above-range.
+        self.assertEqual(data["kpis"]["log_count"], 1)
+        self.assertFalse(data["has_sufficient_data"])
+        self.assertIsNone(data["kpis"]["tar_pct"])
+        self.assertIsNone(data["kpis"]["gmi"])
 
     def test_summary_low_glucose(self):
         self.client.force_login(self.user)
@@ -193,8 +196,11 @@ class APISummaryEdgeCasesTestCase(TestCase):
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
         data = loads(resp.content)
-        # Low glucose (50 mg/dL < 70 threshold) → TBR% must be > 0
-        self.assertGreater(data["kpis"]["tbr_pct"], 0)
+        # A single manual low reading is NOT a verified CGM time-below-range.
+        self.assertEqual(data["kpis"]["log_count"], 1)
+        self.assertFalse(data["has_sufficient_data"])
+        self.assertIsNone(data["kpis"]["tbr_pct"])
+        self.assertIsNone(data["kpis"]["gmi"])
 
     def test_summary_custom_days(self):
         self.client.force_login(self.user)
