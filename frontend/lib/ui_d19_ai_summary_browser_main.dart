@@ -43,6 +43,8 @@ class _D19SyntheticApi extends ApiClient {
 
   @override
   Future<SummaryResponse?> getAiSummary({int days = 21}) async {
+    // Observable in Chrome when the real period control is activated by Tab+Enter.
+    print('D19_SYNTHETIC_AI_DAYS=$days');
     if (scenario == 'unavailable') return null;
     return SummaryResponse.fromJson({
       'insights': <dynamic>[],

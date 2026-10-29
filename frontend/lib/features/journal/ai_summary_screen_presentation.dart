@@ -498,9 +498,13 @@ class _PeriodTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onTap(days),
-      child: AnimatedContainer(
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: () => onTap(days),
+        borderRadius: BorderRadius.circular(99),
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -517,6 +521,7 @@ class _PeriodTab extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: selected ? Colors.white : AminaTheme.textSecondary(context),
           ),
+        ),
         ),
       ),
     );

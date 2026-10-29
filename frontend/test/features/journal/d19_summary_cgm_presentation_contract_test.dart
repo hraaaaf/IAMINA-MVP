@@ -53,6 +53,19 @@ void main() {
     expect(shared, contains("'NotoSansArabic'"));
   });
 
+  test('D19: all three period controls expose keyboard and selected semantics', () {
+    final period = source
+        .split('class _PeriodTab extends StatelessWidget')
+        .last
+        .split('class _GreetingHeader')
+        .first;
+    expect(period, contains('return Semantics('));
+    expect(period, contains('button: true'));
+    expect(period, contains('selected: selected'));
+    expect(period, contains('child: InkWell('));
+    expect(period, isNot(contains('return GestureDetector(')));
+  });
+
   test('D19: no AGP card without verified CGM metadata', () {
     expect(source, contains('final hasEligibleAgp = agpData.isNotEmpty'));
     expect(source, contains('kpis?.tirPct == null || kpis?.tarPct == null'));

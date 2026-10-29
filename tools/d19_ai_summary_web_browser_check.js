@@ -24,9 +24,14 @@ const tests=[];
           if(process.env.D19_DIAGNOSTIC_ONLY==='1' && (loc!=='fr'||v.name!=='mobile'||scenario!=='manual'))continue;
           const context=await browser.newContext({viewport:{width:v.width,height:v.height},locale:loc==='ar'?'ar-MA':'fr-FR',deviceScaleFactor:1,serviceWorkers:'block'});
           const page=await context.newPage();
-          const errors=[], outbound=[];
+          const errors=[], outbound=[], requestedDays=[];
           page.on('pageerror',err=>errors.push(err.message.slice(0,400)));
-          page.on('console',msg=>{if(msg.type()==='error'||msg.text().includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(msg.text().slice(0,2500));});
+          page.on('console',msg=>{
+            const message=msg.text();
+            const match=message.match(/D19_SYNTHETIC_AI_DAYS=(\\d+)/);
+            if(match) requestedDays.push(Number(match[1]));
+            if(msg.type()==='error'||message.includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(message.slice(0,2500));
+          });
           await page.route('**/*',route=>{
             const u=route.request().url();
             if(u.startsWith(origin)||u.startsWith('data:')||u.startsWith('blob:'))return route.continue();
@@ -40,7 +45,22 @@ const tests=[];
           const bytes=await page.screenshot({path:path.join(out,file),fullPage:false});
           const hash=crypto.createHash('sha256').update(bytes).digest('hex');
           const dims=await page.evaluate(()=>({w:window.innerWidth,h:window.innerHeight,scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth}));
-          tests.push({locale:loc,viewport:v.name,scenario,status:response.status(),filename:file,bytes:bytes.length,sha256:hash,errors,outbound,overflow:dims.scrollWidth>dims.w||dims.bodyWidth>dims.w});
+          const observation={locale:loc,viewport:v.name,scenario,status:response.status(),filename:file,bytes:bytes.length,sha256:hash,errors,outbound,overflow:dims.scrollWidth>dims.w||dims.bodyWidth>dims.w};
+          // FUE: genuinely use the physical keyboard on real Flutter Web (not a
+          // synthetic JavaScript click). Assert an observable 7-day API request.
+          if (v.name==='mobile' && scenario==='verified') {
+            await page.mouse.click(v.width-6,v.height-8); // focus the Flutter surface
+            for(let i=0;i<5&&!requestedDays.includes(7);i++) {
+              await page.keyboard.press('Tab');
+              await page.keyboard.press('Enter');
+              await page.waitForTimeout(300);
+            }
+            observation.keyboardPeriod7=requestedDays.includes(7);
+            observation.keyboardRequests=requestedDays.slice();
+            observation.keyboardScreenshot=loc+'-keyboard-focus-verified.png';
+            await page.screenshot({path:path.join(out,observation.keyboardScreenshot)});
+          }
+          tests.push(observation);
           await context.close();
         }
       }
@@ -55,6 +75,14 @@ const tests=[];
     }
     fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
     console.log(JSON.stringify({tested:tests.length,failures:failed.length,details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason,errors:f.errors}))},null,2));
+    if(process.env.D19_AI_WEB_BASELINE!=='1') {
+      const keyboard=tests.filter(t=>t.keyboardPeriod7!==undefined);
+      if(keyboard.length!==2 || keyboard.some(t=>!t.keyboardPeriod7)) {
+        failed.push({reason:'Real Chrome keyboard Tab+Enter did not activate 7-day range',keyboard:keyboard.map(t=>({locale:t.locale,requested:t.keyboardRequests}))});
+      }
+    }
+    // Save the complete result, including keyboard outcome, after all assertions.
+    fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
     if(process.env.D19_AI_WEB_BASELINE!=='1' && failed.length)process.exitCode=1;
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

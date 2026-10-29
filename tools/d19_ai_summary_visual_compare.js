@@ -39,7 +39,9 @@ const result={
   limitation:'A controlled component source comparison, not the full historical hosted/production app',
   expectedPairs:18,pairs,invalid,afterFailures:b.failed.length,
   visuallyChangedPairs:pairs.filter(x=>x.changedPixels>2000).length,
+  keyboardPositiveAfter:b.tests.filter(t=>t.keyboardPeriod7===true).length,
+  keyboardNegativeBefore:a.tests.filter(t=>t.keyboardPeriod7===false).length,
 };
 fs.writeFileSync('d19-visual-comparison.json',JSON.stringify(result,null,2));
 console.log('D19_BEFORE_AFTER='+JSON.stringify({pairs:pairs.length,invalid,afterFailures:b.failed.length,visuallyChangedPairs:result.visuallyChangedPairs}));
-if(pairs.length!==18||invalid||b.failed.length||result.visuallyChangedPairs<6)process.exitCode=1;
+if(pairs.length!==18||invalid||b.failed.length||result.visuallyChangedPairs<6||result.keyboardPositiveAfter!==2)process.exitCode=1;
