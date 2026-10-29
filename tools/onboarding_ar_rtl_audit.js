@@ -151,12 +151,26 @@ async function mustBeInViewport(page,label,size,name) {
           await screenshot(page,'arabic-units-desktop',size);
         }
         phase='final_start_cta';
-        const start=await locate(page,'ابدأ');
+        let start=await locate(page,'ابدأ');
         if(!start)throw new Error('Missing Arabic start CTA');
-        const rect=start.rect;
-        if(rect.x<0 || rect.y<0 || rect.x+rect.width>width+1 ||
-           rect.y+rect.height>height+1)
-           throw new Error('Arabic start CTA clipped '+JSON.stringify({size,rect}));
+        // Desktop is intentionally not auto-scrolled after every answer.
+        // If its inline CTA is below the fold, verify one manual wheel scroll
+        // can bring the entire button into view without an overlapping footer.
+        if(width>=900) {
+          await screenshot(page,'arabic-desktop-before-manual-scroll',size);
+          if(start.rect.y+start.rect.height>=height-1 ||
+             start.rect.height<32) {
+            await page.mouse.move(width*0.44,height*0.68);
+            await page.mouse.wheel(0,340);
+            await sleep(500);
+            start=await locate(page,'ابدأ');
+          }
+        }
+        const rect=start?.rect;
+        if(!rect || rect.x<0 || rect.y<0 || rect.x+rect.width>width+1 ||
+           rect.y+rect.height>height-1 ||
+           rect.height < (width<900 ? 44 : 32))
+           throw new Error('Arabic start CTA not fully accessible '+JSON.stringify({size,rect}));
         await screenshot(page,'arabic-final',size);
         if(exceptions.length) throw new Error(
           'Flutter Web uncaught browser exceptions: '+JSON.stringify(exceptions));
