@@ -11,6 +11,7 @@ on:
       - frontend/test/services/d30_api_egress_denial_test.dart
       - scripts/d30_web_enrollment_e2e.py
       - scripts/d30_web_clinical_e2e.py
+      - frontend/test/features/add_log_sheet_test.dart
       - scripts/d30_sw_bootstrap_test.mjs
       - frontend/web/flutter_bootstrap.js
       - scripts/d30_web_offline_e2e.py
@@ -49,6 +50,8 @@ jobs:
           cache: true
       - name: Resolve Flutter dependencies
         run: flutter pub get
+      - name: D30 Add Log widget regression
+        run: flutter test --no-pub test/features/add_log_sheet_test.dart
       - name: D30 Web bootstrap guard — blocked Service Worker regression
         run: node ../scripts/d30_sw_bootstrap_test.mjs
       # Isolate the new CTA widget test as its own visible red/green step.
