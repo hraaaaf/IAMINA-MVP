@@ -26,11 +26,22 @@ class DemoSeedPatientIsolationTests(TestCase):
             email="d11-b@example.test",
             password="synthetic-password-never-used",
         )
-        self.token_a = issue_native_token(self.patient_a)
-        self.token_b = issue_native_token(self.patient_b)
-        # These are genuine, verifiable native bearers; no fabricated token.
+        # Real HTTP auth in Django test client may have different request
+        # middleware from direct signer calls; verify account and bearer via
+        # the same login endpoint used by Flutter's native AuthService.
+        self.token_a = self._login(self.patient_a)
+        self.token_b = self._login(self.patient_b)
         self.assertEqual(verify_native_token(self.token_a).pk, self.patient_a.pk)
         self.assertEqual(verify_native_token(self.token_b).pk, self.patient_b.pk)
+
+    def _login(self, user):
+        response = self.client.post(
+            "/api/v1/auth/login",
+            data={"email": user.email, "password": "synthetic-password-never-used"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()["access_token"]
 
     def _seed(self, token):
         return self.client.post(
