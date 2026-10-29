@@ -27,5 +27,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Créer un compte'), findsNothing);
     expect(find.byKey(const Key('d30-return-local')), findsOneWidget);
-  });
+  }, skip: !kRemoteAccountLoginEnabled);
 }
