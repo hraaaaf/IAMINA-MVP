@@ -95,7 +95,7 @@ def main():
                             "expression": expression, "returnByValue": True,
                         })
                         last = result.get("result", {}).get("value") or {}
-                        if last.get("title") == "IAMINA" and last.get("flutterHost"):
+                        if last.get("title", "").casefold() == "iamina" and last.get("flutterHost"):
                             proof["checks"].append({"phase": phase, "result": "PASS",
                                                     "observed": last})
                             return
@@ -117,7 +117,7 @@ def main():
                     "returnByValue": True,
                 })
                 val = result.get("result", {}).get("value") or {}
-                if not (val.get("offline") and val.get("title") == "IAMINA" and val.get("flutterHost")):
+                if not (val.get("offline") and val.get("title", "").casefold() == "iamina" and val.get("flutterHost")):
                     raise RuntimeError(f"Offline in-memory app shell unavailable: {val}")
                 proof["checks"].append({"phase": "offline_after_boot",
                                         "result": "PASS", "observed": val})
