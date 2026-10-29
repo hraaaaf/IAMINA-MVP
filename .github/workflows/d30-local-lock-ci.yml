@@ -76,6 +76,7 @@ jobs:
           assert source.count(expected) == 2, 'Vercel release paths must bundle CanvasKit locally'
           print('D30 release asset policy PASS: Vercel Web never needs CanvasKit CDN')
           PY
+      # Re-run on complete, SHA256-verified binary assets (not truncated blobs).
       - name: D30 local fonts and OFL licenses preflight
         run: |
           python3 - <<'PY'
