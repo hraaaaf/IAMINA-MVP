@@ -31,11 +31,11 @@ async function capture(page, id, phase) {
  * Flutter Web CanvasKit may render a visible button while the accessibility
  * placeholder itself is non-visible to Playwright.
  */
-async function findVisibleGreenCta(page) {
+async function findVisibleGreenCta(page, minRunOverride) {
   const shot = PNG.sync.read(await page.screenshot({ fullPage: false }));
   const width = shot.width;
   const height = shot.height;
-  const minimumRun = Math.min(250, Math.round(width * 0.40));
+  const minimumRun = minRunOverride || Math.min(250, Math.round(width * 0.40));
   const rows = [];
   for (let y = 140; y < height - 40; y++) {
     let start = -1;
@@ -62,6 +62,53 @@ async function findVisibleGreenCta(page) {
   }
   const selected = rows[Math.floor(rows.length / 2)];
   return { x: Math.round(selected.x), y: selected.y, width: selected.width, sampledRows: rows.length };
+}
+
+
+// On the app-lock screen, the *outlined* lower button is drawn as two broad
+// horizontal teal strokes. Only click when both edges are observed with
+// consistent coordinates in the same real screenshot (not a guessed position).
+async function findAppLockSkipOutline(page) {
+  const shot = PNG.sync.read(await page.screenshot({ fullPage: false }));
+  const { width, height } = shot;
+  const rows = [];
+  for (let y = Math.floor(height * 0.25); y < height - 20; y++) {
+    let best = { len: 0, center: 0 };
+    let start = -1;
+    for (let x = 0; x <= width; x++) {
+      let match = false;
+      if (x < width) {
+        const offset = (y * width + x) * 4;
+        const [r, g, b] = shot.data.subarray(offset, offset + 3);
+        match = r < 60 && g >= 80 && g <= 170 &&
+          b >= 70 && b <= 160 && g > r * 1.3;
+      }
+      if (match && start < 0) start = x;
+      if (!match && start >= 0) {
+        const len = x - start;
+        if (len > best.len) best = { len, center: start + len / 2 };
+        start = -1;
+      }
+    }
+    if (best.len >= Math.min(160, Math.round(width * 0.25))) {
+      rows.push({ x: best.center, y, len: best.len });
+    }
+  }
+  for (let i = rows.length - 1; i > 0; i--) {
+    const lower = rows[i];
+    for (let j = i - 1; j >= 0; j--) {
+      const upper = rows[j];
+      const distance = lower.y - upper.y;
+      if (distance > 100) break;
+      if (distance >= 30 && distance <= 65 &&
+          Math.abs(lower.x - upper.x) <= 3 &&
+          Math.abs(lower.len - upper.len) <= 6) {
+        return { x: Math.round(lower.x), y: Math.round((upper.y + lower.y) / 2),
+          top: upper.y, bottom: lower.y, width: lower.len };
+      }
+    }
+  }
+  throw new Error('App-lock outlined skip CTA was not observed; refusing ungrounded click');
 }
 
 async function runCase(browser, c) {
@@ -133,6 +180,28 @@ async function runCase(browser, c) {
       ? 'ROUTE_CHANGED'
       : 'ROUTE_UNCHANGED';
     observed.errorTextVisible = await page.getByText(/échec|failed|error|فشل/i).allTextContents().catch(() => []);
+    if (observed.afterHash === '#/app-lock/setup') {
+      const skip = await findAppLockSkipOutline(page);
+      observed.appLockSkipPointer = skip;
+      await page.mouse.click(skip.x, skip.y);
+      await page.waitForTimeout(950);
+      observed.appLockDialogScreenshot = await capture(page, c.id, 'app-lock-dialog');
+      // A confirmation dialog is a privacy gate. Only a visible, sufficiently
+      // wide teal primary action is acceptable. Do not bypass via script.
+      try {
+        const confirm = await findVisibleGreenCta(page, 90);
+        observed.appLockConfirmPointer = confirm;
+        await page.mouse.click(confirm.x, confirm.y);
+        await page.waitForTimeout(3500);
+        observed.afterConfirmHash = await page.evaluate(() => location.hash);
+        observed.appLockConsent = observed.afterConfirmHash === '#/onboarding'
+          ? 'ONBOARDING_REACHED'
+          : 'NO_ONBOARDING_TRANSITION';
+      } catch (error) {
+        observed.appLockConsent = 'CONFIRM_CTA_UNREACHABLE';
+        observed.appLockConsentDiagnostic = String(error.message).slice(0,430);
+      }
+    }
     return observed;
   } catch (e) {
     observed.navigation = 'RUNTIME_ERROR';
@@ -159,8 +228,9 @@ async function runCase(browser, c) {
     locale: c.locale, viewport: c.viewport, navigation: c.navigation,
     beforeHash: c.beforeHash, afterHash: c.afterHash,
     pageErrors: c.pageErrors.slice(0, 3), diagnostic: c.diagnostic,
+    appLockConsent: c.appLockConsent, afterConfirmHash: c.afterConfirmHash,
   })), null, 2));
-  const notAdvanced = report.filter(c => c.navigation !== 'ROUTE_CHANGED');
+  const notAdvanced = report.filter(c => c.navigation !== 'ROUTE_CHANGED' || c.appLockConsent !== 'ONBOARDING_REACHED');
   if (notAdvanced.length) {
     console.error(`D19 local-first Chrome diagnostic: ${notAdvanced.length}/${report.length} viewports did not advance; details in diagnostic.json`);
     process.exitCode = 1;
