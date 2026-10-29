@@ -62,9 +62,9 @@ jobs:
         run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.0
       - name: Run real Chrome against Vercel-protected QA Web
         env:
-      D7_QA_SSO_ACCESS: ${{ secrets.D7_QA_SSO_ACCESS }}
-      D7_QA_A_EMAIL: ${{ secrets.D7_QA_A_EMAIL }}
-      D7_QA_A_PASSWORD: ${{ secrets.D7_QA_A_PASSWORD }}
+          D7_QA_SSO_ACCESS: ${{ secrets.D7_QA_SSO_ACCESS }}
+          D7_QA_A_EMAIL: ${{ secrets.D7_QA_A_EMAIL }}
+          D7_QA_A_PASSWORD: ${{ secrets.D7_QA_A_PASSWORD }}
         run: node scripts/d7_hosted_remote_chrome_fue.mjs
       - name: Upload bounded public-login evidence only
         if: always()
