@@ -110,6 +110,9 @@ void main() {
         tester.view.physicalSize = Size(viewport.$1, viewport.$2);
         tester.view.devicePixelRatio = 1;
         FlutterSecureStorage.setMockInitialValues({});
+        // Diagnostic markers are fixture-only; never include credentials.
+        // ignore: avoid_print
+        print('D11_FUE_NEG_STAGE=fixture_started:$locale:${viewport.$1}');
         var rejectedLogins = 0;
         var recoveryRequests = 0;
         final auth = AuthService(
@@ -131,6 +134,8 @@ void main() {
           await auth.initialize();
         });
         // No shared real/legacy patient database in FUE widget tests.
+        // ignore: avoid_print
+        print('D11_FUE_NEG_STAGE=auth_initialized:$locale:${viewport.$1}');
         final db = AppDatabase(NativeDatabase.memory());
         final api = ApiClient(authService: auth);
         addTearDown(() async {
@@ -161,6 +166,8 @@ void main() {
         ));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+        // ignore: avoid_print
+        print('D11_FUE_NEG_STAGE=widget_rendered:$locale:${viewport.$1}');
         final fields = find.byType(TextField);
         final editableFields = find.byType(EditableText);
         final emailFocus =
@@ -186,6 +193,8 @@ void main() {
         await tester.tap(submit);
         await tester.pumpAndSettle();
         expect(rejectedLogins, 1);
+        // ignore: avoid_print
+        print('D11_FUE_NEG_STAGE=login_denied:$locale:${viewport.$1}');
         expect(find.text(l10n.loginError), findsOneWidget);
         expect(auth.isRemoteCredentialVerified, isFalse);
         expect(auth.boundNativeAccountId, isNull);
@@ -208,6 +217,8 @@ void main() {
         await tester.tap(send);
         await tester.pumpAndSettle();
         expect(recoveryRequests, 1);
+        // ignore: avoid_print
+        print('D11_FUE_NEG_STAGE=recovery_requested:$locale:${viewport.$1}');
         expect(find.byType(AlertDialog), findsNothing);
         expect(auth.isRemoteCredentialVerified, isFalse);
         expect(tester.takeException(), isNull);
