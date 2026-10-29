@@ -35,7 +35,7 @@ jobs:
           grep -Fq 'cert/d7-web-fue-preview-20261029' frontend/vercel_build.sh
           grep -Fq 'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true' frontend/vercel_build.sh
           grep -Fq 'IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false' frontend/vercel_build.sh
-          grep -Fq 'https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app' frontend/vercel_build.sh
+          grep -Fq 'https://iamina-certified-i8v18ds1r-achraf-benmoussa-s-projects.vercel.app' frontend/vercel_build.sh
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
