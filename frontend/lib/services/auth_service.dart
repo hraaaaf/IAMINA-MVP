@@ -335,7 +335,7 @@ class AuthService extends ChangeNotifier {
         return;
       }
     }
-    if (nativeResponse.statusCode == 401 || nativeResponse.statusCode == 403) {
+    if (nativeResponse.statusCode == 401) {
       throw const NativeLoginRejected();
     }
     throw NativeLoginServiceUnavailable(nativeResponse.statusCode);
