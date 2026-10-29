@@ -74,9 +74,9 @@ extension AuthLocalizedCopy on AppLocalizations {
       );
 
   String get localEnrollmentAction => _pick(
-        en: 'Set up this device',
-        fr: 'Configurer cet appareil',
-        ar: 'إعداد هذا الجهاز',
+        en: 'Continue without an account',
+        fr: 'Continuer sans compte',
+        ar: 'المتابعة بدون حساب',
       );
 
   String get localEnrollmentFooter => _pick(

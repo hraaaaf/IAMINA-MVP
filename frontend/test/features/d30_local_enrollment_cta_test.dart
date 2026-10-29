@@ -51,6 +51,7 @@ void main() {
     // find.byType(FilledButton) checks the exact runtimeType and misses it.
     final button = find.byWidgetPredicate((widget) => widget is FilledButton);
     expect(button, findsOneWidget);
+    expect(find.text('Continue without an account'), findsOneWidget);
     await tester.ensureVisible(button);
     await tester.pumpAndSettle();
     await tester.tap(button);
