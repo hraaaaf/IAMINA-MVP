@@ -77,6 +77,7 @@ Future<void> main() async {
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     debugPrint('D19_AI_SUMMARY_RENDER_ERROR: ${details.exceptionAsString()}');
+    debugPrint('D19_AI_SUMMARY_STACK: ${details.stack}');
   };
   ErrorWidget.builder = (details) => Material(
     color: const Color(0xFFFFE0E0),

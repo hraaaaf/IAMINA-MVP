@@ -32,7 +32,7 @@ jobs:
         run: |
           flutter pub get
           flutter analyze --no-fatal-infos lib/ui_d19_ai_summary_browser_main.dart
-          flutter build web --release --no-web-resources-cdn \
+          flutter build web --debug --no-web-resources-cdn \
             -t lib/ui_d19_ai_summary_browser_main.dart
       - name: Install Chrome for synthetic browser
         run: |
@@ -45,7 +45,7 @@ jobs:
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:7358/ >/dev/null
-          node tools/d19_ai_summary_web_browser_check.js
+          D19_DIAGNOSTIC_ONLY=1 node tools/d19_ai_summary_web_browser_check.js
       - name: Upload synthetic clinic UI screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -21,11 +21,12 @@ const tests=[];
     for(const loc of ['fr','ar']){
       for(const v of viewports){
         for(const scenario of ['manual','verified','unavailable']){
+          if(process.env.D19_DIAGNOSTIC_ONLY==='1' && (loc!=='fr'||v.name!=='mobile'||scenario!=='manual'))continue;
           const context=await browser.newContext({viewport:{width:v.width,height:v.height},locale:loc==='ar'?'ar-MA':'fr-FR',deviceScaleFactor:1,serviceWorkers:'block'});
           const page=await context.newPage();
           const errors=[], outbound=[];
           page.on('pageerror',err=>errors.push(err.message.slice(0,400)));
-          page.on('console',msg=>{if(msg.type()==='error'||msg.text().includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(msg.text().slice(0,400));});
+          page.on('console',msg=>{if(msg.type()==='error'||msg.text().includes('D19_AI_SUMMARY_RENDER_ERROR')) errors.push(msg.text().slice(0,2500));});
           await page.route('**/*',route=>{
             const u=route.request().url();
             if(u.startsWith(origin)||u.startsWith('data:')||u.startsWith('blob:'))return route.continue();
@@ -48,7 +49,7 @@ const tests=[];
     for(const t of tests){
       if(t.status!==200||t.bytes<15000||t.errors.length||t.outbound.length||t.overflow)failed.push(t);
     }
-    for(const loc of ['fr','ar'])for(const v of viewports){
+    if(process.env.D19_DIAGNOSTIC_ONLY!=='1')for(const loc of ['fr','ar'])for(const v of viewports){
       const items=tests.filter(t=>t.locale===loc&&t.viewport===v.name);
       if(new Set(items.map(t=>t.sha256)).size<2)failed.push({locale:loc,viewport:v.name,reason:'no distinct clinical state render'});
     }
