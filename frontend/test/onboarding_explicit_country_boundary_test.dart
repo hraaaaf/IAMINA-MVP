@@ -56,12 +56,14 @@ void main() {
     final source = File(
       'lib/features/auth/onboarding_chat_screen.dart',
     ).readAsStringSync();
-    final first = source.indexOf('Future<void> _selectLanguage(');
+    final first = source.indexOf('void _selectLanguage(');
     final last = source.indexOf('Future<void> _finish(');
     expect(first, greaterThanOrEqualTo(0));
     expect(last, greaterThan(first));
     final selection = source.substring(first, last);
     expect(selection, contains('setLanguageOnly(value)'));
+    // UI reveal is synchronous; persistence remains an independent operation.
+    expect(selection, contains('_revealStep(_countryStepKey)'));
     expect(selection, isNot(contains("country: _country ?? 'MA'")));
     expect(source, contains('country: _country!'));
   });

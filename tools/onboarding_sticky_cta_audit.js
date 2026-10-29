@@ -40,6 +40,37 @@ async function choose(page, label) {
   throw new Error('Cannot select onboarding choice: ' + label);
 }
 
+async function assertStepInViewport(page, label, width, height, name) {
+  // Flutter CanvasKit renders text inside an accessibility node. Inspect
+  // role-bound chips first, without any test-induced scrolling.
+  const candidates = [
+    page.getByRole('checkbox', {name:label, exact:true}),
+    page.getByRole('button', {name:label, exact:true}),
+    page.getByRole('radio', {name:label, exact:true}),
+    page.getByText(label, {exact:false}),
+  ];
+  let rect = null;
+  for (const candidate of candidates) {
+    if (!(await candidate.count())) continue;
+    for (let index = 0; index < await candidate.count(); index++) {
+      const control = candidate.nth(index);
+      if (!(await control.isVisible().catch(() => false))) continue;
+      rect = await control.boundingBox().catch(() => null);
+      if (rect) break;
+    }
+    if (rect) break;
+  }
+  if (!rect || rect.y < -1 || rect.y > height - 60) {
+    throw new Error('Next onboarding step not revealed: ' +
+      JSON.stringify({name, label, width, height, rect}));
+  }
+  await page.screenshot({
+    path: out + '/onboarding-step-' + name + '-' + width + 'x' + height + '.png',
+    fullPage:false,
+  });
+  return rect;
+}
+
 async function chooseCountry(page, width, height) {
   const probes = [
     page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
@@ -116,8 +147,43 @@ async function chooseCountry(page, width, height) {
           }
         }
         await choose(page, 'Français');
+        // Country should be revealed by the PRODUCT, not by test scrolling.
+        await sleep(500);
+        const countryCandidates = [
+          page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
+          page.getByRole('combobox', {name:/Rechercher un pays|Pays/i}),
+          page.getByText('Rechercher un pays', {exact:false}),
+        ];
+        let countryRect = null;
+        for (const candidate of countryCandidates) {
+          if (!(await candidate.count())) continue;
+          countryRect = await candidate.first().boundingBox().catch(() => null);
+          if (countryRect) break;
+        }
+        if (!countryRect || countryRect.y < -1 ||
+            countryRect.y > height - 60) {
+          throw new Error('Country not visible after language: ' +
+            JSON.stringify({width,height,countryRect}));
+        }
+        await page.screenshot({
+          path:out+'/onboarding-step-country-'+width+'x'+height+'.png',
+          fullPage:false,
+        });
         await chooseCountry(page, width, height);
+        await sleep(500);
+        // Snapshot the actual browser state before asserting the next step.
+        await page.screenshot({
+          path:out+'/debug-after-country-'+width+'x'+height+'.png',
+          fullPage:false,
+        });
+        await assertStepInViewport(page,
+          'Pré-diabète',
+          width, height, 'diabetes');
         await choose(page, 'Pré-diabète');
+        await sleep(500);
+        await assertStepInViewport(page,
+          'Habitudes de vie',
+          width, height, 'treatments');
         // D7: the FIRST view must not present insulin as a routine prediabetes
         // choice; the user may still explicitly report a treatment they take.
         const insulin = page.getByText('Insuline', {exact:true});
@@ -137,6 +203,24 @@ async function chooseCountry(page, width, height) {
         });
         await choose(page, 'Diabète Type 2');
         await choose(page, 'Médicaments oraux pris');
+        // The treatment multi-selector never auto-jumps on individual chips.
+        // The explicit continue action reveals units without selecting one.
+        if (width < 900) {
+          await choose(page, 'Continuer vers les unités');
+          await sleep(500);
+          await assertStepInViewport(page,
+            'mg/dL',
+            width, height, 'units');
+        } else {
+          const unexpected = page.getByText('Continuer vers les unités');
+          if (await unexpected.count()) {
+            throw new Error('Redundant scroll-to-units link on desktop');
+          }
+          await page.screenshot({
+            path:out+'/onboarding-step-units-'+width+'x'+height+'.png',
+            fullPage:false,
+          });
+        }
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
         // Both must state exactly five steps after the four required choices.
