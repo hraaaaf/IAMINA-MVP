@@ -27,6 +27,13 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+// Existing-account login is separable from remote account registration.
+// Only the isolated protected D7 QA preview opts in at compile time.
+const bool kRemoteAccountLoginEnabled = bool.fromEnvironment(
+  'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED',
+  defaultValue: false,
+);
+
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
