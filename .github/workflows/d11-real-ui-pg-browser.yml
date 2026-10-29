@@ -105,7 +105,15 @@ jobs:
       - name: Test actual pointer and keyboard controls with real native PG16 API
         run: |
           set -euo pipefail
-          (cd backend && python manage.py runserver 127.0.0.1:8000 --noreload) > /tmp/d11-ui-api.log 2>&1 &
+          (cd backend && python - <<'PY'
+          import django
+          django.setup()
+          from django.conf import settings
+          settings.EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+          from django.core.management import execute_from_command_line
+          execute_from_command_line(['manage.py','runserver','127.0.0.1:8000','--noreload'])
+          PY
+          ) > /tmp/d11-ui-api.log 2>&1 &
           API_PID=$!
           python3 -m http.server 7383 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d11-ui-web.log 2>&1 &
           WEB_PID=$!
