@@ -8,6 +8,8 @@ on:
       - .github/workflows/d19-clinical-authority-ci.yml
       - backend/diabetes/api/v1/kpis.py
       - backend/diabetes/tests/test_d19_fractional_target_cache.py
+      - backend/ai/api/v1/ai.py
+      - backend/diabetes/tests/test_d19_ai_summary_cgm_authority.py
   workflow_dispatch:
 
 permissions:
@@ -46,7 +48,8 @@ jobs:
       - name: Compile and run D19 negative cache oracles
         run: |
           python -m compileall -q diabetes/api/v1/kpis.py diabetes/tests/test_d19_fractional_target_cache.py
-          pytest -q diabetes/tests/test_d19_fractional_target_cache.py
+          python -m compileall -q ai/api/v1/ai.py diabetes/tests/test_d19_ai_summary_cgm_authority.py
+          pytest -q diabetes/tests/test_d19_fractional_target_cache.py diabetes/tests/test_d19_ai_summary_cgm_authority.py
       - name: No clinical thresholds changed
         run: |
           python - <<'PY'
