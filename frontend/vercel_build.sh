@@ -47,7 +47,7 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       # one protected QA branch, with the exact isolated synthetic backend.
       # Every other Preview remains local-first; Production stays untouched.
       if [ "${VERCEL_GIT_COMMIT_REF:-}" = "cert/d7-web-fue-preview-20261029" ]; then
-        if [ "$API_BASE_URL" != "https://iamina-certified-n3g9na2ou-achraf-benmoussa-s-projects.vercel.app" ]; then
+        if [ "$API_BASE_URL" != "https://iamina-certified-i8v18ds1r-achraf-benmoussa-s-projects.vercel.app" ]; then
           echo "ERROR: D7 FUE QA branch cannot target another backend" >&2
           exit 64
         fi
