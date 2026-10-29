@@ -85,7 +85,7 @@ void main() {
         // above the recovery action. Dismiss it through the user-facing
         // focus path, then verify the actual button is hit-testable.
         FocusManager.instance.primaryFocus?.unfocus();
-        await tester.testTextInput.hide();
+        tester.testTextInput.hide();
         await tester.pumpAndSettle();
         final forgot = find.widgetWithText(TextButton, l10n.forgotPassword);
         await tester.ensureVisible(forgot);
