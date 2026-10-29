@@ -84,8 +84,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      void expectRevealed(String key) {
-        final finder = find.byKey(Key(key));
+      void expectRevealed(String title) {
+        final finder = find.text(title);
         expect(finder, findsOneWidget);
         final rect = tester.getRect(finder);
         expect(rect.top, greaterThanOrEqualTo(-1));
@@ -94,7 +94,7 @@ void main() {
 
       await tester.tap(find.text('Français'));
       await tester.pumpAndSettle();
-      expectRevealed('onboarding-country-step');
+      expectRevealed('Dans quel pays utilisez-vous IAmina ?');
 
       final search = find.byKey(const Key('onboarding-country-search'));
       await tester.tap(search);
@@ -103,13 +103,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Maroc').last);
       await tester.pumpAndSettle();
-      expectRevealed('onboarding-type-step');
+      expectRevealed('Quel type de diabète gérez-vous au quotidien ?');
 
       await tester.tap(find.text('Diabète Type 2'));
       await tester.pumpAndSettle();
-      expectRevealed('onboarding-treatment-step');
+      expectRevealed('Quels traitements suivez-vous actuellement ? (facultatif)');
 
-      final treatment = find.byKey(const Key('onboarding-treatment-step'));
+      final treatment = find.text('Quels traitements suivez-vous actuellement ? (facultatif)');
       final before = tester.getRect(treatment).top;
       await tester.tap(find.byKey(const Key('d7-treatment-oral_meds')));
       await tester.pumpAndSettle();
@@ -122,7 +122,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(next);
       await tester.pumpAndSettle();
-      expectRevealed('onboarding-unit-step');
+      expectRevealed('Quelle unité préférez-vous pour les mesures ?');
 
       // No implicit completion, clinical change, or navigation on scroll.
       expect(find.byKey(const Key('onboarding-sticky-start')), findsOneWidget);
@@ -175,7 +175,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('العربية'));
     await tester.pumpAndSettle();
-    final country = find.byKey(const Key('onboarding-country-step'));
+    final country = find.text('في أي بلد تستخدم IAmina؟');
     expect(country, findsOneWidget);
     expect(tester.getRect(country).top, inInclusiveRange(0, 720));
     expect(Directionality.of(tester.element(country)), TextDirection.rtl);

@@ -155,13 +155,18 @@ async function chooseCountry(page, width, height) {
         });
         await chooseCountry(page, width, height);
         await sleep(500);
+        // Snapshot the actual browser state before asserting the next step.
+        await page.screenshot({
+          path:out+'/debug-after-country-'+width+'x'+height+'.png',
+          fullPage:false,
+        });
         await assertStepInViewport(page,
-          'Quel type de diabète gérez-vous au quotidien ?',
+          'Pré-diabète',
           width, height, 'diabetes');
         await choose(page, 'Pré-diabète');
         await sleep(500);
         await assertStepInViewport(page,
-          'Quels traitements suivez-vous actuellement ? (facultatif)',
+          'Habitudes de vie',
           width, height, 'treatments');
         // D7: the FIRST view must not present insulin as a routine prediabetes
         // choice; the user may still explicitly report a treatment they take.
@@ -187,7 +192,7 @@ async function chooseCountry(page, width, height) {
         await choose(page, 'Continuer vers les unités');
         await sleep(500);
         await assertStepInViewport(page,
-          'Quelle unité préférez-vous pour les mesures ?',
+          'mg/dL',
           width, height, 'units');
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
