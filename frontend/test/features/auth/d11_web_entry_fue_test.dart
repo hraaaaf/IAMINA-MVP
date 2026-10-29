@@ -136,7 +136,7 @@ void main() {
         });
         await tester.pumpWidget(MultiProvider(
           providers: [
-            Provider<AuthService>.value(value: auth),
+            ChangeNotifierProvider<AuthService>.value(value: auth),
             Provider<AppDatabase>.value(value: db),
             Provider<ApiClient>.value(value: api),
           ],
