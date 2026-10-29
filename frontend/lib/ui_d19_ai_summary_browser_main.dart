@@ -3,7 +3,7 @@
 // Not a substitute for backend auth/consent and human clinical approval.
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/ai_models.dart';
-import 'package:amina/features/dashboard/widgets/tweaks_panel.dart';
+import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/features/journal/ai_summary_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
