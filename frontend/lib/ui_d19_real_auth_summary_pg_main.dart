@@ -36,8 +36,10 @@ Future<void> main() async {
   html.document.title = 'IAMINA_D19_REAL_HTTP_PENDING';
   final principal = Uri.base.queryParameters['principal'] ?? '';
   final language = Uri.base.queryParameters['locale'] ?? 'fr';
+  final cohort = Uri.base.queryParameters['cohort'] ?? '';
   if (!kIsWeb || !ciApiBase.startsWith('http://127.0.0.1:') ||
       !{'a', 'b'}.contains(principal) || !{'fr', 'ar'}.contains(language) ||
+      !{'390', '768', '1280'}.contains(cohort) ||
       ciPassword.length < 30 || ciA.isEmpty || ciB.isEmpty || ciA == ciB) {
     html.document.title = 'IAMINA_D19_REAL_HTTP_FAIL:bad_fixture';
     return;
@@ -47,7 +49,13 @@ Future<void> main() async {
     final auth = AuthService();
     await auth.initialize();
     stage = 'native_login';
-    await auth.signInWithEmail(principal == 'a' ? ciA : ciB, ciPassword);
+    // Separate disposable accounts per locale/viewport. The real backend's
+    // 10-logins-per-account/10-minute anti-abuse limit remains untouched,
+    // while A→B→A within each browser cohort is still a genuine re-login.
+    final baseEmail = principal == 'a' ? ciA : ciB;
+    await auth.signInWithEmail(
+      baseEmail.replaceFirst('@', '-$language-$cohort@'), ciPassword,
+    );
     requireTrue(auth.isRemoteCredentialVerified && auth.hasRemoteApiCredential,
         'not_native_authenticated');
     stage = 'vault_reconcile';
