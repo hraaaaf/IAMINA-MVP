@@ -80,6 +80,12 @@ if ('serviceWorker' in navigator) {
           updateViaCache: 'none',
         })
         .then((registration) => {
+          // A browser policy or headless test may resolve registration with no
+          // usable service worker. Never schedule an update on undefined.
+          if (!registration || typeof registration.update !== 'function') {
+            console.warn('IAMINA service worker update skipped: no registration');
+            return;
+          }
           // Same-release changes are still checked without blocking startup.
           // Normal releases change IAMINA_CACHE_SCHEMA, which changes scriptUrl
           // and deterministically starts the browser update algorithm.
