@@ -41,11 +41,13 @@ def test_request_contains_only_locale_script_and_opaque_token():
 
     assert request.locale == "fr"
     assert request.protected_body_token == envelope.protected_body_token
-    assert "Réponse clinique déterministe" not in prompt
-    assert "142" not in prompt
-    assert "mg/dL" not in prompt
-    assert "certified_consultation_brief" not in prompt
-    assert "diabetes.clinician_prep" not in prompt
+    # Exact allowlist. Random opaque hexadecimal can contain numeric substrings;
+    # equality proves that no patient facts, narrative or provenance leak.
+    assert prompt == (
+        f"locale={request.locale}\n"
+        f"script={request.script}\n"
+        f"protected_body_token={envelope.protected_body_token}"
+    )
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=False)
