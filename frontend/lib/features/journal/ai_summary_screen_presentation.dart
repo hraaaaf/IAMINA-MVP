@@ -326,19 +326,24 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
     SummaryResponse summary,
     KpisResponse? kpis,
   ) {
-    final agpData = summary.agpProfile.isNotEmpty
-        ? summary.agpProfile
-        : summary.dailyAverages;
-    final useHourly = summary.agpProfile.isNotEmpty;
+    // Daily manual-reading averages are never a certified CGM AGP.
+    final agpData = summary.agpProfile;
+    final hasEligibleCgmKpis = kpis != null &&
+        kpis.hasSufficientData &&
+        (kpis.tirPct != null || kpis.cvPct != null || kpis.gmi != null);
+    final hasEligibleAgp = agpData.isNotEmpty &&
+        kpis?.tirPct != null &&
+        kpis?.tarPct != null &&
+        kpis?.tbrPct != null;
     return [
-      if (kpis != null && kpis.hasSufficientData) ...[
+      if (hasEligibleCgmKpis) ...[
         _KpiRow(kpis: kpis),
         const SizedBox(height: 16),
       ],
-      if (agpData.isNotEmpty) ...[
+      if (hasEligibleAgp) ...[
         _AgpCard(
           agpData: agpData,
-          isHourly: useHourly,
+          isHourly: true,
           periodDays: _periodDays,
           kpis: kpis,
         ),
@@ -568,7 +573,7 @@ class _HeroInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis?.tirPct ?? 0.0;
+    final tir = kpis?.tirPct;
     final discussionCount = summary.insightCards
         .where((c) => c.action.isNotEmpty)
         .length;
@@ -615,7 +620,11 @@ class _HeroInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            tir >= 70 ? l10n.mostlyInTarget : l10n.someReadingsNeedReview,
+            tir == null
+                ? l10n.insufficientData
+                : tir >= 70
+                    ? l10n.mostlyInTarget
+                    : l10n.someReadingsNeedReview,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -702,33 +711,34 @@ class _KpiRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis.tirPct ?? 0.0;
-    final gmi = kpis.gmi ?? 0.0;
-    final cv = kpis.cvPct ?? 0.0;
     final coverage = l10n.coverage(kpis.logCount, kpis.daysWithData);
-
+    // Never print 0% for a missing normative CGM value.
     final cards = <Widget>[
-      _KpiCard(
-        label: l10n.readingsInRange,
-        value: '${tir.toStringAsFixed(0)}%',
-        color: AminaTheme.teal500,
-        reference: l10n.generalRangeReference,
-      ),
-      _KpiCard(
-        label: l10n.estimatedGmi,
-        value: '${gmi.toStringAsFixed(1)}%',
-        color: AminaTheme.ocean500,
-        reference: kpis.gmiBasis.isNotEmpty
-            ? l10n.gmiBasis(kpis.gmiBasis)
-            : l10n.gmiAvailableMean,
-      ),
-      _KpiCard(
-        label: l10n.variabilityCv,
-        value: '${cv.toStringAsFixed(0)}%',
-        color: AminaTheme.ambre500,
-        reference: l10n.generalCvReference,
-      ),
+      if (kpis.tirPct != null)
+        _KpiCard(
+          label: l10n.readingsInRange,
+          value: '${kpis.tirPct!.toStringAsFixed(0)}%',
+          color: AminaTheme.teal500,
+          reference: l10n.generalRangeReference,
+        ),
+      if (kpis.gmi != null)
+        _KpiCard(
+          label: l10n.estimatedGmi,
+          value: '${kpis.gmi!.toStringAsFixed(1)}%',
+          color: AminaTheme.ocean500,
+          reference: kpis.gmiBasis.isNotEmpty
+              ? l10n.gmiBasis(kpis.gmiBasis)
+              : l10n.gmiAvailableMean,
+        ),
+      if (kpis.cvPct != null)
+        _KpiCard(
+          label: l10n.variabilityCv,
+          value: '${kpis.cvPct!.toStringAsFixed(0)}%',
+          color: AminaTheme.ambre500,
+          reference: l10n.generalCvReference,
+        ),
     ];
+    if (cards.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,6 +871,10 @@ class _AgpCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    // Caller and widget both require verified CGM metrics for the AGP label.
+    if (kpis?.tirPct == null || kpis?.tarPct == null || kpis?.tbrPct == null) {
+      return const SizedBox.shrink();
+    }
     final hasData = agpData.any((e) {
       final m = e as Map<String, dynamic>;
       final v = (m['p50'] ?? m['avg'] ?? m['avg_glucose'] ?? 0);
