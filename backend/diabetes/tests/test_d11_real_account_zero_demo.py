@@ -29,13 +29,15 @@ class DemoSeedPatientIsolationTests(TestCase):
         # Real HTTP auth in Django test client may have different request
         # middleware from direct signer calls; verify account and bearer via
         # the same login endpoint used by Flutter's native AuthService.
-        self.token_a = self._login(self.patient_a)
-        self.token_b = self._login(self.patient_b)
+        self.client_a = Client()
+        self.client_b = Client()
+        self.token_a = self._login(self.patient_a, self.client_a)
+        self.token_b = self._login(self.patient_b, self.client_b)
         self.assertEqual(verify_native_token(self.token_a).pk, self.patient_a.pk)
         self.assertEqual(verify_native_token(self.token_b).pk, self.patient_b.pk)
 
-    def _login(self, user):
-        response = self.client.post(
+    def _login(self, user, client):
+        response = client.post(
             "/api/v1/auth/login",
             data={"email": user.email, "password": "synthetic-password-never-used"},
             content_type="application/json",
@@ -44,7 +46,10 @@ class DemoSeedPatientIsolationTests(TestCase):
         return response.json()["access_token"]
 
     def _seed(self, token):
-        return self.client.post(
+        # The API resolves patient ownership via Django authenticated session.
+        # Pair the native bearer with its OWN HTTP session, never the last login.
+        client = self.client_a if token == self.token_a else self.client_b
+        return client.post(
             "/api/v1/demo/seed",
             data={},
             content_type="application/json",
@@ -94,7 +99,13 @@ class DemoSeedPatientIsolationTests(TestCase):
             password="synthetic-demo-only",
         )
         token = issue_native_token(demo)
-        self.assertEqual(self._seed(token).status_code, 403)
+        demo_client = Client()
+        self._login(demo, demo_client)
+        response = demo_client.post(
+            "/api/v1/demo/seed", data={}, content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+        self.assertEqual(response.status_code, 403)
         self.assertFalse(LogEntry.objects.filter(patient=demo).exists())
 
     def test_actual_seed_handler_denies_authenticated_request_with_403(self):
@@ -114,12 +125,12 @@ class DemoSeedPatientIsolationTests(TestCase):
         entry_b = LogEntry.objects.create(
             patient=self.patient_b, blood_sugar=Decimal("210.0"), source="manual",
         )
-        for patient, token, expected_id, foreign_id in (
-            (self.patient_a, self.token_a, entry_a.pk, entry_b.pk),
-            (self.patient_b, self.token_b, entry_b.pk, entry_a.pk),
-            (self.patient_a, self.token_a, entry_a.pk, entry_b.pk),
+        for patient, client, token, expected_id, foreign_id in (
+            (self.patient_a, self.client_a, self.token_a, entry_a.pk, entry_b.pk),
+            (self.patient_b, self.client_b, self.token_b, entry_b.pk, entry_a.pk),
+            (self.patient_a, self.client_a, self.token_a, entry_a.pk, entry_b.pk),
         ):
-            before = self.client.get(
+            before = client.get(
                 "/api/v1/logs",
                 HTTP_AUTHORIZATION=f"Bearer {token}",
             )
@@ -128,7 +139,7 @@ class DemoSeedPatientIsolationTests(TestCase):
             self.assertEqual([item["id"] for item in before.json()["items"]], [expected_id])
             self.assertNotIn(foreign_id, [item["id"] for item in before.json()["items"]])
             self.assertEqual(self._seed(token).status_code, 403)
-            after = self.client.get(
+            after = client.get(
                 "/api/v1/logs",
                 HTTP_AUTHORIZATION=f"Bearer {token}",
             )
@@ -138,8 +149,7 @@ class DemoSeedPatientIsolationTests(TestCase):
 
     def test_anonymous_seed_request_stays_unauthorized(self):
         # setUp logs in both fixtures through the HTTP route; clear its session.
-        self.client.logout()
-        response = self.client.post(
+        response = Client().post(
             "/api/v1/demo/seed", data={}, content_type="application/json",
         )
         self.assertEqual(response.status_code, 401)
@@ -170,7 +180,12 @@ class DemoSeedPatientIsolationTests(TestCase):
         )
         self.assertEqual(medical_history.status_code, 200)
         self.assertEqual(medical_history.json()["total"], 0)
-        self.assertEqual(self._seed(bearer).status_code, 403)
+        self.assertEqual(
+            self.client.post(
+                "/api/v1/demo/seed", data={}, content_type="application/json",
+                HTTP_AUTHORIZATION=f"Bearer {bearer}",
+            ).status_code, 403,
+        )
         self.assertEqual(LogEntry.objects.filter(patient=user).count(), 0)
 
     def test_read_only_demo_scenarios_are_still_available(self):
