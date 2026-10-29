@@ -76,7 +76,10 @@ async function mustBeInViewport(page,label,size,name) {
       const [width,height]=size;
       const context=await browser.newContext({
         viewport:{width,height},locale:'ar-MA',
-        deviceScaleFactor:1,colorScheme:'light',serviceWorkers:'block',
+        // Real browser PWA: IAMINA bootstrap expects a registration object
+        // and calls registration.update(); Playwright blocking SW creates
+        // an undefined registration (bootstrap pageerror during browser_boot).
+        deviceScaleFactor:1,colorScheme:'light',serviceWorkers:'allow',
       });
       try {
         const page=await context.newPage();
