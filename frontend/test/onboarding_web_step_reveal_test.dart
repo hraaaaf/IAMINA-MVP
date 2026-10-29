@@ -125,7 +125,13 @@ void main() {
       expectRevealed('Quelle unité préférez-vous pour les mesures ?');
 
       // No implicit completion, clinical change, or navigation on scroll.
-      expect(find.byKey(const Key('onboarding-sticky-start')), findsOneWidget);
+      if (size.width < 900) {
+        expect(find.byKey(const Key('onboarding-sticky-start')), findsOneWidget);
+      } else {
+        // Desktop intentionally keeps the single inline action.
+        expect(find.byKey(const Key('onboarding-sticky-start')), findsNothing);
+        expect(find.text('Commencer'), findsOneWidget);
+      }
       expect(find.text('Dashboard'), findsNothing);
       expect(tester.takeException(), isNull);
     });

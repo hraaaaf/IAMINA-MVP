@@ -41,9 +41,25 @@ async function choose(page, label) {
 }
 
 async function assertStepInViewport(page, label, width, height, name) {
-  const element = page.getByText(label, {exact:true}).first();
-  await element.waitFor({state:'visible', timeout:10000});
-  const rect = await element.boundingBox();
+  // Flutter CanvasKit renders text inside an accessibility node. Inspect
+  // role-bound chips first, without any test-induced scrolling.
+  const candidates = [
+    page.getByRole('checkbox', {name:label, exact:true}),
+    page.getByRole('button', {name:label, exact:true}),
+    page.getByRole('radio', {name:label, exact:true}),
+    page.getByText(label, {exact:false}),
+  ];
+  let rect = null;
+  for (const candidate of candidates) {
+    if (!(await candidate.count())) continue;
+    for (let index = 0; index < await candidate.count(); index++) {
+      const control = candidate.nth(index);
+      if (!(await control.isVisible().catch(() => false))) continue;
+      rect = await control.boundingBox().catch(() => null);
+      if (rect) break;
+    }
+    if (rect) break;
+  }
   if (!rect || rect.y < -1 || rect.y > height - 60) {
     throw new Error('Next onboarding step not revealed: ' +
       JSON.stringify({name, label, width, height, rect}));
