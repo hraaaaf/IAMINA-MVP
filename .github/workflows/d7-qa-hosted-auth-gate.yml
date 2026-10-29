@@ -1,4 +1,4 @@
-name: D7 hosted Preview QA A-B-A authentication — protected manual gate
+name: QA Web — optional session-isolation security check
 
 on:
   pull_request:
@@ -54,5 +54,5 @@ jobs:
           # and this runner's commit before approving the gate.
           node --check scripts/d7_qa_hosted_auth_gate.mjs
           node --test frontend/test/qa/d7_hosted_auth_gate.test.mjs
-      - name: Hosted A-B-A login, no clinical writes, no response bodies logged
+      - name: Verify session isolation without clinical writes or response logs
         run: node scripts/d7_qa_hosted_auth_gate.mjs
