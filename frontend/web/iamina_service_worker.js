@@ -1,5 +1,5 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const IAMINA_CACHE_SCHEMA = '0.1.0+1-d30-offline-lock';
+const IAMINA_CACHE_SCHEMA = '0.1.0+2-d30-offline-fonts';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 const IAMINA_HOSTED_REVIEW =
   self.location.hostname === 'iamina-review.vercel.app' ||
@@ -16,6 +16,13 @@ const PRECACHE = [
   './favicon.png',
   './sqlite3.wasm',
   './drift_worker.js',
+  // Bundle font subsets with the offline shell before any clinical UI opens.
+  './assets/assets/fonts/Inter.ttf',
+  './assets/assets/fonts/InterTight.ttf',
+  './assets/assets/fonts/Roboto.ttf',
+  './assets/assets/fonts/NotoSansArabic.ttf',
+  './assets/assets/fonts/NotoSansSymbols.ttf',
+  './assets/assets/fonts/NotoSansSymbols2.ttf',
 ];
 
 const STATIC_FILES = new Set([
