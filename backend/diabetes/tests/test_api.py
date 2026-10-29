@@ -153,6 +153,54 @@ class D19AuthenticatedSummaryIsolationTestCase(TestCase):
             for unsupported in ("TIR: ", "GMI_EST_HBA1C:", "CV: 24."):
                 self.assertNotIn(unsupported, prompt)
 
+    def test_real_http_ai_egress_scope_cannot_borrow_other_patient_consent(self):
+        """Provider boundary uses the logged-in owner, not another user's grant.
+
+        No actual provider call is made. Its consent gate runs inside the real
+        Django HTTP endpoint's egress context, with two synthetic patients.
+        """
+        from core.ai_egress import AIConsentRequired, TEXT, assert_ai_egress_allowed
+        from core.consent_notice import expected_notice_claim
+
+        attempts = []
+
+        def provider_boundary(*args, **kwargs):
+            try:
+                context = assert_ai_egress_allowed(TEXT)
+            except AIConsentRequired:
+                attempts.append(("denied", None))
+                return []  # No external call without consent.
+            attempts.append(("authorized", context.patient_id, context.purpose))
+            return []
+
+        notice = expected_notice_claim("fr")
+        profile = self.patient_a.base_profile
+        profile.ai_consent_given_at = timezone.now()
+        profile.ai_consent_notice_version = notice.version
+        profile.ai_consent_notice_hash = notice.notice_hash
+        profile.ai_consent_notice_locale = notice.locale
+        profile.save(
+            update_fields=[
+                "ai_consent_given_at", "ai_consent_notice_version",
+                "ai_consent_notice_hash", "ai_consent_notice_locale",
+            ]
+        )
+
+        with patch("ai.api.v1.ai._call_llm_for_summary", side_effect=provider_boundary):
+            denied_b = self._request_as(self.patient_b)
+            allowed_a = self._request_as(self.patient_a)
+            again_b = self._request_as(self.patient_b)
+        for response in (denied_b, allowed_a, again_b):
+            self.assertEqual(response.status_code, 200, response.content[:300])
+        self.assertEqual(
+            attempts,
+            [
+                ("denied", None),
+                ("authorized", self.patient_a.id, "clinical_summary"),
+                ("denied", None),
+            ],
+        )
+
     def test_session_is_required_and_custom_target_cannot_authorize_cgm(self):
         self.client.logout()
         response = self.client.post(
