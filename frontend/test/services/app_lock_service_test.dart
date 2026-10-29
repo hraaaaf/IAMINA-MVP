@@ -305,8 +305,14 @@ void main() {
 
   test('D30 explicit no-lock choice persists only on a fresh vault', () async {
     seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      fail('Opt-out must never call a remote API');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
     final first = AppLockService(
       authenticator: _FakeAuthenticator(),
+      authService: auth,
       protectedLocalStateProbe: () async => false,
     );
     await first.initialize();
@@ -319,13 +325,18 @@ void main() {
 
     final restart = AppLockService(
       authenticator: _FakeAuthenticator(),
+      authService: auth,
       protectedLocalStateProbe: () async => true,
     );
     await restart.initialize();
     expect(restart.isExplicitlySkipped, isTrue);
     expect(restart.isUnlocked, isFalse);
     expect(restart.recoveryRequired, isFalse);
+    await auth.signOut();
+    expect(restart.isExplicitlySkipped, isFalse,
+        reason: 'Opt-out must not remain active after identity revocation');
     restart.dispose();
+    auth.dispose();
   });
 
   test('D30 no-lock action never bypasses protected vault or recovery', () async {

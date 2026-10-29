@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -12,6 +14,7 @@ class AppLockService extends ChangeNotifier {
   static const _requiredKey = 'iamina_app_lock_required_v1';
   // New explicit choice, separate from the deprecated untrusted opt-out marker.
   static const _choiceKey = 'iamina_app_lock_initial_choice_v2';
+  static const _choiceOwnerKey = 'iamina_app_lock_initial_choice_owner_v2';
   static const _skippedChoice = 'skipped_explicitly';
   static const _requiredValue = 'required';
   static const Duration defaultGracePeriod = Duration(seconds: 60);
@@ -27,6 +30,7 @@ class AppLockService extends ChangeNotifier {
   bool _configured = false;
   bool _required = false;
   bool _explicitlySkipped = false;
+  int _choiceGeneration = 0;
   bool _unlocked = false;
   bool _recoveryRequired = false;
   AppLockCredential? _credential;
@@ -67,6 +71,7 @@ class AppLockService extends ChangeNotifier {
     try {
       final requiredValue = await _storage.read(key: _requiredKey);
       final choiceValue = await _storage.read(key: _choiceKey);
+      final choiceOwner = await _storage.read(key: _choiceOwnerKey);
       final rawCredential = await _storage.read(key: _credentialKey);
       _required = requiredValue == _requiredValue;
 
@@ -87,10 +92,16 @@ class AppLockService extends ChangeNotifier {
         }
       } else if (_required) {
         _recoveryRequired = true;
-      } else if (choiceValue == _skippedChoice) {
-        // A consciously unprotected installation does not require WebAuthn.
-        // The legacy opt-out key is NOT accepted. Existing locks always win.
-        _explicitlySkipped = true;
+      } else if (choiceValue == _skippedChoice && choiceOwner != null) {
+        // A consciously unprotected installation only applies to its owner.
+        final scope = await _authService?.resolvePatientVaultScope();
+        _explicitlySkipped = choiceOwner == scope?.databaseName;
+        if (!_explicitlySkipped &&
+            _authService?.isAuthenticated == true &&
+            await _hasProtectedLocalState()) {
+          _required = true;
+          _recoveryRequired = true;
+        }
       } else if (await _hasProtectedLocalState()) {
         // Secure app-lock state disappeared while patient-local state still
         // exists. Treat that as rollback/ambiguity, never as a fresh install.
@@ -161,6 +172,12 @@ class AppLockService extends ChangeNotifier {
     if (await _hasProtectedLocalState() && !_explicitlySkipped) {
       throw const AppLockException('existing_local_data_requires_lock');
     }
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    if (owner == null) {
+      throw const AppLockException('patient_vault_identity_required');
+    }
+    // Persist owner first. A partial write cannot authorize a skip.
+    await _storage.write(key: _choiceOwnerKey, value: owner);
     await _storage.write(key: _choiceKey, value: _skippedChoice);
     _explicitlySkipped = true;
     _unlocked = false;
@@ -241,8 +258,35 @@ class AppLockService extends ChangeNotifier {
 
   void _handleAuthChanged() {
     final auth = _authService;
+    final generation = ++_choiceGeneration;
     if (auth != null && auth.isInitialized && !auth.isAuthenticated) {
       lock();
+    }
+    // Revoke the prior owner's opt-out synchronously before an async scope
+    // lookup. Never carry patient A's choice over to patient B.
+    if (_explicitlySkipped) {
+      _explicitlySkipped = false;
+      notifyListeners();
+    }
+    unawaited(_restoreChoiceForCurrentOwner(generation));
+  }
+
+  Future<void> _restoreChoiceForCurrentOwner(int generation) async {
+    if (!_initialized || _required || _configured || _recoveryRequired) return;
+    try {
+      final choice = await _storage.read(key: _choiceKey);
+      final owner = await _storage.read(key: _choiceOwnerKey);
+      final scope = await _authService?.resolvePatientVaultScope();
+      if (generation != _choiceGeneration || !_initialized ||
+          _required || _configured || _recoveryRequired) return;
+      final allowed = choice == _skippedChoice &&
+          owner != null && owner == scope?.databaseName;
+      if (_explicitlySkipped != allowed) {
+        _explicitlySkipped = allowed;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Storage ambiguity never grants access.
     }
   }
 
