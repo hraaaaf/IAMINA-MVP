@@ -48,6 +48,26 @@ void main() {
     expect(unlock, contains('recoverWithVerifiedRemoteAccount()'));
   });
 
+  test('D30 profile exposes reversible optional lock control', () {
+    final profile = File('lib/features/profile/profile_screen.dart')
+        .readAsStringSync();
+    final presentation = File(
+      'lib/features/profile/profile_screen_presentation.dart',
+    ).readAsStringSync();
+    final service = File('lib/services/app_lock_service.dart')
+        .readAsStringSync();
+
+    expect(presentation, contains("ValueKey('d30-profile-lock-preference')"));
+    expect(presentation, contains('Activer le verrouillage'));
+    expect(presentation, contains('Désactiver le verrouillage'));
+    expect(profile, contains('disableForCurrentVault()'));
+    expect(profile, contains('enableForCurrentVault()'));
+    expect(profile, contains("Key('d30-confirm-profile-lock-choice')"));
+    expect(service, contains('final proof = await _authenticator.unlock(credential);'));
+    expect(service, contains('await _storage.write(key: _ownerChoiceKey(owner)'));
+    expect(service, contains('_ownerChoiceKey(scope.databaseName)'));
+  });
+
   test('missing app-lock state is cross-checked against all local patient state', () {
     final mainSource = File('lib/main.dart').readAsStringSync();
     final serviceSource = File(

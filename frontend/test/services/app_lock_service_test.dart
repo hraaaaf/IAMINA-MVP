@@ -7,6 +7,7 @@ import 'package:amina/services/auth_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
+import 'package:http/http.dart' as http;
 
 const _credentialKey = 'iamina_app_lock_credential_v1';
 const _requiredKey = 'iamina_app_lock_required_v1';
@@ -431,6 +432,39 @@ void main() {
     await auth.signOut();
     expect(lock.isExplicitlySkipped, isFalse);
     expect(lock.isUnlocked, isFalse);
+    expect(lock.isConfigured, isTrue);
+    lock.dispose();
+    auth.dispose();
+  });
+
+  test('D30 opt-out of device owner A does not authorize native account B', () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      if (request.url.path == '/api/v1/auth/logout') {
+        return http.Response('', 204);
+      }
+      if (request.url.path == '/api/v1/auth/login') {
+        return http.Response(
+          '{"access_token":"iamina.eyJ1aWQiOjEsInYiOjB9:1abcdf:signature_456","user":{"id":12}}',
+          200,
+        );
+      }
+      fail('Unexpected remote request: ${request.url.path}');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final authenticator = _FakeAuthenticator();
+    final lock = AppLockService(authService: auth, authenticator: authenticator);
+    await lock.initialize();
+    await lock.configure();
+    await lock.disableForCurrentVault();
+    expect(lock.isExplicitlySkipped, isTrue);
+
+    await auth.signOut();
+    await auth.signInWithEmail('b@example.com', 'secret');
+    expect(lock.isExplicitlySkipped, isFalse);
+    expect(lock.isUnlocked, isFalse);
+    // A global credential still protects B. A's preference is not transferable.
     expect(lock.isConfigured, isTrue);
     lock.dispose();
     auth.dispose();

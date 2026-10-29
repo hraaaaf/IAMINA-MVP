@@ -214,8 +214,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (lock.recoveryRequired) return;
     final question = disabling
         ? _profileUiText(context,
-            fr: 'Désactiver le verrouillage pour ce profil ? Une nouvelle vérification sera exigée. Toute personne ayant accès à ce navigateur pourra consulter vos données de santé locales.',
-            en: 'Disable the lock for this profile? Fresh verification is required. Anyone using this browser could read your local health data.',
+            fr: 'Désactiver le verrouillage pour ce profil ? Une nouvelle vérification sera exigée. Toute personne ayant accès à ce navigateur pourra consulter vos données de santé locales. La synchronisation clinique demeure suspendue sans verrouillage actif.',
+            en: 'Disable the lock for this profile? Fresh verification is required. Anyone using this browser could read your local health data. Clinical sync stays paused without an active lock.',
             ar: 'هل تريد إيقاف القفل لهذا الملف؟ ستُطلب مصادقة جديدة. قد يتمكن أي مستخدم لهذا المتصفح من قراءة بياناتك الصحية المحلية.')
         : _profileUiText(context,
             fr: 'Activer le verrouillage de ce profil ? Une vérification ou une nouvelle configuration sera demandée.',

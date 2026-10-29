@@ -20,6 +20,11 @@ on:
       - frontend/test/features/d30_local_enrollment_cta_test.dart
       - frontend/lib/features/auth/login_screen.dart
       - frontend/lib/features/auth/app_lock_setup_screen.dart
+      - frontend/lib/features/profile/profile_screen.dart
+      - frontend/lib/features/profile/profile_screen_presentation.dart
+      - frontend/test/app_lock_ui_contract_test.dart
+      - frontend/lib/ui_browser_audit_main.dart
+      - frontend/test/routes/app_router_hosted_auth_gate_test.dart
       - frontend/lib/services/app_lock_service.dart
       - frontend/vercel_build.sh
       - frontend/lib/routes/app_router.dart
