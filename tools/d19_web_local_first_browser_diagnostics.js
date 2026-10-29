@@ -98,15 +98,16 @@ async function findPrivacyDialogConfirm(page) {
   }
   // Require an actual filled, multi-row rectangle rather than a thin border,
   // an icon or a background element from the dimmed underlying screen.
+  // White action text splits the filled color into upper and lower bands.
+  // Group same-center scanlines across that text, not by strict row adjacency.
   const groups = [];
   for (const row of rows) {
-    const last = groups[groups.length - 1];
-    if (last && row.y === last[last.length - 1].y + 1 &&
-        Math.abs(row.x - last[last.length - 1].x) <= 5) {
-      last.push(row);
-    } else {
-      groups.push([row]);
-    }
+    const group = groups.find(candidate => {
+      const last = candidate[candidate.length - 1];
+      return row.y - last.y <= 30 && Math.abs(row.x - last.x) <= 6;
+    });
+    if (group) group.push(row);
+    else groups.push([row]);
   }
   const filled = groups.filter(group => group.length >= 12 &&
     group.length <= 85 && Math.max(...group.map(r => r.len)) >= 90);
