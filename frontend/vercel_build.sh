@@ -51,6 +51,8 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
           echo "ERROR: D7 FUE QA branch cannot target another backend" >&2
           exit 64
         fi
+        # Client calls same-origin BFF; only the BFF holds cross-project OIDC.
+        API_BASE_URL="https://iamina-review-git-cert-d7-we-5e65d5-achraf-benmoussa-s-projects.vercel.app"
         IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true
       fi
       ;;
