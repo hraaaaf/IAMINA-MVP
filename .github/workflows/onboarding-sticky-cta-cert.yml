@@ -7,6 +7,8 @@ on:
       - 'frontend/lib/ui_browser_audit_main.dart'
       - 'frontend/test/onboarding_sticky_cta_test.dart'
       - 'tools/onboarding_sticky_cta_audit.js'
+      - 'tools/onboarding_ar_rtl_audit.js'
+      - 'frontend/test/onboarding_web_ar_rtl_full_test.dart'
       - '.github/workflows/onboarding-sticky-cta-cert.yml'
   workflow_dispatch:
 
@@ -53,6 +55,9 @@ jobs:
           NODE_PATH="$PWD/node_modules" \
           AUDIT_OUT="$GITHUB_WORKSPACE/onboarding-sticky-proof" \
             node ../tools/onboarding_sticky_cta_audit.js
+          NODE_PATH="$PWD/node_modules" \
+          AUDIT_OUT="$GITHUB_WORKSPACE/onboarding-ar-rtl-proof" \
+            node ../tools/onboarding_ar_rtl_audit.js
       - name: Upload exact browser proof
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,5 +65,15 @@ jobs:
           name: iamina-onboarding-sticky-cta-390-768-1280
           path: |
             onboarding-sticky-proof/*
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload real Arabic RTL three-viewport proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-onboarding-ar-rtl-390-768-1280
+          path: |
+            onboarding-ar-rtl-proof/*
           if-no-files-found: warn
           retention-days: 14
