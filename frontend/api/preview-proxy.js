@@ -93,9 +93,19 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
   if (!ALLOWED_METHODS.has(request.method)) return response.status(405).end();
   const route = requestPath(request);
   if (!route) return response.status(400).end();
-  // No registration, reset, demo, or arbitrary clinical endpoint in this QA bridge.
-  if (!new Set(['auth/login', 'auth/logout', 'auth/me']).has(route.path))
-    return response.status(404).end();
+  // Route and method allowlist. GET on a POST-only Django endpoint must
+  // return 405 locally, not be mistaken for an upstream/protection failure.
+  const methodsByRoute = {
+    'auth/login': ['POST'],
+    'auth/logout': ['POST'],
+    'auth/me': ['GET', 'HEAD'],
+  };
+  const permitted = methodsByRoute[route.path];
+  if (!permitted) return response.status(404).end();
+  if (!permitted.includes(request.method)) {
+    response.setHeader('Allow', permitted.join(', '));
+    return response.status(405).end();
+  }
   const length = Number(request.headers['content-length'] ?? '0');
   if (!Number.isSafeInteger(length) || length < 0 ||
       length > MAX_REQUEST_BYTES) return response.status(413).end();
@@ -166,6 +176,8 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     const type = (upstream.headers.get('content-type') ?? '').toLowerCase();
     if ((upstream.status >= 300 && upstream.status < 400) ||
         type.includes('text/html') || type.includes('application/xhtml+xml')) {
+      // Safe telemetry: status only; never log origin, tokens or payload.
+      console.warn('d7_qa_proxy_upstream_non_api', upstream.status);
       await upstream.body?.cancel();
       return response.status(502).end();
     }
@@ -181,6 +193,7 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     }
     await pipeline(Readable.fromWeb(upstream.body), response);
   } catch {
+    console.warn('d7_qa_proxy_upstream_fetch_failed');
     // Do not expose secrets, patient payloads or remote target to the client.
     if (!response.headersSent) return response.status(502).end();
     response.end();
