@@ -347,7 +347,11 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      // Browser-only Arabic/RTL certification fixture. Production app locale
+      // remains owned by LocalePreferenceService; no runtime change.
+      locale: Uri.base.queryParameters['locale'] == 'ar'
+          ? const Locale('ar')
+          : const Locale('fr'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
