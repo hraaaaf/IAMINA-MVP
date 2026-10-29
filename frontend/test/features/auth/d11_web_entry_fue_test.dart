@@ -4,6 +4,7 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
@@ -125,8 +126,12 @@ void main() {
             fail('Unexpected auth request: ${request.url.path}');
           }),
         );
-        await auth.initialize();
-        final db = AppDatabase.defaults();
+        // Secure-storage plugin futures must run outside FakeAsync in widget tests.
+        await tester.runAsync(() async {
+          await auth.initialize();
+        });
+        // No shared real/legacy patient database in FUE widget tests.
+        final db = AppDatabase(NativeDatabase.memory());
         final api = ApiClient(authService: auth);
         addTearDown(() async {
           tester.view.resetPhysicalSize();
