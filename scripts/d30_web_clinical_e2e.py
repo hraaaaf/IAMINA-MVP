@@ -102,10 +102,12 @@ def main():
                 country.press_sequentially("Morocco", delay=110)
                 page.get_by_role("button", name="Morocco").click(timeout=18000)
                 page.get_by_role("button", name="Start", exact=True).click(timeout=18000)
-                page.get_by_role("button", name="Continue without AI").click(timeout=18000)
                 page.wait_for_timeout(850)
-                assert route() == "/dashboard", f"First-use dashboard not reached: {route()}"
-                print("D30 PASS minimum local onboarding, AI declined, dashboard", flush=True)
+                assert route() == "/dashboard", (
+                    f"Local-only account must reach dashboard without mandatory AI "
+                    f"consent: {route()}"
+                )
+                print("D30 PASS minimum local onboarding -> dashboard, no AI gate", flush=True)
 
                 page.get_by_role("button", name="Add my first reading").click(timeout=18000)
                 glucose = page.get_by_role("textbox", name=re.compile("GLUCOSE"))
@@ -128,13 +130,10 @@ def main():
                 assert route() == "/app-lock/unlock", f"Vault did not lock on reload: {route()}"
                 page.get_by_role("button", name=re.compile("Unlock", re.I)).click(timeout=18000)
                 page.wait_for_timeout(1100)
-                # ConsentService intentionally records 'Continue without AI'
-                # in memory for one session; re-presenting it is observed behavior.
-                if route() == "/consent":
-                    print("D30 NOTE AI decline is session-only: prompted again after unlock", flush=True)
-                    page.get_by_role("button", name="Continue without AI").click(timeout=18000)
-                    page.wait_for_timeout(1200)
-                assert route() == "/dashboard", f"Dashboard not restored after unlock: {route()}"
+                assert route() == "/dashboard", (
+                    f"D30 must not re-prompt remote AI consent for local-only "
+                    f"account after WebAuthn unlock: {route()}"
+                )
                 reopened = page.locator("body").aria_snapshot()
                 assert "112" in reopened, f"Local glucose missing after reload: {reopened[:1600]}"
                 page.screenshot(path="/tmp/d30-clinical-web-reopened.png")
