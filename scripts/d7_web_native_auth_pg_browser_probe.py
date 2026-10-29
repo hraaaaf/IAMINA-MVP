@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.parse
 from pathlib import Path
 from websocket import create_connection
 
@@ -67,6 +68,7 @@ def run():
                 info = page()
                 ws = create_connection(info["webSocketDebuggerUrl"], timeout=25)
                 seq = 0
+                external_hosts = set()
 
                 def command(method, params=None):
                     nonlocal seq
@@ -75,6 +77,12 @@ def run():
                                         "params": params or {}}))
                     while True:
                         response = json.loads(ws.recv())
+                        if response.get("method") == "Network.requestWillBeSent":
+                            url = response.get("params", {}).get("request", {}).get("url", "")
+                            if url.startswith(("http://", "https://")):
+                                host = urllib.parse.urlsplit(url).hostname
+                                if host not in ("localhost", "127.0.0.1"):
+                                    external_hosts.add(host)
                         if response.get("id") == seq:
                             if "error" in response:
                                 raise RuntimeError(f"CDP command {method} failed")
@@ -82,6 +90,7 @@ def run():
 
                 command("Page.enable")
                 command("Runtime.enable")
+                command("Network.enable")
 
                 def check(phase):
                     expected = f"IAMINA_D7_NATIVE_{phase.upper()}_PASS"
@@ -105,6 +114,9 @@ def run():
                     check(phase)
                 command("Page.reload", {"ignoreCache": True})
                 check("verify_a_edited")
+                if external_hosts:
+                    raise RuntimeError("unexpected external HTTP requests in local QA")
+                proof["external_http_hosts"] = []
                 proof["result"] = "PASS"
             finally:
                 if ws is not None:
