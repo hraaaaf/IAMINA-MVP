@@ -76,3 +76,45 @@
 - Final document-only HEAD after this amendment requires its own GitHub CI; the above backend results are strictly for code SHA `afbe55a0`.
 
 **Next exact:** verify doc-only CI/HEAD, inspect PR scope and any red checks, then obtain qualified clinical/privacy review and real Web FUE before requesting separate release/merge authorization. Keep [#1183](https://github.com/hraaaaf/IAMINA-MVP/pull/1183) independent until explicitly reconciled.
+
+## GO for test-only previews and Web FUE — 2026-10-29
+
+**Owner authorization scope:** the user said GO after a request for an isolated Web D19 preview/FUE. This permits preview testing only. **It does not authorize production deployment, merge to main, real patient data mutation or clinical approval.**
+
+### Deployments and safety checks
+- Source branch: `fix/d19-summary-cgm-authority-20261029`. No merge.
+- Backend manual preview `dpl_6MysgCN7a2t6CYYyRuf9UAjTjKjx`, unique URL `https://iamina-certified-piipzaklj-achraf-benmoussa-s-projects.vercel.app`, code/commit `74bd735d71a47e09f14b6b16da2a0400c002c652`, state READY. Later commits touch frontend and this assessment, not backend clinical implementation. The backend remains protected with Vercel auth.
+- Frontend manual BEFORE preview `dpl_DwbN2J9XjhWpdbEzGnGnngdSoj3b`, URL `https://iamina-review-4iyfq2ibu-achraf-benmoussa-s-projects.vercel.app`, commit `74bd735d`, READY.
+- Frontend manual AFTER preview `dpl_FDWErTGt6pCSCfv7hUh5EnmYZUEo`, URL `https://iamina-review-7wsqhqjzu-achraf-benmoussa-s-projects.vercel.app`, code SHA `85426e4ff4cfc9cc3d9febef64d8e23f9a67a6fc`, READY.
+- Preview-specific, Git-branch-scoped `IAMINA_REVIEW_PREVIEW_API_BASE_URL` points to the exact backend deployment instead of the stable/production backend alias. Production project settings/aliases unchanged. Vercel preview DB expected host/DB/role are distinct from production; `/api/v1/health` on the backend preview returned HTTP 200 `{"status":"ok","db":"ok","cache":"unavailable"}`. This proves DB connectivity, **not** a clinical data isolation audit or cache correctness. Authenticated KPI retrieval was blocked at Vercel Authentication; no patient data accessed. No real patient inputs, external AI calls or credential enrollment used.
+- CI and browser evidence for AFTER code SHA `85426e4f`: **7/7 completed SUCCESS** — CI #40864022496 (backend/PG and Flutter/PWA); migration drift #40864022588; UI geometry golden #40864022468; P5-5 rehearsal #40864022512; Companion browser E2E #40864022560; first-use visual #40864022665; browser screenshot certification #40864022552. Flutter job log explicitly shows **835 tests passed / 1 skipped**, PWA build present. The browser screenshot workflow generated actual PNG artifacts for synthetic patient surfaces at **390×844, 768×1024, 1280×900**. These are NOT authenticated AI-summary API journeys.
+
+### Web UI safety finding found by independent execution, not a release certification
+**BEFORE source observation:** `frontend/lib/features/journal/ai_summary_screen_presentation.dart` displayed normatively phrased KPI cards using `kpis.tirPct ?? 0.0`, `kpis.gmi ?? 0.0` and `kpis.cvPct ?? 0.0`; the AGP widget could use `summary.dailyAverages` even though they were not a verified CGM time series; the hero selected an unfavorable TIR assessment when TIR was absent. These violate the D19 fail-closed clinical presentation contract.
+
+**Written target/mockup:** when a normative CGM metric is unavailable, show no corresponding numeric card and never claim 0%; show neutral `insufficientData` text in the hero when CGM TIR unknown; show an AGP card only if an actual `summary.agpProfile` is supplied and public TIR/TAR/TBR are verified. Preserve existing layout, spacing, colors and localization strings.
+
+**AFTER implementation:** commits `0518b65e` (Flutter presentation fix), `d5096ec9` (three Flutter regression contract tests), `85426e4f` (type promotion for nullable widget reference). No clinical thresholds changed. Unit/CI build proof **PASS** on `85426e4f`; dynamic patient scenario remains to prove.
+
+**BEFORE browser observation:** [TinyFish before run](https://agent.tinyfish.ai/runs/9d54ed85-7af4-4f1c-8758-9b51326a884f): protected preview was accessible; actual first-use page displayed in English with 'Continue without an account', but navigation to `#/login` left an empty canvas in that run. FR/AR and AI Summary unavailable to the browser tool. No fixed-viewport BEFORE screenshots of the D19 AI-summary feature. This observation alone is not conclusive evidence of a product bug.
+
+**AFTER browser observation:** [TinyFish after run](https://agent.tinyfish.ai/runs/fda799e8-7a28-4d8e-a26b-a8f3da215c46): first-use page rendered, but browser automation was unable to advance via 'Continue without an account'; state remained at `#/login`, and the actual AI-summary screen, FR/AR/RTL, KPI absence/recovery and synthetic cross-account flows remained **UNREACHED**. The cause could be Flutter canvas interaction, app lock or a real application issue; **not diagnosed**. No login or patient data used.
+
+**Visual screenshots examined:** GitHub Actions artifacts `iamina-ui-browser-cert-390x844`, `...-768x1024`, `...-1280x900` from run #40864022552. In the synthetic `summary` surface they render 'Rapport de vos mesures' in French, adaptive card layout, counts and recorded glucose averages with explicit statement 'Ce rapport reste descriptif'. This is a **different screen** from `AISummaryScreen`; do not use as proof that actual AI Summary correctly handles normative null CGM fields at runtime. All three samples were inspected for legibility, but not a complete Target↔Render comparison of D19 because BEFORE AI-summary images are missing.
+
+### FUE gate / final scoped verdict
+
+| Gate | Status |
+| --- | --- |
+| Backend D19 manual-only/verified CGM/nonstandard target unit and PostgreSQL CI | **PASS** |
+| Frontend CGM-null and manual-AGP fail-closed code regression tests / build | **PASS** |
+| Web preview deployment on exact code SHA, protected isolated origin | **READY** |
+| Backend preview health and declared preview DB config | **HTTP 200 / DB OK**, cache unavailable; isolation runtime partially assessed |
+| Synthetic Chrome screenshots 390/768/1280, descriptive report | **PASS / scoped**, not actual AI-summary |
+| Real Web D19 AI-summary, FR/AR RTL, keyboard, positive/negative/recovery, account A/B | **NOT_RUN / BLOCKED by navigation** |
+| Genuine clinical/privacy review and Perfection Pass | **OPEN** |
+| Production merge/deploy | **NO_GO**; no authorization |
+
+**Scores are provisional:** EXECUTION 8.8/10, ADVERSARIAL 8.5/10, retained 7.9/10 due to essential FUE and clinical gates. Do not report 9.0+, 'CERTIFIED', 'production-ready' or 'D19 closed'. No patient-visible production aliases have changed.
+
+**Next exact:** resolve whether the browser click/navigation issue is a genuine first-use regression (reproduce via an authenticated local-only Chrome CDP or inspect browser console), then run real Web D19 AI summary with strictly synthetic sensor/manual data, FR/AR/RTL and user A/B isolation at all three viewports; re-run affected checks/visual Target↔Render, obtain qualified clinical/privacy review; reconcile D19 CAL-01 PR #1183 before any merge request. If a tool/browser cannot reach the patient screen, record FUE as NO_GO, do not replace it with static or isolated screenshot evidence.
