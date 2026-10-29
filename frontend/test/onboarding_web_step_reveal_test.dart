@@ -88,8 +88,11 @@ void main() {
         final finder = find.text(title);
         expect(finder, findsOneWidget);
         final rect = tester.getRect(finder);
-        expect(rect.top, greaterThanOrEqualTo(-1));
-        expect(rect.top, lessThan(size.height - 60));
+        if (size.width < 900) {
+          expect(rect.top, greaterThanOrEqualTo(-1));
+          expect(rect.top, lessThan(size.height - 60));
+        }
+        // Desktop has an inline scrollable form: never shift it automatically.
       }
 
       await tester.tap(find.text('Français'));
@@ -118,10 +121,14 @@ void main() {
 
       // The patient controls when a multi-choice declaration is finished.
       final next = find.byKey(const Key('onboarding-treatment-next'));
-      await tester.ensureVisible(next);
-      await tester.pumpAndSettle();
-      await tester.tap(next);
-      await tester.pumpAndSettle();
+      if (size.width < 900) {
+        await tester.ensureVisible(next);
+        await tester.pumpAndSettle();
+        await tester.tap(next);
+        await tester.pumpAndSettle();
+      } else {
+        expect(next, findsNothing); // No redundant desktop scroll CTA.
+      }
       expectRevealed('Quelle unité préférez-vous pour les mesures ?');
 
       // No implicit completion, clinical change, or navigation on scroll.

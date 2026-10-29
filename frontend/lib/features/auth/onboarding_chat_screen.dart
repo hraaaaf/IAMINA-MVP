@@ -401,8 +401,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
                 const SizedBox(height: 8),
                 // Multi-choice is patient-driven: never jump after one chip.
                 // The patient explicitly advances when finished or skips it.
-                TextButton.icon(
-                  key: const Key('onboarding-treatment-next'),
+                if (MediaQuery.sizeOf(context).width < 900)
+                  TextButton.icon(
+                    key: const Key('onboarding-treatment-next'),
                   onPressed: () => _revealStep(_unitStepKey),
                   icon: const Icon(Icons.arrow_downward_rounded, size: 18),
                   label: Text(_preferencesCopy(context,

@@ -205,11 +205,22 @@ async function chooseCountry(page, width, height) {
         await choose(page, 'Médicaments oraux pris');
         // The treatment multi-selector never auto-jumps on individual chips.
         // The explicit continue action reveals units without selecting one.
-        await choose(page, 'Continuer vers les unités');
-        await sleep(500);
-        await assertStepInViewport(page,
-          'mg/dL',
-          width, height, 'units');
+        if (width < 900) {
+          await choose(page, 'Continuer vers les unités');
+          await sleep(500);
+          await assertStepInViewport(page,
+            'mg/dL',
+            width, height, 'units');
+        } else {
+          const unexpected = page.getByText('Continuer vers les unités');
+          if (await unexpected.count()) {
+            throw new Error('Redundant scroll-to-units link on desktop');
+          }
+          await page.screenshot({
+            path:out+'/onboarding-step-units-'+width+'x'+height+'.png',
+            fullPage:false,
+          });
+        }
         // Actual Chrome debug DOM: compact viewports merge step copy into a
         // parent ARIA label; desktop exposes it as visible text without ARIA.
         // Both must state exactly five steps after the four required choices.
