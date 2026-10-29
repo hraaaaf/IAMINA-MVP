@@ -120,7 +120,20 @@ def main():
                 glucose.click()
                 glucose.press_sequentially("112", delay=110)
                 page.wait_for_timeout(650)
-                print("D30 actual textbox contents:", repr(glucose.input_value()), flush=True)
+                entered = glucose.input_value()
+                print("D30 actual textbox contents:", repr(entered), flush=True)
+                if entered != "112":
+                    # Re-focus the real editable field; Web canvas semantics may
+                    # rerender between keyboard events and interrupt the entry.
+                    glucose.click()
+                    glucose.press("ControlOrMeta+A")
+                    glucose.press_sequentially("112", delay=180)
+                    page.wait_for_timeout(600)
+                    entered = glucose.input_value()
+                    print("D30 textbox after second physical entry:", repr(entered), flush=True)
+                assert entered == "112", (
+                    f"D30 data entry incomplete, not submitting unexpected value: {entered!r}"
+                )
                 save = page.get_by_role("button", name="Save reading")
                 assert save.is_enabled(), "112 did not enable local Save reading"
                 save.click(timeout=18000)
