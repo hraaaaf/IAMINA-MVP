@@ -107,6 +107,18 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('D11_SYNTHETIC_DASHBOARD'), findsOneWidget);
 
+        // Separate a true product accessibility failure from Flutter Web's
+        // test-browser semantics transport. The actual sidebar InkWell MUST
+        // expose a native Semantics button and localized accessible name.
+        final handle = tester.ensureSemantics();
+        addTearDown(handle.dispose);
+        expect(
+          find.bySemanticsLabel(
+            locale == 'fr' ? 'Déconnexion' : 'تسجيل الخروج',
+          ),
+          findsOneWidget,
+        );
+
         // The app's actual sidebar InkWell, by its real logout icon. Do not
         // invoke AuthService.signOut() from the test itself.
         final logout = find.byIcon(Icons.logout_rounded);
