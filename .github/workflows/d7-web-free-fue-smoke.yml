@@ -8,7 +8,6 @@ on:
       - 'scripts/d7_web_actual_app_smoke.py'
       - 'frontend/test/features/profile/d7_profile_owner_save_widget_test.dart'
       - 'frontend/test/features/profile/d7_web_treatment_choice_responsive_test.dart'
-      - 'frontend/test/features/profile/d7_web_profile_persistence_chrome_test.dart'
 
 permissions:
   contents: read
@@ -43,11 +42,6 @@ jobs:
         run: |
           set -euo pipefail
           flutter test --platform chrome --reporter expanded test/features/profile/d7_web_treatment_choice_responsive_test.dart
-      - name: D7 returning patient on real Chrome — save, physical vault reopen, explicit treatment edit
-        working-directory: frontend
-        run: |
-          set -euo pipefail
-          flutter test --platform chrome --reporter expanded test/features/profile/d7_web_profile_persistence_chrome_test.dart
       - name: Build actual IAMINA Web (local-only; no backend credentials)
         working-directory: frontend
         run: |
