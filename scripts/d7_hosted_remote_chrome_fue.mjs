@@ -36,6 +36,20 @@ export async function activateFlutterAccountSemantics(page) {
   } catch { fail('ACCOUNT_BUTTON_INACCESSIBLE'); }
   return button;
 }
+// Only bounded stage codes may leave the private QA runner.
+export const D7_QA_STAGES = Object.freeze([
+  'INIT','BROWSER_LAUNCH','SHARE_ACCESS','FLUTTER_BOOT',
+  'PUBLIC_CAPTURE','ACCOUNT_SEMANTICS','ACCOUNT_CLICK',
+  'INPUT_DISCOVERY','EMAIL_FILL','PASSWORD_FILL',
+  'SUBMIT_DISCOVERY','SUBMIT_CLICK','LOGIN_REDIRECT','PROFILE_READ',
+]);
+export function safeBrowserErrorCode(error,stage) {
+  const message=String(error?.message||'');
+  if (/^D7_CHROME_[A-Z0-9_]+$/.test(message)) return message;
+  return D7_QA_STAGES.includes(stage)
+    ? 'D7_CHROME_' + stage + '_FAILED' : 'D7_CHROME_BROWSER_ERROR';
+}
+
 export function guard({origin,sha,token,email,password}) {
   if (origin !== ORIGIN || sha !== DEPLOY_SHA) fail('UNEXPECTED_DEPLOYMENT');
   if (typeof token !== 'string' || !/^[a-zA-Z0-9._~-]{10,512}$/.test(token))
@@ -61,11 +75,13 @@ async function main() {
   const save = () => fs.writeFileSync('d7-qa-chrome-proof/result.json',
     JSON.stringify(result,null,2));
   let browser;
+  let stage='INIT';
   try {
     guard({origin:ORIGIN,sha:process.env.D7_PREVIEW_SHA,
       token:process.env.D7_QA_SSO_ACCESS,email:process.env.D7_QA_A_EMAIL,
       password:process.env.D7_QA_A_PASSWORD});
     const {chromium} = await import('playwright');
+    stage='BROWSER_LAUNCH';
     browser = await chromium.launch({channel:'chrome', headless:true,
       args:['--no-sandbox','--disable-dev-shm-usage']});
     const context = await browser.newContext({
@@ -81,7 +97,9 @@ async function main() {
     // Share URL never written, printed or captured. Browser cookies stay in RAM.
     const share = ORIGIN + '/?_vercel_share=' +
       encodeURIComponent(process.env.D7_QA_SSO_ACCESS);
+    stage='SHARE_ACCESS';
     await page.goto(share,{waitUntil:'domcontentloaded',timeout:30000});
+    stage='FLUTTER_BOOT';
     await page.goto(ORIGIN+'/login',{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(() => document.title.toLowerCase()==='iamina'
       && !!document.querySelector('flutter-view,flt-glass-pane,flt-scene-host'),
@@ -91,6 +109,7 @@ async function main() {
     // Flutter Web paints pixels on CanvasKit. Its text enters the DOM only
     // after web accessibility is enabled; do not swallow an activation error.
     // Public login screenshots only: no account information entered yet.
+    stage='PUBLIC_CAPTURE';
     for(const [width,height] of VIEWPORTS){
       await page.setViewportSize({width,height});
       await page.waitForTimeout(900);
@@ -103,14 +122,19 @@ async function main() {
     }
     result.steps.login_capture='CAPTURED_NOT_VISUALLY_CERTIFIED';
     await page.setViewportSize({width:390,height:844});
+    stage='ACCOUNT_SEMANTICS';
     const choose=await activateFlutterAccountSemantics(page);
+    stage='ACCOUNT_CLICK';
     await choose.click({timeout:15000});
+    stage='INPUT_DISCOVERY';
     const inputs=page.locator('input:not([type="hidden"])');
     if(await inputs.count()<2)fail('LOGIN_INPUTS_INACCESSIBLE');
     const email=page.locator('input[type="email"]').first();
     const pass=page.locator('input[type="password"]').first();
+    stage='EMAIL_FILL';
     await (await email.count()?email:inputs.first())
       .fill(process.env.D7_QA_A_EMAIL,{timeout:10000});
+    stage='PASSWORD_FILL';
     await (await pass.count()?pass:inputs.nth(1))
       .fill(process.env.D7_QA_A_PASSWORD,{timeout:10000});
     let status;
@@ -118,14 +142,18 @@ async function main() {
       if(r.url().split('?')[0]===ORIGIN+'/api/v1/auth/login')
         status=r.status();
     });
+    stage='SUBMIT_DISCOVERY';
     const submit=page.getByRole('button',{name:LOGIN_SUBMIT_LABEL}).last();
     if(!await submit.count())fail('SUBMIT_INACCESSIBLE');
+    stage='SUBMIT_CLICK';
     await submit.click({timeout:15000});
+    stage='LOGIN_REDIRECT';
     await page.waitForURL(url=>new URL(url).pathname!=='/login',
       {timeout:30000});
     if(status!==200)fail('NATIVE_LOGIN_NOT_CONFIRMED');
     result.steps.native_login='PASS';
     // Never click any consent dialog. The QA owner must approve consent.
+    stage='PROFILE_READ';
     await page.goto(ORIGIN+'/profile',{waitUntil:'domcontentloaded'});
     await page.waitForTimeout(3000);
     if(new URL(page.url()).pathname!=='/profile')
@@ -136,9 +164,8 @@ async function main() {
     result.result='READ_ONLY_HOSTED_PREFLIGHT_PASS_FUE_NOT_CERTIFIED';
     await context.close();
   } catch(error) {
-    const m=String(error?.message||'');
     result.result='FAIL';
-    result.error_code=/^D7_CHROME_[A-Z0-9_]+$/.test(m)?m:'D7_CHROME_BROWSER_ERROR';
+    result.error_code=safeBrowserErrorCode(error,stage);
     process.exitCode=1;
     process.stderr.write(result.error_code+'\n');
   } finally {

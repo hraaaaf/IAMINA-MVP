@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ORIGIN, DEPLOY_SHA, VIEWPORTS, guard, emptyProof,
-  ACCOUNT_CHOICE_LABEL, LOGIN_SUBMIT_LABEL, activateFlutterAccountSemantics}
+  ACCOUNT_CHOICE_LABEL, LOGIN_SUBMIT_LABEL, activateFlutterAccountSemantics,
+  D7_QA_STAGES, safeBrowserErrorCode}
   from '../../../scripts/d7_hosted_remote_chrome_fue.mjs';
 const valid={origin:ORIGIN,sha:DEPLOY_SHA,
   token:'synthetic-share-token-123456',
@@ -60,6 +61,19 @@ test('missing Flutter accessibility placeholder fails closed',async()=>{
   const page={locator:()=>({first:()=>({count:async()=>0})})};
   await assert.rejects(activateFlutterAccountSemantics(page),
     /D7_CHROME_ACCESSIBILITY_PLACEHOLDER_MISSING/);
+});
+
+test('browser failures report bounded stage only, never raw exception',()=>{
+  for(const stage of D7_QA_STAGES){
+    const secret='https://private.example.invalid/?_vercel_share=should-not-print';
+    const code=safeBrowserErrorCode(new Error(secret),stage);
+    assert.equal(code,'D7_CHROME_'+stage+'_FAILED');
+    assert.doesNotMatch(code,/private|share|https/);
+  }
+  assert.equal(safeBrowserErrorCode(new Error('untrusted'), 'made-up'),
+    'D7_CHROME_BROWSER_ERROR');
+  assert.equal(safeBrowserErrorCode(new Error('D7_CHROME_ACCOUNT_BUTTON_INACCESSIBLE'),
+    'ACCOUNT_SEMANTICS'),'D7_CHROME_ACCOUNT_BUTTON_INACCESSIBLE');
 });
 
 test('real hosted browser smoke cannot claim clinical FUE certification',()=>{
