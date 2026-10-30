@@ -781,7 +781,13 @@ class _GlassNavDestination extends StatelessWidget {
                   height: 1.05,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   color: selected ? activeColor : inactiveColor,
-                  fontFamily: 'Inter',
+                  // Primary font for RTL mobile labels must support Arabic.
+                  // Forced Inter without fallback caused repeated blocked
+                  // fonts.gstatic.com downloads and unreadable squares.
+                  fontFamily: Directionality.of(context) == TextDirection.rtl
+                      ? 'NotoSansArabic'
+                      : 'Inter',
+                  fontFamilyFallback: kOfflineFontFallbacks,
                 ),
                 child: Text(
                   label,
