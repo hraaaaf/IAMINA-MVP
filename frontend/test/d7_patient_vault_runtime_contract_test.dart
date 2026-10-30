@@ -27,7 +27,10 @@ void main() {
     expect(onboarding, contains('MedicalTreatmentMultiSelector('));
     expect(onboarding, contains('PatientTreatmentDeclarationStore(db).write('));
     expect(onboarding, isNot(contains('firebaseUser?.uid.hashCode.abs()')));
-    expect(onboarding, contains('final ready = _language != null && _country != null;'));
+    // Medical declaration remains optional; D5 requires explicit country confirmation.
+    expect(onboarding, contains(
+      'final ready = _language != null && _country != null && !_countrySuggestedByIp;',
+    ));
     expect(profile, contains('PatientTreatmentDeclarationStore(db).write('));
     expect(presentation, contains('MedicalTreatmentMultiSelector('));
   });
