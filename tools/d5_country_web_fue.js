@@ -175,7 +175,14 @@ async function isolation(browser){
     locale:'fr-FR',serviceWorkers:'allow',colorScheme:'light',
   });
   const page=await context.newPage();
-  const pageErrors=[], failedRequests=[], consoleErrors=[];
+  const pageErrors=[], failedRequests=[], consoleErrors=[], resources=[];
+  page.on('response',r=>{
+    const url=new URL(r.url());
+    if(['/', '/index.html','/main.dart.js','/flutter_bootstrap.js',
+      '/drift_worker.js','/sqlite3.wasm'].includes(url.pathname)){
+      resources.push({path:url.pathname,status:r.status(),fromSW:r.fromServiceWorker()});
+    }
+  });
   page.on('pageerror',e=>pageErrors.push({
     message:String(e.message||e).slice(0,500),
     stack:String(e.stack||'').slice(0,1600),
@@ -230,6 +237,7 @@ async function isolation(browser){
     item.consoleErrors=consoleErrors.slice(-5);
     item.failedRequests=failedRequests.slice(-5);
     item.lastUrl=page.url();
+    item.resources=resources.slice(-35);
     item.browserSnapshot=await page.evaluate(()=>({
       title:document.title,
       bodyText:document.body?.innerText?.slice(0,750)||'',
@@ -238,6 +246,9 @@ async function isolation(browser){
       documentState:document.readyState,
       scriptCount:document.scripts.length,
       serviceWorkerControlled:!!navigator.serviceWorker?.controller,
+      flutterSurfaceCount:document.querySelectorAll('flt-glass-pane').length,
+      flutterLoaderPresent:!!window._flutter,
+      cacheKeys:[], // Cache content inspected separately; no clinical content.
     })).catch(e=>({inspectError:String(e.message||e).slice(0,180)}));
     item.images.push(await capture(page,locale,size,'isolation','FAILED').catch(()=>null));
     report.errors.push(item);
@@ -274,6 +285,6 @@ async function isolation(browser){
   console.log('D5_WEB_FUE='+JSON.stringify({passed:report.passed,total:report.requiredCount,
     failed:report.errors.map(x=>({kind:x.kind,locale:x.locale,viewport:x.viewport,
       stage:x.stage,error:x.error,errors:x.pageErrors,console:x.consoleErrors,
-      requests:x.failedRequests,dom:x.browserSnapshot}))}));
+      requests:x.failedRequests,resources:x.resources,dom:x.browserSnapshot}))}));
   if(!report.fuePass)process.exitCode=1;
 })().catch(e=>{console.error('D5 FUE harness error: '+String(e.message||e));process.exitCode=1;});
