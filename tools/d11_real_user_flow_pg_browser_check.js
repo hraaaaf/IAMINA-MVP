@@ -144,13 +144,14 @@ async function logoutViaVisibleSidebar(page, width) {
     await labelClick(page,label);
     return {semantic:true};
   }
-  // Browser screenshots ground the actual MainShell sidebar layout:
-  // collapsed rail at 768 (logout icon y=331); full rail at 1280 (y=353).
-  // This is a strict native mouse click followed by authenticated HTTP
-  // revocation verification, NOT an AuthService or onTap invocation.
+  // Pixel positions independently read from archived 768×1024 and
+  // 1280×900 real Chrome screenshots: logout icon centers y≈300 and y≈354.
+  // The earlier y=332 at 768 hit blank space, not the control. This fallback
+  // uses real mouse hit-testing, then requires HTTP 200; missing accessible
+  // semantics is *still* a separate hard failure.
   const railX=width>=1100?65:35;
   const x=locale==='ar'?width-railX:railX;
-  const y=width>=1100?354:332;
+  const y=width>=1100?354:300;
   await page.mouse.click(x,y);
   return {semantic:false};
 }
