@@ -105,11 +105,11 @@ def main():
                               wait_until="domcontentloaded", timeout=60000)
                     page.wait_for_selector("flutter-view, flt-glass-pane", timeout=60000)
                     activate_semantics()
-                    page.get_by_text("Medical tracking", exact=True).first.wait_for(
+                    page.get_by_role("button", name=re.compile("Medical tracking", re.I)).first.wait_for(
                         state="visible", timeout=25000
                     )
                     assert app_route() == "/profile", "Profile route redirected"
-                    page.get_by_text("Medical tracking", exact=True).first.click(
+                    page.get_by_role("button", name=re.compile("Medical tracking", re.I)).first.click(
                         timeout=18000
                     )
 
@@ -155,17 +155,17 @@ def main():
 
                 step("profile_type2_and_patient_declared_treatments")
                 profile_open()
-                page.get_by_text("Type 2 Diabetes", exact=True).first.click(
+                page.get_by_label("Type 2 Diabetes", exact=True).first.click(
                     timeout=18000
                 )
-                page.get_by_text("Oral medicines I take", exact=True).first.click(
+                page.get_by_label("Oral medicines I take", exact=True).first.click(
                     timeout=18000
                 )
                 extra = page.get_by_role(
                     "button", name="Report another treatment", exact=True
                 )
                 extra.click(timeout=18000)
-                page.get_by_text("Insulin", exact=True).first.click(timeout=18000)
+                page.get_by_label("Insulin", exact=True).first.click(timeout=18000)
                 save()
 
                 step("physical_reload_type2_and_treatments_preserved")
@@ -173,7 +173,7 @@ def main():
                 medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
 
                 step("patient_type1_without_automatic_treatment_change")
-                page.get_by_text("Type 1 Diabetes", exact=True).first.click(
+                page.get_by_label("Type 1 Diabetes", exact=True).first.click(
                     timeout=18000
                 )
                 save()
@@ -181,7 +181,7 @@ def main():
                 medical_summary_contains("Type 1 Diabetes", "Oral medicines", "Insulin")
 
                 step("explicit_no_treatment_then_physical_reload")
-                page.get_by_text("No treatment to report", exact=True).first.click(
+                page.get_by_label("No treatment to report", exact=True).first.click(
                     timeout=18000
                 )
                 save()
