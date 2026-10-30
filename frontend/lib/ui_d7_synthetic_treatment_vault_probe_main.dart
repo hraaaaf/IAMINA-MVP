@@ -18,6 +18,112 @@ Future<void> main() async {
   html.document.title = 'IAMINA_D7_PENDING';
   AppDatabase? db;
   try {
+    // D7 case-specific proof: a single returning synthetic patient. Each
+    // browser navigation reopens the SAME real IndexedDB-backed vault.
+    // This tests storage and declaration rules, not ProfileScreen clicks or SSO.
+    const singlePhases = <String>{
+      'single_seed', 'single_verify_seed', 'single_type1',
+      'single_verify_type1', 'single_none', 'single_verify_none',
+    };
+    if (singlePhases.contains(phase)) {
+      final singleScope = PatientVaultScope.deviceLocal(
+        'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      );
+      final vault = AppDatabase.forPatientVault(singleScope);
+      db = vault;
+      await vault.customSelect('SELECT 1').getSingle();
+      final store = PatientTreatmentDeclarationStore(vault);
+      final before = await vault.getProfileForLocalUserId(vault.activeProfileRowId);
+      final declared = await store.read();
+
+      Future<void> assertSingle({
+        required String type,
+        required String state,
+        required List<String> codes,
+        required int generation,
+      }) async {
+        final profile =
+            await vault.getProfileForLocalUserId(vault.activeProfileRowId);
+        final record = await store.read();
+        if (profile?.diabetesType != type ||
+            profile?.treatment != 'tablets' ||
+            record?.ownerId != vault.activeProfileRowId ||
+            record?.state != state ||
+            record?.codes.join(',') != codes.join(',') ||
+            record?.localGeneration != generation ||
+            record?.syncStatus != 'pending' ||
+            record?.provenance != 'patient_declared') {
+          throw StateError('D7 single-patient browser persistence mismatch');
+        }
+      }
+
+      if (phase == 'single_seed') {
+        if (before != null || declared != null) {
+          throw StateError('D7 browser patient vault is not initially empty');
+        }
+        await vault.into(vault.patientProfiles).insert(
+          PatientProfilesCompanion.insert(
+            userId: drift.Value(vault.activeProfileRowId),
+            updatedAt: DateTime.utc(2026, 10, 30),
+            diabetesType: const drift.Value('type2'),
+            treatment: const drift.Value('tablets'),
+          ),
+        );
+        await store.write(
+          state: 'declared',
+          codes: const ['oral_meds', 'insulin'],
+        );
+        await assertSingle(
+          type: 'type2', state: 'declared',
+          codes: const ['oral_meds', 'insulin'], generation: 1,
+        );
+      } else if (phase == 'single_verify_seed') {
+        await assertSingle(
+          type: 'type2', state: 'declared',
+          codes: const ['oral_meds', 'insulin'], generation: 1,
+        );
+      } else if (phase == 'single_type1') {
+        await assertSingle(
+          type: 'type2', state: 'declared',
+          codes: const ['oral_meds', 'insulin'], generation: 1,
+        );
+        await (vault.update(vault.patientProfiles)
+              ..where((row) => row.userId.equals(vault.activeProfileRowId)))
+            .write(const PatientProfilesCompanion(
+              diabetesType: drift.Value('type1'),
+            ));
+        await assertSingle(
+          type: 'type1', state: 'declared',
+          codes: const ['oral_meds', 'insulin'], generation: 1,
+        );
+      } else if (phase == 'single_verify_type1') {
+        await assertSingle(
+          type: 'type1', state: 'declared',
+          codes: const ['oral_meds', 'insulin'], generation: 1,
+        );
+      } else if (phase == 'single_none') {
+        await assertSingle(
+          type: 'type1', state: 'declared',
+          codes: const ['oral_meds', 'insulin'], generation: 1,
+        );
+        // Synthetic stand-in for an explicit patient selection (not
+        // an inferred diabetes-type/medication recommendation).
+        await store.write(state: 'none_declared', codes: const []);
+        await assertSingle(
+          type: 'type1', state: 'none_declared',
+          codes: const [], generation: 2,
+        );
+      } else if (phase == 'single_verify_none') {
+        await assertSingle(
+          type: 'type1', state: 'none_declared',
+          codes: const [], generation: 2,
+        );
+      }
+      await vault.close();
+      html.document.title = 'IAMINA_D7_\u0024{phase.toUpperCase()}_PASS';
+      return;
+    }
+
     const phases = {
       'seed_a', 'seed_b', 'verify_a', 'verify_b', 'edit_a',
       'verify_a_edited', 'none_b', 'verify_b_none',
