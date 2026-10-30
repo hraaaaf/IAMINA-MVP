@@ -369,6 +369,9 @@ class AminaTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       fontFamily: 'Inter',
+      // Inherit the vendored Arabic/symbol stack in every Material widget,
+      // including dialog inputs and TextStyles without an explicit fallback.
+      fontFamilyFallback: kOfflineFontFallbacks,
       primaryColor: teal500,
       colorScheme: ColorScheme.fromSeed(
         seedColor: teal500,
@@ -442,6 +445,9 @@ class AminaTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       fontFamily: 'Inter',
+      // Inherit the vendored Arabic/symbol stack in every Material widget,
+      // including dialog inputs and TextStyles without an explicit fallback.
+      fontFamilyFallback: kOfflineFontFallbacks,
       primaryColor: teal500,
       colorScheme: ColorScheme.fromSeed(
         seedColor: teal500,
