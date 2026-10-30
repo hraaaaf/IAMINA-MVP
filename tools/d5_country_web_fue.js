@@ -176,7 +176,12 @@ async function isolation(browser){
   });
   const page=await context.newPage();
   const pageErrors=[], failedRequests=[], consoleErrors=[];
-  page.on('pageerror',e=>pageErrors.push(String(e.message||e).slice(0,260)));
+  page.on('pageerror',e=>pageErrors.push({
+    message:String(e.message||e).slice(0,500),
+    stack:String(e.stack||'').slice(0,1600),
+    name:String(e.name||'').slice(0,100),
+  }));
+  page.on('crash',()=>pageErrors.push({name:'page-crash'}));
   page.on('requestfailed',r=>failedRequests.push({
     path:new URL(r.url()).pathname.slice(0,130),
     failure:r.failure()?.errorText||'unknown',
@@ -225,6 +230,15 @@ async function isolation(browser){
     item.consoleErrors=consoleErrors.slice(-5);
     item.failedRequests=failedRequests.slice(-5);
     item.lastUrl=page.url();
+    item.browserSnapshot=await page.evaluate(()=>({
+      title:document.title,
+      bodyText:document.body?.innerText?.slice(0,750)||'',
+      flutterSemantics:[...document.querySelectorAll('flt-semantics')]
+        .slice(0,12).map(x=>(x.getAttribute('aria-label')||x.textContent||'').slice(0,120)),
+      documentState:document.readyState,
+      scriptCount:document.scripts.length,
+      serviceWorkerControlled:!!navigator.serviceWorker?.controller,
+    })).catch(e=>({inspectError:String(e.message||e).slice(0,180)}));
     item.images.push(await capture(page,locale,size,'isolation','FAILED').catch(()=>null));
     report.errors.push(item);
   }finally{
@@ -258,6 +272,8 @@ async function isolation(browser){
   report.fuePass=report.passed===19&&report.errors.length===0;
   fs.writeFileSync(path.join(out,'result.json'),JSON.stringify(report,null,2));
   console.log('D5_WEB_FUE='+JSON.stringify({passed:report.passed,total:report.requiredCount,
-    failed:report.errors.map(x=>({kind:x.kind,locale:x.locale,viewport:x.viewport,error:x.error}))}));
+    failed:report.errors.map(x=>({kind:x.kind,locale:x.locale,viewport:x.viewport,
+      stage:x.stage,error:x.error,errors:x.pageErrors,console:x.consoleErrors,
+      requests:x.failedRequests,dom:x.browserSnapshot}))}));
   if(!report.fuePass)process.exitCode=1;
 })().catch(e=>{console.error('D5 FUE harness error: '+String(e.message||e));process.exitCode=1;});
