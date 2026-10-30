@@ -117,9 +117,11 @@ async function typeSignupLabeledField(page, label, value, fallbackY=null) {
   // Physical key events, not just a DOM-value patch: Flutter TextField's
   // TextEditingController must receive the change before validation.
   await page.keyboard.type(value,{delay:2});
+  // Query the focused editor BEFORE pressing Tab: the locator is dynamic
+  // 'input:focus' and cannot be resolved after focus moves away.
+  const length=await editor.evaluate(el=>el.value.length);
   await page.keyboard.press('Tab');
   await page.waitForTimeout(60);
-  const length=await editor.evaluate(el=>el.value.length);
   if(length!==value.length)
     throw new Error('signup editor length mismatch: '+label+' length '+length+' expected '+value.length);
 }
