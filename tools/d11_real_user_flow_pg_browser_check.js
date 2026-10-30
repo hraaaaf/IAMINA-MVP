@@ -172,7 +172,7 @@ async function screenshot(page, suffix) {
   return filename;
 }
 async function proof(page, width) {
-  const external = [], errors = [], a11yErrors = [], consoleErrors = [], responses = [], requests = [];
+  const external = [], externalFontFiles = [], errors = [], a11yErrors = [], consoleErrors = [], responses = [], requests = [];
   page.on('pageerror',e=>errors.push('uncaught-page-exception:'+e.name));
   page.on('console',m=>{
     if(m.type()!=='error')return;
@@ -199,7 +199,12 @@ async function proof(page, width) {
     // from unrelated external egress without allowing a network request.
     let host='unknown';
     try{host=new URL(u).hostname;}catch(_){}
-    external.push(host);return route.abort();
+    external.push(host);
+    if(host==='fonts.gstatic.com') {
+      try {externalFontFiles.push(new URL(u).pathname.split('/').at(-1).slice(0,120));}
+      catch(_) {}
+    }
+    return route.abort();
   });
 
   const stage={value:'page_ready'};
@@ -318,8 +323,15 @@ async function proof(page, width) {
     const labels=await page.locator('flt-semantics').evaluateAll(nodes=>
       nodes.slice(0,80).map(n=>(n.getAttribute('aria-label')||n.textContent||'').slice(0,90))
         .filter(Boolean)).catch(()=>[]);
+    const logoutDom=await page.locator('flt-semantics').evaluateAll(nodes=>
+      nodes.filter(n=>(n.getAttribute('aria-label')||n.textContent||'').includes(
+        locale==='fr'?'Déconnexion':'تسجيل الخروج')).slice(0,8).map(n=>({
+          role:n.getAttribute('role'),ariaLabel:(n.getAttribute('aria-label')||'').slice(0,90),
+          hidden:n.getAttribute('aria-hidden'),tag:n.tagName
+        }))).catch(()=>[]);
     return {locale,width,pass:false,stage:stage.value,error:String(e.message||e).slice(0,250),
-      visibleSemanticLabels:labels.slice(0,35),requests:responses,
+      visibleSemanticLabels:labels.slice(0,35),logoutSemanticDom:logoutDom,
+      blockedExternalFontFiles:[...new Set(externalFontFiles)].slice(0,12),requests:responses,
       browserErrors:errors.slice(0,5),a11yErrors:a11yErrors.slice(0,5),consoleDiagnostic:consoleErrors,
       errors:errors.length,
       blockedExternal:external.length,blockedExternalHosts:[...new Set(external)].slice(0,8),
