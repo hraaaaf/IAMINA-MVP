@@ -102,13 +102,14 @@ async function typeSignupLabeledField(page, label, value) {
   if(targetY>=page.viewportSize().height)
     throw new Error('signup label below browser viewport: '+label);
   await page.mouse.click(targetX,targetY);
-  await page.keyboard.press('ControlOrMeta+A');
-  await page.keyboard.insertText(value);
-  const length=await page.evaluate(()=>{
-    const input=document.activeElement;
-    return input instanceof HTMLInputElement ? input.value.length : null;
-  });
-  if(length!==null&&length!==value.length)
+  // Flutter Web creates an actual editing <input> for the focused text field.
+  // Playwright.fill dispatches real browser input/change events and replaces
+  // stale field contents, unlike Control+A/insertText on the wrong focus.
+  const editor=page.locator('input:focus,textarea:focus').first();
+  await editor.waitFor({state:'attached',timeout:3000});
+  await editor.fill(value,{timeout:4000});
+  const length=await editor.evaluate(el=>el.value.length);
+  if(length!==value.length)
     throw new Error('signup editor length mismatch: '+label+' length '+length+' expected '+value.length);
 }
 async function logoutViaVisibleSidebar(page, width) {
@@ -178,8 +179,8 @@ async function proof(page, width) {
 
     // First reject an invalid login through the production form.
     stage.value='negative_login';
-    await typeField(page,0,testEmail);
-    await typeField(page,1,'Wrong-2026!');
+    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
+    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور','Wrong-2026!');
     const loginReject = await awaitAuthResponse(page,'/api/v1/auth/login',
       () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
     if(loginReject.status()!==401)
@@ -223,9 +224,7 @@ async function proof(page, width) {
     await screenshot(page,'06-dashboard');
 
     stage.value='logout_pointer';
-    const logoutPromise=page.waitForResponse(r=>
-      r.url().startsWith(api) && new URL(r.url()).pathname==='/api/v1/auth/logout',
-      {timeout:12000}).catch(e=>({waitError:String(e.message||e)}));
+    const logoutCount=responses.filter(r=>r.path==='/api/v1/auth/logout').length;
     if(width>=700){
       const nav=await logoutViaVisibleSidebar(page,width);
       if(!nav.semantic)errors.push('main-shell-logout-missing-accessible-node');
@@ -235,16 +234,20 @@ async function proof(page, width) {
       await labelClick(page,locale==='fr'?'Se déconnecter':'تسجيل الخروج');
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
-    const revoke=await logoutPromise;
-    if(revoke.waitError)throw new Error('native logout HTTP response absent');
-    if(revoke.status()!==200)
-      throw new Error('real navigation logout did not revoke native token');
+    // The response listener is attached before page navigation and also
+    // collects all HTTP evidence used by the final report; it is more robust
+    // across route changes than an extra waiter on the old navigation context.
+    for(let retry=0;retry<50&&!responses.slice(logoutCount).some(
+      r=>r.path==='/api/v1/auth/logout');retry++)await page.waitForTimeout(100);
+    const logoutResponses=responses.filter(r=>r.path==='/api/v1/auth/logout');
+    if(logoutResponses.length<=logoutCount || logoutResponses.at(-1).status!==200)
+      throw new Error('real navigation logout did not return native HTTP 200');
     await screenshot(page,'07-logged-out');
 
     stage.value='sign_in_existing_account';
     await labelClick(page,locale==='fr'?'Se connecter ou créer un compte':'تسجيل الدخول أو إنشاء حساب');
-    await typeField(page,0,testEmail);
-    await typeField(page,1,password);
+    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
+    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور',password);
     const loginAccept=await awaitAuthResponse(page,'/api/v1/auth/login',
       () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
     if(loginAccept.status()!==200)
