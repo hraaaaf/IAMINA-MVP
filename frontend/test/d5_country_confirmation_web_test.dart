@@ -8,6 +8,7 @@ import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/locale_preference_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
@@ -51,10 +52,65 @@ class _ReadyCountryPreferences extends LocalePreferenceService {
   bool get loaded => true;
 
   @override
+  bool get countryScopeReady => true;
+
+  @override
   String? get country => selected;
 }
 
 void main() {
+  test('A to B to A country isolation: legacy browser value never proves owner',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'iamina.country': 'MA',
+    });
+    const storage = FlutterSecureStorage();
+    final service = LocalePreferenceService(
+      ApiClient(baseUrl: 'http://localhost:8000'),
+      storage: storage,
+      systemLocale: const Locale('fr'),
+    );
+    addTearDown(service.dispose);
+
+    await service.refresh();
+    expect(service.country, isNull);
+    await service.bindCountryScope('amina_vault_v1_native_734');
+    expect(service.countryScopeReady, isTrue);
+    expect(service.country, isNull);
+    await service.setExperience(language: 'fr', country: 'FR', tone: 'neutral');
+    expect(service.country, 'FR');
+
+    await service.bindCountryScope(null);
+    expect(service.country, isNull);
+    await service.bindCountryScope('amina_vault_v1_native_735');
+    expect(service.countryScopeReady, isTrue);
+    expect(service.country, isNull);
+    await service.setExperience(language: 'fr', country: 'ES', tone: 'neutral');
+    expect(service.country, 'ES');
+
+    await service.bindCountryScope('amina_vault_v1_native_734');
+    expect(service.country, 'FR');
+    expect(await storage.read(key: 'iamina.country'), 'MA');
+    expect(await storage.read(key: 'iamina.country.v1.amina_vault_v1_native_734'), 'FR');
+    expect(await storage.read(key: 'iamina.country.v1.amina_vault_v1_native_735'), 'ES');
+  });
+
+  test('unbound country cannot be saved under a global key', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    const storage = FlutterSecureStorage();
+    final service = LocalePreferenceService(
+      ApiClient(baseUrl: 'http://localhost:8000'),
+      storage: storage,
+      systemLocale: const Locale('fr'),
+    );
+    addTearDown(service.dispose);
+    await expectLater(
+      service.setExperience(language: 'fr', country: 'MA', tone: 'neutral'),
+      throwsStateError,
+    );
+    expect(await storage.read(key: 'iamina.country'), isNull);
+  });
+
   test('legacy country prompt never blocks a stored profile', () {
     expect(shouldShowReturningCountryPrompt(
       hasProfile: true,
