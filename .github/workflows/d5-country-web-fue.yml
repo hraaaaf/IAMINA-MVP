@@ -25,6 +25,10 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Compare renders and test results against the actual PR HEAD, not
+          # GitHub's synthetic merge ref from the pull_request event.
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -46,6 +50,8 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Exercise browser D5 scope without hosted API or patient data
+        env:
+          D5_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python3 -m http.server 7385 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d5-local-http.log 2>&1 &
           node tools/d5_country_web_fue.js
