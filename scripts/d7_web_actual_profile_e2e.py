@@ -148,10 +148,15 @@ def main():
                     # Flutter InkWell choices aren't HTML form labels.
                     # Match real accessibility roles first, then a semantic
                     # aria-label fallback. Never assume a painted text node.
-                    pattern = re.compile(re.escape(label), re.I)
+                    # Playwright's internal role selector parser treats '/'
+                    # as a regex delimiter even in escaped patterns. A literal
+                    # string avoids InvalidSelectorError for "Not sure / later".
+                    # Preserve the already-proven regex path for other choices.
+                    role_name = (label if "/" in label
+                                 else re.compile(re.escape(label), re.I))
                     options = (
-                        page.get_by_role("button", name=pattern),
-                        page.get_by_role("checkbox", name=pattern),
+                        page.get_by_role("button", name=role_name),
+                        page.get_by_role("checkbox", name=role_name),
                         page.locator('[aria-label*="' + label + '"]'),
                     )
                     # A filter chip only enters Flutter's semantics tree
