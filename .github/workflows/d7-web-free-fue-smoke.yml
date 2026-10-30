@@ -115,6 +115,19 @@ jobs:
               for stage in ("type2", "unknown", "explicit_none")
               for viewport in ("390x844", "768x1024", "1280x900")
           }
+          import hashlib, re, struct
+          digest_by_viewport = {}
+          for c in d["captures"]:
+              path = Path("d7-web-real-profile-captures") / c["file"]
+              raw = path.read_bytes()
+              assert raw.startswith(bytes.fromhex("89504e470d0a1a0a"))
+              width, height = struct.unpack(">II", raw[16:24])
+              expected_width, expected_height = map(int, c["viewport"].split("x"))
+              assert width == expected_width and height >= expected_height
+              assert re.fullmatch(r"[0-9a-f]{64}", c["sha256"])
+              assert hashlib.sha256(raw).hexdigest() == c["sha256"]
+              digest_by_viewport.setdefault(c["viewport"], set()).add(c["sha256"])
+          assert all(len(digests) == 3 for digests in digest_by_viewport.values())
           assert d["phases"] == [
               "genuine_local_webauthn_enrollment",
               "profile_type2_and_patient_declared_treatments",
