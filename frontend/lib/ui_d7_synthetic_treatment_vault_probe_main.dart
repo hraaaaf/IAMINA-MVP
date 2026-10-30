@@ -120,7 +120,7 @@ Future<void> main() async {
         );
       }
       await vault.close();
-      html.document.title = 'IAMINA_D7_\u0024{phase.toUpperCase()}_PASS';
+      html.document.title = 'IAMINA_D7_' + phase.toUpperCase() + '_PASS';
       return;
     }
 
