@@ -1,11 +1,15 @@
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/features/auth/onboarding_chat_screen.dart';
 import 'package:amina/features/profile/profile_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/app_lock_service.dart';
+import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/locale_preference_service.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +39,19 @@ class _SuggestedCountryPreferences extends LocalePreferenceService {
     persistedCountryCount += 1;
     persistedCountry = country;
   }
+}
+
+class _ReadyCountryPreferences extends LocalePreferenceService {
+  _ReadyCountryPreferences(this.selected)
+      : super(ApiClient(baseUrl: 'http://localhost:8000'));
+
+  final String? selected;
+
+  @override
+  bool get loaded => true;
+
+  @override
+  String? get country => selected;
 }
 
 void main() {
@@ -70,6 +87,73 @@ void main() {
       dismissed: false,
     ), isFalse);
   });
+
+  for (final lang in ['fr', 'ar']) {
+    testWidgets('returning Web profile can postpone country without data loss in $lang',
+        (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase.testPatientVault(
+        NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+      );
+      addTearDown(db.close);
+      await db.into(db.patientProfiles).insert(
+        PatientProfilesCompanion.insert(
+          userId: const drift.Value(734),
+          preferredLanguage: drift.Value(lang),
+          updatedAt: DateTime.utc(2026, 10, 30),
+          diabetesType: const drift.Value('type2'),
+          treatment: const drift.Value('tablets'),
+        ),
+      );
+      final before = await db.getProfileForLocalUserId(734);
+      final consent = ConsentService()..seedInitialProfile(before!);
+      final auth = AuthService();
+      final preferences = _ReadyCountryPreferences(null);
+      addTearDown(consent.dispose);
+      addTearDown(auth.dispose);
+      addTearDown(preferences.dispose);
+
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale(lang),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiProvider(
+          providers: [
+            Provider<AppDatabase>.value(value: db),
+            ChangeNotifierProvider<ConsentService>.value(value: consent),
+            ChangeNotifierProvider<AuthService>.value(value: auth),
+            ChangeNotifierProvider<AppLockService>(
+              create: (_) => AppLockService(),
+            ),
+            ChangeNotifierProvider<LocalePreferenceService>.value(
+              value: preferences,
+            ),
+          ],
+          child: const ProfileScreen(),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('d5-country-legacy-prompt')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('d5-country-choose')), findsOneWidget);
+      expect(find.byKey(const ValueKey('d5-country-later')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('d5-country-later')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('d5-country-legacy-prompt')),
+          findsNothing);
+      expect(find.byKey(const ValueKey('profile-medical-section')),
+          findsOneWidget);
+      final after = await db.getProfileForLocalUserId(734);
+      expect(after?.diabetesType, before.diabetesType);
+      expect(after?.treatment, before.treatment);
+      expect(after?.aiConsentGivenAt, before.aiConsentGivenAt);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('IP suggestion cannot finish onboarding until explicitly confirmed',
       (tester) async {
