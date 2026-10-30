@@ -72,6 +72,63 @@ async function typeField(page, index, value, inDialog=false) {
   await page.keyboard.insertText(value);
   await page.keyboard.press('Tab');
 }
+// The CanvasKit semantics tree can retain the two underlying login inputs
+// while a signup AlertDialog is open. Select a user-visible field by its
+// rendered LABEL and click inside the box directly below that label.
+// This is a real pointer/keyboard path; no widget callbacks or DOM value
+// injection. The field order and label geometry are checked on-screen.
+async function typeSignupLabeledField(page, label, value) {
+  const exact=page.getByText(label,{exact:true});
+  const semantics=page.locator('flt-semantics');
+  const candidateBoxes=[];
+  for (let i=0;i<await exact.count();i++) {
+    const el=exact.nth(i);
+    const b=await el.boundingBox().catch(()=>null);
+    if(b&&b.width>0&&b.height>0)candidateBoxes.push(b);
+  }
+  if(!candidateBoxes.length) {
+    for(let i=0;i<await semantics.count();i++) {
+      const el=semantics.nth(i);
+      if(norm(await el.getAttribute('aria-label').catch(()=>''))!==label)continue;
+      const b=await el.boundingBox().catch(()=>null);
+      if(b&&b.width>0&&b.height>0)candidateBoxes.push(b);
+    }
+  }
+  if(!candidateBoxes.length)throw new Error('signup visible field label absent: '+label);
+  // Topmost dialog fields are lower on-screen than the original login controls.
+  const box=candidateBoxes.sort((a,b)=>b.y-a.y)[0];
+  const targetX=page.viewportSize().width/2;
+  const targetY=box.y+box.height+22;
+  if(targetY>=page.viewportSize().height)
+    throw new Error('signup label below browser viewport: '+label);
+  await page.mouse.click(targetX,targetY);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText(value);
+  const length=await page.evaluate(()=>{
+    const input=document.activeElement;
+    return input instanceof HTMLInputElement ? input.value.length : null;
+  });
+  if(length!==null&&length!==value.length)
+    throw new Error('signup editor length mismatch: '+label+' length '+length+' expected '+value.length);
+}
+async function logoutViaVisibleSidebar(page, width) {
+  const label=locale==='fr'?'Déconnexion':'تسجيل الخروج';
+  // Prefer accessible nodes. CI Flutter's semantic tree can collapse to the
+  // centre Scaffold after a route change even while sidebar pixels render.
+  if(await page.getByRole('button',{name:label,exact:true}).count()) {
+    await labelClick(page,label);
+    return {semantic:true};
+  }
+  // Browser screenshots ground the actual MainShell sidebar layout:
+  // collapsed rail at 768 (logout icon y=331); full rail at 1280 (y=353).
+  // This is a strict native mouse click followed by authenticated HTTP
+  // revocation verification, NOT an AuthService or onTap invocation.
+  const railX=width>=1100?65:35;
+  const x=locale==='ar'?width-railX:railX;
+  const y=width>=1100?354:332;
+  await page.mouse.click(x,y);
+  return {semantic:false};
+}
 async function awaitAuthResponse(page, path, click) {
   // A missing UI control must fail the stage and retain its screenshot/report,
   // not crash Node with an unhandled, later-rejected response waiter.
@@ -149,9 +206,10 @@ async function proof(page, width) {
     await screenshot(page,'04-signup-dialog');
     const f = page.getByRole('textbox');
     if(await f.count()<3)throw new Error('signup fields missing');
-    await typeField(page,0,testEmail,true);
-    await typeField(page,1,password,true);
-    await typeField(page,2,password,true);
+    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
+    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور',password);
+    await typeSignupLabeledField(page,locale==='fr'?'Confirmer le mot de passe':'تأكيد كلمة المرور',password);
+    await screenshot(page,'04b-filled-signup-form');
     const register = await awaitAuthResponse(page,'/api/v1/auth/register',
       () => labelClick(page,locale==='fr'?'Créer':'إنشاء'));
     if(register.status()!==200)
@@ -169,7 +227,8 @@ async function proof(page, width) {
       r.url().startsWith(api) && new URL(r.url()).pathname==='/api/v1/auth/logout',
       {timeout:12000}).catch(e=>({waitError:String(e.message||e)}));
     if(width>=700){
-      await labelClick(page,locale==='fr'?'Déconnexion':'تسجيل الخروج');
+      const nav=await logoutViaVisibleSidebar(page,width);
+      if(!nav.semantic)errors.push('main-shell-logout-missing-accessible-node');
     }else{
       await labelClick(page,locale==='fr'?'Profil':'الملف الشخصي');
       await labelClick(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
