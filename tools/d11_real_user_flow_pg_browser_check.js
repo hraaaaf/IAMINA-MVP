@@ -62,11 +62,15 @@ async function typeField(page, index, value, inDialog=false) {
   await page.keyboard.insertText(value);
 }
 async function awaitAuthResponse(page, path, click) {
+  // A missing UI control must fail the stage and retain its screenshot/report,
+  // not crash Node with an unhandled, later-rejected response waiter.
   const responsePromise=page.waitForResponse(r=>
     r.url().startsWith(api) && new URL(r.url()).pathname===path,
-    {timeout:12000});
+    {timeout:12000}).catch(e=>({waitError:String(e.message||e)}));
   await click();
-  return responsePromise;
+  const response=await responsePromise;
+  if(response.waitError)throw new Error('HTTP response not observed: '+path);
+  return response;
 }
 async function screenshot(page, suffix) {
   const filename = locale+'-'+page.viewportSize().width+'-'+suffix+'.png';
@@ -152,7 +156,7 @@ async function proof(page, width) {
     stage.value='logout_pointer';
     const logoutPromise=page.waitForResponse(r=>
       r.url().startsWith(api) && new URL(r.url()).pathname==='/api/v1/auth/logout',
-      {timeout:12000});
+      {timeout:12000}).catch(e=>({waitError:String(e.message||e)}));
     if(width>=700){
       await labelClick(page,locale==='fr'?'Déconnexion':'تسجيل الخروج');
     }else{
@@ -162,6 +166,7 @@ async function proof(page, width) {
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
     const revoke=await logoutPromise;
+    if(revoke.waitError)throw new Error('native logout HTTP response absent');
     if(revoke.status()!==200)
       throw new Error('real navigation logout did not revoke native token');
     await screenshot(page,'07-logged-out');
