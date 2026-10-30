@@ -41,7 +41,7 @@ test('Flutter semantics activation is required before account click',async()=>{
       return {first:()=>({
         count:async()=>1,
         evaluate:async fn=>{
-          assert.match(fn.toString(),/dispatchEvent\\(new MouseEvent/);
+          assert.match(fn.toString(),/dispatchEvent.*MouseEvent/);
           calls.push('activate');
         },
       })};
