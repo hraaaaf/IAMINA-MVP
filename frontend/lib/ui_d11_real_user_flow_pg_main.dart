@@ -25,6 +25,10 @@ import 'package:provider/provider.dart';
 
 const ciApiBase = String.fromEnvironment('API_BASE_URL');
 
+// Keep the semantics owner alive after the async main() exits. Flutter Web
+// route transitions must not drop accessibility for MainShell/logout controls.
+SemanticsHandle? _browserSemanticsHandle;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   html.document.title = 'IAMINA_D11_UI_STARTING';
@@ -45,7 +49,7 @@ Future<void> main() async {
   // Ensure Flutter Web's *actual* widget semantics are available for the
   // Playwright user-pointer + keyboard journey (not a driver that calls
   // widget handlers or AuthService methods directly).
-  SemanticsBinding.instance.ensureSemantics();
+  _browserSemanticsHandle ??= SemanticsBinding.instance.ensureSemantics();
 
   try {
     final auth = AuthService();
