@@ -8,6 +8,15 @@ on:
       - 'scripts/d7_hosted_remote_chrome_fue.mjs'
       - 'frontend/test/qa/d7_hosted_remote_chrome_fue.test.mjs'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "local-fue: real local Flutter Web, NO SSO or secrets; hosted: protected remote QA"
+        required: false
+        type: choice
+        default: local-fue
+        options:
+          - local-fue
+          - hosted
 
 permissions:
   contents: read
@@ -42,7 +51,7 @@ jobs:
 
   hosted-preview-chrome:
     # No secrets on pull requests. Manual QA branch only; protected approval.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029' && inputs.mode == 'hosted'
     environment: d7-qa
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -74,5 +83,95 @@ jobs:
           path: |
             d7-qa-chrome-proof/result.json
             d7-qa-chrome-proof/login-*.png
+          retention-days: 7
+          if-no-files-found: warn
+
+  local-profile-chrome:
+    name: D7 local-only real Flutter Web FUE (8 phases, 9 PNG)
+    # Safe default for dispatch without input from an older Actions UI:
+    # the protected hosted job above runs ONLY with explicit 'hosted' mode.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029' && inputs.mode != 'hosted'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    concurrency:
+      group: d7-manual-local-profile-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build actual IAMINA Flutter Web for local WebAuthn patient
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Pinned ephemeral real Chrome, no server/SSO secrets
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+      - name: D7 actual local patient profile, 8 phases and 9 matched screenshots
+        run: |
+          set -euo pipefail
+          python3 scripts/d7_web_actual_profile_e2e.py
+          python3 - <<'PY'
+          import hashlib, json, re, struct
+          from pathlib import Path
+          d=json.loads(Path("d7-web-real-profile-chrome-proof.json").read_text())
+          assert d["result"]=="PASS"
+          assert d["hosted_preview"]=="NOT_RUN"
+          assert d["remote_sync"]=="NOT_RUN"
+          assert d["real_app_fr_ar_rtl"]=="NOT_RUN"
+          assert d["phases"]==[
+              "genuine_local_webauthn_enrollment",
+              "profile_type2_and_patient_declared_treatments",
+              "physical_reload_type2_and_treatments_preserved",
+              "patient_type1_without_automatic_treatment_change",
+              "patient_unknown_without_automatic_treatment_change",
+              "explicit_no_treatment_then_physical_reload",
+              "explicit_treatment_reentry_then_physical_reload",
+              "responsive_390_768_1280_and_egress_check",
+          ]
+          assert len(d["captures"])==9
+          seen=set()
+          digests={}
+          for c in d["captures"]:
+              key=(c["stage"],c["viewport"])
+              assert key not in seen
+              seen.add(key)
+              raw=(Path("d7-web-real-profile-captures")/c["file"]).read_bytes()
+              assert raw[:8]==bytes.fromhex("89504e470d0a1a0a")
+              width,height=struct.unpack(">II",raw[16:24])
+              expect_width,expect_height=map(int,c["viewport"].split("x"))
+              assert width==expect_width and height>=expect_height
+              assert re.fullmatch(r"[0-9a-f]{64}",c["sha256"])
+              assert hashlib.sha256(raw).hexdigest()==c["sha256"]
+              digests.setdefault(c["viewport"],set()).add(c["sha256"])
+          assert seen=={
+              (stage,vp)
+              for stage in ("type2","unknown","explicit_none")
+              for vp in ("390x844","768x1024","1280x900")
+          }
+          assert all(len(items)==3 for items in digests.values())
+          PY
+      - name: Upload local synthetic browser evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d7-actual-local-web-fue-8phases-9png
+          path: |
+            d7-web-real-profile-chrome-proof.json
+            d7-web-real-profile-captures/*.png
           retention-days: 7
           if-no-files-found: warn
