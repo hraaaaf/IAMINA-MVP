@@ -100,3 +100,25 @@
 **Quality decision:** despite the c9f28f46 13/13 GREEN, mandatory FUE is not 100% integrated browser-verified and Perfection Pass is incomplete. Retained score is still conservatively **7.9/10 maximum** per missing FUE policy, **D11 NOT_VERIFIED / FUE_NO_GO / NO_MERGE / NO_VERCEL_DEPLOY**. Separate owner GO required before a Vercel production deployment or any merge that would cause automatic production deployment. A draft PR is not a release.
 
 **Next exact:** check candidate 846d4cd9 CI; repair any RED. If green, close UI/logout evidence at tested viewports and build an actual routed-browser multi-account/signup/login/negative/reset FUE with synthetic identities and no clinical data fabrication; collect same-viewport BEFORE/AFTER where an actual UI change is made; run independent adversarial scoring and Perfection Pass; update canonical FUE matrix and PR. Do not label VERIFIED until binary gates, score and human release gate are met.
+
+
+## 2026-10-30 — Latest D11 routed Chrome FUE RED diagnosis and zero-clinical-data proof
+
+**Verified RED at exact SHA `45beca35d09a4e44a8efe076b60c77ca21a8651f`** — [real Chrome/PG16 FUE #41031332853](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41031332853), both FR and AR browser jobs FAILURE **0/3 all routed scenes**. **Native Django/PostgreSQL clinical guard GREEN in both languages** despite browser failure: `D11_PG_ZERO_FABRICATED=PASS`, FR **2 disposable user accounts**, AR **1**, **zero glucose LogEntry** and **zero DiabetesProfile**, with empty date-of-birth profile data. This proves only synthetic DB integrity on that exact run; do not claim successful routed FUE.
+
+**Exact browser failure matrix from JSON/artifact + screenshots:**
+- **FR 390**: native login 401, reset 200, registration 200 and logout 200 all in the HTTP trace, but an extra `waitForResponse` incorrectly reported logout missing after route transition; post-logout page legitimately shows local-first account chooser. This is a test waiter race, not an HTTP logout 200 failure.
+- **FR 768**: after login 401 and reset 200, a signup confirmation field still showed the prior short invalid password despite a typed long password in primary field; validation refused signup locally, **no POST register**, no backend registration failure.
+- **FR 1280**: login 401, reset 200, signup 200, logout 200; after return to login, the visible email/password fields exist as pixels but Playwright reports 0 accessible DOM textboxes.
+- **AR 390**: full HTTP sequence login 401, reset 200, signup 200, logout 200, return login 200, but browser harness failed on generic console errors; requires separation of expected deliberate 401 from unexpected browser errors.
+- **AR 768**: signup typing caused an editor-length error: focused input length 0 rather than 45. **AR 1280**: signup confirmation wrong; no registration POST. Screenshots show visible localized fields but semantics can remain inconsistent.
+- **Accessibility gap**: after desktop `MainShell` navigation, sidebar logout was visibly rendered in browser screenshots but Playwright's semantics list contained only centered dashboard nodes. Falling back to a real mouse pointer can demonstrate functional logout but MUST NOT claim accessibility PASS; keep this gate independently explicit.
+
+**New candidate code and exact scope**:
+- `0b419ae1`: user-visible field click now uses Playwright `input:focus.fill(value)` (real DOM input event, not handler invocation) instead of fragile `Control+A` and `insertText`. Both initial login and second login use visible localized labels. Logout requires observed HTTP 200 from the already-attached page response listener rather than an additional fragile waiter.
+- `6ceccc7f` and `a286b0fa`: console diagnostics distinguish the one **expected deliberate HTTP 401** resource error from real browser exceptions, which still fail. No blanket error suppression; patient credentials never printed.
+- `093e9d12`: Flutter widget FUE `d11_main_shell_real_logout_test.dart` now independently asserts localized Semantics name of production logout control in FR/AR at 768/1280. This helps separate widget semantics from Flutter Web browser semantic transport and does not bypass pointer checks.
+
+**Current candidate HEAD `093e9d12666eff1cee5fe9cfce9da6772123beb9`**: [D11 browser #41033482773](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41033482773), [CI #41033482798](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41033482798), [Shadow #41033482779](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41033482779) **queued at first check — NOT_VERIFIED**. PR #1197 DRAFT; NO MERGE, NO VERCEL. D11 remains `FUE_NO_GO` until browser FR+AR × all 3 widths, 0-clinical-rows, a11y, scored Perfection Pass all demonstrated.
+
+**Next exact:** read updated CI for targeted Semantics widget test and actual browser FUE; if RED, use downloaded screenshot + report at exact SHA to isolate and fix without weakening assertions. Once GREEN, complete quality matrix/scoring and release human gate separately.
