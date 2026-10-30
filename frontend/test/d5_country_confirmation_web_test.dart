@@ -256,8 +256,8 @@ void main() {
         findsOneWidget);
     expect(find.text('Maroc'), findsWidgets);
 
-    await tester.tap(find.byKey(const Key('onboarding-sticky-start')));
-    await tester.pumpAndSettle();
+    // The sticky CTA is deliberately absent until an explicit country choice.
+    expect(find.byKey(const Key('onboarding-sticky-start')), findsNothing);
     expect(preferences.persistedCountryCount, 0);
     expect(find.text('D5 Dashboard'), findsNothing);
 
@@ -317,8 +317,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('onboarding-confirm-suggested-country')),
         findsNothing);
-    await tester.tap(find.byKey(const Key('onboarding-sticky-start')));
-    await tester.pumpAndSettle();
+    // The sticky CTA is deliberately absent until an explicit country choice.
+    expect(find.byKey(const Key('onboarding-sticky-start')), findsNothing);
     expect(preferences.persistedCountryCount, 0);
     expect(find.text('D5 Dashboard'), findsNothing);
   });
