@@ -112,6 +112,18 @@ void main() {
         // expose a native Semantics button and localized accessible name.
         final handle = tester.ensureSemantics();
         addTearDown(handle.dispose);
+        final expectedLabel = locale == 'fr' ? 'Déconnexion' : 'تسجيل الخروج';
+        final semanticMatch = find.bySemanticsLabel(expectedLabel);
+        if (semanticMatch.evaluate().isEmpty && locale == 'fr' && viewport.$1 == 768) {
+          final configured = tester.widgetList<Semantics>(find.byType(Semantics))
+              .where((widget) => (widget.properties.label ?? '').contains(expectedLabel))
+              .map((widget) => 'label=${widget.properties.label} button=${widget.properties.button}')
+              .toList();
+          debugPrint('D11_LOGOUT_SEMANTICS_CONFIG=$configured');
+          final tree = tester.binding.pipelineOwner.semanticsOwner
+              ?.rootSemanticsNode?.toStringDeep();
+          debugPrint('D11_SEMANTICS_TREE=${tree ?? 'NO_SEMANTICS_ROOT'}');
+        }
         expect(
           find.bySemanticsLabel(
             locale == 'fr' ? 'Déconnexion' : 'تسجيل الخروج',
