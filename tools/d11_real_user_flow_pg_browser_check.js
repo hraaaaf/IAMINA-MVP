@@ -107,12 +107,11 @@ async function typeSignupLabeledField(page, label, value, fallbackY=null) {
   if(targetY>=page.viewportSize().height)
     throw new Error('signup label below browser viewport: '+label);
   await page.mouse.click(targetX,targetY);
-  // Flutter Web creates an actual editing <input> for the focused text field.
-  // Playwright.fill dispatches real browser input/change events and replaces
-  // stale field contents, unlike Control+A/insertText on the wrong focus.
+  // Flutter Web creates an actual editing <input> for the focused widget.
+  // The browser pointer click above already focused it; this editor can be
+  // visually hidden by Flutter, so NEVER click the hidden DOM input again.
   const editor=page.locator('input:focus,textarea:focus').first();
   await editor.waitFor({state:'attached',timeout:3000});
-  await editor.click({timeout:4000});
   await page.keyboard.press('ControlOrMeta+A');
   // Physical key events, not just a DOM-value patch: Flutter TextField's
   // TextEditingController must receive the change before validation.
