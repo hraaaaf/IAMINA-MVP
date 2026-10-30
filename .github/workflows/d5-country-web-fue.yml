@@ -1,0 +1,58 @@
+name: D5 country Web FUE real Chrome
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/d5_web_fue_main.dart'
+      - 'tools/d5_country_web_fue.js'
+      - '.github/workflows/d5-country-web-fue.yml'
+      - 'frontend/lib/features/auth/onboarding_chat_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen*.dart'
+      - 'frontend/lib/services/locale_preference_service.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d5-country-web-fue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-chrome-d5:
+    name: Synthetic users + production Flutter screens in Chrome
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+        working-directory: frontend
+      - name: Analyze actual D5 FUE test entrypoint
+        run: flutter analyze --no-fatal-infos lib/d5_web_fue_main.dart
+        working-directory: frontend
+      - name: Build isolated real Flutter Web FUE
+        run: flutter build web --release --no-web-resources-cdn -t lib/d5_web_fue_main.dart
+        working-directory: frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local Chrome runner
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise browser D5 scope without hosted API or patient data
+        run: |
+          python3 -m http.server 7385 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d5-local-http.log 2>&1 &
+          node tools/d5_country_web_fue.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d5-real-chrome-fue-fr-ar-390-768-1280
+          path: d5-web-fue-proof/
+          if-no-files-found: warn
+          retention-days: 14
