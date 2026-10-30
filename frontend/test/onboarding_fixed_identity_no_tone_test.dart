@@ -15,7 +15,8 @@ void main() {
     expect(code, isNot(contains('onboardingToneNeutral')));
     expect(code, isNot(contains('onboardingToneFriendly')));
     expect(code, isNot(contains('_tone')));
-    expect(code, contains('if (_country != null)'));
+    // D5: a suggested IP country is not an explicit onboarding answer.
+    expect(code, contains('if (_country != null && !_countrySuggestedByIp)'));
     expect(code, contains('title: l10n.onboardingTypeQuestion'));
     expect(code, contains('title: l10n.onboardingUnitQuestion'));
     expect(code, contains('setLanguageOnly(value)'));
