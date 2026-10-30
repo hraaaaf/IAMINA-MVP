@@ -114,6 +114,25 @@ def main():
                         timeout=18000
                     )
 
+                def click_choice(label):
+                    # Flutter InkWell choices aren't HTML form labels.
+                    # Match real accessibility roles first, then a semantic
+                    # aria-label fallback. Never assume a painted text node.
+                    pattern = re.compile(re.escape(label), re.I)
+                    options = (
+                        page.get_by_role("button", name=pattern),
+                        page.get_by_role("checkbox", name=pattern),
+                        page.locator('[aria-label*="' + label + '"]'),
+                    )
+                    for choice in options:
+                        if choice.count():
+                            choice.first.click(timeout=12000)
+                            return
+                    snapshot = page.locator("body").aria_snapshot()
+                    print("D7 missing choice:", repr(label), flush=True)
+                    print("D7 synthetic accessibility:", snapshot[:3100], flush=True)
+                    raise AssertionError("D7 choice missing in real Chrome semantics")
+
                 def save():
                     page.get_by_role("button", name="Save", exact=True).last.click(
                         timeout=18000
@@ -162,17 +181,13 @@ def main():
 
                 step("profile_type2_and_patient_declared_treatments")
                 profile_open()
-                page.get_by_label("Type 2 Diabetes", exact=True).first.click(
-                    timeout=18000
-                )
-                page.get_by_label("Oral medicines I take", exact=True).first.click(
-                    timeout=18000
-                )
+                click_choice("Type 2 Diabetes")
+                click_choice("Oral medicines I take")
                 extra = page.get_by_role(
                     "button", name="Report another treatment", exact=True
                 )
                 extra.click(timeout=18000)
-                page.get_by_label("Insulin", exact=True).first.click(timeout=18000)
+                click_choice("Insulin")
                 save()
 
                 step("physical_reload_type2_and_treatments_preserved")
@@ -180,17 +195,13 @@ def main():
                 medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
 
                 step("patient_type1_without_automatic_treatment_change")
-                page.get_by_label("Type 1 Diabetes", exact=True).first.click(
-                    timeout=18000
-                )
+                click_choice("Type 1 Diabetes")
                 save()
                 reload_and_unlock()
                 medical_summary_contains("Type 1 Diabetes", "Oral medicines", "Insulin")
 
                 step("explicit_no_treatment_then_physical_reload")
-                page.get_by_label("No treatment to report", exact=True).first.click(
-                    timeout=18000
-                )
+                click_choice("No treatment to report")
                 save()
                 reload_and_unlock()
                 medical_summary_contains("Type 1 Diabetes", "No treatment reported")
