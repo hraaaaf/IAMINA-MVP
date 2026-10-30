@@ -18,9 +18,11 @@ const report={head:process.env.GITHUB_SHA||'unknown',
 const copy={
   fr:{language:'Français',confirm:'Confirmer ce pays',start:'Commencer',
     choose:'Choisir mon pays',later:'Plus tard',save:'Enregistrer',
+    profile:'Mon Profil',preferences:'Langue et pays',
     search:'Rechercher un pays',ma:'Maroc',fr:'France',es:'Espagne'},
   ar:{language:'العربية',confirm:'تأكيد هذا البلد',start:'ابدأ',
     choose:'اختر بلدي',later:'لاحقًا',save:'حفظ',
+    profile:'ملفي الشخصي',preferences:'اللغة والبلد',
     search:'ابحث عن بلد',ma:'المغرب',fr:'فرنسا',es:'إسبانيا'},
 };
 function url(mode,ip,owner,locale) {
@@ -153,27 +155,56 @@ async function isolation(browser){
     locale:'fr-FR',serviceWorkers:'allow',colorScheme:'light',
   });
   const page=await context.newPage();
-  const item={kind:'browser_a_b_a_reload',locale,viewport:'390x844',pass:false,images:[]};
+  const pageErrors=[], failedRequests=[], consoleErrors=[];
+  page.on('pageerror',e=>pageErrors.push(String(e.message||e).slice(0,260)));
+  page.on('requestfailed',r=>failedRequests.push({
+    path:new URL(r.url()).pathname.slice(0,130),
+    failure:r.failure()?.errorText||'unknown',
+  }));
+  page.on('console',msg=>{
+    if(msg.type()==='error')consoleErrors.push(msg.text().slice(0,260));
+  });
+  const item={kind:'browser_a_b_a_reload',locale,viewport:'390x844',
+    stage:'initial',pass:false,images:[]};
   try{
+    item.stage='A first entry';
     await load(page,url('returning','none','a',locale),l.choose);
     await click(page,l.choose);
     await countrySelect(page,l,'FR');await click(page,l.save);
-    // Reload A: preference must still belong to A, no legacy prompt.
-    await load(page,url('returning','none','a',locale),'IAmina');
+    // The real Profile title is "Mon Profil", not "IAmina".
+    item.stage='A reloaded';
+    await load(page,url('returning','none','a',locale),l.profile);
     if(await visible(page,l.choose))throw Error('A country lost after reload');
     item.images.push(await capture(page,locale,size,'isolation','a-saved'));
+    item.stage='A restored FR';
+    await click(page,l.preferences);
+    await waitFor(page,l.fr);
+    item.stage='B initial unknown';
     await load(page,url('returning','none','b',locale),l.choose);
     item.images.push(await capture(page,locale,size,'isolation','b-unknown'));
     await click(page,l.choose);
     await countrySelect(page,l,'ES');await click(page,l.save);
-    await load(page,url('returning','none','b',locale),'IAmina');
+    item.stage='B reloaded';
+    await load(page,url('returning','none','b',locale),l.profile);
     if(await visible(page,l.choose))throw Error('B country not restored after reload');
-    await load(page,url('returning','none','a',locale),'IAmina');
+    item.stage='B restored ES';
+    await click(page,l.preferences);
+    await waitFor(page,l.es);
+    item.stage='A after B';
+    await load(page,url('returning','none','a',locale),l.profile);
     if(await visible(page,l.choose))throw Error('B overwrote A');
     item.images.push(await capture(page,locale,size,'isolation','a-reloaded'));
+    item.stage='A still FR';
+    await click(page,l.preferences);
+    await waitFor(page,l.fr);
+    if(pageErrors.length)throw Error('Browser page exceptions: '+pageErrors.join('; '));
     item.pass=true;
   }catch(e){
     item.error=String(e.message||e).slice(0,500);
+    item.pageErrors=pageErrors.slice(-5);
+    item.consoleErrors=consoleErrors.slice(-5);
+    item.failedRequests=failedRequests.slice(-5);
+    item.lastUrl=page.url();
     item.images.push(await capture(page,locale,size,'isolation','FAILED').catch(()=>null));
     report.errors.push(item);
   }finally{
