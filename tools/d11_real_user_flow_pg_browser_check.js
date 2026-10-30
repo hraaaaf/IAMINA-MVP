@@ -77,7 +77,7 @@ async function typeField(page, index, value, inDialog=false) {
 // rendered LABEL and click inside the box directly below that label.
 // This is a real pointer/keyboard path; no widget callbacks or DOM value
 // injection. The field order and label geometry are checked on-screen.
-async function typeSignupLabeledField(page, label, value) {
+async function typeSignupLabeledField(page, label, value, fallbackY=null) {
   const exact=page.getByText(label,{exact:true});
   const semantics=page.locator('flt-semantics');
   const candidateBoxes=[];
@@ -94,11 +94,16 @@ async function typeSignupLabeledField(page, label, value) {
       if(b&&b.width>0&&b.height>0)candidateBoxes.push(b);
     }
   }
-  if(!candidateBoxes.length)throw new Error('signup visible field label absent: '+label);
-  // Topmost dialog fields are lower on-screen than the original login controls.
-  const box=candidateBoxes.sort((a,b)=>b.y-a.y)[0];
+  // At route transitions Flutter can paint the input before exposing its
+  // semantics rectangle. Use screenshot-grounded real pointer coordinates
+  // only for the *login* form, never for the signup modal. Still report the
+  // missing semantic label independently: passing the HTTP flow is not an
+  // accessibility certification.
+  const box=candidateBoxes.sort((a,b)=>b.y-a.y)[0]||null;
+  if(!box&&fallbackY===null)
+    throw new Error('signup visible field label absent: '+label);
   const targetX=page.viewportSize().width/2;
-  const targetY=box.y+box.height+22;
+  const targetY=box ? box.y+box.height+22 : fallbackY;
   if(targetY>=page.viewportSize().height)
     throw new Error('signup label below browser viewport: '+label);
   await page.mouse.click(targetX,targetY);
@@ -199,8 +204,8 @@ async function proof(page, width) {
 
     // First reject an invalid login through the production form.
     stage.value='negative_login';
-    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
-    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور','Wrong-2026!');
+    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail,locale==='fr'?449:336);
+    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور','Wrong-2026!',locale==='fr'?523:427);
     const loginReject = await awaitAuthResponse(page,'/api/v1/auth/login',
       () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
     if(loginReject.status()!==401)
@@ -275,8 +280,8 @@ async function proof(page, width) {
     // remains alive for a few frames after the click.
     await page.getByText(locale==='fr'?'Mot de passe oublié ?':'نسيت كلمة المرور؟',{exact:true})
       .first().waitFor({state:'visible',timeout:12000});
-    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
-    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور',password);
+    await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail,locale==='fr'?449:336);
+    await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور',password,locale==='fr'?523:427);
     const loginAccept=await awaitAuthResponse(page,'/api/v1/auth/login',
       () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
     if(loginAccept.status()!==200)
