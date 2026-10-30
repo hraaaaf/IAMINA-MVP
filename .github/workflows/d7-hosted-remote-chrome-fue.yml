@@ -116,6 +116,14 @@ jobs:
             --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
             --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
           test -s build/web/main.dart.js
+      - name: Treatment selection widgets FR EN AR / RTL x 390 768 1280 in Chrome
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter test --platform chrome --reporter expanded \
+            test/features/profile/d7_web_treatment_choice_responsive_test.dart
+          flutter test --platform chrome --reporter expanded \
+            test/features/profile/d7_web_type_transition_contract_test.dart
       - name: Pinned ephemeral real Chrome, no server/SSO secrets
         run: |
           set -euo pipefail
