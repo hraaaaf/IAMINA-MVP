@@ -42,12 +42,30 @@ Future<void> main() async {
   void mark(String value) {
     stage = value;
     html.document.title = 'D5_FUE_STAGE:$value';
+    html.document.documentElement?.dataset['d5Stage'] = value;
   }
+  // Catch framework errors occurring *after* runApp. The outer try/catch
+  // captures only asynchronous main() initialization.
+  FlutterError.onError = (details) {
+    html.document.documentElement?.dataset['d5FlutterError'] =
+        details.exceptionAsString().substring(
+          0, details.exceptionAsString().length.clamp(0, 350));
+    debugPrint('D5_FUE_FLUTTER_ERROR: ${details.exceptionAsString()}');
+  };
+  ErrorWidget.builder = (details) => Material(
+    child: Center(
+      child: SelectableText(
+        'D5_FUE_WIDGET_ERROR: ${details.exceptionAsString()}',
+      ),
+    ),
+  );
   mark('main');
   try {
     await _runD5(mark);
   } catch (error, stack) {
     html.document.title = 'D5_FUE_BOOT_FAILURE:$stage';
+    html.document.documentElement?.dataset['d5BootError'] =
+        error.toString().substring(0, error.toString().length.clamp(0, 350));
     debugPrint('D5_WEB_FUE_BOOT_FAILURE stage=$stage error=$error');
     debugPrintStack(stackTrace: stack);
     runApp(MaterialApp(
