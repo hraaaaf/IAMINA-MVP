@@ -1,6 +1,11 @@
 name: D7 Web — remote Chrome QA (protected, read-only)
 
 on:
+  push:
+    branches: [cert/d7-web-fue-preview-20261029]
+    paths:
+      - '.github/workflows/d7-hosted-remote-chrome-fue.yml'
+      - 'scripts/d7_web_actual_profile_e2e.py'
   pull_request:
     branches: [main]
     paths:
@@ -90,7 +95,7 @@ jobs:
     name: D7 local-only real Flutter Web FUE (8 phases, 9 PNG)
     # Safe default for dispatch without input from an older Actions UI:
     # the protected hosted job above runs ONLY with explicit 'hosted' mode.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029' && inputs.mode != 'hosted'
+    if: github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'hosted'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     concurrency:
