@@ -56,6 +56,7 @@ def main():
                 browser = pw.chromium.launch(headless=True)
                 context = browser.new_context(
                     viewport={"width": 1180, "height": 860},
+                    locale="en-US",
                     service_workers="block", accept_downloads=False,
                 )
                 page = context.new_page()
@@ -136,12 +137,18 @@ def main():
                 assert response and response.status == 200
                 page.wait_for_selector("flutter-view, flt-glass-pane", timeout=60000)
                 activate_semantics()
-                page.get_by_role("button", name=re.compile("Set up this device", re.I)).click(
-                    timeout=18000
-                )
-                page.get_by_role("button", name=re.compile("Enable secure lock", re.I)).click(
-                    timeout=18000
-                )
+                page.get_by_role(
+                    "button",
+                    name=re.compile(
+                        r"Continue without an account|Continuer sans compte|المتابعة بدون حساب", re.I
+                    ),
+                ).click(timeout=18000)
+                page.get_by_role(
+                    "button",
+                    name=re.compile(
+                        r"Enable secure lock|Activer le verrou sécurisé|تفعيل القفل الآمن", re.I
+                    ),
+                ).click(timeout=18000)
                 page.wait_for_url(re.compile("/onboarding"), timeout=30000)
                 page.get_by_role("checkbox", name="English").click(timeout=15000)
                 country = page.get_by_role("textbox", name="Search for a country")
@@ -207,10 +214,18 @@ def main():
                 pass
         raise
     finally:
+        # Playwright's context manager has already exited here. Never mask
+        # the original browser failure with a secondary closed-loop error.
         if context:
-            context.close()
+            try:
+                context.close()
+            except Exception:
+                pass
         if browser:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
         EVIDENCE.write_text(json.dumps(proof, indent=2), encoding="utf-8")
 
 
