@@ -140,10 +140,16 @@ def main():
                         page.get_by_role("checkbox", name=pattern),
                         page.locator('[aria-label*="' + label + '"]'),
                     )
-                    for choice in options:
-                        if choice.count():
-                            choice.first.click(timeout=12000)
-                            return
+                    # A filter chip only enters Flutter's semantics tree
+                    # after its "Report another treatment" expansion animates.
+                    # Wait for actual readiness rather than treating the first
+                    # render after clicking as the final UI state.
+                    for attempt in range(55):
+                        for choice in options:
+                            if choice.count():
+                                choice.first.click(timeout=12000)
+                                return
+                        page.wait_for_timeout(200)
                     snapshot = page.locator("body").aria_snapshot()
                     print("D7 missing choice:", repr(label), flush=True)
                     print("D7 synthetic accessibility:", snapshot[:3100], flush=True)
