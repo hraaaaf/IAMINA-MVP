@@ -109,8 +109,8 @@ void main() {
           treatment: const drift.Value('tablets'),
         ),
       );
-      final before = await db.getProfileForLocalUserId(734);
-      final consent = ConsentService()..seedInitialProfile(before!);
+      final before = (await db.getProfileForLocalUserId(734))!;
+      final consent = ConsentService()..seedInitialProfile(before);
       final auth = AuthService();
       final preferences = _ReadyCountryPreferences(null);
       addTearDown(consent.dispose);
