@@ -152,7 +152,7 @@ async function proof(page, width) {
   page.on('console',m=>{
     if(m.type()!=='error')return;
     const msg=m.text();
-    const status=(msg.match(/\\b(401|403|404|429|500|502|503)\\b/)||[])[1]||'unknown';
+    const status=(msg.match(/\b(401|403|404|429|500|502|503)\b/)||[])[1]||'unknown';
     // Only HTTP 401 caused by the deliberate negative-login test may be
     // expected. All other console errors remain hard failures, with a safe
     // diagnostic that never contains tokens, passwords or patient details.
