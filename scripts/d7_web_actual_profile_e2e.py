@@ -257,6 +257,9 @@ def main():
                 reload_and_unlock()
                 medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
                 capture_viewports("type2", "Type 2 Diabetes", "Oral medicines", "Insulin")
+                # Viewport changes rebuild/collapse Flutter ExpansionTile.
+                # Navigate and explicitly expand again before another choice.
+                profile_open()
 
                 step("patient_type1_without_automatic_treatment_change")
                 click_choice("Type 1 Diabetes")
@@ -270,6 +273,7 @@ def main():
                 reload_and_unlock()
                 medical_summary_contains("Diagnosis not specified", "Oral medicines", "Insulin")
                 capture_viewports("unknown", "Diagnosis not specified", "Oral medicines", "Insulin")
+                profile_open()
 
                 step("explicit_no_treatment_then_physical_reload")
                 click_choice("No treatment to report")
@@ -277,6 +281,7 @@ def main():
                 reload_and_unlock()
                 medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 capture_viewports("explicit_none", "Diagnosis not specified", "No treatment reported")
+                profile_open()
 
                 step("explicit_treatment_reentry_then_physical_reload")
                 click_choice("Insulin")
