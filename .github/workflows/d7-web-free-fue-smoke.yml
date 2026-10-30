@@ -108,13 +108,22 @@ jobs:
           assert d["result"] == "PASS"
           assert d["hosted_preview"] == "NOT_RUN"
           assert d["remote_sync"] == "NOT_RUN"
+          assert d["real_app_fr_ar_rtl"] == "NOT_RUN"
+          assert len(d["captures"]) == 9
+          assert {(c["stage"], c["viewport"]) for c in d["captures"]} == {
+              (stage, viewport)
+              for stage in ("type2", "unknown", "explicit_none")
+              for viewport in ("390x844", "768x1024", "1280x900")
+          }
           assert d["phases"] == [
               "genuine_local_webauthn_enrollment",
               "profile_type2_and_patient_declared_treatments",
               "physical_reload_type2_and_treatments_preserved",
               "patient_type1_without_automatic_treatment_change",
+              "patient_unknown_without_automatic_treatment_change",
               "explicit_no_treatment_then_physical_reload",
-              "responsive_390_and_egress_check",
+              "explicit_treatment_reentry_then_physical_reload",
+              "responsive_390_768_1280_and_egress_check",
           ]
           PY
       - name: Upload synthetic-only UI browser proof
@@ -122,6 +131,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: d7-actual-profile-local-chrome-proof
-          path: d7-web-real-profile-chrome-proof.json
+          path: |
+            d7-web-real-profile-chrome-proof.json
+            d7-web-real-profile-captures/*.png
           retention-days: 7
           if-no-files-found: warn
