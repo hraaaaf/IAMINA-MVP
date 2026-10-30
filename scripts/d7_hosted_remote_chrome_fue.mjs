@@ -13,6 +13,29 @@ export const ACCOUNT_CHOICE_LABEL =
 export const LOGIN_SUBMIT_LABEL = /^(?:Sign in|Se connecter|الدخول)$/;
 
 function fail(code) { throw new Error('D7_CHROME_' + code); }
+
+// Flutter Web semantics are opt-in. The invisible activation placeholder may
+// be offscreen: Playwright's click({force:true}) can fail and must not be
+// silently ignored. Dispatch only on that exact placeholder, not on the UI.
+export async function activateFlutterAccountSemantics(page) {
+  const placeholder=page.locator('flt-semantics-placeholder').first();
+  if(!await placeholder.count())fail('ACCESSIBILITY_PLACEHOLDER_MISSING');
+  try {
+    await placeholder.evaluate(element => {
+      const bounds=element.getBoundingClientRect();
+      element.dispatchEvent(new MouseEvent('click',{
+        bubbles:true,cancelable:true,
+        clientX:Math.round(bounds.left+bounds.width/2),
+        clientY:Math.round(bounds.top+bounds.height/2),
+      }));
+    });
+  } catch { fail('ACCESSIBILITY_ACTIVATION_FAILED'); }
+  const button=page.getByRole('button',{name:ACCOUNT_CHOICE_LABEL}).first();
+  try {
+    await button.waitFor({state:'visible',timeout:12000});
+  } catch { fail('ACCOUNT_BUTTON_INACCESSIBLE'); }
+  return button;
+}
 export function guard({origin,sha,token,email,password}) {
   if (origin !== ORIGIN || sha !== DEPLOY_SHA) fail('UNEXPECTED_DEPLOYMENT');
   if (typeof token !== 'string' || !/^[a-zA-Z0-9._~-]{10,512}$/.test(token))
@@ -65,10 +88,8 @@ async function main() {
       null,{timeout:60000});
     if (new URL(page.url()).origin !== ORIGIN) fail('SSO_OR_FLUTTER_FAILED');
     result.steps.boot='PASS';
-    const semantics = page.locator('flt-semantics-placeholder');
-    if (await semantics.count()) {
-      await semantics.first().click({force:true,timeout:5000}).catch(()=>{});
-    }
+    // Flutter Web paints pixels on CanvasKit. Its text enters the DOM only
+    // after web accessibility is enabled; do not swallow an activation error.
     // Public login screenshots only: no account information entered yet.
     for(const [width,height] of VIEWPORTS){
       await page.setViewportSize({width,height});
@@ -82,8 +103,7 @@ async function main() {
     }
     result.steps.login_capture='CAPTURED_NOT_VISUALLY_CERTIFIED';
     await page.setViewportSize({width:390,height:844});
-    const choose=page.getByText(ACCOUNT_CHOICE_LABEL).first();
-    if(!await choose.count())fail('ACCOUNT_BUTTON_INACCESSIBLE');
+    const choose=await activateFlutterAccountSemantics(page);
     await choose.click({timeout:15000});
     const inputs=page.locator('input:not([type="hidden"])');
     if(await inputs.count()<2)fail('LOGIN_INPUTS_INACCESSIBLE');
@@ -98,7 +118,7 @@ async function main() {
       if(r.url().split('?')[0]===ORIGIN+'/api/v1/auth/login')
         status=r.status();
     });
-    const submit=page.getByText(LOGIN_SUBMIT_LABEL).last();
+    const submit=page.getByRole('button',{name:LOGIN_SUBMIT_LABEL}).last();
     if(!await submit.count())fail('SUBMIT_INACCESSIBLE');
     await submit.click({timeout:15000});
     await page.waitForURL(url=>new URL(url).pathname!=='/login',

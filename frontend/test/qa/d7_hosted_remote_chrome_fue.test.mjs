@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ORIGIN, DEPLOY_SHA, VIEWPORTS, guard, emptyProof,
-  ACCOUNT_CHOICE_LABEL, LOGIN_SUBMIT_LABEL}
+  ACCOUNT_CHOICE_LABEL, LOGIN_SUBMIT_LABEL, activateFlutterAccountSemantics}
   from '../../../scripts/d7_hosted_remote_chrome_fue.mjs';
 const valid={origin:ORIGIN,sha:DEPLOY_SHA,
   token:'synthetic-share-token-123456',
@@ -30,6 +30,36 @@ test('hosted login selectors match exact EN/FR/AR UI actions only',()=>{
     assert.doesNotMatch(label, ACCOUNT_CHOICE_LABEL);
   for (const label of ['Create account','Continue without an account'])
     assert.doesNotMatch(label, LOGIN_SUBMIT_LABEL);
+});
+
+test('Flutter semantics activation is required before account click',async()=>{
+  const calls=[];
+  const account={waitFor:async opts=>{calls.push('wait:'+opts.state);}};
+  const page={
+    locator:selector=>{
+      assert.equal(selector,'flt-semantics-placeholder');
+      return {first:()=>({
+        count:async()=>1,
+        evaluate:async fn=>{
+          assert.match(fn.toString(),/dispatchEvent\\(new MouseEvent/);
+          calls.push('activate');
+        },
+      })};
+    },
+    getByRole:(role,{name})=>{
+      assert.equal(role,'button');
+      assert.equal(name,ACCOUNT_CHOICE_LABEL);
+      return {first:()=>account};
+    },
+  };
+  assert.equal(await activateFlutterAccountSemantics(page),account);
+  assert.deepEqual(calls,['activate','wait:visible']);
+});
+
+test('missing Flutter accessibility placeholder fails closed',async()=>{
+  const page={locator:()=>({first:()=>({count:async()=>0})})};
+  await assert.rejects(activateFlutterAccountSemantics(page),
+    /D7_CHROME_ACCESSIBILITY_PLACEHOLDER_MISSING/);
 });
 
 test('real hosted browser smoke cannot claim clinical FUE certification',()=>{
