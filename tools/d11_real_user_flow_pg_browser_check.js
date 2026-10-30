@@ -147,9 +147,18 @@ async function screenshot(page, suffix) {
   return filename;
 }
 async function proof(page, width) {
-  const external = [], errors = [], responses = [], requests = [];
-  page.on('pageerror',e=>errors.push(e.message.slice(0,160)));
-  page.on('console',m=>{if (m.type()==='error') errors.push('browser-console-error');});
+  const external = [], errors = [], consoleErrors = [], responses = [], requests = [];
+  page.on('pageerror',e=>errors.push('uncaught-page-exception:'+e.name));
+  page.on('console',m=>{
+    if(m.type()!=='error')return;
+    const msg=m.text();
+    const status=(msg.match(/\\b(401|403|404|429|500|502|503)\\b/)||[])[1]||'unknown';
+    // Only HTTP 401 caused by the deliberate negative-login test may be
+    // expected. All other console errors remain hard failures, with a safe
+    // diagnostic that never contains tokens, passwords or patient details.
+    consoleErrors.push({httpStatus:status,resourceClass:msg.includes('Failed to load resource')
+      ?'resource': 'other'});
+  });
   page.on('response',r=>{
     if (r.url().startsWith(api+'/api/v1/auth/'))
       responses.push({path:new URL(r.url()).pathname,status:r.status()});
@@ -253,8 +262,13 @@ async function proof(page, width) {
     if(loginAccept.status()!==200)
       throw new Error('native login HTTP 200 missing after logout');
     const filename=await screenshot(page,'08-returned');
-    if(errors.length||external.length||requests.length)
-      throw new Error('UI page error, blocked external egress, or forbidden demo seed request');
+    const unexpectedConsole=consoleErrors.filter(e=>!(
+      e.httpStatus==='401' && e.resourceClass==='resource' &&
+      responses.some(r=>r.path==='/api/v1/auth/login'&&r.status===401)));
+    if(errors.length||unexpectedConsole.length||external.length||requests.length)
+      throw new Error('UI page errors '+errors.length+' unexpected console '+
+        JSON.stringify(unexpectedConsole)+' external '+external.length+
+        ' forbidden seed '+requests.length);
     return {locale,width,pass:true,requests:responses,errors:errors.length,
       blockedExternal:external.length,clinicalDemoRequests:requests.length,file:filename};
   } catch(e) {
@@ -264,7 +278,8 @@ async function proof(page, width) {
         .filter(Boolean)).catch(()=>[]);
     return {locale,width,pass:false,stage:stage.value,error:String(e.message||e).slice(0,250),
       visibleSemanticLabels:labels.slice(0,35),requests:responses,
-      browserErrors:errors.slice(0,5),errors:errors.length,
+      browserErrors:errors.slice(0,5),consoleDiagnostic:consoleErrors,
+      errors:errors.length,
       blockedExternal:external.length,clinicalDemoRequests:requests.length,file:filename};
   }
 }
@@ -284,6 +299,6 @@ async function proof(page, width) {
  console.log('D11_REAL_ROUTED_UI='+JSON.stringify({locale,passed:report.tests.length-report.failed.length,
     total:report.tests.length,failed:report.failed.map(x=>({width:x.width,stage:x.stage,error:x.error,
     visibleSemanticLabels:x.visibleSemanticLabels,requests:x.requests,
-    browserErrors:x.browserErrors}))}));
+    browserErrors:x.browserErrors,consoleDiagnostic:x.consoleDiagnostic}))}));
  if(report.failed.length||report.tests.length!==3)process.exitCode=1;
 })().catch(e=>{console.error('D11 UI FUE runner failed: '+e.constructor.name);process.exitCode=1;});
