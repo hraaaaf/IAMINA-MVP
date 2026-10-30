@@ -36,8 +36,9 @@ Future<void> main() async {
     throw StateError('Certification credentials are required');
   }
 
+  // Certification uses the account's true empty clinical state.
+  // Never fabricate readings or a patient profile for screenshots.
   final db = AppDatabase.defaults();
-  await db.seedDemoData();
 
   final auth = AuthService();
   await auth.initialize();
