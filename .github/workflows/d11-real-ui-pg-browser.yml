@@ -121,6 +121,21 @@ jobs:
           curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /dev/null
           curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7383/ > /dev/null
           node tools/d11_real_user_flow_pg_browser_check.js
+      - name: Verify no fabricated medical rows even when UI FUE fails
+        if: always()
+        working-directory: backend
+        run: |
+          python3 - <<'PY'
+          import os,django
+          django.setup()
+          from django.contrib.auth.models import User
+          from core.models import BasePatientProfile
+          from diabetes.models import DiabetesProfile,LogEntry
+          assert LogEntry.objects.count()==0, 'UI journey created fabricated glucose readings'
+          assert DiabetesProfile.objects.count()==0, 'UI journey created fabricated diabetes profiles'
+          assert all(p.date_of_birth is None for p in BasePatientProfile.objects.all())
+          print('D11_PG_ZERO_FABRICATED=PASS, disposable_users='+str(User.objects.count()))
+          PY
       - name: Verify no fabricated medical readings after actual browser signup
         if: success()
         working-directory: backend
