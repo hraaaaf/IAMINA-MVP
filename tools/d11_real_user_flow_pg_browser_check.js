@@ -21,7 +21,9 @@ const report = {scope:'real Flutter routed user clicks + native Django/PG16',
 function norm(s) { return (s||'').replace(/\s+/g,' ').trim(); }
 function labelMatches(got, expected) {
   const g=norm(got), e=norm(expected);
-  return g===e || g===e+' '+e;
+  // Flutter expansion sections append their subtitle to their heading.
+  // Match the exact leading heading, never an arbitrary substring of a page.
+  return g===e || g===e+' '+e || g.startsWith(e+' ');
 }
 async function labelClick(page, label) {
   // Flutter CanvasKit renders visible, real clickable flt-semantics nodes.
@@ -48,18 +50,27 @@ async function labelClick(page, label) {
   throw new Error('no visible accessible control: '+label);
 }
 async function typeField(page, index, value, inDialog=false) {
-  // Flutter Web may keep two login text fields behind AlertDialog even when
-  // the dialog itself has no DOM role. Select the LAST three visible input
-  // controls for signup, not the underlying login's first two.
-  const fields=page.getByRole('textbox');
+  // Flutter AlertDialog is often exposed as role=alertdialog (NOT dialog).
+  // Scope to the top actual modal first. It hides the underlying login
+  // controls from this selection and keeps indices stable as text updates.
+  const alerts=page.getByRole('alertdialog');
+  const dialogs=page.getByRole('dialog');
+  const modal=await alerts.count() ? alerts.last()
+    : (await dialogs.count() ? dialogs.last() : null);
+  const modalFields=inDialog && modal ? modal.getByRole('textbox') : null;
+  const scopedCount=modalFields ? await modalFields.count() : 0;
+  const fields=scopedCount>=3 ? modalFields : page.getByRole('textbox');
   const count=await fields.count();
-  const actual=inDialog ? count-3+index : index;
+  // A second DOM semantics tree may retain the login form beneath the
+  // dialog. Restrict the fallback to the last three visible textboxes.
+  const actual=inDialog && scopedCount<3 && count>3 ? count-3+index : index;
   if(count<=actual||actual<0)
-    throw new Error('missing form field: '+index+' total '+count);
+    throw new Error('missing form field: '+index+' visible '+count+' modal '+scopedCount);
   const field=fields.nth(actual);
   await field.click({timeout:8000});
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.insertText(value);
+  await page.keyboard.press('Tab');
 }
 async function awaitAuthResponse(page, path, click) {
   // A missing UI control must fail the stage and retain its screenshot/report,
@@ -190,7 +201,8 @@ async function proof(page, width) {
       nodes.slice(0,80).map(n=>(n.getAttribute('aria-label')||n.textContent||'').slice(0,90))
         .filter(Boolean)).catch(()=>[]);
     return {locale,width,pass:false,stage:stage.value,error:String(e.message||e).slice(0,250),
-      visibleSemanticLabels:labels.slice(0,35),requests:responses,errors:errors.length,
+      visibleSemanticLabels:labels.slice(0,35),requests:responses,
+      browserErrors:errors.slice(0,5),errors:errors.length,
       blockedExternal:external.length,clinicalDemoRequests:requests.length,file:filename};
   }
 }
@@ -209,6 +221,7 @@ async function proof(page, width) {
  fs.writeFileSync(path.join(dir,'report.json'),JSON.stringify(report,null,2));
  console.log('D11_REAL_ROUTED_UI='+JSON.stringify({locale,passed:report.tests.length-report.failed.length,
     total:report.tests.length,failed:report.failed.map(x=>({width:x.width,stage:x.stage,error:x.error,
-    visibleSemanticLabels:x.visibleSemanticLabels,requests:x.requests}))}));
+    visibleSemanticLabels:x.visibleSemanticLabels,requests:x.requests,
+    browserErrors:x.browserErrors}))}));
  if(report.failed.length||report.tests.length!==3)process.exitCode=1;
 })().catch(e=>{console.error('D11 UI FUE runner failed: '+e.constructor.name);process.exitCode=1;});
