@@ -44,6 +44,20 @@ const minScreenshotBytes = 15000;
         }
       });
 
+      // A new native account has ZERO clinical measurements. Certify the
+      // truthful empty-state copy instead of expecting fabricated charts.
+      await page.goto('http://127.0.0.1:7358/?scroll=0', {
+        waitUntil: 'domcontentloaded',
+        timeout: 120000,
+      });
+      const emptyTitle = page.getByText('Commencez par une première mesure', { exact: true });
+      await emptyTitle.waitFor({ state: 'visible', timeout: 45000 });
+      const zeroClinicalCopy = page.getByText(
+        'Votre tableau de bord se construira uniquement à partir de vos données réelles.',
+        { exact: true },
+      );
+      await zeroClinicalCopy.waitFor({ state: 'visible', timeout: 10000 });
+
       const positions = {
         top: 0,
         mid: Math.round(height * 0.55),
@@ -88,6 +102,7 @@ const minScreenshotBytes = 15000;
         requestedScrollOffsets: positions,
         screenshotBytes,
         byteDuplicateCaptures,
+        verifiedEmptyState: true,
       };
       persist(report);
 
