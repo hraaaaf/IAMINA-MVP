@@ -107,7 +107,13 @@ async function typeSignupLabeledField(page, label, value) {
   // stale field contents, unlike Control+A/insertText on the wrong focus.
   const editor=page.locator('input:focus,textarea:focus').first();
   await editor.waitFor({state:'attached',timeout:3000});
-  await editor.fill(value,{timeout:4000});
+  await editor.click({timeout:4000});
+  await page.keyboard.press('ControlOrMeta+A');
+  // Physical key events, not just a DOM-value patch: Flutter TextField's
+  // TextEditingController must receive the change before validation.
+  await page.keyboard.type(value,{delay:2});
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(60);
   const length=await editor.evaluate(el=>el.value.length);
   if(length!==value.length)
     throw new Error('signup editor length mismatch: '+label+' length '+length+' expected '+value.length);
@@ -230,6 +236,11 @@ async function proof(page, width) {
 
     stage.value='onboarding';
     await labelClick(page,'D11_UI_CONTINUE');
+    // The next Flutter route is rendered asynchronously. Do not click the
+    // sidebar while /onboarding still owns the pixels (prior screenshot proof
+    // showed the "dashboard" image was actually the onboarding page).
+    await page.getByText('D11_UI_VERIFIED_ACCOUNT_NO_DEMO_ROWS',{exact:true})
+      .waitFor({state:'visible',timeout:12000});
     await screenshot(page,'06-dashboard');
 
     stage.value='logout_pointer';
@@ -255,12 +266,18 @@ async function proof(page, width) {
 
     stage.value='sign_in_existing_account';
     await labelClick(page,locale==='fr'?'Se connecter ou créer un compte':'تسجيل الدخول أو إنشاء حساب');
+    // Await actual rendered login text before typing; account chooser route
+    // remains alive for a few frames after the click.
+    await page.getByText(locale==='fr'?'Bienvenue':'مرحباً بك في IAmina',{exact:false})
+      .first().waitFor({state:'visible',timeout:12000});
     await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
     await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور',password);
     const loginAccept=await awaitAuthResponse(page,'/api/v1/auth/login',
       () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
     if(loginAccept.status()!==200)
       throw new Error('native login HTTP 200 missing after logout');
+    await page.getByText('D11_UI_VERIFIED_ACCOUNT_NO_DEMO_ROWS',{exact:true})
+      .waitFor({state:'visible',timeout:12000});
     const filename=await screenshot(page,'08-returned');
     const unexpectedConsole=consoleErrors.filter(e=>!(
       e.httpStatus==='401' && e.resourceClass==='resource' &&
