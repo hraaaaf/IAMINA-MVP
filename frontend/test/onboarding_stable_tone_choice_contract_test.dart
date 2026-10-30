@@ -26,9 +26,10 @@ void main() {
     final profile = File(
       'lib/features/profile/profile_screen_presentation.dart',
     ).readAsStringSync();
-    expect(profile, contains('Langue et pays. Vos réglages'));
-    expect(profile, contains('Language and country. Medical settings'));
-    expect(profile, contains('اللغة والبلد. تبقى الإعدادات'));
+    expect(profile, contains("fr: 'Langue et pays'"));
+    expect(profile, contains("en: 'Language & country'"));
+    expect(profile, contains("ar: 'اللغة والبلد'"));
+    expect(profile, contains('Français · English · العربية'));
     expect(profile, isNot(contains('Langue, pays et ton')));
     expect(profile, isNot(contains('Language, country and tone')));
     final legacy = File(
