@@ -66,18 +66,17 @@ const minScreenshotBytes = 15000;
       const buffers = {};
       const screenshotBytes = {};
 
+      // One real login per viewport. Previously we reloaded for every
+      // screenshot (4 logins/viewport); the 11th login hit HTTP 429.
+      // Wheel within the same authenticated Flutter page instead. A true
+      // empty clinical dashboard can legitimately be non-scrollable.
+      await page.mouse.move(Math.round(width / 2), Math.round(height / 2));
+      let previousOffset = 0;
       for (const [position, offset] of Object.entries(positions)) {
-        // With zero real clinical readings the dashboard intentionally
-        // renders its empty state without fetching companion/overview.
-        // A mandatory overview HTTP response therefore timed out despite
-        // successful authentication and a truthful UI. Validate the screen,
-        // not a network request that the empty state does not make.
-        await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
-          waitUntil: 'domcontentloaded',
-          timeout: 120000,
-        });
-        // Each of the nine screenshots must be a real rendered empty state,
-        // not a loading view or a fabricated clinical timeline.
+        const delta = offset - previousOffset;
+        if (delta > 0) await page.mouse.wheel(0, delta);
+        previousOffset = offset;
+        // Each screenshot must still show the real, truthful empty state.
         await emptyTitle.waitFor({ state: 'visible', timeout: 15000 });
         await zeroClinicalCopy.waitFor({ state: 'visible', timeout: 15000 });
         await page.waitForTimeout(1600);
@@ -110,8 +109,19 @@ const minScreenshotBytes = 15000;
       if (errors.length) {
         throw new Error(`${name}: page errors ${JSON.stringify(errors)}`);
       }
-      if (api.some((x) => x.status >= 500)) {
-        throw new Error(`${name}: backend 5xx`);
+      const loginResponses = api.filter((x) =>
+        new URL(x.url).pathname === '/api/v1/auth/login');
+      if (loginResponses.length !== 1 ||
+          loginResponses[0].status !== 200) {
+        throw new Error(
+          `${name}: expected exactly one native login HTTP 200 per viewport, got ` +
+          JSON.stringify(loginResponses.map((x) => x.status)),
+        );
+      }
+      if (api.some((x) => x.status >= 400)) {
+        throw new Error(
+          `${name}: unexpected backend HTTP 4xx/5xx`,
+        );
       }
       if (
         Object.values(screenshotBytes).some(
