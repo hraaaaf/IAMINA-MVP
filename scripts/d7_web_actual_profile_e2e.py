@@ -159,9 +159,13 @@ def main():
                     page.get_by_role("button", name="Save", exact=True).last.click(
                         timeout=18000
                     )
+                    # Flutter emits both an ARIA live announcement and a
+                    # visible snackbar with identical text. A strict generic
+                    # text locator is ambiguous. Assert the visible status;
+                    # do not treat the announcement as proof of persistence.
                     page.get_by_text(
                         re.compile("Offline pilot.*saved on this device", re.I)
-                    ).wait_for(state="visible", timeout=15000)
+                    ).last.wait_for(state="visible", timeout=15000)
 
                 def reload_and_unlock():
                     page.reload(wait_until="domcontentloaded", timeout=60000)
