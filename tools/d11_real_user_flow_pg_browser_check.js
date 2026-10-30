@@ -292,7 +292,8 @@ async function proof(page, width) {
         JSON.stringify(unexpectedConsole)+' external '+external.length+
         ' forbidden seed '+requests.length);
     return {locale,width,pass:true,requests:responses,errors:errors.length,
-      blockedExternal:external.length,clinicalDemoRequests:requests.length,file:filename};
+      blockedExternal:external.length,blockedExternalHosts:[...new Set(external)].slice(0,8),
+      clinicalDemoRequests:requests.length,file:filename};
   } catch(e) {
     const filename=await screenshot(page,'failure').catch(()=>null);
     const labels=await page.locator('flt-semantics').evaluateAll(nodes=>
@@ -302,7 +303,8 @@ async function proof(page, width) {
       visibleSemanticLabels:labels.slice(0,35),requests:responses,
       browserErrors:errors.slice(0,5),consoleDiagnostic:consoleErrors,
       errors:errors.length,
-      blockedExternal:external.length,clinicalDemoRequests:requests.length,file:filename};
+      blockedExternal:external.length,blockedExternalHosts:[...new Set(external)].slice(0,8),
+      clinicalDemoRequests:requests.length,file:filename};
   }
 }
 (async()=>{
@@ -321,6 +323,7 @@ async function proof(page, width) {
  console.log('D11_REAL_ROUTED_UI='+JSON.stringify({locale,passed:report.tests.length-report.failed.length,
     total:report.tests.length,failed:report.failed.map(x=>({width:x.width,stage:x.stage,error:x.error,
     visibleSemanticLabels:x.visibleSemanticLabels,requests:x.requests,
-    browserErrors:x.browserErrors,consoleDiagnostic:x.consoleDiagnostic}))}));
+    browserErrors:x.browserErrors,consoleDiagnostic:x.consoleDiagnostic,
+    blockedExternalHosts:x.blockedExternalHosts,blockedExternal:x.blockedExternal}))}));
  if(report.failed.length||report.tests.length!==3)process.exitCode=1;
 })().catch(e=>{console.error('D11 UI FUE runner failed: '+e.constructor.name);process.exitCode=1;});
