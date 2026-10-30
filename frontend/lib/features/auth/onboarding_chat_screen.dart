@@ -512,7 +512,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
                   height: 52,
                   child: FilledButton(
                     key: const Key('onboarding-sticky-start'),
-                    onPressed: _saving ? null : _finish,
+                    onPressed: _saving || !ready ? null : _finish,
                     child: Text(_saving ? l10n.onboardingSaving : finishLabel),
                   ),
                 ),
