@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/d7-hosted-remote-chrome-fue.yml'
       - 'scripts/d7_web_actual_profile_e2e.py'
+      - 'frontend/test/features/profile/d7_web_treatment_choice_responsive_test.dart'
+      - 'frontend/test/features/profile/d7_web_type_transition_contract_test.dart'
+      - 'frontend/test/features/profile/d7_profile_owner_save_widget_test.dart'
   pull_request:
     branches: [main]
     paths:
@@ -121,6 +124,12 @@ jobs:
             --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
             --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
           test -s build/web/main.dart.js
+      - name: FUE-01 owner save widget and type transition contract
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter test --reporter expanded test/features/profile/d7_profile_owner_save_widget_test.dart
+          flutter test --platform chrome --reporter expanded test/features/profile/d7_web_type_transition_contract_test.dart
       - name: Treatment selection widgets FR EN AR / RTL x 390 768 1280 in Chrome
         working-directory: frontend
         run: |
