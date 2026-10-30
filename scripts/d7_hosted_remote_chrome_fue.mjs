@@ -50,6 +50,18 @@ export function safeBrowserErrorCode(error,stage) {
     ? 'D7_CHROME_' + stage + '_FAILED' : 'D7_CHROME_BROWSER_ERROR';
 }
 
+// Classify only the HTTP status observed by the QA browser; never emit
+// response body, URL, credentials, cookies or session tokens.
+export function loginRedirectFailureCode(status) {
+  if(status===undefined || status===null) return 'D7_CHROME_LOGIN_NO_HTTP_RESPONSE';
+  if(status===401) return 'D7_CHROME_LOGIN_HTTP_401';
+  if(status===403) return 'D7_CHROME_LOGIN_HTTP_403';
+  if(status>=500 && status<600) return 'D7_CHROME_LOGIN_HTTP_5XX';
+  if(status>=400 && status<500) return 'D7_CHROME_LOGIN_HTTP_4XX';
+  if(status>=200 && status<300) return 'D7_CHROME_LOGIN_HTTP_2XX_NO_REDIRECT';
+  return 'D7_CHROME_LOGIN_HTTP_OTHER_NO_REDIRECT';
+}
+
 export function guard({origin,sha,token,email,password}) {
   if (origin !== ORIGIN || sha !== DEPLOY_SHA) fail('UNEXPECTED_DEPLOYMENT');
   if (typeof token !== 'string' || !/^[a-zA-Z0-9._~-]{10,512}$/.test(token))
@@ -149,7 +161,7 @@ async function main() {
     await submit.click({timeout:15000});
     stage='LOGIN_REDIRECT';
     await page.waitForURL(url=>new URL(url).pathname!=='/login',
-      {timeout:30000});
+      {timeout:30000}).catch(()=>fail(loginRedirectFailureCode(status)));
     if(status!==200)fail('NATIVE_LOGIN_NOT_CONFIRMED');
     result.steps.native_login='PASS';
     // Never click any consent dialog. The QA owner must approve consent.

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ORIGIN, DEPLOY_SHA, VIEWPORTS, guard, emptyProof,
   ACCOUNT_CHOICE_LABEL, LOGIN_SUBMIT_LABEL, activateFlutterAccountSemantics,
-  D7_QA_STAGES, safeBrowserErrorCode}
+  D7_QA_STAGES, safeBrowserErrorCode, loginRedirectFailureCode}
   from '../../../scripts/d7_hosted_remote_chrome_fue.mjs';
 const valid={origin:ORIGIN,sha:DEPLOY_SHA,
   token:'synthetic-share-token-123456',
@@ -74,6 +74,20 @@ test('browser failures report bounded stage only, never raw exception',()=>{
     'D7_CHROME_BROWSER_ERROR');
   assert.equal(safeBrowserErrorCode(new Error('D7_CHROME_ACCOUNT_BUTTON_INACCESSIBLE'),
     'ACCOUNT_SEMANTICS'),'D7_CHROME_ACCOUNT_BUTTON_INACCESSIBLE');
+});
+
+test('login redirect timeout reports only bounded HTTP status class',()=>{
+  for(const [status,want] of [
+    [undefined,'D7_CHROME_LOGIN_NO_HTTP_RESPONSE'],
+    [null,'D7_CHROME_LOGIN_NO_HTTP_RESPONSE'],
+    [200,'D7_CHROME_LOGIN_HTTP_2XX_NO_REDIRECT'],
+    [201,'D7_CHROME_LOGIN_HTTP_2XX_NO_REDIRECT'],
+    [401,'D7_CHROME_LOGIN_HTTP_401'],
+    [403,'D7_CHROME_LOGIN_HTTP_403'],
+    [404,'D7_CHROME_LOGIN_HTTP_4XX'],
+    [502,'D7_CHROME_LOGIN_HTTP_5XX'],
+    [302,'D7_CHROME_LOGIN_HTTP_OTHER_NO_REDIRECT'],
+  ]) assert.equal(loginRedirectFailureCode(status),want);
 });
 
 test('real hosted browser smoke cannot claim clinical FUE certification',()=>{
