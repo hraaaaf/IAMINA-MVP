@@ -110,9 +110,25 @@ def main():
                         state="visible", timeout=25000
                     )
                     assert app_route() == "/profile", "Profile route redirected"
-                    page.get_by_role("button", name=re.compile("Medical tracking", re.I)).first.click(
-                        timeout=18000
-                    )
+                    section = page.get_by_role(
+                        "button", name=re.compile(r"^Medical tracking", re.I)
+                    ).first
+                    section.click(timeout=18000)
+                    # Flutter's ExpansionTile uses an animated semantics tree:
+                    # a successful click does not mean its children have
+                    # become accessible at the exact same instant.
+                    for attempt in range(55):
+                        snapshot = page.locator("body").aria_snapshot()
+                        if "Type 2 Diabetes" in snapshot:
+                            break
+                        page.wait_for_timeout(200)
+                    else:
+                        print("D7 medical section did not expose choices:", flush=True)
+                        print("D7 medical section ARIA:", snapshot[:3800], flush=True)
+                        print("D7 medical section DOM:", section.evaluate(
+                            "(el) => el.outerHTML.slice(0, 1400)"
+                        ), flush=True)
+                        raise AssertionError("D7 medical section not expanded in Chrome")
 
                 def click_choice(label):
                     # Flutter InkWell choices aren't HTML form labels.
