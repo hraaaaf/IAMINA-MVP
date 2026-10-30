@@ -81,7 +81,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                                     children: [
                                       TextButton(
                                         key: const ValueKey('d5-country-later'),
-                                        onPressed: () => setState(
+                                        onPressed: () => _setPresentationState(
                                           () => _countryReminderDismissed = true,
                                         ),
                                         child: Text(_profileActionCopy(context,
