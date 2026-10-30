@@ -268,7 +268,7 @@ async function proof(page, width) {
     await labelClick(page,locale==='fr'?'Se connecter ou créer un compte':'تسجيل الدخول أو إنشاء حساب');
     // Await actual rendered login text before typing; account chooser route
     // remains alive for a few frames after the click.
-    await page.getByText(locale==='fr'?'Bienvenue':'مرحباً بك في IAmina',{exact:false})
+    await page.getByText(locale==='fr'?'Mot de passe oublié ?':'نسيت كلمة المرور؟',{exact:true})
       .first().waitFor({state:'visible',timeout:12000});
     await typeSignupLabeledField(page,locale==='fr'?'Adresse e-mail':'البريد الإلكتروني',testEmail);
     await typeSignupLabeledField(page,locale==='fr'?'Mot de passe':'كلمة المرور',password);
