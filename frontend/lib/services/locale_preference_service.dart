@@ -35,7 +35,8 @@ class ResolvedLocalePreference {
 
 class LocalePreferenceService extends ChangeNotifier {
   static const _languageKey = 'iamina.ui_language';
-  static const _countryKey = 'iamina.country';
+  // No automatic migration from the legacy global key: owner is unknown.
+  static const _countryScopedPrefix = 'iamina.country.v1.';
   static const _toneKey = 'iamina.local_tone';
   static const _explicitKey = 'iamina.locale_explicitly_selected';
   static const _supportedLanguages = {'ar', 'en', 'fr'};
@@ -49,6 +50,9 @@ class LocalePreferenceService extends ChangeNotifier {
   Locale _locale = const Locale('fr');
   LocaleResolutionSource _resolutionSource = LocaleResolutionSource.baseline;
   String? _country;
+  String? _countryStorageKey;
+  int _countryScopeRevision = 0;
+  bool _countryScopeReady = false;
   String _tone = 'neutral';
   bool _loaded = false;
 
@@ -64,7 +68,8 @@ class LocalePreferenceService extends ChangeNotifier {
 
   Locale get locale => _locale;
   LocaleResolutionSource get resolutionSource => _resolutionSource;
-  String? get country => _country;
+  String? get country => _countryScopeReady ? _country : null;
+  bool get countryScopeReady => _countryScopeReady;
   String get tone => _tone;
   bool get loaded => _loaded;
   bool get isAuditLocale => _auditLocale != null;
@@ -113,12 +118,11 @@ class LocalePreferenceService extends ChangeNotifier {
 
   Future<void> refresh() async {
     final localLanguage = await _storage.read(key: _languageKey);
-    final localCountry = await _storage.read(key: _countryKey);
     final localTone = await _storage.read(key: _toneKey);
     final isExplicit = await _storage.read(key: _explicitKey) == 'true';
 
-    // An unset country remains unknown, never silently Morocco.
-    _country = countryByCode(localCountry)?.code;
+    // Language is application-level; country is loaded only from the active
+    // authenticated patient vault, never from a browser-global value.
     if (localTone != null && _supportedTones.contains(localTone)) {
       _tone = localTone;
     }
@@ -152,6 +156,35 @@ class LocalePreferenceService extends ChangeNotifier {
     _locale = resolved.locale;
     _resolutionSource = resolved.source;
     _loaded = true;
+    notifyListeners();
+  }
+
+  /// Bind country to the authenticated, physically isolated patient vault.
+  ///
+  /// An unbound or changed identity immediately clears the old country.
+  /// Asynchronous reads from a retired vault cannot update the new session.
+  /// The legacy global 'iamina.country' key is preserved but NEVER imported:
+  /// its historical owner cannot be authenticated.
+  Future<void> bindCountryScope(String? vaultName) async {
+    final key = vaultName == null ? null : '$_countryScopedPrefix$vaultName';
+    if (key == _countryStorageKey && _countryScopeReady) return;
+    final revision = ++_countryScopeRevision;
+    _countryStorageKey = key;
+    _country = null;
+    _countryScopeReady = false;
+    notifyListeners();
+    if (key == null) return;
+
+    try {
+      final saved = await _storage.read(key: key);
+      if (revision != _countryScopeRevision) return;
+      _country = countryByCode(saved)?.code;
+    } catch (_) {
+      if (revision != _countryScopeRevision) return;
+      _country = null;
+    }
+    if (revision != _countryScopeRevision) return;
+    _countryScopeReady = true;
     notifyListeners();
   }
 
@@ -205,13 +238,18 @@ class LocalePreferenceService extends ChangeNotifier {
       throw ArgumentError.value(country, 'country', 'Unsupported country');
     }
 
+    final key = _countryStorageKey;
+    if (key == null || !_countryScopeReady) {
+      throw StateError('Confirmed patient vault required to save country');
+    }
+
     _locale = locale;
     _resolutionSource = LocaleResolutionSource.explicitLocal;
     _country = normalizedCountry;
     _tone = tone;
     await Future.wait([
       _storage.write(key: _languageKey, value: locale.languageCode),
-      _storage.write(key: _countryKey, value: normalizedCountry),
+      _storage.write(key: key, value: normalizedCountry),
       _storage.write(key: _toneKey, value: tone),
       _storage.write(key: _explicitKey, value: 'true'),
     ]);
