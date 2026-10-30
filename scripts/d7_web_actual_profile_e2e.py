@@ -5,6 +5,7 @@ Synthetic LOCAL patient; actual Flutter release app, real Chrome, WebAuthn,
 IndexedDB. Does not test SSO Vercel, remote account, real clinical consent, or
 production patient records. Fails closed on unexpected network egress.
 """
+import hashlib
 import http.server
 import json
 import pathlib
@@ -17,6 +18,8 @@ from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WEB = ROOT / "frontend" / "build" / "web"
 EVIDENCE = ROOT / "d7-web-real-profile-chrome-proof.json"
+CAPTURE_DIR = ROOT / "d7-web-real-profile-captures"
+VIEWPORTS = ((390, 844), (768, 1024), (1280, 900))
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -38,6 +41,9 @@ def main():
         "fixture": "single synthetic LOCAL patient; no SSO, backend or real patients",
         "result": "NOT_RUN",
         "phases": [],
+        "captures": [],
+        "real_app_locale": "en-US",
+        "real_app_fr_ar_rtl": "NOT_RUN",
         "hosted_preview": "NOT_RUN",
         "remote_sync": "NOT_RUN",
         "clinical_privacy_signoff": "NOT_RUN",
@@ -175,6 +181,29 @@ def main():
                         re.compile("Offline pilot.*saved on this device", re.I)
                     ).last.wait_for(state="visible", timeout=15000)
 
+                def capture_viewports(stage, *expected):
+                    assert stage in ("type2", "unknown", "explicit_none")
+                    baseline = page.viewport_size
+                    CAPTURE_DIR.mkdir(exist_ok=True)
+                    try:
+                        for width, height in VIEWPORTS:
+                            page.set_viewport_size({"width": width, "height": height})
+                            medical_summary_contains(*expected)
+                            page.wait_for_timeout(200)
+                            name = f"{stage}-{width}x{height}.png"
+                            target = CAPTURE_DIR / name
+                            page.screenshot(path=str(target), full_page=True,
+                                            animations="disabled", timeout=30000)
+                            data = target.read_bytes()
+                            assert len(data) > 1000, "Empty local D7 screenshot"
+                            proof["captures"].append({
+                                "stage": stage, "viewport": f"{width}x{height}",
+                                "file": name,
+                                "sha256": hashlib.sha256(data).hexdigest(),
+                            })
+                    finally:
+                        page.set_viewport_size(baseline)
+
                 def reload_and_unlock():
                     page.reload(wait_until="domcontentloaded", timeout=60000)
                     page.wait_for_selector("flutter-view, flt-glass-pane", timeout=60000)
@@ -227,6 +256,7 @@ def main():
                 step("physical_reload_type2_and_treatments_preserved")
                 reload_and_unlock()
                 medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
+                capture_viewports("type2", "Type 2 Diabetes", "Oral medicines", "Insulin")
 
                 step("patient_type1_without_automatic_treatment_change")
                 click_choice("Type 1 Diabetes")
@@ -234,15 +264,30 @@ def main():
                 reload_and_unlock()
                 medical_summary_contains("Type 1 Diabetes", "Oral medicines", "Insulin")
 
+                step("patient_unknown_without_automatic_treatment_change")
+                click_choice("Not sure / later")
+                save()
+                reload_and_unlock()
+                medical_summary_contains("Diagnosis not specified", "Oral medicines", "Insulin")
+                capture_viewports("unknown", "Diagnosis not specified", "Oral medicines", "Insulin")
+
                 step("explicit_no_treatment_then_physical_reload")
                 click_choice("No treatment to report")
                 save()
                 reload_and_unlock()
-                medical_summary_contains("Type 1 Diabetes", "No treatment reported")
+                medical_summary_contains("Diagnosis not specified", "No treatment reported")
+                capture_viewports("explicit_none", "Diagnosis not specified", "No treatment reported")
 
-                step("responsive_390_and_egress_check")
+                step("explicit_treatment_reentry_then_physical_reload")
+                click_choice("Insulin")
+                save()
+                reload_and_unlock()
+                medical_summary_contains("Diagnosis not specified", "Insulin")
+
+                step("responsive_390_768_1280_and_egress_check")
+                assert len(proof["captures"]) == 9
                 page.set_viewport_size({"width": 390, "height": 844})
-                medical_summary_contains("Type 1 Diabetes", "No treatment reported")
+                medical_summary_contains("Diagnosis not specified", "Insulin")
                 non_font = [u for u in blocked if "fonts.gstatic.com" not in u.lower()]
                 assert not non_font, "Unexpected outbound network attempted"
                 assert not errors, "Uncaught browser JS exception"
