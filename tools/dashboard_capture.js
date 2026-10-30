@@ -67,18 +67,15 @@ const minScreenshotBytes = 15000;
       const screenshotBytes = {};
 
       for (const [position, offset] of Object.entries(positions)) {
-        const dashboardReady = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/companion/overview') &&
-            r.status() >= 200 &&
-            r.status() < 300,
-          { timeout: 45000 },
-        );
+        // With zero real clinical readings the dashboard intentionally
+        // renders its empty state without fetching companion/overview.
+        // A mandatory overview HTTP response therefore timed out despite
+        // successful authentication and a truthful UI. Validate the screen,
+        // not a network request that the empty state does not make.
         await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
           waitUntil: 'domcontentloaded',
           timeout: 120000,
         });
-        await dashboardReady;
         // Each of the nine screenshots must be a real rendered empty state,
         // not a loading view or a fabricated clinical timeline.
         await emptyTitle.waitFor({ state: 'visible', timeout: 15000 });
