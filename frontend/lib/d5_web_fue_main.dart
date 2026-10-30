@@ -1,6 +1,8 @@
 // D5 synthetic-only real Chrome FUE host. Uses the production Flutter screens,
 // patient-vault scoped DB/storage, and a deterministic IP *test input*. This
 // entrypoint is never included in production lib/main.dart or deployed.
+import 'dart:html' as html; // Synthetic Web-only phase probe; never used in app main.
+
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -35,9 +37,17 @@ class _D5DeterministicIp extends LocalePreferenceService {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   var stage = 'initial';
+  // Correlate the Flutter async bootstrap with the actual Chrome document.
+  // A blank page with an unchanged index title means Dart was not entered.
+  void mark(String value) {
+    stage = value;
+    html.document.title = 'D5_FUE_STAGE:$value';
+  }
+  mark('main');
   try {
-    await _runD5((value) => stage = value);
+    await _runD5(mark);
   } catch (error, stack) {
+    html.document.title = 'D5_FUE_BOOT_FAILURE:$stage';
     debugPrint('D5_WEB_FUE_BOOT_FAILURE stage=$stage error=$error');
     debugPrintStack(stackTrace: stack);
     runApp(MaterialApp(
