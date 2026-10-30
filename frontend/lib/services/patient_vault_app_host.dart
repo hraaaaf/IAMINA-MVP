@@ -115,6 +115,8 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   void _onVaultChanged() {
     if (_bindings != null &&
         widget.controller.activeDatabase == _bindings?.db) return;
+    // Clear A's country before B can enter the patient-facing widget tree.
+    unawaited(widget.locale.bindCountryScope(null));
     final old = _bindings;
     _bindings = null;
     ++_generation;
@@ -169,6 +171,15 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       final bundle = _VaultBindings(
         db, scope, evidence, consent, sync, router, epoch,
       );
+      if (!mounted || generation != _generation ||
+          widget.controller.activeDatabase != db ||
+          epoch != AuthService.authEpoch) {
+        bundle.dispose();
+        return;
+      }
+      // Resolve the country under this verified vault namespace before
+      // rendering patient UI. Stale A->B->A async responses are discarded.
+      await widget.locale.bindCountryScope(scope.databaseName);
       if (!mounted || generation != _generation ||
           widget.controller.activeDatabase != db ||
           epoch != AuthService.authEpoch) {
