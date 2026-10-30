@@ -7,6 +7,10 @@ import path from 'node:path';
 export const ORIGIN = 'https://iamina-review-git-cert-d7-we-5e65d5-achraf-benmoussa-s-projects.vercel.app';
 export const DEPLOY_SHA = 'c10e6e69acb322820227b630a1efaf5c834e2f74';
 export const VIEWPORTS = [[390,844], [768,1024], [1280,900]];
+// Exact localized actions; do not bind an English Chrome session to French UI.
+export const ACCOUNT_CHOICE_LABEL =
+  /^(?:Sign in or create an account|Se connecter ou créer un compte|تسجيل الدخول أو إنشاء حساب)$/;
+export const LOGIN_SUBMIT_LABEL = /^(?:Sign in|Se connecter|الدخول)$/;
 
 function fail(code) { throw new Error('D7_CHROME_' + code); }
 export function guard({origin,sha,token,email,password}) {
@@ -78,7 +82,7 @@ async function main() {
     }
     result.steps.login_capture='CAPTURED_NOT_VISUALLY_CERTIFIED';
     await page.setViewportSize({width:390,height:844});
-    const choose=page.getByText('Se connecter ou créer un compte').first();
+    const choose=page.getByText(ACCOUNT_CHOICE_LABEL).first();
     if(!await choose.count())fail('ACCOUNT_BUTTON_INACCESSIBLE');
     await choose.click({timeout:15000});
     const inputs=page.locator('input:not([type="hidden"])');
@@ -94,7 +98,7 @@ async function main() {
       if(r.url().split('?')[0]===ORIGIN+'/api/v1/auth/login')
         status=r.status();
     });
-    const submit=page.getByText('Se connecter',{exact:true}).last();
+    const submit=page.getByText(LOGIN_SUBMIT_LABEL).last();
     if(!await submit.count())fail('SUBMIT_INACCESSIBLE');
     await submit.click({timeout:15000});
     await page.waitForURL(url=>new URL(url).pathname!=='/login',
