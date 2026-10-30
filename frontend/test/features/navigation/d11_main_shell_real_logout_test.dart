@@ -111,7 +111,7 @@ void main() {
         // test-browser semantics transport. The actual sidebar InkWell MUST
         // expose a native Semantics button and localized accessible name.
         final handle = tester.ensureSemantics();
-        addTearDown(handle.dispose);
+        try {
         // Rebuild accessibility after enabling semantics on an already-painted
         // ShellRoute; otherwise the tree may contain only its central child.
         await tester.pumpAndSettle();
@@ -150,6 +150,11 @@ void main() {
         expect(find.text('D11_SIGNED_OUT_LOGIN'), findsOneWidget);
         expect(find.text('D11_SYNTHETIC_DASHBOARD'), findsNothing);
         expect(tester.takeException(), isNull);
+        } finally {
+          // dispose BEFORE widget test's own end-of-test assertions;
+          // addTearDown executes too late for SemanticsHandle checks.
+          handle.dispose();
+        }
       });
     }
   }
