@@ -107,6 +107,15 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     if (!widget.preferencesOnly) _revealStep(_typeStepKey);
   }
 
+  void _confirmSuggestedCountry() {
+    if (_country == null || !_countrySuggestedByIp) return;
+    setState(() {
+      _countryTouched = true;
+      _countrySuggestedByIp = false;
+    });
+    if (!widget.preferencesOnly) _revealStep(_typeStepKey);
+  }
+
   void _clearCountry() {
     if (_country == null && _countryTouched) return;
     setState(() {
@@ -159,7 +168,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   Future<void> _finish() async {
-    if (_language == null || _country == null) return;
+    if (_language == null || _country == null || _countrySuggestedByIp) return;
     setState(() => _saving = true);
 
     try {
@@ -292,6 +301,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           _CountrySearchField(
             code: _country,
             proposedFromIp: _countrySuggestedByIp,
+            onConfirmed: _confirmSuggestedCountry,
             onSelected: _selectCountry,
             onCleared: _clearCountry,
           ),
@@ -328,12 +338,13 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             _CountrySearchField(
               code: _country,
               proposedFromIp: _countrySuggestedByIp,
+              onConfirmed: _confirmSuggestedCountry,
               onSelected: _selectCountry,
               onCleared: _clearCountry,
             ),
           ],
         ),
-      if (_country != null)
+      if (_country != null && !_countrySuggestedByIp)
         _Question(
           key: _typeStepKey,
           title: l10n.onboardingTypeQuestion,
@@ -378,7 +389,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             ),
           ],
         ),
-      if (_country != null)
+      if (_country != null && !_countrySuggestedByIp)
         _Question(
           key: _treatmentStepKey,
           title: _preferencesCopy(context,
@@ -416,7 +427,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             ),
           ],
         ),
-      if (_country != null)
+      if (_country != null && !_countrySuggestedByIp)
         _Question(
           key: _unitStepKey,
           title: l10n.onboardingUnitQuestion,
@@ -440,14 +451,14 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ? null
         : _onboardingProgress(
             language: _language,
-            country: _country,
+            country: _countrySuggestedByIp ? null : _country,
             diabetesType: _diabetesType,
             treatment: _treatmentTouched ? d7StateCode(_declaredTreatments.state) : null,
           );
 
     // Language and country are the only first-use prerequisites.
     // The five-step medical questionnaire stays available, never mandatory.
-    final ready = _language != null && _country != null;
+    final ready = _language != null && _country != null && !_countrySuggestedByIp;
 
     final assistantLabel = widget.preferencesOnly
         ? _preferencesCopy(
@@ -814,11 +825,13 @@ class _Question extends StatelessWidget {
 class _CountrySearchField extends StatefulWidget {
   final String? code;
   final bool proposedFromIp;
+  final VoidCallback onConfirmed;
   final ValueChanged<String> onSelected;
   final VoidCallback onCleared;
   const _CountrySearchField({
     required this.code,
     required this.proposedFromIp,
+    required this.onConfirmed,
     required this.onSelected,
     required this.onCleared,
   });
@@ -944,6 +957,19 @@ class _CountrySearchFieldState extends State<_CountrySearchField> {
                   ),
             style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context)),
           ),
+          if (widget.proposedFromIp) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              key: const Key('onboarding-confirm-suggested-country'),
+              onPressed: widget.onConfirmed,
+              icon: const Icon(Icons.check_circle_outline),
+              label: Text(_preferencesCopy(context,
+                fr: 'Confirmer ce pays',
+                en: 'Confirm this country',
+                ar: 'تأكيد هذا البلد',
+              )),
+            ),
+          ],
         ],
       ),
     );
