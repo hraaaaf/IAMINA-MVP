@@ -30,8 +30,28 @@ class _D5DeterministicIp extends LocalePreferenceService {
   Future<String?> suggestCountryFromIp() async => suggestion;
 }
 
+// Fail visibly in the synthetic browser rather than producing an unexplained
+// white screen. No stack trace or diagnostics are ever shipped to main.dart.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  var stage = 'initial';
+  try {
+    await _runD5((value) => stage = value);
+  } catch (error, stack) {
+    debugPrint('D5_WEB_FUE_BOOT_FAILURE stage=$stage error=$error');
+    debugPrintStack(stackTrace: stack);
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: SafeArea(
+          child: SelectableText('D5_WEB_FUE_BOOT_FAILURE stage=$stage: $error'),
+        ),
+      ),
+    ));
+  }
+}
+
+Future<void> _runD5(void Function(String stage) mark) async {
+  mark('query');
   final query = Uri.base.queryParameters;
   final language = query['locale'] == 'ar' ? 'ar' : 'fr';
   final owner = query['owner'] == 'b' ? 735 : 734;
@@ -45,14 +65,19 @@ Future<void> main() async {
   final auth = AuthService();
   final lock = AppLockService();
   final locale = _D5DeterministicIp(api, suggestion, Locale(language));
+  mark('locale.refresh');
   await locale.refresh();
+  mark('locale.bindCountryScope');
   await locale.bindCountryScope(scope.databaseName);
+  mark('lock.initialize');
   await lock.initialize();
 
+  mark('vault.getProfile');
   var profile = await db.getProfileForLocalUserId(db.activeProfileRowId);
   if (mode == 'returning' && profile == null) {
     // Returning synthetic user has a real persisted medical profile without
     // any claimed/implicitly migrated country. No consent is fabricated.
+    mark('vault.insertSyntheticReturningProfile');
     await db.into(db.patientProfiles).insert(
       PatientProfilesCompanion.insert(
         userId: drift.Value(db.activeProfileRowId),
@@ -64,11 +89,13 @@ Future<void> main() async {
     );
     profile = await db.getProfileForLocalUserId(db.activeProfileRowId);
   }
+  mark('dependencies');
   final consent = ConsentService()
     ..seedInitialProfile(profile)
     ..attachStream(db.watchProfileForLocalUserId(db.activeProfileRowId));
   final sync = SyncService(db, api);
 
+  mark('runApp');
   runApp(MultiProvider(
     providers: [
       Provider<AppDatabase>.value(value: db),
