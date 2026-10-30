@@ -59,7 +59,7 @@ void main() {
     );
     final router = source('lib/routes/app_router.dart');
     expect(profile, contains("context.push('/preferences')"));
-    expect(profile, contains("'Préférences IAmina'"));
+    expect(profile, contains("'Langue et pays'"));
     expect(profile, isNot(contains("context.push('/onboarding')")));
     expect(router, contains("path: '/preferences'"));
     expect(router, contains('const OnboardingChatScreen(preferencesOnly: true)'));
