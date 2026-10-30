@@ -11,7 +11,7 @@ const out = 'd5-web-fue-proof';
 fs.mkdirSync(out,{recursive:true});
 const viewports=[[390,844],[768,1024],[1280,900]];
 const cases=[];
-const report={head:process.env.GITHUB_SHA||'unknown',
+const report={head:process.env.D5_CANDIDATE_SHA||process.env.GITHUB_SHA||'unknown',
   run:'real Chrome on production Flutter screen widgets + synthetic owner/IP fixture',
   notProven:['production authentication','hosted deployment','real patients'],
   cases,errors:[]};
