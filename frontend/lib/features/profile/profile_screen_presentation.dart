@@ -49,7 +49,8 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                         ],
                         if (shouldShowReturningCountryPrompt(
                           hasProfile: _hasPersistedProfile,
-                          preferenceLoaded: localePreferences?.loaded ?? false,
+                          preferenceLoaded: (localePreferences?.loaded ?? false) &&
+                              (localePreferences?.countryScopeReady ?? false),
                           confirmedCountry: localePreferences?.country,
                           dismissed: _countryReminderDismissed,
                         )) ...[
