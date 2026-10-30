@@ -48,8 +48,9 @@ Future<void> main() async {
   // captures only asynchronous main() initialization.
   FlutterError.onError = (details) {
     html.document.documentElement?.dataset['d5FlutterError'] =
-        details.exceptionAsString().substring(
-          0, details.exceptionAsString().length.clamp(0, 350));
+        details.exceptionAsString().length > 350
+            ? details.exceptionAsString().substring(0, 350)
+            : details.exceptionAsString();
     debugPrint('D5_FUE_FLUTTER_ERROR: ${details.exceptionAsString()}');
   };
   ErrorWidget.builder = (details) => Material(
@@ -65,7 +66,9 @@ Future<void> main() async {
   } catch (error, stack) {
     html.document.title = 'D5_FUE_BOOT_FAILURE:$stage';
     html.document.documentElement?.dataset['d5BootError'] =
-        error.toString().substring(0, error.toString().length.clamp(0, 350));
+        error.toString().length > 350
+            ? error.toString().substring(0, 350)
+            : error.toString();
     debugPrint('D5_WEB_FUE_BOOT_FAILURE stage=$stage error=$error');
     debugPrintStack(stackTrace: stack);
     runApp(MaterialApp(
