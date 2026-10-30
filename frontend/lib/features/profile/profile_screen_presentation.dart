@@ -784,9 +784,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Préférences IAmina',
-                      en: 'IAmina preferences',
-                      ar: 'تفضيلات IAmina',
+                      fr: 'Langue et pays',
+                      en: 'Language & country',
+                      ar: 'اللغة والبلد',
                     ),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
@@ -796,9 +796,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Langue et pays. Vos réglages médicaux restent dans le profil.',
-                      en: 'Language and country. Medical settings stay in your profile.',
-                      ar: 'اللغة والبلد. تبقى الإعدادات الطبية في ملفك الشخصي.',
+                      fr: 'Français · English · العربية',
+                      en: 'Français · English · العربية',
+                      ar: 'Français · English · العربية',
                     ),
                     style: TextStyle(
                       color: AminaVisualLanguage.secondary(context),

@@ -452,17 +452,17 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final assistantLabel = widget.preferencesOnly
         ? _preferencesCopy(
             context,
-            fr: 'Préférences IAmina',
-            en: 'IAmina preferences',
-            ar: 'تفضيلات IAmina',
+            fr: 'Langue et pays',
+            en: 'Language & country',
+            ar: 'اللغة والبلد',
           )
         : l10n.onboardingAssistantLabel;
     final welcome = widget.preferencesOnly
         ? _preferencesCopy(
             context,
-            fr: 'Choisissez vos préférences. Vos données médicales restent dans votre profil.',
-            en: 'Choose your preferences. Your medical data stays in your profile.',
-            ar: 'اختر تفضيلاتك. تبقى بياناتك الطبية في ملفك الشخصي.',
+            fr: 'Choisissez la langue de l’application et votre pays d’utilisation.',
+            en: 'Choose your app language and country of use.',
+            ar: 'اختر لغة التطبيق وبلد الاستخدام.',
           )
         : l10n.onboardingWelcome;
     final readyLabel = widget.preferencesOnly
