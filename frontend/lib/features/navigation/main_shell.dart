@@ -92,8 +92,16 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
       body: Row(
+        // The ShellRoute child contains a nested Navigator which can block
+        // semantics of earlier siblings. Paint the sidebar AFTER the nested
+        // Navigator so its logout/navigation controls remain accessible.
+        // Reverse only RenderFlex placement to preserve the original
+        // start-side rail in both LTR and RTL; inherited Directionality stays
+        // unchanged for both children.
+        textDirection: Directionality.of(context) == TextDirection.ltr
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         children: [
-          if (isMedium) _Sidebar(entries: entries, selectedIndex: selected),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -107,6 +115,7 @@ class MainShell extends StatelessWidget {
               },
             ),
           ),
+          if (isMedium) _Sidebar(entries: entries, selectedIndex: selected),
         ],
       ),
       bottomNavigationBar: isMedium
