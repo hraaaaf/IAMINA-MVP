@@ -89,6 +89,26 @@ async function countrySelect(page,l,code) {
   await snooze(450);
   await click(page,l[key]);
 }
+// Read the real Flutter Web accessibility/rendered value as an oracle, never
+// mutate a controller/DOM input from the test. Exact country code is scoped.
+async function assertSelectedCountry(page,expected) {
+  let seen=[];
+  for(let attempt=0;attempt<32;attempt++){
+    seen=await page.evaluate(()=>{
+      const all=[...document.querySelectorAll('input, flt-semantics')];
+      return all.map(el=>[
+        el.value||'', el.getAttribute('aria-label')||'',
+        el.getAttribute('aria-valuetext')||'', el.textContent||'',
+      ].join(' ')).filter(Boolean).slice(0,450);
+    });
+    if(seen.some(x=>x.trim()===expected ||
+       x.includes(' '+expected+' ') || x.startsWith(expected+' ') ||
+       x.endsWith(' '+expected))) return;
+    await snooze(230);
+  }
+  throw Error('Restored country not readable on Flutter Web: expected '+
+    expected+'; labels='+JSON.stringify(seen.filter(x=>/France|Espagne|Maroc/.test(x)).slice(0,8)));
+}
 async function startState(page,l,width,ready) {
   const btn=await find(page,l.start);
   if(ready){
@@ -178,7 +198,7 @@ async function isolation(browser){
     item.images.push(await capture(page,locale,size,'isolation','a-saved'));
     item.stage='A restored FR';
     await click(page,l.preferences);
-    await waitFor(page,l.fr);
+    await assertSelectedCountry(page,l.fr);
     item.stage='B initial unknown';
     await load(page,url('returning','none','b',locale),l.choose);
     item.images.push(await capture(page,locale,size,'isolation','b-unknown'));
@@ -189,14 +209,14 @@ async function isolation(browser){
     if(await visible(page,l.choose))throw Error('B country not restored after reload');
     item.stage='B restored ES';
     await click(page,l.preferences);
-    await waitFor(page,l.es);
+    await assertSelectedCountry(page,l.es);
     item.stage='A after B';
     await load(page,url('returning','none','a',locale),l.profile);
     if(await visible(page,l.choose))throw Error('B overwrote A');
     item.images.push(await capture(page,locale,size,'isolation','a-reloaded'));
     item.stage='A still FR';
     await click(page,l.preferences);
-    await waitFor(page,l.fr);
+    await assertSelectedCountry(page,l.fr);
     if(pageErrors.length)throw Error('Browser page exceptions: '+pageErrors.join('; '));
     item.pass=true;
   }catch(e){
