@@ -112,6 +112,9 @@ void main() {
         // expose a native Semantics button and localized accessible name.
         final handle = tester.ensureSemantics();
         addTearDown(handle.dispose);
+        // Rebuild accessibility after enabling semantics on an already-painted
+        // ShellRoute; otherwise the tree may contain only its central child.
+        await tester.pumpAndSettle();
         final expectedLabel = locale == 'fr' ? 'Déconnexion' : 'تسجيل الخروج';
         final semanticMatch = find.bySemanticsLabel(expectedLabel);
         if (semanticMatch.evaluate().isEmpty && locale == 'fr' && viewport.$1 == 768) {
