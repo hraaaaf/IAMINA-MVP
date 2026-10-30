@@ -18,38 +18,55 @@ fs.mkdirSync(dir, {recursive:true});
 const report = {scope:'real Flutter routed user clicks + native Django/PG16',
   locale, production_deployment:'NOT_RUN', patient_data:'synthetic', tests:[], failed:[]};
 
+function norm(s) { return (s||'').replace(/\s+/g,' ').trim(); }
+function labelMatches(got, expected) {
+  const g=norm(got), e=norm(expected);
+  return g===e || g===e+' '+e;
+}
 async function labelClick(page, label) {
-  // Flutter Web's actual semantics nodes, not a test driver invocation.
-  const byRole = page.getByRole('button', {name:label, exact:true});
-  const byText = page.getByText(label, {exact:true});
-  const bySemantic = page.locator('flt-semantics[aria-label="' +
-    label.replaceAll('"','\\\"') + '"]');
-  if (await byRole.count()) return byRole.first().click({timeout:8000});
-  if (await byText.count()) return byText.first().click({timeout:8000});
-  if (await bySemantic.count()) return bySemantic.first().click({timeout:8000});
-  throw new Error('no user-visible control: ' + label);
+  // Flutter CanvasKit renders visible, real clickable flt-semantics nodes.
+  // Prefer the accessible button; retry after route/frame settlement, and
+  // fall back to the innermost exact accessible semantics element.
+  const exact=page.getByRole('button',{name:label,exact:true});
+  const text=page.getByText(label,{exact:true});
+  for (let n=0;n<18;n++) {
+    if(await exact.count()){await exact.last().click({timeout:3500});return;}
+    if(await text.count()){await text.last().click({timeout:3500});return;}
+    const nodes=page.locator('flt-semantics');
+    for(let i=(await nodes.count())-1;i>=0;i--){
+      const el=nodes.nth(i);
+      const a=await el.getAttribute('aria-label').catch(()=>null);
+      const t=a||await el.textContent().catch(()=>null);
+      if(!labelMatches(t,label))continue;
+      if(!await el.isVisible().catch(()=>false))continue;
+      // Real mouse hit-test, not a JS onTap invocation or forced click.
+      await el.click({timeout:3500});
+      return;
+    }
+    await page.waitForTimeout(200);
+  }
+  throw new Error('no visible accessible control: '+label);
 }
 async function typeField(page, index, value, inDialog=false) {
-  // Search only the top modal for signup inputs; the underlying login form
-  // remains mounted and must not receive the typed secret.
-  const modal = page.getByRole('dialog');
-  const fields = inDialog && await modal.count()
-    ? modal.last().getByRole('textbox')
-    : page.getByRole('textbox');
-  if (await fields.count() > index) {
-    await fields.nth(index).click({timeout:8000});
-    await page.keyboard.press('ControlOrMeta+A');
-    await page.keyboard.insertText(value);
-    return;
-  }
-  const semantics = page.locator('flt-semantics[role="textField"], flt-semantics[role="textbox"]');
-  if (await semantics.count() > index) {
-    await semantics.nth(index).click({timeout:8000});
-    await page.keyboard.press('ControlOrMeta+A');
-    await page.keyboard.insertText(value);
-    return;
-  }
-  throw new Error('missing user-visible text field ' + index);
+  // Flutter Web may keep two login text fields behind AlertDialog even when
+  // the dialog itself has no DOM role. Select the LAST three visible input
+  // controls for signup, not the underlying login's first two.
+  const fields=page.getByRole('textbox');
+  const count=await fields.count();
+  const actual=inDialog ? count-3+index : index;
+  if(count<=actual||actual<0)
+    throw new Error('missing form field: '+index+' total '+count);
+  const field=fields.nth(actual);
+  await field.click({timeout:8000});
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText(value);
+}
+async function awaitAuthResponse(page, path, click) {
+  const responsePromise=page.waitForResponse(r=>
+    r.url().startsWith(api) && new URL(r.url()).pathname===path,
+    {timeout:12000});
+  await click();
+  return responsePromise;
 }
 async function screenshot(page, suffix) {
   const filename = locale+'-'+page.viewportSize().width+'-'+suffix+'.png';
@@ -91,9 +108,9 @@ async function proof(page, width) {
     stage.value='negative_login';
     await typeField(page,0,testEmail);
     await typeField(page,1,'Wrong-2026!');
-    await labelClick(page,locale==='fr'?'Se connecter':'الدخول');
-    await page.waitForTimeout(750);
-    if(!responses.some(x=>x.path.endsWith('/auth/login')&&x.status===401))
+    const loginReject = await awaitAuthResponse(page,'/api/v1/auth/login',
+      () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
+    if(loginReject.status()!==401)
       throw new Error('negative login must generate native HTTP 401');
 
     // Then invoke the actual recovery control; the backend is disposable.
@@ -107,24 +124,25 @@ async function proof(page, width) {
     await textboxes.last().click({timeout:8000});
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText(testEmail);
-    await labelClick(page,locale==='fr'?'Envoyer':'إرسال');
-    await page.waitForTimeout(750);
-    if(!responses.some(x=>x.path.endsWith('/password/reset/request')&&x.status===200))
+    const reset = await awaitAuthResponse(page,'/api/v1/auth/password/reset/request',
+      () => labelClick(page,locale==='fr'?'Envoyer':'إرسال'));
+    if(reset.status()!==200)
       throw new Error('native password recovery POST 200 missing');
 
     stage.value='positive_signup';
     await labelClick(page,locale==='fr'?'Créer un compte':'إنشاء حساب');
     await screenshot(page,'04-signup-dialog');
-    const modal = page.getByRole('dialog');
-    const f = await modal.count() ? modal.last().getByRole('textbox') : page.getByRole('textbox');
+    const f = page.getByRole('textbox');
     if(await f.count()<3)throw new Error('signup fields missing');
     await typeField(page,0,testEmail,true);
     await typeField(page,1,password,true);
     await typeField(page,2,password,true);
-    await labelClick(page,locale==='fr'?'Créer':'إنشاء');
-    await page.waitForTimeout(750);
-    if(!responses.some(x=>x.path.endsWith('/auth/register')&&x.status===200))
+    const register = await awaitAuthResponse(page,'/api/v1/auth/register',
+      () => labelClick(page,locale==='fr'?'Créer':'إنشاء'));
+    if(register.status()!==200)
       throw new Error('native Django account registration HTTP 200 missing');
+    await page.getByText('D11_UI_NATIVE_SIGNUP_DONE',{exact:true})
+      .waitFor({state:'visible',timeout:12000});
     await screenshot(page,'05-signup-success');
 
     stage.value='onboarding';
@@ -132,6 +150,9 @@ async function proof(page, width) {
     await screenshot(page,'06-dashboard');
 
     stage.value='logout_pointer';
+    const logoutPromise=page.waitForResponse(r=>
+      r.url().startsWith(api) && new URL(r.url()).pathname==='/api/v1/auth/logout',
+      {timeout:12000});
     if(width>=700){
       await labelClick(page,locale==='fr'?'Déconnexion':'تسجيل الخروج');
     }else{
@@ -140,8 +161,8 @@ async function proof(page, width) {
       await labelClick(page,locale==='fr'?'Se déconnecter':'تسجيل الخروج');
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
-    await page.waitForTimeout(750);
-    if(!responses.some(x=>x.path.endsWith('/auth/logout')&&x.status===200))
+    const revoke=await logoutPromise;
+    if(revoke.status()!==200)
       throw new Error('real navigation logout did not revoke native token');
     await screenshot(page,'07-logged-out');
 
@@ -149,9 +170,9 @@ async function proof(page, width) {
     await labelClick(page,locale==='fr'?'Se connecter ou créer un compte':'تسجيل الدخول أو إنشاء حساب');
     await typeField(page,0,testEmail);
     await typeField(page,1,password);
-    await labelClick(page,locale==='fr'?'Se connecter':'الدخول');
-    await page.waitForTimeout(750);
-    if(!responses.some(x=>x.path.endsWith('/auth/login')&&x.status===200))
+    const loginAccept=await awaitAuthResponse(page,'/api/v1/auth/login',
+      () => labelClick(page,locale==='fr'?'Se connecter':'الدخول'));
+    if(loginAccept.status()!==200)
       throw new Error('native login HTTP 200 missing after logout');
     const filename=await screenshot(page,'08-returned');
     if(errors.length||external.length||requests.length)
