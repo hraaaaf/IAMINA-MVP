@@ -92,14 +92,22 @@ def main():
                     return page.url.split("#", 1)[-1] if "#" in page.url else ""
 
                 def medical_summary_contains(*parts):
-                    # Read Flutter's real browser accessibility tree, never
-                    # treat unselected chips that merely exist as proof.
-                    snapshot = page.locator("body").aria_snapshot()
-                    for part in parts:
-                        assert part in snapshot, (
-                            "Medical state did not survive reload: missing " + repr(part)
-                        )
-                    return snapshot
+                    # Only the profile summary reflects saved data. Checking
+                    # the entire accessibility tree gives false positives:
+                    # Type 1 and Type 2 are always present as choice buttons.
+                    summary = page.get_by_role(
+                        "button", name=re.compile(r"^Medical tracking", re.I)
+                    ).first
+                    for attempt in range(55):
+                        rendered = summary.aria_snapshot()
+                        if all(part in rendered for part in parts):
+                            return rendered
+                        page.wait_for_timeout(200)
+                    print("D7 actual profile persisted summary:", rendered[:1200],
+                          flush=True)
+                    raise AssertionError(
+                        "D7 saved medical summary lacks " + repr(parts)
+                    )
 
                 def profile_open():
                     page.goto(origin + "/#/profile",
