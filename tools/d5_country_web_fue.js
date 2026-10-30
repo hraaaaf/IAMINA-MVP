@@ -248,9 +248,41 @@ async function isolation(browser){
       serviceWorkerControlled:!!navigator.serviceWorker?.controller,
       flutterSurfaceCount:document.querySelectorAll('flt-glass-pane').length,
       flutterLoaderPresent:!!window._flutter,
+      flutterInitStage:document.documentElement?.dataset?.d5Stage||null,
+      flutterFrameworkError:document.documentElement?.dataset?.d5FlutterError||null,
+      flutterBootstrapError:document.documentElement?.dataset?.d5BootError||null,
       cacheKeys:[], // Cache content inspected separately; no clinical content.
     })).catch(e=>({inspectError:String(e.message||e).slice(0,180)}));
     item.images.push(await capture(page,locale,size,'isolation','FAILED').catch(()=>null));
+    // Diagnostic only: do not mark the case PASS. Preserve IndexedDB, but
+    // remove the local PWA service worker and compare the same A account on a
+    // network navigation. This distinguishes cache interception from a
+    // persisted-data/Flutter initialization failure without relaxing the gate.
+    if(item.stage==='A reloaded' && item.browserSnapshot?.serviceWorkerControlled){
+      try{
+        item.swBypassProbe={tried:true};
+        await page.evaluate(async()=>{
+          const registrations=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(r=>r.unregister()));
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        });
+        await page.goto(url('returning','none','a',locale),{
+          waitUntil:'domcontentloaded',timeout:30000
+        });
+        await snooze(4600);
+        await semantics(page);
+        item.swBypassProbe={tried:true,restored:!!await find(page,l.profile),
+          title:await page.title(),
+          initStage:await page.evaluate(()=>document.documentElement?.dataset?.d5Stage||null),
+          frameworkError:await page.evaluate(()=>
+            document.documentElement?.dataset?.d5FlutterError||null),
+          failures:failedRequests.slice(-5)};
+        item.images.push(await capture(page,locale,size,'isolation','SW_BYPASS_PROBE').catch(()=>null));
+      }catch(probeError){
+        item.swBypassProbe={tried:true,error:String(probeError.message||probeError).slice(0,250)};
+      }
+    }
     report.errors.push(item);
   }finally{
     cases.push(item);await context.close();
@@ -285,6 +317,7 @@ async function isolation(browser){
   console.log('D5_WEB_FUE='+JSON.stringify({passed:report.passed,total:report.requiredCount,
     failed:report.errors.map(x=>({kind:x.kind,locale:x.locale,viewport:x.viewport,
       stage:x.stage,error:x.error,errors:x.pageErrors,console:x.consoleErrors,
-      requests:x.failedRequests,resources:x.resources,dom:x.browserSnapshot}))}));
+      requests:x.failedRequests,resources:x.resources,dom:x.browserSnapshot,
+      swBypassProbe:x.swBypassProbe}))}));
   if(!report.fuePass)process.exitCode=1;
 })().catch(e=>{console.error('D5 FUE harness error: '+String(e.message||e));process.exitCode=1;});
