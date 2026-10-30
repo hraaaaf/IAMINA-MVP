@@ -305,8 +305,8 @@ async function proof(page, width) {
     const unexpectedConsole=consoleErrors.filter(e=>!(
       e.httpStatus==='401' && e.resourceClass==='resource' &&
       responses.some(r=>r.path==='/api/v1/auth/login'&&r.status===401)));
-    if(errors.length||unexpectedConsole.length||external.length||requests.length)
-      throw new Error('UI page errors '+errors.length+' unexpected console '+
+    if(errors.length||a11yErrors.length||unexpectedConsole.length||external.length||requests.length)
+      throw new Error('UI runtime '+errors.length+' accessibility '+a11yErrors.length+' unexpected console '+
         JSON.stringify(unexpectedConsole)+' external '+external.length+
         ' forbidden seed '+requests.length);
     return {locale,width,pass:true,requests:responses,errors:errors.length,
