@@ -401,18 +401,24 @@ class _LogoutItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = AppLocalizations.of(context)!.logout;
+    Future<void> performLogout() async {
+      await context.read<AuthService>().signOut();
+      if (context.mounted) GoRouter.of(context).go('/login');
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Tooltip(
         message: label,
+        excludeFromSemantics: true,
         child: Semantics(
+          container: true,
           button: true,
           label: label,
-          child: InkWell(
-            onTap: () async {
-              await context.read<AuthService>().signOut();
-              if (context.mounted) GoRouter.of(context).go('/login');
-            },
+          onTap: performLogout,
+          child: ExcludeSemantics(
+            child: InkWell(
+              onTap: performLogout,
             borderRadius: BorderRadius.circular(10),
             child: Container(
               constraints: const BoxConstraints(minHeight: 44),
@@ -449,6 +455,7 @@ class _LogoutItem extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         ),
       ),
