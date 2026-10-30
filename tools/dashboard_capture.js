@@ -79,6 +79,10 @@ const minScreenshotBytes = 15000;
           timeout: 120000,
         });
         await dashboardReady;
+        // Each of the nine screenshots must be a real rendered empty state,
+        // not a loading view or a fabricated clinical timeline.
+        await emptyTitle.waitFor({ state: 'visible', timeout: 15000 });
+        await zeroClinicalCopy.waitFor({ state: 'visible', timeout: 15000 });
         await page.waitForTimeout(1600);
         const screenshotPath = path.join(
           'dashboard-visual-cert',
