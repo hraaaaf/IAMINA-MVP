@@ -89,25 +89,38 @@ async function countrySelect(page,l,code) {
   await snooze(450);
   await click(page,l[key]);
 }
-// Read the real Flutter Web accessibility/rendered value as an oracle, never
-// mutate a controller/DOM input from the test. Exact country code is scoped.
+// Read a real, focused Flutter Web editing value after pointer-focusing
+// the visible country dropdown. Flutter CanvasKit renders the selected value
+// in pixels even if its idle semantics subtree omits input.value. No callback,
+// DOM mutation, or hidden test-only state is used. Exact expected value only.
 async function assertSelectedCountry(page,expected) {
-  let seen=[];
-  for(let attempt=0;attempt<32;attempt++){
+  const searchLabel=copy.fr.search;
+  const countryField=await waitFor(page,searchLabel);
+  await countryField.scrollIntoViewIfNeeded();
+  await countryField.click({timeout:5000});
+  let seen={value:null,activeTag:null,values:[],semanticLabels:[]};
+  for(let attempt=0;attempt<30;attempt++){
     seen=await page.evaluate(()=>{
-      const all=[...document.querySelectorAll('input, flt-semantics')];
-      return all.map(el=>[
-        el.value||'', el.getAttribute('aria-label')||'',
-        el.getAttribute('aria-valuetext')||'', el.textContent||'',
-      ].join(' ')).filter(Boolean).slice(0,450);
+      const active=document.activeElement;
+      const inputs=[...document.querySelectorAll('input, textarea')];
+      return {
+        value:(active instanceof HTMLInputElement ||
+               active instanceof HTMLTextAreaElement) ? active.value : null,
+        activeTag:active?.tagName||null,
+        values:inputs.map(x=>x.value||'').filter(Boolean).slice(0,8),
+        semanticLabels:[...document.querySelectorAll('flt-semantics')]
+          .map(x=>x.getAttribute('aria-label')||x.getAttribute('aria-valuetext')||'')
+          .filter(Boolean).filter(x=>x.includes('France')||x.includes('Espagne')).slice(0,8)
+      };
     });
-    if(seen.some(x=>x.trim()===expected ||
-       x.includes(' '+expected+' ') || x.startsWith(expected+' ') ||
-       x.endsWith(' '+expected))) return;
-    await snooze(230);
+    if(seen.value===expected) return;
+    // An idle native editor can be detached while CanvasKit exposes the
+    // selected value through another actual input associated with the menu.
+    if(seen.values.includes(expected)) return;
+    await snooze(170);
   }
-  throw Error('Restored country not readable on Flutter Web: expected '+
-    expected+'; labels='+JSON.stringify(seen.filter(x=>/France|Espagne|Maroc/.test(x)).slice(0,8)));
+  throw Error('Restored country mismatch, expected '+expected+
+    '; focusedEditor='+JSON.stringify(seen).slice(0,450));
 }
 async function startState(page,l,width,ready) {
   const btn=await find(page,l.start);
