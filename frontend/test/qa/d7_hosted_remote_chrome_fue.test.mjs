@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ORIGIN, DEPLOY_SHA, VIEWPORTS, guard, emptyProof,
   ACCOUNT_CHOICE_LABEL, LOGIN_SUBMIT_LABEL, activateFlutterAccountSemantics,
-  D7_QA_STAGES, safeBrowserErrorCode, loginRedirectFailureCode}
+  D7_QA_STAGES, safeBrowserErrorCode, loginRedirectFailureCode,
+  classifyLogin401Response}
   from '../../../scripts/d7_hosted_remote_chrome_fue.mjs';
 const valid={origin:ORIGIN,sha:DEPLOY_SHA,
   token:'synthetic-share-token-123456',
@@ -88,6 +89,42 @@ test('login redirect timeout reports only bounded HTTP status class',()=>{
     [502,'D7_CHROME_LOGIN_HTTP_5XX'],
     [302,'D7_CHROME_LOGIN_HTTP_OTHER_NO_REDIRECT'],
   ]) assert.equal(loginRedirectFailureCode(status),want);
+});
+
+test('login 401 classifier distinguishes Django credential rejection from other gates',async()=>{
+  const response=(type,body,status=401)=>({
+    status:()=>status,
+    headerValue:async()=>type,
+    json:async()=>body,
+  });
+  assert.equal(await classifyLogin401Response(
+    response('application/json',{detail:'Invalid authentication credential'})),
+    'D7_CHROME_LOGIN_DJANGO_CREDENTIAL_REJECTED');
+  assert.equal(await classifyLogin401Response(
+    response('text/html','<private>')),
+    'D7_CHROME_LOGIN_HTTP_401_OTHER');
+  assert.equal(await classifyLogin401Response(
+    response('application/json',{detail:'Other authentication failure'})),
+    'D7_CHROME_LOGIN_HTTP_401_OTHER');
+  assert.equal(await classifyLogin401Response(
+    response('application/json',{detail:'Invalid authentication credential'},403)),
+    null);
+  assert.equal(await classifyLogin401Response({
+    status:()=>401,headerValue:async()=>{throw new Error('private value');},
+  }), 'D7_CHROME_LOGIN_HTTP_401_OTHER');
+  assert.equal(await classifyLogin401Response(
+    response('application/json',{detail:'Invalid authentication credential',
+      extra:'private value'})),
+    'D7_CHROME_LOGIN_HTTP_401_OTHER');
+});
+
+test('login errors remain single-prefixed, without raw response content',()=>{
+  const e=new Error(loginRedirectFailureCode(401));
+  assert.equal(safeBrowserErrorCode(e,'LOGIN_REDIRECT'),
+    'D7_CHROME_LOGIN_HTTP_401');
+  assert.equal(safeBrowserErrorCode(
+    new Error('D7_CHROME_LOGIN_DJANGO_CREDENTIAL_REJECTED'),'LOGIN_REDIRECT'),
+    'D7_CHROME_LOGIN_DJANGO_CREDENTIAL_REJECTED');
 });
 
 test('real hosted browser smoke cannot claim clinical FUE certification',()=>{

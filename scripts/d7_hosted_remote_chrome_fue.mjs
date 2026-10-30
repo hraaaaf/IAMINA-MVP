@@ -62,6 +62,26 @@ export function loginRedirectFailureCode(status) {
   return 'D7_CHROME_LOGIN_HTTP_OTHER_NO_REDIRECT';
 }
 
+// A 401 on the login URL may be returned by Django or an upstream gate.
+// Inspect only the exact Django error contract in RAM; never log bodies,
+// request URLs, tokens, credential data, or received headers.
+export async function classifyLogin401Response(response) {
+  if (!response || response.status()!==401) return null;
+  let type;
+  try { type = await response.headerValue('content-type'); }
+  catch { return 'D7_CHROME_LOGIN_HTTP_401_OTHER'; }
+  if (!type?.toLowerCase().includes('application/json'))
+    return 'D7_CHROME_LOGIN_HTTP_401_OTHER';
+  try {
+    const body = await response.json();
+    if (body && typeof body==='object' && !Array.isArray(body) &&
+        Object.keys(body).length===1 &&
+        body.detail==='Invalid authentication credential')
+      return 'D7_CHROME_LOGIN_DJANGO_CREDENTIAL_REJECTED';
+  } catch { /* Never expose the untrusted response. */ }
+  return 'D7_CHROME_LOGIN_HTTP_401_OTHER';
+}
+
 export function guard({origin,sha,token,email,password}) {
   if (origin !== ORIGIN || sha !== DEPLOY_SHA) fail('UNEXPECTED_DEPLOYMENT');
   if (typeof token !== 'string' || !/^[a-zA-Z0-9._~-]{10,512}$/.test(token))
@@ -149,10 +169,12 @@ async function main() {
     stage='PASSWORD_FILL';
     await (await pass.count()?pass:inputs.nth(1))
       .fill(process.env.D7_QA_A_PASSWORD,{timeout:10000});
-    let status;
+    let status,loginResponse;
     page.on('response',r=>{
-      if(r.url().split('?')[0]===ORIGIN+'/api/v1/auth/login')
+      if(r.url().split('?')[0]===ORIGIN+'/api/v1/auth/login') {
         status=r.status();
+        loginResponse=r;
+      }
     });
     stage='SUBMIT_DISCOVERY';
     const submit=page.getByRole('button',{name:LOGIN_SUBMIT_LABEL}).last();
@@ -161,7 +183,10 @@ async function main() {
     await submit.click({timeout:15000});
     stage='LOGIN_REDIRECT';
     await page.waitForURL(url=>new URL(url).pathname!=='/login',
-      {timeout:30000}).catch(()=>fail(loginRedirectFailureCode(status)));
+      {timeout:30000}).catch(async()=>{
+        const classified=await classifyLogin401Response(loginResponse);
+        throw new Error(classified||loginRedirectFailureCode(status));
+      });
     if(status!==200)fail('NATIVE_LOGIN_NOT_CONFIRMED');
     result.steps.native_login='PASS';
     // Never click any consent dialog. The QA owner must approve consent.
