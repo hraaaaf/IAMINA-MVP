@@ -56,6 +56,31 @@ class LocalePreferenceService extends ChangeNotifier {
   String _tone = 'neutral';
   bool _loaded = false;
 
+  // WebCrypto key initialization must never race across preference writes.
+  // Queue both multi-key updates and overlapping onboarding callbacks.
+  Future<void> _writes = Future<void>.value();
+
+  Future<void> _writeSerialized(Future<void> Function() action) {
+    final operation = _writes.then((_) => action());
+    // Preserve errors for the caller while keeping later writes possible.
+    _writes = operation.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return operation;
+  }
+
+  // An unreadable non-clinical preference cannot blank the patient app.
+  // Do not delete encrypted bytes or infer a country from a legacy key.
+  Future<String?> _readUiPreference(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (error) {
+      debugPrint('IAMINA UI preference unreadable ($key, ${error.runtimeType})');
+      return null;
+    }
+  }
+
   LocalePreferenceService(
     this._apiClient, {
     Locale? auditLocale,
@@ -117,9 +142,9 @@ class LocalePreferenceService extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    final localLanguage = await _storage.read(key: _languageKey);
-    final localTone = await _storage.read(key: _toneKey);
-    final isExplicit = await _storage.read(key: _explicitKey) == 'true';
+    final localLanguage = await _readUiPreference(_languageKey);
+    final localTone = await _readUiPreference(_toneKey);
+    final isExplicit = await _readUiPreference(_explicitKey) == 'true';
 
     // Language is application-level; country is loaded only from the active
     // authenticated patient vault, never from a browser-global value.
@@ -197,10 +222,10 @@ class LocalePreferenceService extends ChangeNotifier {
     if (locale == null) {
       throw ArgumentError.value(language, 'language', 'Unsupported language');
     }
-    await Future.wait([
-      _storage.write(key: _languageKey, value: locale.languageCode),
-      _storage.write(key: _explicitKey, value: 'true'),
-    ]);
+    await _writeSerialized(() async {
+      await _storage.write(key: _languageKey, value: locale.languageCode);
+      await _storage.write(key: _explicitKey, value: 'true');
+    });
     _locale = locale;
     _resolutionSource = LocaleResolutionSource.explicitLocal;
     _loaded = true;
@@ -243,16 +268,21 @@ class LocalePreferenceService extends ChangeNotifier {
       throw StateError('Confirmed patient vault required to save country');
     }
 
+    final revision = _countryScopeRevision;
+    await _writeSerialized(() async {
+      // Sequential writes prevent competing first WebCrypto key generation.
+      await _storage.write(key: _languageKey, value: locale.languageCode);
+      await _storage.write(key: key, value: normalizedCountry);
+      await _storage.write(key: _toneKey, value: tone);
+      await _storage.write(key: _explicitKey, value: 'true');
+    });
+    if (revision != _countryScopeRevision || key != _countryStorageKey) {
+      throw StateError('Patient vault changed while saving country');
+    }
     _locale = locale;
     _resolutionSource = LocaleResolutionSource.explicitLocal;
     _country = normalizedCountry;
     _tone = tone;
-    await Future.wait([
-      _storage.write(key: _languageKey, value: locale.languageCode),
-      _storage.write(key: key, value: normalizedCountry),
-      _storage.write(key: _toneKey, value: tone),
-      _storage.write(key: _explicitKey, value: 'true'),
-    ]);
     _loaded = true;
     notifyListeners();
   }
