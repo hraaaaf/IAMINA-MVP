@@ -112,17 +112,29 @@ async function typeSignupLabeledField(page, label, value, fallbackY=null) {
   // visually hidden by Flutter, so NEVER click the hidden DOM input again.
   const editor=page.locator('input:focus,textarea:focus').first();
   await editor.waitFor({state:'attached',timeout:3000});
+  // A real user first focuses the field, then selects its existing contents.
+  // The previous 2ms typing race produced 44/45 characters and 29+30
+  // concatenations on AR Web. Prove selection BEFORE sending new keys;
+  // never patch the controller or DOM value directly.
+  await page.waitForTimeout(80);
   await page.keyboard.press('ControlOrMeta+A');
-  // Physical key events, not just a DOM-value patch: Flutter TextField's
-  // TextEditingController must receive the change before validation.
-  await page.keyboard.type(value,{delay:2});
-  // Query the focused editor BEFORE pressing Tab: the locator is dynamic
-  // 'input:focus' and cannot be resolved after focus moves away.
-  const length=await editor.evaluate(el=>el.value.length);
+  const selected=await editor.evaluate(el=>({
+    start:el.selectionStart,end:el.selectionEnd,length:el.value.length,
+  }));
+  if(selected.start!==0 || selected.end!==selected.length)
+    throw new Error('signup native select-all failed: '+label+
+      ' selected '+selected.start+'..'+selected.end+' of '+selected.length);
+  await page.keyboard.type(value,{delay:20});
+  await page.waitForTimeout(100);
+  // Keep an exact browser editor oracle: length alone would miss a wrong
+  // character or wrongly focused field. Never log field contents/passwords.
+  const result=await editor.evaluate((el,expected)=>({
+    length:el.value.length,exact:el.value===expected,
+  }),value);
   await page.keyboard.press('Tab');
-  await page.waitForTimeout(60);
-  if(length!==value.length)
-    throw new Error('signup editor length mismatch: '+label+' length '+length+' expected '+value.length);
+  if(!result.exact)
+    throw new Error('signup editor mismatch: '+label+' length '+result.length+
+      ' expected '+value.length);
 }
 async function logoutViaVisibleSidebar(page, width) {
   const label=locale==='fr'?'Déconnexion':'تسجيل الخروج';
@@ -159,7 +171,7 @@ async function screenshot(page, suffix) {
   return filename;
 }
 async function proof(page, width) {
-  const external = [], errors = [], consoleErrors = [], responses = [], requests = [];
+  const external = [], errors = [], a11yErrors = [], consoleErrors = [], responses = [], requests = [];
   page.on('pageerror',e=>errors.push('uncaught-page-exception:'+e.name));
   page.on('console',m=>{
     if(m.type()!=='error')return;
@@ -258,7 +270,7 @@ async function proof(page, width) {
     const logoutCount=responses.filter(r=>r.path==='/api/v1/auth/logout').length;
     if(width>=700){
       const nav=await logoutViaVisibleSidebar(page,width);
-      if(!nav.semantic)errors.push('main-shell-logout-missing-accessible-node');
+      if(!nav.semantic)a11yErrors.push('main-shell-logout-missing-accessible-node');
     }else{
       await labelClick(page,locale==='fr'?'Profil':'الملف الشخصي');
       await labelClick(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
@@ -307,7 +319,7 @@ async function proof(page, width) {
         .filter(Boolean)).catch(()=>[]);
     return {locale,width,pass:false,stage:stage.value,error:String(e.message||e).slice(0,250),
       visibleSemanticLabels:labels.slice(0,35),requests:responses,
-      browserErrors:errors.slice(0,5),consoleDiagnostic:consoleErrors,
+      browserErrors:errors.slice(0,5),a11yErrors:a11yErrors.slice(0,5),consoleDiagnostic:consoleErrors,
       errors:errors.length,
       blockedExternal:external.length,blockedExternalHosts:[...new Set(external)].slice(0,8),
       clinicalDemoRequests:requests.length,file:filename};
