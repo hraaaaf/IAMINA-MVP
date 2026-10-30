@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -27,8 +28,14 @@ double _certScrollOffsetFromUri() {
   return parsed;
 }
 
+// CI-only accessibility bridge: inspect the real no-reading Dashboard via
+// Playwright, without injecting any clinical rows.
+SemanticsHandle? _dashboardCertificationSemanticsHandle;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _dashboardCertificationSemanticsHandle ??=
+      SemanticsBinding.instance.ensureSemantics();
   await initializeDateFormatting();
   Intl.defaultLocale = 'fr';
 
@@ -36,8 +43,9 @@ Future<void> main() async {
     throw StateError('Certification credentials are required');
   }
 
+  // Certification uses the account's true empty clinical state.
+  // Never fabricate readings or a patient profile for screenshots.
   final db = AppDatabase.defaults();
-  await db.seedDemoData();
 
   final auth = AuthService();
   await auth.initialize();

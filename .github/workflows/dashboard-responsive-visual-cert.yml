@@ -102,7 +102,7 @@ jobs:
           cat /tmp/iamina-dashboard-backend.log >&2 || true
           exit 1
 
-      - name: Create and seed synthetic certification identity
+      - name: Create synthetic certification identity without clinical demo data
         shell: bash
         run: |
           set -euo pipefail
@@ -121,8 +121,14 @@ jobs:
           assert token.startswith('iamina.')
           open('/tmp/dashboard-token','w').write(token)
           PY
-          TOKEN="$(cat /tmp/dashboard-token)"
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' >/tmp/demo-seed.json
+          # D11: a registered account MUST start with zero fabricated clinical
+          # readings. No demo/seed call is permitted for this identity.
+          echo "D11: synthetic identity created with NO clinical demo seed"
+
+      - name: Prove PostgreSQL has zero fabricated clinical rows
+        working-directory: backend
+        run: |
+          python manage.py shell -c "from diabetes.models import LogEntry, DiabetesProfile; assert LogEntry.objects.count() == 0 and DiabetesProfile.objects.count() == 0, 'Forbidden clinical fixture'; print('D11_DASHBOARD_PG_ZERO_FABRICATED=PASS')"
 
       - name: Validate responsive and truthfulness contracts
         working-directory: frontend
@@ -196,12 +202,18 @@ jobs:
                   'topLower': ImageChops.difference(images['top'], images['lower']).getbbox() is None,
               }
               report[name]['pixelDuplicateCaptures'] = pixel_dups
-              if any(pixel_dups.values()):
-                  failures.append(f'{name}: {pixel_dups}')
+              # A real zero-reading account may have no scrollable clinical
+              # charts. Its top/mid/lower screenshots can legitimately be
+              # identical. Only allow duplicates when the real browser
+              # independently observed the actual empty-state UI copy.
+              if not report[name].get('verifiedEmptyState'):
+                  failures.append(f'{name}: clinically empty state not observed')
+              elif any(pixel_dups.values()):
+                  report[name]['expectedNoDataNonScrollable'] = True
           report_path.write_text(json.dumps(report, indent=2))
           if failures:
-              raise SystemExit('pixel-identical responsive captures: ' + '; '.join(failures))
-          print('9/9 responsive captures are pixel-distinct')
+              raise SystemExit('responsive empty-state certification failure: ' + '; '.join(failures))
+          print('D11_DASHBOARD_EMPTY_STATE=PASS: 3 viewports; 9 screenshot files; no fabricated chart or scrolling claim')
           PY
 
       - name: Upload visual proof

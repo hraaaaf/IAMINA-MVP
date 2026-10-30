@@ -8,6 +8,12 @@ on:
       - '.github/workflows/d19-real-auth-summary-pg-browser.yml'
       - 'backend/ai/api/v1/ai.py'
       - 'backend/diabetes/api/v1/kpis.py'
+      # D11 Web: real native Django/PG authenticated A-B-A Flutter smoke.
+      - 'backend/amina/vercel_session_auth.py'
+      - 'backend/diabetes/api/v1/demo.py'
+      - 'backend/diabetes/tests/test_d11_real_account_zero_demo.py'
+      - 'frontend/lib/services/offline_demo_audit_seed.dart'
+      - 'frontend/lib/data/drift/database.dart'
   workflow_dispatch:
 
 permissions:
@@ -18,6 +24,10 @@ jobs:
     name: Real Flutter Web + native Django auth + PG16 + A-B-A
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [fr, ar]
     services:
       postgres:
         image: postgres:16-alpine
@@ -33,6 +43,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      D19_CI_LOCALE: ${{ matrix.locale }}
       DJANGO_SETTINGS_MODULE: amina.settings
       SECRET_KEY: ci-d19-web-ephemeral-not-for-production
       DEBUG: "True"
@@ -135,7 +146,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: d19-real-django-pg-native-auth-summary-web
+          name: d19-real-django-pg-native-auth-summary-web-${{ matrix.locale }}
           path: d19-real-auth-web-proof/*
           if-no-files-found: warn
           retention-days: 7

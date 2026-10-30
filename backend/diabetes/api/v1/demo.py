@@ -2,12 +2,11 @@
 Demo scenarios endpoint — Pre-configured patient data for testing.
 GET  /api/v1/demo/scenarios — Returns 8 demo scenarios (A–H)
 POST /api/v1/demo/chat      — Production IAmina runtime over synthetic patient data
-POST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
+POST /api/v1/demo/seed      — Disabled: rejects patient-context demo injection
 """
 
 import hashlib
-import random
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import List
 
 from django.db import transaction
@@ -16,9 +15,8 @@ from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, Field
 
-from core.models import AIUserThrottleWindow, BasePatientProfile
+from core.models import AIUserThrottleWindow
 from diabetes.api.v1.security import firebase_auth_backend
-from diabetes.models import DiabetesProfile, LogEntry
 from diabetes.services.demo_runtime import reply_with_synthetic_patient
 
 router = Router(tags=["demo"])
@@ -128,57 +126,16 @@ def demo_chat(request, data: DemoChatRequest):
 
 @router.post("/demo/seed", auth=firebase_auth_backend, response=SeedResponse)
 def seed_demo_data(request):
+    """D11: a real patient token must NEVER authorize synthetic clinical writes.
+
+    This API used to inject 30 days of fabricated readings under request.user.
+    Authentication is not consent to create medical history, and neither a
+    "dev only" comment nor a Django DEBUG flag protects a patient record.
+
+    Demo datasets remain available through the dedicated setup_demo management
+    command and the isolated /demo/chat synthetic runtime. HTTP seeding stays
+    disabled for *all* patient identities, including the demo fixture user.
+    Preserve this route as an explicit 403 (rather than an accidental 404)
+    so clients fail closed without mutating historical patient records.
     """
-    Injects 30 days of realistic glucose logs for the current authenticated user.
-    Idempotent — skips if the user already has ≥ 20 entries.
-    """
-    user = request.user
-
-    # Idempotency guard
-    existing = LogEntry.objects.filter(patient=user).count()
-    if existing >= 20:
-        return {"created": 0, "message": f"Données déjà présentes ({existing} entrées)."}
-
-    # Ensure BasePatientProfile + DiabetesProfile exist (two-step creation)
-    base, _ = BasePatientProfile.objects.get_or_create(
-        patient=user,
-        defaults={"date_of_birth": "1985-06-15"},
-    )
-    DiabetesProfile.objects.get_or_create(
-        base_profile=base,
-        defaults={
-            "diabetes_type": "type2",
-            "treatment_type": "oral_meds",
-            "unit_preference": "mg_dl",
-        },
-    )
-
-    meal_types = ["Petit-déjeuner", "Déjeuner", "Dîner", "En-cas", "À jeun"]
-    now = timezone.now()
-    entries = []
-
-    for day_offset in range(30):
-        base_date = now - timedelta(days=day_offset)
-        # 2–4 logs per day
-        for hour in random.sample([7, 12, 19, 22], k=random.randint(2, 4)):
-            meal = meal_types[hour // 6 % len(meal_types)]
-            # Realistic glucose with some variability
-            if meal == "À jeun":
-                glucose = random.gauss(105, 12)
-            elif meal in ("Déjeuner", "Dîner"):
-                glucose = random.gauss(165, 30)
-            else:
-                glucose = random.gauss(140, 25)
-
-            glucose = max(60.0, min(300.0, round(glucose, 1)))
-            logged_at = base_date.replace(hour=hour, minute=random.randint(0, 59), second=0, microsecond=0)
-
-            entries.append(LogEntry(
-                patient=user,
-                blood_sugar=glucose,
-                meal_type=meal,
-                logged_at=logged_at,
-            ))
-
-    LogEntry.objects.bulk_create(entries)
-    return {"created": len(entries), "message": f"{len(entries)} entrées créées."}
+    raise HttpError(403, "Clinical demo seeding is disabled for patient accounts")

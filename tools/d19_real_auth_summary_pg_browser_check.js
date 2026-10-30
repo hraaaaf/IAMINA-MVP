@@ -7,18 +7,29 @@ const fs = require('fs');
 const path = require('path');
 const origin='http://127.0.0.1:7383', api='http://127.0.0.1:8000';
 const directory='d19-real-auth-web-proof';
+const localeToTest=process.env.D19_CI_LOCALE;
+if(!['fr','ar'].includes(localeToTest))throw Error('CI locale must be fr or ar');
 fs.mkdirSync(directory,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true});
  const report={scope:'Flutter AuthService + ApiClient + scoped IndexedDB + Django PG16',hosted_vercel:'NOT_RUN',patient_data:'synthetic',tests:[],failed:[]};
  try{
-  for(const locale of ['fr','ar']){
-   const context=await browser.newContext({viewport:{width:390,height:844},locale:locale==='fr'?'fr-FR':'ar-MA',serviceWorkers:'block'});
+  for(const locale of [localeToTest]){
+   for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1280,height:900}]){
+   const context=await browser.newContext({viewport,locale:locale==='fr'?'fr-FR':'ar-MA',serviceWorkers:'block'});
    for(const principal of ['a','b','a']){
     const page=await context.newPage();
-    const errors=[],external=[],requests=[];
+    const errors=[],external=[],requests=[],loginStatuses=[],loginTransportFailures=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,300)));
     page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,300));});
+    page.on('response',r=>{
+      if(r.url().startsWith(api+'/api/v1/auth/login'))
+        loginStatuses.push(r.status());
+    });
+    page.on('requestfailed',r=>{
+      if(r.url().startsWith(api+'/api/v1/auth/login'))
+        loginTransportFailures.push('auth login transport failed');
+    });
     page.on('request',r=>{
       if(r.url().startsWith(api) && /\/api\/v1\/(ai\/summary|kpis\/)/.test(r.url()))
         requests.push(r.url().split('?')[0]);
@@ -36,20 +47,21 @@ fs.mkdirSync(directory,{recursive:true});
     }catch(e){title=await page.title();}
     await page.waitForTimeout(4200);
     const target='IAMINA_D19_REAL_HTTP_'+principal.toUpperCase()+'_PASS';
-    const file=locale+'-'+principal+'-'+report.tests.length+'.png';
+    const file=locale+'-'+viewport.width+'-'+principal+'-'+report.tests.length+'.png';
     await page.screenshot({path:path.join(directory,file)});
-    const observation={locale,principal,expectedTitle:target,
+    const observation={locale,viewport:viewport.width+'x'+viewport.height,principal,expectedTitle:target,
       pass:title===target&&requests.length>=4&&errors.length===0&&external.length===0,
-      backendRequestCount:requests.length,consoleErrors:errors.length,
+      backendRequestCount:requests.length,loginStatuses,loginTransportFailures:loginTransportFailures.length,consoleErrors:errors.length,
       blockedExternal:external.length,file};
     report.tests.push(observation);
     if(!observation.pass)report.failed.push({...observation,actualTitle:title});
     await page.close();
    }
    await context.close();
+   }
   }
  }finally{await browser.close();}
  fs.writeFileSync(path.join(directory,'report.json'),JSON.stringify(report,null,2));
- console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,requests:x.backendRequestCount,errors:x.consoleErrors,external:x.blockedExternal}))}));
- if(report.failed.length||report.tests.length!==6)process.exitCode=1;
+ console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,loginStatuses:x.loginStatuses,loginTransportFailures:x.loginTransportFailures,requests:x.backendRequestCount,errors:x.consoleErrors,external:x.blockedExternal}))}));
+ if(report.failed.length||report.tests.length!==9)process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});

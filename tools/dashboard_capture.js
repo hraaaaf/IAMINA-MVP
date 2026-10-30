@@ -44,6 +44,20 @@ const minScreenshotBytes = 15000;
         }
       });
 
+      // A new native account has ZERO clinical measurements. Certify the
+      // truthful empty-state copy instead of expecting fabricated charts.
+      await page.goto('http://127.0.0.1:7358/?scroll=0', {
+        waitUntil: 'domcontentloaded',
+        timeout: 120000,
+      });
+      const emptyTitle = page.getByText('Commencez par une première mesure', { exact: true });
+      await emptyTitle.waitFor({ state: 'visible', timeout: 45000 });
+      const zeroClinicalCopy = page.getByText(
+        'Votre tableau de bord se construira uniquement à partir de vos données réelles.',
+        { exact: true },
+      );
+      await zeroClinicalCopy.waitFor({ state: 'visible', timeout: 10000 });
+
       const positions = {
         top: 0,
         mid: Math.round(height * 0.55),
@@ -52,19 +66,19 @@ const minScreenshotBytes = 15000;
       const buffers = {};
       const screenshotBytes = {};
 
+      // One real login per viewport. Previously we reloaded for every
+      // screenshot (4 logins/viewport); the 11th login hit HTTP 429.
+      // Wheel within the same authenticated Flutter page instead. A true
+      // empty clinical dashboard can legitimately be non-scrollable.
+      await page.mouse.move(Math.round(width / 2), Math.round(height / 2));
+      let previousOffset = 0;
       for (const [position, offset] of Object.entries(positions)) {
-        const dashboardReady = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/companion/overview') &&
-            r.status() >= 200 &&
-            r.status() < 300,
-          { timeout: 45000 },
-        );
-        await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
-          waitUntil: 'domcontentloaded',
-          timeout: 120000,
-        });
-        await dashboardReady;
+        const delta = offset - previousOffset;
+        if (delta > 0) await page.mouse.wheel(0, delta);
+        previousOffset = offset;
+        // Each screenshot must still show the real, truthful empty state.
+        await emptyTitle.waitFor({ state: 'visible', timeout: 15000 });
+        await zeroClinicalCopy.waitFor({ state: 'visible', timeout: 15000 });
         await page.waitForTimeout(1600);
         const screenshotPath = path.join(
           'dashboard-visual-cert',
@@ -88,14 +102,26 @@ const minScreenshotBytes = 15000;
         requestedScrollOffsets: positions,
         screenshotBytes,
         byteDuplicateCaptures,
+        verifiedEmptyState: true,
       };
       persist(report);
 
       if (errors.length) {
         throw new Error(`${name}: page errors ${JSON.stringify(errors)}`);
       }
-      if (api.some((x) => x.status >= 500)) {
-        throw new Error(`${name}: backend 5xx`);
+      const loginResponses = api.filter((x) =>
+        new URL(x.url).pathname === '/api/v1/auth/login');
+      if (loginResponses.length !== 1 ||
+          loginResponses[0].status !== 200) {
+        throw new Error(
+          `${name}: expected exactly one native login HTTP 200 per viewport, got ` +
+          JSON.stringify(loginResponses.map((x) => x.status)),
+        );
+      }
+      if (api.some((x) => x.status >= 400)) {
+        throw new Error(
+          `${name}: unexpected backend HTTP 4xx/5xx`,
+        );
       }
       if (
         Object.values(screenshotBytes).some(

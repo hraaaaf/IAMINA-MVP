@@ -1,0 +1,163 @@
+name: D11 actual routed signup login logout Web PG16 FUE
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_d11_real_user_flow_pg_main.dart'
+      - 'tools/d11_real_user_flow_pg_browser_check.js'
+      - '.github/workflows/d11-real-ui-pg-browser.yml'
+      - 'frontend/lib/features/auth/login_screen.dart'
+      - 'frontend/lib/features/auth/login_screen_fr_certified.dart'
+      - 'frontend/lib/features/auth/login_screen_mena.dart'
+      - 'frontend/lib/features/auth/local_device_enrollment_screen.dart'
+      - 'frontend/lib/features/navigation/main_shell.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'backend/amina/vercel_session_auth.py'
+      - 'backend/diabetes/api/v1/demo.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-native-user-flow:
+    name: Real Flutter routed controls + Django PG16 (${{ matrix.locale }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [fr, ar]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_d11_ui_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_d11_ui_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      D11_CI_LOCALE: ${{ matrix.locale }}
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-d11-routed-web-disposable-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:7383
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_d11_ui_ci
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+      FIREBASE_CREDENTIALS_PATH: ""
+      GROQ_API_KEY: ""
+      GEMINI_API_KEY: ""
+      OPENAI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Generate masked disposable native credentials
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,secrets
+          password=secrets.token_urlsafe(30)+'_Aa1!'
+          print('::add-mask::'+password)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('D11_CI_PASS='+password+'\n')
+          PY
+      - name: Install Django and PostgreSQL dependencies
+        run: python3 -m pip install -r backend/requirements.txt
+      - name: Initialize isolated native PG16 schema
+        working-directory: backend
+        run: python manage.py migrate --noinput
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile real routed LoginScreen MainShell and ProfileScreen
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_d11_real_user_flow_pg_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/ui_d11_real_user_flow_pg_main.dart \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true \
+            --dart-define=API_BASE_URL=http://127.0.0.1:8000
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Test actual pointer and keyboard controls with real native PG16 API
+        run: |
+          set -euo pipefail
+          (cd backend && python - <<'PY'
+          import django
+          django.setup()
+          from django.conf import settings
+          settings.EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+          from django.core.management import execute_from_command_line
+          execute_from_command_line(['manage.py','runserver','127.0.0.1:8000','--noreload'])
+          PY
+          ) > /tmp/d11-ui-api.log 2>&1 &
+          API_PID=$!
+          python3 -m http.server 7383 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d11-ui-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" "$API_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /dev/null
+          curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7383/ > /dev/null
+          node tools/d11_real_user_flow_pg_browser_check.js
+      - name: Verify no fabricated medical rows even when UI FUE fails
+        if: always()
+        working-directory: backend
+        run: |
+          python3 - <<'PY'
+          import os,django
+          django.setup()
+          from django.contrib.auth.models import User
+          from core.models import BasePatientProfile
+          from diabetes.models import DiabetesProfile,LogEntry
+          assert LogEntry.objects.count()==0, 'UI journey created fabricated glucose readings'
+          assert DiabetesProfile.objects.count()==0, 'UI journey created fabricated diabetes profiles'
+          assert all(p.date_of_birth is None for p in BasePatientProfile.objects.all())
+          print('D11_PG_ZERO_FABRICATED=PASS, disposable_users='+str(User.objects.count()))
+          PY
+      - name: Verify no fabricated medical readings after actual browser signup
+        if: success()
+        working-directory: backend
+        run: |
+          python3 - <<'PY'
+          import os,django
+          django.setup()
+          from django.contrib.auth.models import User
+          from core.models import BasePatientProfile
+          from diabetes.models import DiabetesProfile,LogEntry
+          assert User.objects.count()==3, 'one disposable account per viewport'
+          assert BasePatientProfile.objects.count()==3
+          assert all(p.date_of_birth is None for p in BasePatientProfile.objects.all())
+          assert DiabetesProfile.objects.count()==0
+          assert LogEntry.objects.count()==0, 'UI signup must not generate demo medical readings'
+          print('D11_UI_POSTGRES_ZERO_FABRICATED=3 users, 0 glucose logs, 0 diabetes profiles')
+          PY
+      - name: Upload isolated synthetic-only FUE report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d11-routed-real-ui-pg16-${{ matrix.locale }}
+          path: d11-real-ui-web-proof/*
+          if-no-files-found: warn
+          retention-days: 7

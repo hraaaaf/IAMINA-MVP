@@ -92,8 +92,16 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
       body: Row(
+        // The ShellRoute child contains a nested Navigator which can block
+        // semantics of earlier siblings. Paint the sidebar AFTER the nested
+        // Navigator so its logout/navigation controls remain accessible.
+        // Reverse only RenderFlex placement to preserve the original
+        // start-side rail in both LTR and RTL; inherited Directionality stays
+        // unchanged for both children.
+        textDirection: Directionality.of(context) == TextDirection.ltr
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         children: [
-          if (isMedium) _Sidebar(entries: entries, selectedIndex: selected),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -107,6 +115,7 @@ class MainShell extends StatelessWidget {
               },
             ),
           ),
+          if (isMedium) _Sidebar(entries: entries, selectedIndex: selected),
         ],
       ),
       bottomNavigationBar: isMedium
@@ -392,18 +401,24 @@ class _LogoutItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = AppLocalizations.of(context)!.logout;
+    Future<void> performLogout() async {
+      await context.read<AuthService>().signOut();
+      if (context.mounted) GoRouter.of(context).go('/login');
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Tooltip(
         message: label,
+        excludeFromSemantics: true,
         child: Semantics(
+          container: true,
           button: true,
           label: label,
-          child: InkWell(
-            onTap: () async {
-              await context.read<AuthService>().signOut();
-              if (context.mounted) GoRouter.of(context).go('/login');
-            },
+          onTap: performLogout,
+          child: ExcludeSemantics(
+            child: InkWell(
+              onTap: performLogout,
             borderRadius: BorderRadius.circular(10),
             child: Container(
               constraints: const BoxConstraints(minHeight: 44),
@@ -440,6 +455,7 @@ class _LogoutItem extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         ),
       ),
@@ -765,7 +781,13 @@ class _GlassNavDestination extends StatelessWidget {
                   height: 1.05,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   color: selected ? activeColor : inactiveColor,
-                  fontFamily: 'Inter',
+                  // Primary font for RTL mobile labels must support Arabic.
+                  // Forced Inter without fallback caused repeated blocked
+                  // fonts.gstatic.com downloads and unreadable squares.
+                  fontFamily: Directionality.of(context) == TextDirection.rtl
+                      ? 'NotoSansArabic'
+                      : 'Inter',
+                  fontFamilyFallback: kOfflineFontFallbacks,
                 ),
                 child: Text(
                   label,

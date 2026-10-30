@@ -42,18 +42,54 @@ Future<void> main() async {
     html.document.title = 'IAMINA_D19_REAL_HTTP_FAIL:bad_fixture';
     return;
   }
+  var stage = 'auth_initialize';
   try {
     final auth = AuthService();
     await auth.initialize();
+    stage = 'native_login';
     await auth.signInWithEmail(principal == 'a' ? ciA : ciB, ciPassword);
     requireTrue(auth.isRemoteCredentialVerified && auth.hasRemoteApiCredential,
         'not_native_authenticated');
+    stage = 'vault_reconcile';
     final vault = PatientVaultSessionController.forAuth(auth);
     await vault.reconcile();
     requireTrue(vault.activeDatabase != null && vault.activeScope != null,
         'no_verified_patient_vault');
     requireTrue(vault.activeScope!.nativeDjangoUserId == auth.boundNativeAccountId,
         'cross_patient_vault');
+
+    // D11: explicit real logout / other-account login / logout / return
+    // within each synthetic B browser scene. Reusing 3 B scenes per locale
+    // adds only six logins: 15 total per isolated job (IP cap 20, A cap 10).
+    // The real anti-abuse thresholds are not disabled or changed.
+    if (principal == 'b') {
+      stage = 'logout_switch';
+      final ownerB = auth.boundNativeAccountId;
+      await auth.signOut();
+      requireTrue(!auth.isAuthenticated && !auth.hasRemoteApiCredential &&
+          auth.boundNativeAccountId == null &&
+          await auth.resolvePatientVaultScope() == null,
+          'logout_kept_patient_vault');
+      await auth.signInWithEmail(ciA, ciPassword);
+      requireTrue(auth.isRemoteCredentialVerified &&
+          auth.boundNativeAccountId != null &&
+          auth.boundNativeAccountId != ownerB &&
+          (await auth.resolvePatientVaultScope())!.nativeDjangoUserId ==
+              auth.boundNativeAccountId,
+          'stale_owner_after_switch_to_a');
+      await auth.signOut();
+      requireTrue(!auth.isAuthenticated && !auth.hasRemoteApiCredential &&
+          auth.boundNativeAccountId == null,
+          'logout_a_kept_credential');
+      await auth.signInWithEmail(ciB, ciPassword);
+      requireTrue(auth.isRemoteCredentialVerified &&
+          auth.boundNativeAccountId == ownerB,
+          'stale_owner_after_return_to_b');
+      await vault.reconcile();
+      requireTrue(vault.activeDatabase != null &&
+          vault.activeScope!.nativeDjangoUserId == ownerB,
+          'vault_not_restored_to_b');
+    }
 
     final api = ApiClient(
       baseUrl: ciApiBase,
@@ -62,6 +98,7 @@ Future<void> main() async {
       allowClinicalTransportForSyntheticTests: () => true,
       canUsePatientSyncTransport: () => true,
     );
+    stage = 'clinical_http';
     final summary = await api.getAiSummary(days: 21);
     final kpis = await api.getKpis(days: 21);
     if (summary == null || kpis == null) {
@@ -77,6 +114,7 @@ Future<void> main() async {
         summary.kpis['tir_pct'] == null && summary.kpis['gmi'] == null,
         'non_sensor_cgm_promoted');
     requireTrue(summary.agpProfile.isEmpty, 'unverified_agp');
+    stage = 'widget_render';
     runApp(MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: vault.activeDatabase!),
@@ -102,6 +140,7 @@ Future<void> main() async {
     ));
     // A successful HTTP assertion is not a rendered clinical screen.
     // Fail closed unless the actual Flutter widget has painted a sized frame.
+    stage = 'frame_paint';
     await WidgetsBinding.instance.endOfFrame;
     await Future<void>.delayed(const Duration(milliseconds: 900));
     await WidgetsBinding.instance.endOfFrame;
@@ -115,6 +154,6 @@ Future<void> main() async {
   } catch (error) {
     // Do not expose account identities or credentials to browser/title/logs.
     html.document.title =
-        'IAMINA_D19_REAL_HTTP_FAIL:' + error.runtimeType.toString();
+        'IAMINA_D19_REAL_HTTP_FAIL:' + stage + ':' + error.runtimeType.toString();
   }
 }

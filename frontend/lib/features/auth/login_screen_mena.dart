@@ -242,13 +242,17 @@ class _LoginBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AminaTheme.isDark(context);
-    return IgnorePointer(child: CustomPaint(painter: _LoginBackdropPainter(isDark: isDark)));
+    return IgnorePointer(child: CustomPaint(painter: _LoginBackdropPainter(
+      isDark: isDark,
+      textDirection: Directionality.of(context),
+    )));
   }
 }
 
 class _LoginBackdropPainter extends CustomPainter {
   final bool isDark;
-  const _LoginBackdropPainter({required this.isDark});
+  final TextDirection textDirection;
+  const _LoginBackdropPainter({required this.isDark, required this.textDirection});
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = isDark ? AminaTheme.darkPaper : AminaTheme.paper);
@@ -280,7 +284,10 @@ class _LoginBackdropPainter extends CustomPainter {
         colors: [Color(0xFFDDF8F1), Color(0xFFB9F0E5)],
         begin: AlignmentDirectional.topStart,
         end: AlignmentDirectional.bottomEnd,
-      ).createShader(Rect.fromLTWH(0, size.height * 0.86, size.width, size.height * 0.14)),
+      ).createShader(
+        Rect.fromLTWH(0, size.height * 0.86, size.width, size.height * 0.14),
+        textDirection: textDirection,
+      ),
     );
     final highlight = Path()
       ..moveTo(0, size.height * 0.928)
@@ -289,7 +296,8 @@ class _LoginBackdropPainter extends CustomPainter {
     canvas.drawPath(highlight, Paint()..color = Colors.white.withValues(alpha: 0.86)..style = PaintingStyle.stroke..strokeWidth = 1.2);
   }
   @override
-  bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) => oldDelegate.isDark != isDark;
+  bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) =>
+      oldDelegate.isDark != isDark || oldDelegate.textDirection != textDirection;
 }
 
 class _Brand extends StatelessWidget {
