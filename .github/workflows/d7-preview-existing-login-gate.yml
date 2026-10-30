@@ -1,0 +1,95 @@
+name: D7 protected Preview existing-account login gate (Web)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/vercel_build.sh'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/lib/features/auth/login_screen.dart'
+      - 'frontend/lib/features/auth/login_screen_fr_certified.dart'
+      - 'frontend/lib/features/auth/login_screen_mena.dart'
+      - 'frontend/test/features/auth/d7_preview_existing_login_only_test.dart'
+      - 'frontend/api/preview-proxy.js'
+      - 'frontend/vercel.json'
+      - 'frontend/package.json'
+      - 'frontend/test/qa/preview_proxy.test.mjs'
+      - '.github/workflows/d7-preview-existing-login-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-preview-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  login-only-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify Vercel build script syntax, isolation and exact branch
+        run: |
+          set -euo pipefail
+          bash -n frontend/vercel_build.sh
+          grep -Fq 'cert/d7-web-fue-preview-20261029' frontend/vercel_build.sh
+          grep -Fq 'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true' frontend/vercel_build.sh
+          grep -Fq 'IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false' frontend/vercel_build.sh
+          grep -Fq 'https://iamina-certified-i8v18ds1r-achraf-benmoussa-s-projects.vercel.app' frontend/vercel_build.sh
+      - name: Static QA route + proxy syntax gate
+        run: |
+          set -euo pipefail
+          node --check frontend/api/preview-proxy.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          config=json.loads(Path('frontend/vercel.json').read_text())
+          assert config['rewrites'][0]['source'].startswith('/api/v1/')
+          assert config['rewrites'][0]['destination'].startswith('/api/preview-proxy')
+          code=Path('frontend/api/preview-proxy.js').read_text()
+          for marker in ('QA_BRANCH', 'QA_BACKEND', 'getVercelOidcToken', 'auth/login', 'auth/logout'):
+              assert marker in code, marker
+          assert "API_BASE_URL=\"https://iamina-review-git-cert-" in Path('frontend/vercel_build.sh').read_text()
+          PY
+      - name: Verify protected same-origin API route and BFF syntax
+        run: |
+          set -euo pipefail
+          node --check frontend/api/preview-proxy.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          config = json.loads(Path('frontend/vercel.json').read_text())
+          rules = config['rewrites']
+          assert rules[0]['source'].startswith('/api/v1/')
+          assert rules[0]['destination'].startswith('/api/preview-proxy')
+          source = Path('frontend/api/preview-proxy.js').read_text()
+          for term in ('getVercelOidcToken', 'QA_BRANCH', 'QA_BACKEND',
+                       'auth/login', 'auth/logout', 'no-store'):
+              assert term in source, f'missing QA BFF gate: {term}'
+          auth = Path('frontend/lib/services/auth_service.dart').read_text()
+          assert "Uri.base.origin" in auth
+          assert "Uri.parse('$_nativeAuthOrigin$path')" in auth
+          PY
+      - name: Synthetic proxy behavioral regression (Node)
+        run: |
+          set -euo pipefail
+          npm install --prefix frontend --no-package-lock --ignore-scripts --no-audit --no-fund
+          node --test frontend/test/qa/preview_proxy.test.mjs
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Real Chrome UI / iPhone viewport / login only / signup hidden
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter test --platform chrome --reporter expanded \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+            test/features/auth/d7_preview_existing_login_only_test.dart

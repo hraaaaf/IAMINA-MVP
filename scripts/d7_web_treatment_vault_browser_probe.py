@@ -24,6 +24,12 @@ PHASES = (
     "verify_a_edited",
 )
 
+# Decision-specific synthetic returning patient, no account-switch itinerary.
+SINGLE_PATIENT_PHASES = (
+    "single_seed", "single_verify_seed", "single_type1",
+    "single_verify_type1", "single_none", "single_verify_none",
+)
+
 
 def _chrome() -> str:
     for name in ("google-chrome", "chromium", "chromium-browser"):
@@ -60,6 +66,16 @@ def _ephemeral_chrome_profile():
 def main() -> None:
     from websocket import create_connection
 
+    single_patient = len(sys.argv) > 1 and sys.argv[1] == "--single-patient"
+    if len(sys.argv) > 1 and not single_patient:
+        raise ValueError("Unsupported D7 Chrome probe option")
+    phases = SINGLE_PATIENT_PHASES if single_patient else PHASES
+    reload_phase = "single_verify_none" if single_patient else "verify_a_edited"
+    proof_file = (
+        "d7-web-single-patient-proof.json" if single_patient
+        else "d7-web-indexeddb-proof.json"
+    )
+
     with _ephemeral_chrome_profile() as tmp:
         with Path(tmp, "chrome.log").open("w", encoding="utf-8") as logfile:
             proc = subprocess.Popen(
@@ -68,7 +84,7 @@ def main() -> None:
                     "--disable-dev-shm-usage", "--enable-unsafe-swiftshader",
                     "--remote-allow-origins=*", "--remote-debugging-port=9237",
                     f"--user-data-dir={tmp}/user",
-                    f"{ORIGIN}/?phase=seed_a",
+                    f"{ORIGIN}/?phase={phases[0]}",
                 ],
                 stdout=logfile, stderr=subprocess.STDOUT,
                 start_new_session=True,
@@ -112,27 +128,31 @@ def main() -> None:
                         time.sleep(0.25)
                     raise RuntimeError(f"D7 phase {phase} timed out: {last}")
 
-                for phase in PHASES:
+                for phase in phases:
                     command("Page.navigate", {"url": f"{ORIGIN}/?phase={phase}"})
                     observe(phase)
 
                 # Reload A after B changes. The same Chrome profile must retain
                 # physical databases and the owner-scoped, pending declaration.
                 command("Page.reload", {"ignoreCache": True})
-                observe("verify_a_edited")
+                observe(reload_phase)
 
                 output = {
                     "result": "PASS",
                     "type": "real Chrome, sqlite3.wasm, IndexedDB",
                     "fixture": "synthetic-only",
-                    "sequence": PHASES,
-                    "hard_reload": "verify_a_edited",
+                    "decision": (
+                        "D7 single returning patient declared type/treatment"
+                        if single_patient else "legacy physical vault boundary"
+                    ),
+                    "sequence": phases,
+                    "hard_reload": reload_phase,
                     "claim_limit": (
                         "Physical patient vault persistence/isolation and "
                         "declaration state only; NOT full UI/auth/offline/clinical FUE"
                     ),
                 }
-                Path("d7-web-indexeddb-proof.json").write_text(
+                Path(proof_file).write_text(
                     json.dumps(output, sort_keys=True, indent=2) + "\n",
                     encoding="utf-8",
                 )

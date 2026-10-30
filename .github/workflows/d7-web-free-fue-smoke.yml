@@ -8,6 +8,7 @@ on:
       - 'scripts/d7_web_actual_app_smoke.py'
       - 'frontend/test/features/profile/d7_profile_owner_save_widget_test.dart'
       - 'frontend/test/features/profile/d7_web_treatment_choice_responsive_test.dart'
+      - 'scripts/d7_web_actual_profile_e2e.py'
 
 permissions:
   contents: read
@@ -67,4 +68,60 @@ jobs:
             d7-web-app-smoke-proof.json
             d7-web-viewport-captures/*.png
           retention-days: 14
+          if-no-files-found: warn
+
+  d7-real-ui-local-chrome:
+    name: D7 actual ProfileScreen clicks + WebAuthn + persistence (synthetic)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build actual local-only Web (no remote account or demo credentials)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_OFFLINE_DEMO=false --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Install pinned Chromium driver
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+      - name: D7 real ProfileScreen WebAuthn / save / browser reload
+        run: |
+          set -euo pipefail
+          python3 scripts/d7_web_actual_profile_e2e.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d = json.loads(Path("d7-web-real-profile-chrome-proof.json").read_text())
+          assert d["result"] == "PASS"
+          assert d["hosted_preview"] == "NOT_RUN"
+          assert d["remote_sync"] == "NOT_RUN"
+          assert d["phases"] == [
+              "genuine_local_webauthn_enrollment",
+              "profile_type2_and_patient_declared_treatments",
+              "physical_reload_type2_and_treatments_preserved",
+              "patient_type1_without_automatic_treatment_change",
+              "explicit_no_treatment_then_physical_reload",
+              "responsive_390_and_egress_check",
+          ]
+          PY
+      - name: Upload synthetic-only UI browser proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d7-actual-profile-local-chrome-proof
+          path: d7-web-real-profile-chrome-proof.json
+          retention-days: 7
           if-no-files-found: warn

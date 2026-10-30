@@ -19,9 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_accountMode || !kRemoteAccountEnrollmentEnabled) {
+    if (!_accountMode ||
+        !(kRemoteAccountLoginEnabled || kRemoteAccountEnrollmentEnabled)) {
       return local.LocalDeviceEnrollmentScreen(
-        onChooseAccount: kRemoteAccountEnrollmentEnabled
+        onChooseAccount: (kRemoteAccountLoginEnabled || kRemoteAccountEnrollmentEnabled)
             ? () => setState(() => _accountMode = true)
             : null,
       );

@@ -41,11 +41,39 @@ def test_request_contains_only_locale_script_and_opaque_token():
 
     assert request.locale == "fr"
     assert request.protected_body_token == envelope.protected_body_token
-    assert "Réponse clinique déterministe" not in prompt
-    assert "142" not in prompt
-    assert "mg/dL" not in prompt
-    assert "certified_consultation_brief" not in prompt
-    assert "diabetes.clinician_prep" not in prompt
+    # The random opaque token may coincidentally contain "142". Assert the
+    # exact allowlisted wire shape first, then inspect only non-token content.
+    assert prompt == (
+        "locale=fr\n"
+        "script=default\n"
+        f"protected_body_token={envelope.protected_body_token}"
+    )
+    payload_without_token = prompt.replace(envelope.protected_body_token, "")
+    assert "Réponse clinique déterministe" not in payload_without_token
+    assert "142" not in payload_without_token
+    assert "mg/dL" not in payload_without_token
+    assert "certified_consultation_brief" not in payload_without_token
+    assert "diabetes.clinician_prep" not in payload_without_token
+
+
+def test_opaque_token_with_embedded_clinical_digits_is_not_a_data_leak():
+    # Deterministic regression: the prior substring assertion had a random
+    # false positive whenever a 32-hex-character opaque token contained 142.
+    with patch(
+        "core.contracts.narration_envelope.secrets.token_hex",
+        return_value="ABC142" + "0" * 26,
+    ):
+        envelope = build_shadow_envelope(_resolution(), language="fr")
+    request = build_protected_provider_shadow_request(envelope)
+    prompt = request.user_prompt()
+
+    assert "142" in envelope.protected_body_token
+    assert prompt == (
+        "locale=fr\n"
+        "script=default\n"
+        f"protected_body_token={envelope.protected_body_token}"
+    )
+    assert "142" not in prompt.replace(envelope.protected_body_token, "")
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=False)

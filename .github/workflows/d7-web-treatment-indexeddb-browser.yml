@@ -1,4 +1,4 @@
-name: D7 Web patient declarations — Chrome IndexedDB A-B-A
+name: D7 Web declarations — Chrome physical IndexedDB persistence
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   d7-chrome-indexeddb:
-    name: D7 physical vault treatment persistence and reload (synthetic)
+    name: D7 physical browser vault and single-patient persistence (synthetic)
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -36,7 +36,7 @@ jobs:
           flutter pub get
           flutter analyze --no-fatal-infos lib/ui_d7_synthetic_treatment_vault_probe_main.dart
           flutter build web --release --no-web-resources-cdn -t lib/ui_d7_synthetic_treatment_vault_probe_main.dart
-      - name: Chrome real IndexedDB A-B-A declaration and hard reload
+      - name: Chrome real IndexedDB declaration, case-specific save and hard reload
         shell: bash
         run: |
           set -euo pipefail
@@ -47,11 +47,26 @@ jobs:
           curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7377/ > /dev/null
           python3 scripts/d7_web_treatment_vault_browser_probe.py
           test -s d7-web-indexeddb-proof.json
+          python3 scripts/d7_web_treatment_vault_browser_probe.py --single-patient
+          test -s d7-web-single-patient-proof.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('d7-web-single-patient-proof.json').read_text())
+          assert data['result'] == 'PASS'
+          assert data['sequence'] == [
+              'single_seed', 'single_verify_seed', 'single_type1',
+              'single_verify_type1', 'single_none', 'single_verify_none',
+          ]
+          assert data['hard_reload'] == 'single_verify_none'
+          PY
       - name: Retain synthetic browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: iamina-d7-chrome-indexeddb-declarations
-          path: d7-web-indexeddb-proof.json
+          path: |
+            d7-web-indexeddb-proof.json
+            d7-web-single-patient-proof.json
           if-no-files-found: warn
           retention-days: 14

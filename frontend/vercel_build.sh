@@ -42,6 +42,19 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       fi
       API_BASE_URL="${IAMINA_REVIEW_PREVIEW_API_BASE_URL%/}"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false
+      # D7 Web certification: enable the REAL native login UI only on the
+      # one protected QA branch, with the exact isolated synthetic backend.
+      # Every other Preview remains local-first; Production stays untouched.
+      if [ "${VERCEL_GIT_COMMIT_REF:-}" = "cert/d7-web-fue-preview-20261029" ]; then
+        if [ "$API_BASE_URL" != "https://iamina-certified-i8v18ds1r-achraf-benmoussa-s-projects.vercel.app" ]; then
+          echo "ERROR: D7 FUE QA branch cannot target another backend" >&2
+          exit 64
+        fi
+        # Client calls same-origin BFF; only the BFF holds cross-project OIDC.
+        API_BASE_URL="https://iamina-review-git-cert-d7-we-5e65d5-achraf-benmoussa-s-projects.vercel.app"
+        IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true
+      fi
       ;;
     production)
       # Existing production routing remains unchanged.
@@ -67,7 +80,8 @@ if [ -n "${API_BASE_URL:-}" ]; then
   echo "Building IAMINA web with configured backend: $API_BASE_URL"
   flutter build web --release --no-web-resources-cdn \
     --dart-define=API_BASE_URL="$API_BASE_URL" \
-    --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"
+    --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}" \
+    --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED="${IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED:-false}"
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
   flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_OFFLINE_DEMO=true
