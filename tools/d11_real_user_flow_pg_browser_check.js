@@ -175,7 +175,12 @@ async function proof(page, width) {
   await page.route('**/*',route=>{
     const u=route.request().url();
     if(u.startsWith(origin)||u.startsWith(api)||u.startsWith('data:')||u.startsWith('blob:'))return route.continue();
-    external.push('blocked_external');return route.abort();
+    // Capture only the hostname, never query paths, passwords or patient
+    // identifiers. This distinguishes missing local Arabic glyph resources
+    // from unrelated external egress without allowing a network request.
+    let host='unknown';
+    try{host=new URL(u).hostname;}catch(_){}
+    external.push(host);return route.abort();
   });
 
   const stage={value:'page_ready'};
