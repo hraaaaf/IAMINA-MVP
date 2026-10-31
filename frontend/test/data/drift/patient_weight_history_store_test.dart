@@ -151,20 +151,17 @@ void main() {
     expect(await store.recent(), isEmpty);
   });
 
-  test('D18 no patient-owned profile means no orphan weight history',
+  test('D18 scoped weight history needs no mandatory medical onboarding',
       () async {
     final db = AppDatabase.testPatientVault(
       NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
     );
     addTearDown(db.close);
     final store = PatientWeightHistoryStore(db);
-    await expectLater(
-      store.append(
-        clientUuid: _cUuid, value: '62', unit: 'kg',
-        measuredAtUtc: DateTime.utc(2026, 10, 14),
-      ),
-      throwsStateError,
+    await store.append(
+      clientUuid: _cUuid, value: '62', unit: 'kg',
+      measuredAtUtc: DateTime.utc(2026, 10, 14),
     );
-    expect(await store.recent(), isEmpty);
+    expect((await store.recent()).single.valueHundredths, 6200);
   });
 }
