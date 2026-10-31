@@ -262,7 +262,7 @@ void main() {
     });
   }
 
-  testWidgets('D18 no persisted patient profile refuses writes',
+  testWidgets('D18 keeps optional weight available before medical onboarding',
       (tester) async {
     final db = await _patientDb(913, hasProfile: false);
     addTearDown(db.close);
@@ -270,7 +270,8 @@ void main() {
     await tester.enterText(find.byKey(const Key('d18-weight-value')), '70');
     await _confirmMeasuredAt(tester);
     await _tapVisible(tester, 'd18-save-weight');
-    expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
+    expect((await PatientWeightHistoryStore(db).recent()).single.valueHundredths,
+        7000);
     expect(find.byKey(const Key('d18-local-status')), findsOneWidget);
   });
 }
