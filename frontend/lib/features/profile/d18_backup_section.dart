@@ -54,6 +54,15 @@ class D18BackupSection extends StatelessWidget {
               'بيانات D18 فقط على هذا الجهاز دون مزامنة تلقائية. قد تُحذف بيانات المتصفح.'),
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        const SizedBox(height: 8),
+        Text(
+          _t(context,
+              'Seul le fichier de sauvegarde exporté est chiffré. Le stockage local du navigateur ne l’est pas par IAMINA : protégez l’accès à cet appareil.',
+              'Only the exported backup file is encrypted. IAMINA does not encrypt local browser storage: protect access to this device.',
+              'ملف النسخة الاحتياطية المُصدَّر مشفّر، لكن IAMINA لا تشفّر التخزين المحلي للمتصفح. احمِ الوصول إلى جهازك.'),
+          key: const Key('d18-storage-disclosure'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           key: const Key('d18-export-open'),

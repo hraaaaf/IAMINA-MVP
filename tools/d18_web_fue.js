@@ -6,8 +6,8 @@ fs.mkdirSync(out,{recursive:true});
 const viewports=[[390,844],[768,1024],[1280,900]];
 const head=process.env.D18_CANDIDATE_SHA||'unknown';
 const copy={
-  fr:{page:'Mon Profil',section:'Informations personnelles facultatives',data:'Données & appareils',export:'Créer une sauvegarde chiffrée',restore:'Restaurer une sauvegarde',exportDialog:'Phrase secrète (12 caractères minimum)',restoreDialog:'Choisir un fichier .iamina',year:'Année de naissance (facultative)',weight:'Poids mesuré'},
-  ar:{page:'ملفي الشخصي',section:'معلومات شخصية اختيارية',data:'البيانات والأجهزة',export:'إنشاء نسخة احتياطية مشفرة',restore:'استعادة نسخة احتياطية',exportDialog:'العبارة السرية (12 حرفًا على الأقل)',restoreDialog:'اختر ملف .iamina',year:'سنة الميلاد (اختياري)',weight:'الوزن المقاس'},
+  fr:{page:'Mon Profil',section:'Informations personnelles facultatives',data:'Données & appareils',export:'Créer une sauvegarde chiffrée',restore:'Restaurer une sauvegarde',disclosure:'Seul le fichier de sauvegarde exporté est chiffré.',exportDialog:'Phrase secrète (12 caractères minimum)',restoreDialog:'Choisir un fichier .iamina',year:'Année de naissance (facultative)',weight:'Poids mesuré'},
+  ar:{page:'ملفي الشخصي',section:'معلومات شخصية اختيارية',data:'البيانات والأجهزة',export:'إنشاء نسخة احتياطية مشفرة',restore:'استعادة نسخة احتياطية',disclosure:'ملف النسخة الاحتياطية المُصدَّر مشفّر',exportDialog:'العبارة السرية (12 حرفًا على الأقل)',restoreDialog:'اختر ملف .iamina',year:'سنة الميلاد (اختياري)',weight:'الوزن المقاس'},
 };
 const report={head,kind:'real Chrome, production Flutter Profile + patient scoped IndexedDB, synthetic owner',cases:[],errors:[],notProven:['hosted authentication','clinical patient release','cryptographic penetration testing','download restoration after clearing storage']};
 function url(owner,locale){return origin+'/?mode=returning&ip=none&owner='+owner+'&locale='+locale;}
@@ -69,6 +69,8 @@ async function run(browser,locale,size){
   record.images.push(await screenshot(page,locale,size,'profile-progressive-open'));
   await inspectLayout(page,size[0]);
   await click(page,copy[locale].data);
+  // Encrypted exports must never imply the browser vault is encrypted at rest.
+  await required(page,copy[locale].disclosure);
   await required(page,copy[locale].export);
   await required(page,copy[locale].restore);
   await click(page,copy[locale].export);
