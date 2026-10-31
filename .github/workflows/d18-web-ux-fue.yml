@@ -1,0 +1,65 @@
+name: D18 Web patient-profile UX + encrypted-backup browser proof
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-web-ux-fue.yml'
+      - 'tools/d18_web_fue.js'
+      - 'frontend/lib/d5_web_fue_main.dart'
+      - 'frontend/lib/features/profile/**'
+      - 'frontend/lib/data/drift/d18_encrypted_backup.dart'
+      - 'frontend/lib/data/drift/patient_progressive_demographics_store.dart'
+      - 'frontend/lib/data/drift/patient_weight_history_store.dart'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d18-web-profile-ux-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d18-real-chrome:
+    name: D18 real Flutter Profile Web FR/AR 390/768/1280
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve pinned Flutter packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Analyze real patient-profile Web entrypoint
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos lib/d5_web_fue_main.dart
+      - name: Build production Flutter screens in offline Web host
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t lib/d5_web_fue_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise D18 real browser screens and capture evidence
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -m http.server 7386 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-http.log 2>&1 &
+          node tools/d18_web_fue.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-web-profile-fr-ar-390-768-1280-${{ github.event.pull_request.head.sha }}
+          path: d18-web-fue-proof/
+          if-no-files-found: warn
+          retention-days: 14
