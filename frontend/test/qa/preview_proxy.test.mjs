@@ -69,10 +69,43 @@ test('upstream HTML protection page stays a 502, not a login success', async () 
     assert.deepEqual(logs[0], ['d7_qa_proxy_upstream_non_api', 200]);
   } finally {global.fetch = saved; console.warn = savedWarn;}
 });
+test('versioned AI consent is routed only through the protected control plane', async () => {
+  const original = global.fetch;
+  let calls = 0;
+  global.fetch = async (url, options) => {
+    calls++;
+    assert.equal(url, backend + '/api/v1/account/consent');
+    assert.equal(options.headers.get('cookie'), null);
+    assert.equal(options.headers.get('x-vercel-trusted-oidc-idp-token'), 'test-token');
+    assert.equal(options.headers.get('authorization'), 'Bearer synthetic');
+    return new Response(null, {status: 204});
+  };
+  try {
+    for (const method of ['POST', 'GET', 'DELETE']) {
+      const req = request('/api/v1/account/consent', method, 'https://' + host);
+      req.headers.authorization = 'Bearer synthetic';
+      const res = response();
+      await proxy(req, res, async () => 'test-token');
+      assert.equal(res.statusCode, 204, method);
+    }
+    assert.equal(calls, 3);
+    const disallowed = response();
+    await proxy(request('/api/v1/account/consent', 'PATCH', 'https://' + host),
+      disallowed, () => {throw Error('unexpected token');});
+    assert.equal(disallowed.statusCode, 405);
+    assert.equal(disallowed.headers.allow, 'GET, POST, DELETE');
+    assert.equal(calls, 3);
+  } finally {global.fetch = original;}
+});
+
 test('unlisted routes and cross-origin POST fail closed', async () => {
   let res = response();
-  await proxy(request('/api/v1/patient/data'), res, () => {throw Error('unexpected token');});
-  assert.equal(res.statusCode, 404);
+  for (const route of ['/api/v1/patient/data', '/api/v1/profile',
+    '/api/v1/account/consent/other']) {
+    res = response();
+    await proxy(request(route), res, () => {throw Error('unexpected token');});
+    assert.equal(res.statusCode, 404, route);
+  }
   res = response();
   await proxy(request('/api/v1/auth/login', 'POST', 'https://untrusted.invalid'), res, () => {throw Error('unexpected token');});
   assert.equal(res.statusCode, 403);

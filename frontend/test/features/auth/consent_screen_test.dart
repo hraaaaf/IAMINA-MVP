@@ -267,5 +267,7 @@ void main() {
     expect(evidenceStore.written, isNull);
     expect(consentService.hasConsent, isFalse);
     expect(find.byType(ConsentScreen), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.textContaining('Consentement non enregistré'), findsOneWidget);
   });
 }

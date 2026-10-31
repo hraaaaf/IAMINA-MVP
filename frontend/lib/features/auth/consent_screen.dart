@@ -26,6 +26,21 @@ class ConsentScreen extends StatefulWidget {
 class _ConsentScreenState extends State<ConsentScreen> {
   bool _isLoading = false;
 
+  void _showConsentFailure() {
+    if (!mounted) return;
+    final message = switch (Localizations.localeOf(context).languageCode) {
+      'fr' => 'Consentement non enregistré. Vérifiez votre connexion et '
+          'le verrouillage du profil, ou continuez sans IA.',
+      'ar' => 'لم يتم حفظ الموافقة. تحقق من الاتصال وقفل الملف الشخصي، '
+          'أو تابع بدون ذكاء اصطناعي.',
+      _ => 'Consent was not saved. Check your connection and profile '
+          'lock, or continue without AI.',
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
   Future<void> _accept() async {
     setState(() => _isLoading = true);
     final api = context.read<ApiClient>();
@@ -37,7 +52,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
     );
     try {
       final accepted = await api.giveVersionedConsent(claim);
-      if (!accepted) return;
+      if (!accepted) {
+        _showConsentFailure();
+        return;
+      }
 
       // The UI gate only opens after the exact server response is verified and
       // the same evidence is durably persisted locally.
@@ -46,7 +64,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
       consent.markVerifiedConsent();
       if (mounted) context.go('/dashboard');
     } catch (_) {
-      // Fail closed. The explicit "Continue without AI" route remains usable.
+      // Fail closed, but never leave an apparently unresponsive action.
+      _showConsentFailure();
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

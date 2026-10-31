@@ -99,6 +99,8 @@ export async function proxy(request, response, getToken = getVercelOidcToken) {
     'auth/login': ['POST'],
     'auth/logout': ['POST'],
     'auth/me': ['GET', 'HEAD'],
+    // Explicit patient AI-consent control only; no general clinical relay.
+    'account/consent': ['GET', 'POST', 'DELETE'],
   };
   const permitted = methodsByRoute[route.path];
   if (!permitted) return response.status(404).end();

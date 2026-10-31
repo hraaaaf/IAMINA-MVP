@@ -108,11 +108,16 @@ void requireUnlockedPatientSyncTransport(
   }
 }
 
-/// Pilot A: deny all clinical API routes except public authentication.
+/// Patient-controlled consent is not clinical data synchronization.
+/// Only the exact versioned-consent endpoint may pass the Pilot A gate.
+/// Authentication epoch and app-lock checks still apply independently.
 void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
+  final path = url.path;
+  final isConsentControl = path == '/api/v1/account/consent';
   if (allowed != null && !allowed() &&
-      url.path.startsWith('/api/v1/') &&
-      !url.path.startsWith('/api/v1/auth/')) {
+      path.startsWith('/api/v1/') &&
+      !path.startsWith('/api/v1/auth/') &&
+      !isConsentControl) {
     throw StateError('Clinical transport disabled: local-only pilot');
   }
 }

@@ -80,6 +80,34 @@ void main() {
     expect(chain.dispatched, 0);
   });
 
+  test('D7 consent control remains blocked before device unlock', () async {
+    final auth = _Auth();
+    when(() => auth.getIdToken()).thenAnswer((_) async => 'synthetic-token');
+    final chain = _Chain('POST', '/api/v1/account/consent');
+    await expectLater(
+      Future<Response<Object?>>.value(AuthInterceptor(
+        auth,
+        canUseClinicalTransport: () => false,
+        canUsePatientSyncTransport: () => false,
+      ).intercept<Object?>(chain)),
+      throwsStateError,
+    );
+    expect(chain.dispatched, 0);
+  });
+
+  test('D7 consent control is allowed only with current unlocked session', () async {
+    final auth = _Auth();
+    when(() => auth.getIdToken()).thenAnswer((_) async => 'synthetic-token');
+    final chain = _Chain('POST', '/api/v1/account/consent');
+    final response = await AuthInterceptor(
+      auth,
+      canUseClinicalTransport: () => false,
+      canUsePatientSyncTransport: () => true,
+    ).intercept<Object?>(chain);
+    expect(response.statusCode, 200);
+    expect(chain.dispatched, 1);
+  });
+
   test('D7 actual AuthInterceptor permits login before device unlock', () async {
     final auth = _Auth();
     when(() => auth.getIdToken()).thenAnswer((_) async => null);
