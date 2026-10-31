@@ -18,6 +18,23 @@ Intégrer l'UX approuvée au vrai `ProfileScreen` Web IAMINA : données facultat
 - Poids : version correcte écrite comme nouvelle observation liée à la précédente ; écran n'affiche que la dernière version ; suppression explicite purge la famille.
 - Tests ajoutés/portés : démographie indépendante du profil médical, historique + correction/suppression, crypto, altération/mauvaise phrase secrète, mauvais propriétaire, import non destructif, transfert local volontaire.
 
+## 31/10/2026 — POC chiffrement Web / gate préflight versions réelles
+
+**Goal :** vérifier le candidat `sqlite3mc.wasm` **sur les dépendances réellement verrouillées** avant toute migration. **Succès observable :** preuve Web exécutable avec base synthétique, mauvaise clé rejetée, persistance et octets non lisibles sans clé, Drift worker fonctionnel ; **statut : NON EXÉCUTÉ**, aucun binaire WASM chiffrant ni runner Dart disponibles dans l'environnement de cette revue.
+
+**Preuve vérifiée sur `frontend/pubspec.lock` :** `drift 2.31.0`, `drift_flutter 0.2.8`, `sqlite3 2.9.4`, `sqlite3_flutter_libs 0.5.42`. Le `pubspec.yaml` avec contraintes `^2.20.0` ne reflète **pas** la version installée ; la documentation `sqlite3 latest` présentant `sqlite3mc.wasm` est une version plus récente et ne prouve pas sa disponibilité avec `sqlite3 2.9.4`. Les exemples de chiffrement Drift `NativeDatabase` ne s'appliquent pas tels quels à `WasmDatabase.open` ; la documentation Drift Web précise que le callback `setup` natif n'est **pas disponible directement** lorsque la DB est ouverte dans le worker et recommande un worker personnalisé pour initialiser les connexions. Voir [Drift Web — Custom functions and database setup](https://drift.simonbinder.eu/platforms/web/), [sqlite3 Web](https://pub.dev/packages/sqlite3), [Drift Encryption](https://drift.simonbinder.eu/platforms/encryption/).
+
+**Ordre POC à exécuter sur runner équipé de Flutter/Dart et Chromium (pas de tests inventés) :**
+1. **Préflight :** résoudre la disponibilité d'un `sqlite3mc.wasm` correspondant à l'API `sqlite3 2.9.4`; si impossible, isoler une montée de versions dans une branche/fixture **sans toucher à la production**, noter diff du lockfile et compatibilité Flutter/Dart.
+2. **Crypto autonome :** créer base synthétique avec un secret aléatoire, fermer et rouvrir avec secret valide ; mauvaise clé et absence de clé doivent échouer sur lecture réelle du schéma ; examiner le fichier persistant (ne pas se contenter de la réponse de `PRAGMA key`).
+3. **Drift :** brancher le moteur chiffrant dans un worker **spécifique au POC**, exécuter `PRAGMA key` avant introspection/DDL et valider transactions, rechargement, 2 onglets, IndexedDB et OPFS. Sans hook de clé prouvé, **NO GO**.
+4. **Protection complète :** tests de migration sans perte du coffre entier et de rollback, pas seulement des tables D18 ; conserver les données synthétiques et la preuve brute dans artefact CI.
+5. **Critère de clôture :** SHA exact, versions, rapports, screenshots et logs sans données patients, pass/fail négatifs ; aucun « POC PASS » sans artefacts.
+
+**Résultat actuel :** préflight versions **PASS**, POC runtime **NOT_RUN**, intégration Drift **NOT_RUN**. L'environnement local ne fournit pas les exécutables Dart/Flutter ni le binaire chiffrant ; ne pas prétendre à un essai. **Scoring recherche/compatibilité** : EXECUTION_SCORE 7.0/10, ADVERSARIAL_SCORE 7.0/10, retained 7.0/10 (preuve runtime absente) ; score global D18 reste plafonné à 5.9/10 par le gate privacy. **Next exact :** exécuter POC sur runner Dart/Flutter disponible, sans lancer benchmark lourd ni modifier coffre clinique ; FUE Web indépendante à compléter. Aucun merge/deploy.
+
+---
+
 ## 31/10/2026 — Étude de faisabilité vérifiée sur sources primaires : sqlite3mc.wasm (pas encore POC)
 
 **Goal :** déterminer une voie techniquement plausible pour chiffrer **le coffre clinique Web entier** sans fausse promesse de compatibilité Drift. **Critère de succès du présent sous-lot :** confronter la configuration IAMINA aux APIs documentées et distinguer faisable en principe de testé dans IAMINA. **Preuves :** `frontend/lib/data/drift/database.dart` (constructeurs `driftDatabase(name: ..., web: DriftWebOptions(sqlite3Wasm: Uri.parse('sqlite3.wasm'), driftWorker: Uri.parse('drift_worker.js')))`), `frontend/pubspec.yaml` (`drift: ^2.20.0`, `drift_flutter: ^0.2.0`, `cryptography: ^2.9.0`), documentation primaire [sqlite3 Dart Web](https://pub.dev/documentation/sqlite3/latest/) et [Drift Web](https://drift.simonbinder.eu/platforms/web/), [Drift encryption](https://drift.simonbinder.eu/platforms/encryption/), [DriftWebOptions API](https://pub.dev/documentation/drift_flutter/latest/drift_flutter/DriftWebOptions-class.html).
