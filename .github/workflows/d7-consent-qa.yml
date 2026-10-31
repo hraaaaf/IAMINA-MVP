@@ -12,6 +12,8 @@ on:
       - 'frontend/test/services/d30_local_only_pilot_transport_test.dart'
       - 'frontend/test/services/d7_app_lock_chopper_boundary_test.dart'
       - 'frontend/test/features/auth/consent_screen_test.dart'
+      - 'frontend/test/services/d7_preview_api_origin_test.dart'
+      - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
   workflow_dispatch:
 
 permissions:
@@ -49,6 +51,7 @@ jobs:
           flutter pub get
           flutter test --reporter expanded \
             test/features/auth/consent_screen_test.dart \
+            test/services/d7_preview_api_origin_test.dart \
             test/services/d30_local_only_pilot_transport_test.dart \
             test/services/d7_app_lock_chopper_boundary_test.dart \
             test/services/consent_notice_contract_test.dart

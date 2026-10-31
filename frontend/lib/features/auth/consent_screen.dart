@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/api_client.dart';
+import '../../services/app_lock_service.dart';
 import '../../services/consent_api_extension.dart';
 import '../../services/consent_evidence_store.dart';
 import '../../services/consent_notice_contract.dart';
@@ -25,6 +26,33 @@ class ConsentScreen extends StatefulWidget {
 
 class _ConsentScreenState extends State<ConsentScreen> {
   bool _isLoading = false;
+
+  String _localeText({required String fr, required String ar, required String en}) {
+    return switch (Localizations.localeOf(context).languageCode) {
+      'fr' => fr,
+      'ar' => ar,
+      _ => en,
+    };
+  }
+
+  void _showLockRequired() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      content: Text(_localeText(
+        fr: 'Pour accepter le traitement IA, activez d’abord le verrouillage sécurisé du profil, ou continuez sans IA.',
+        ar: 'للموافقة على معالجة الذكاء الاصطناعي، فعّل قفل الملف الشخصي الآمن أولاً أو تابع بدون ذكاء اصطناعي.',
+        en: 'Enable the secure profile lock before consenting to AI processing, or continue without AI.',
+      )),
+    ));
+  }
+
+  void _openLockSetup() {
+    if (context.read<AppLockService?>()?.isExplicitlySkipped != true) return;
+    // Explicit user navigation to the existing WebAuthn enrollment flow;
+    // accepting AI and enrolling a device lock remain separate actions.
+    context.go('/app-lock/setup');
+  }
 
   void _showConsentFailure() {
     if (!mounted) return;
@@ -42,6 +70,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
   }
 
   Future<void> _accept() async {
+    final lock = context.read<AppLockService?>();
+    if (lock != null && !lock.isUnlocked) {
+      _showLockRequired();
+      return;
+    }
     setState(() => _isLoading = true);
     final api = context.read<ApiClient>();
     final db = context.read<AppDatabase>();
@@ -80,6 +113,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final dark = AminaTheme.isDark(context);
+    final appLock = context.watch<AppLockService?>();
+    final skippedLock = appLock?.isExplicitlySkipped == true;
 
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
@@ -199,6 +234,32 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ),
                       ),
+                      if (skippedLock) ...[
+                        SizedBox(height: compactHeight ? 12 : 16),
+                        Text(
+                          _localeText(
+                            fr: 'Vous avez choisi de continuer sans verrouillage. Pour activer les services IA externes, sécurisez d’abord votre profil.',
+                            ar: 'اخترت المتابعة بدون قفل. لتفعيل خدمات الذكاء الاصطناعي الخارجية، أمّن ملفك الشخصي أولاً.',
+                            en: 'You chose to continue without a lock. To enable external AI services, secure your profile first.',
+                          ),
+                          key: const Key('consent-lock-required-note'),
+                          style: TextStyle(
+                            color: AminaTheme.textSecondary(context),
+                            fontSize: compactHeight ? 12 : 13,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          key: const Key('consent-enable-app-lock'),
+                          onPressed: _isLoading ? null : _openLockSetup,
+                          icon: const Icon(Icons.lock_outline),
+                          label: Text(_localeText(
+                            fr: 'Activer le verrouillage',
+                            ar: 'تفعيل قفل الملف الشخصي',
+                            en: 'Enable profile lock',
+                          )),
+                        ),
+                      ],
                       SizedBox(height: compactHeight ? 14 : 24),
                       Align(
                         alignment: Alignment.center,
