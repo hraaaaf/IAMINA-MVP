@@ -10,6 +10,12 @@ on:
       - 'frontend/lib/features/auth/consent_screen.dart'
       - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
       - 'frontend/lib/services/api_client.dart'
+      - 'frontend/lib/services/d7_consent_withdrawal.dart'
+      - 'frontend/lib/services/consent_service.dart'
+      - 'frontend/lib/services/consent_evidence_store.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/test/services/d7_consent_withdrawal_fue_test.dart'
   workflow_dispatch:
 
 permissions:
@@ -42,6 +48,14 @@ jobs:
           flutter test --reporter expanded test/features/profile/d7_profile_owner_save_widget_test.dart
           flutter test --platform chrome --reporter expanded test/features/profile/d7_web_type_transition_contract_test.dart
           flutter test --platform chrome --reporter expanded test/features/profile/d7_web_treatment_choice_responsive_test.dart
+      - name: D7 C01-C05 consent safety, refusal, lock and retry synthetic FUE
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter test --reporter expanded test/features/auth/consent_screen_test.dart
+          flutter test --reporter expanded test/services/d7_consent_withdrawal_fue_test.dart
+          # These are synthetic receipts and local vault state; they do not
+          # establish hosted Safari authorization or clinical/privacy sign-off.
       - name: Build actual Flutter Web local patient app; never use remote QA or Production
         working-directory: frontend
         run: |

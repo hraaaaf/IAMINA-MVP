@@ -16,6 +16,8 @@ import '../../services/auth_service.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import '../../services/consent_evidence_store.dart';
+import '../../services/d7_consent_withdrawal.dart';
 import '../../services/locale_preference_service.dart';
 import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
@@ -86,6 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
   bool _savingLockPreference = false;
+  bool _withdrawingConsent = false;
 
   // Fail closed when no clinical transport provider is mounted (e.g. offline
   // pilot widget tests). The remote conflict action stays unavailable until
@@ -478,23 +481,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () async {
-                      // Capture before async gap
+                    onPressed: _withdrawingConsent ? null : () async {
                       final api = context.read<ApiClient>();
                       final db = context.read<AppDatabase>();
                       final consent = context.read<ConsentService>();
+                      final evidence = context.read<ConsentEvidenceStore>();
                       Navigator.pop(sheetCtx);
-                      await api.withdrawConsent().catchError((_) => false);
-                      await db.setAiConsent(granted: false);
-                      consent.declineLocally();
-                      if (mounted) {
+                      if (mounted) setState(() => _withdrawingConsent = true);
+                      try {
+                        final result = await withdrawD7AiConsent(
+                          consent: consent,
+                          markPending: evidence.markWithdrawalPending,
+                          revokeServer: api.withdrawConsent,
+                          clearEvidence: evidence.clear,
+                          clearLocalRecord: () => db.setAiConsent(granted: false),
+                          clearPending: evidence.clearWithdrawalPending,
+                        );
+                        if (!mounted) return;
+                        final message = switch (result) {
+                          D7WithdrawalResult.confirmed =>
+                            AppLocalizations.of(context)!.consentWithdrawn,
+                          D7WithdrawalResult.awaitingServer => _profileUiText(
+                            context,
+                            fr: 'Traitement IA suspendu sur cet appareil. Retrait serveur non confirmé : réessayez une fois connecté.',
+                            en: 'AI processing paused on this device. Server withdrawal not confirmed: retry when connected.',
+                            ar: 'تم إيقاف معالجة الذكاء الاصطناعي على هذا الجهاز. لم يُؤكد السحب من الخادم، حاول مجددًا عند الاتصال.',
+                          ),
+                          D7WithdrawalResult.localSafetyFailed => _profileUiText(
+                            context,
+                            fr: 'Impossible de sécuriser le retrait local. Vérifiez cet appareil et réessayez ; le retrait complet n’est pas confirmé.',
+                            en: 'Could not securely save the local withdrawal. Check this device and retry; full withdrawal is not confirmed.',
+                            ar: 'تعذّر تأمين السحب محليًا. تحقق من هذا الجهاز وأعد المحاولة؛ لم يتم تأكيد السحب الكامل.',
+                          ),
+                        };
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              AppLocalizations.of(context)!.consentWithdrawn,
-                            ),
+                            key: const Key('d7-withdraw-consent-result'),
+                            backgroundColor: result == D7WithdrawalResult.confirmed
+                                ? null : AminaTheme.warningOrange,
+                            content: Text(message),
                           ),
                         );
+                      } finally {
+                        if (mounted) setState(() => _withdrawingConsent = false);
                       }
                     },
                     style: FilledButton.styleFrom(
