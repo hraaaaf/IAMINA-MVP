@@ -134,10 +134,14 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     final generation = ++_generation;
     final evidence = ConsentEvidenceStore.forPatientVault(scope);
     bool hasVerifiedEvidence = false;
+    bool withdrawalPending = false;
     try {
-      hasVerifiedEvidence = await evidence.hasCurrentEvidence();
+      withdrawalPending = await evidence.hasWithdrawalPending();
+      hasVerifiedEvidence = !withdrawalPending && await evidence.hasCurrentEvidence();
     } catch (_) {
-      // Evidence failure must never grant AI processing consent.
+      // Unknown secure storage state must fail closed and remain retryable.
+      withdrawalPending = true;
+      hasVerifiedEvidence = false;
     }
     if (!mounted || generation != _generation ||
         widget.controller.activeDatabase != db ||
@@ -153,6 +157,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       final consent = ConsentService(hasVerifiedEvidence: hasVerifiedEvidence)
         ..seedInitialProfile(profile)
         ..attachStream(db.watchProfileForLocalUserId(db.activeProfileRowId));
+      if (withdrawalPending) consent.markWithdrawalPending();
       final sync = SyncService(
         db,
         widget.api,

@@ -796,10 +796,17 @@ class ApiClient {
   /// Withdraw AI consent — AI features disabled until re-consent.
   Future<bool> withdrawConsent() async {
     try {
-      final response = await _client.delete(
+      final response = await client.delete(
         Uri.parse('/api/v1/account/consent'),
       );
-      return response.isSuccessful;
+      // A 2xx alone is not a verified server revocation.
+      final body = response.body;
+      return response.isSuccessful &&
+          body is Map &&
+          body['ai_consent_given'] == false &&
+          body['notice_version'] == null &&
+          body['notice_hash'] == null &&
+          body['locale'] == null;
     } catch (_) {
       return false;
     }

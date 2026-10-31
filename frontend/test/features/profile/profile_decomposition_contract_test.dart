@@ -18,7 +18,11 @@ void main() {
     expect(state, contains('context.read<AuthService>()'));
     expect(state, contains('context.read<ConsentService>()'));
     expect(state, contains('patchProfile('));
-    expect(state, contains('withdrawConsent()'));
+    // The state owns the fail-closed revocation workflow, not a raw
+    // DELETE followed by an unconditional confirmation.
+    expect(state, contains('withdrawD7AiConsent('));
+    expect(state, contains('revokeServer: api.withdrawConsent'));
+    expect(state, contains('clearPending: evidence.clearWithdrawalPending'));
     expect(state, contains('insertOnConflictUpdate('));
     expect(state, contains('Widget build(BuildContext context) => _buildPresentation(context);'));
     expect(state, isNot(contains('Widget _buildMedicalSection(')));
