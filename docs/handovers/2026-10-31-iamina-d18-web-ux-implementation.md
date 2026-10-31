@@ -18,6 +18,35 @@ Intégrer l'UX approuvée au vrai `ProfileScreen` Web IAMINA : données facultat
 - Poids : version correcte écrite comme nouvelle observation liée à la précédente ; écran n'affiche que la dernière version ; suppression explicite purge la famille.
 - Tests ajoutés/portés : démographie indépendante du profil médical, historique + correction/suppression, crypto, altération/mauvaise phrase secrète, mauvais propriétaire, import non destructif, transfert local volontaire.
 
+## 31/10/2026 — D18 Web — CI FUE étendue VERTE sur HEAD exact (nouvelle preuve, sans certification produit)
+
+**Goal :** profil facultatif, historique de poids append-only, export chiffré/restauration D18 via vrais widgets Web, persistance et suppression patient-scoped. **Critère de succès du sous-lot automatisé :** 3 rapports obligatoires PASS au même SHA et leur artefact examiné, aucune assertion supprimée pour obtenir le vert.
+
+**HEAD vérifié :** `91956649e826e18d149e4622cbe3275860b89e38` sur `feat/iamina-d18-web-progressive-profile-20261031` / [PR #1207](https://github.com/hraaaaf/IAMINA-MVP/pull/1207) OPEN/DRAFT. [D18 Web #41211784682](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41211784682) **SUCCESS** (job #124568181629, contrôle final « Strict D18 release gate — all independent evidence required » SUCCESS). [CI générale #41211784767](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41211784767) **SUCCESS**. [Artefact #13046393733](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41211784682/artifacts/13046393733) téléchargé, extrait et ses JSON effectivement lus :
+- `report.json` **6/6 PASS** : vues réelles Flutter Chrome FR et AR RTL, 390×844, 768×1024, 1280×900, profil fermé/ouvert et dialogues export/restauration, sans erreurs reportées ; 24 captures dans l'artefact.
+- `ui-file-roundtrip-report.json` **passed=true, 23/23 étapes PASS** : année 1994, identité préférant ne pas répondre ; pesée réelle 72,50 kg ; correction append-only 73,00 kg, lecture du même coffre SQLite physique (1 puis 2 lignes, chaîne `replaces_uuid`) via **sonde de lecture seule strictement dans l'hôte de test synthétique**, téléchargement Blob d'un fichier `.iamina` chiffré (1233 octets), sélection de fichier dans un nouveau contexte Chromium, déchiffrement/aperçu/consentement/restauration, rechargement et contrôle de la présence des deux versions, année et identité, suppression de la famille de versions puis vérification base vide après reload. 12 captures de ce parcours. La sonde `d18_e2e_proof=1` n'est **pas compilée dans `main.dart`** ; ne pas interpréter sa réussite comme un audit d'authentification hébergée.
+- `encrypted-recovery-report.json` **8/8 PASS** : isolation A/B/A synthétique, mauvais secret et fichier altéré rejetés, transfert/validation C, refus de restauration destructrice.
+- Vérification visuelle additionnelle des 8 vues sur planche contact : hiérarchie et sens de lecture FR/AR corrects sur états sélectionnés ; **aucun score de fidélité Target↔Render attribué**, les captures comparables `main` vs PR à mêmes états/hosts restent manquantes.
+
+**Matrice de preuves partielle (FUE de décision, sans prétendre tout le périmètre clos) :**
+| Fonction / risque D18 | Preuve et état |
+| --- | --- |
+| Profil / année / genre facultatifs, persistance | PASS synthétique Chrome + SQLite ; validation métier négative en test Dart, revue clavier réelle non complète |
+| Poids daté, édition append-only et suppression après reload | PASS sur réel Chrome + lecture seule du coffre physique, 23 étapes communes |
+| Export fichier chiffré / re-import avec consentement / persistance | PASS réel navigateur, reports exact-HEAD et WebCrypto |
+| FR / AR RTL, mobile/tablette/desktop sur écrans et dialogues | PASS screenshots géométrie 6 cas ; **Tab/Shift+Tab/focus/lecteur d'écran NOT_RUN ou sans preuve complète** |
+| Compte hébergé patient A→B→A, verrouillage et accès par identité | **NOT_RUN pour D18 hébergé**, séparation A/B/A démontrée seulement en navigateur synthétique via test crypto |
+| Sécurité/confidentialité navigateur : IndexedDB, session locale, XSS, récupération et gestion de clé | **OPEN** : dossier de risque + approbation requises, pas de chiffrement IAMINA au repos ; sauvegarde `.iamina` chiffrée uniquement |
+| Target ↔ Render Web BEFORE/AFTER strictement comparables aux mêmes états / host / tailles | **OPEN** : précédents hôtes de captures non équivalents ; score dimension visuelle **plafonné à 7,5/10**, pas de note inventée |
+
+**Verdict correct :** `D18_AUTOMATED_E2E_PASS` au SHA ci-dessus, mais `D18_FUE_NO_GO / DECISION_OPEN / RELEASE_NOT_AUTHORIZED` tant que les preuves requises manquantes, arbitrages sécurité/privacy et Perfection Pass ne sont pas réalisés. En vertu de `docs/QUALITY_SCORING_POLICY.md`, pas de `VERIFIED`, pas de note totale ≥9 sans tous gates ; *deux reviewers indépendants ne sont pas obligatoires par défaut* (sauf note conservée ≥9,5 ou risque spécifique). Les anciennes phrases de ce handover mentionnant deux reviewers comme gate systématique sont historiques et **supplantées** par AGENTS.md et QUALITY_SCORING_POLICY.md.
+
+**Perfection Pass, encore ouvert :** étudier une comparaison réellement équivalente BEFORE↔AFTER ; Tab/Shift+Tab/focus/RTL ; revue des menaces IndexedDB non chiffré et authentification hébergée multi-identités A→B→A ; statuer protection par chiffrement au repos, dérivation/conservation/récupération des clés et consentement. Le scénario d'anciennes sauvegardes pouvant ressusciter une donnée effacée est divulgué mais doit rester dans le modèle de menace. Corriger les défauts trouvés, relancer les preuves concernées, établir séparément EXECUTION_SCORE et ADVERSARIAL_SCORE (score conservé min), puis gate humain et merge **seulement après autorisation applicable**.
+
+**Next exact :** confirmer sur PR et Notion l'état automatisé PASS et les limitations ; dresser la revue sécurité/privacy ciblée et matrice FUE restante, puis décider explicitement avec le responsable humain si IndexedDB non chiffré est acceptable pour une fonction clinique Web. Pas de déploiement Vercel sans accord explicite distinct. Après toute modification GitHub du document canonique, l'ancien SHA reste la preuve d'exécution des tests et ne vaut pas validation automatique du nouveau SHA docs.
+
+---
+
 ## Reprise vérifiée — 31/10/2026 — REVUE PRE-FUSION
 
 **Statut :** fonctionnel en Web synthétique, **NO GO merge / production** : gate UX et privacy à lever. PR [#1207](https://github.com/hraaaaf/IAMINA-MVP/pull/1207) OPEN/DRAFT ; `feat/iamina-d18-web-progressive-profile-20261031`. Baseline fonctionnelle avant cette modification de divulgation : `1acb97048a3c60f08c6b790ae702cee2b3cdd316`.
