@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/d18-web-ux-fue.yml'
       - 'tools/d18_web_fue.js'
+      - 'tools/d18_web_file_e2e.js'
+      - 'tools/d18_web_crypto_probe.js'
       - 'frontend/lib/d5_web_fue_main.dart'
       - 'frontend/lib/features/profile/**'
       - 'frontend/lib/data/drift/d18_encrypted_backup.dart'
