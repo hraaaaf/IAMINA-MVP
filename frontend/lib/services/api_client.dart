@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:chopper/chopper.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'auth_epoch.dart';
@@ -108,11 +109,16 @@ void requireUnlockedPatientSyncTransport(
   }
 }
 
-/// Pilot A: deny all clinical API routes except public authentication.
+/// Patient-controlled consent is not clinical data synchronization.
+/// Only the exact versioned-consent endpoint may pass the Pilot A gate.
+/// Authentication epoch and app-lock checks still apply independently.
 void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
+  final path = url.path;
+  final isConsentControl = path == '/api/v1/account/consent';
   if (allowed != null && !allowed() &&
-      url.path.startsWith('/api/v1/') &&
-      !url.path.startsWith('/api/v1/auth/')) {
+      path.startsWith('/api/v1/') &&
+      !path.startsWith('/api/v1/auth/') &&
+      !isConsentControl) {
     throw StateError('Clinical transport disabled: local-only pilot');
   }
 }
@@ -233,6 +239,29 @@ const String kBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+// Native QA Web login and the Chopper patient control plane must target the
+// same browser origin. A compile-time branch alias is NOT necessarily the
+// user's immutable Vercel deployment hostname; mismatching it triggers
+// cross-origin preflights and invalidates the preview's same-origin gate.
+String resolvePatientApiOrigin({
+  required bool isWeb,
+  required bool remoteAccountLogin,
+  required Uri pageUri,
+  required String configuredBaseUrl,
+}) {
+  if (!isWeb || !remoteAccountLogin) return configuredBaseUrl;
+  final host = pageUri.host.toLowerCase();
+  final local = pageUri.scheme == 'http' &&
+      (host == 'localhost' || host == '127.0.0.1');
+  if (pageUri.scheme != 'https' && !local) {
+    throw StateError('A secure browser origin is required for remote login');
+  }
+  if (host.isEmpty || pageUri.userInfo.isNotEmpty) {
+    throw StateError('Missing secure patient origin');
+  }
+  return pageUri.origin;
+}
+
 const int kMaxDocumentUploadBytes = 15 * 1024 * 1024;
 
 bool isDocumentUploadSizeAllowed(int byteLength) =>
@@ -283,11 +312,23 @@ class ApiClient {
       PendingDocumentDeduplicator<PulperPreview>();
 
   ApiClient({
-    this.baseUrl = kBaseUrl,
+    String? baseUrl,
     AuthService? authService,
     bool Function()? canUsePatientSyncTransport,
     bool Function()? allowClinicalTransportForSyntheticTests,
-  }) : _authService = authService ?? AuthService(),
+  }) : baseUrl = baseUrl ?? resolvePatientApiOrigin(
+         isWeb: kIsWeb,
+         // Main does not define the D7-only remote-login symbol. Keep
+         // local-first/production transport unchanged unless explicitly built
+         // for an isolated remote-login QA Preview.
+         remoteAccountLogin: const bool.fromEnvironment(
+           'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED',
+           defaultValue: false,
+         ),
+         pageUri: Uri.base,
+         configuredBaseUrl: kBaseUrl,
+       ),
+       _authService = authService ?? AuthService(),
        _canUsePatientSyncTransport = canUsePatientSyncTransport,
        _allowClinicalTransportForSyntheticTests =
            allowClinicalTransportForSyntheticTests;

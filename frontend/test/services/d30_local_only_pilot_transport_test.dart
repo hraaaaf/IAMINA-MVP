@@ -38,10 +38,11 @@ void main() {
     verifyNever(() => auth.getIdToken());
   });
 
-  test('Pilot A policy guards clinical API paths while allowing login', () {
+  test('Pilot A policy guards clinical API paths while allowing login and consent', () {
     for (final path in [
       '/api/v1/profile', '/api/v1/logs', '/api/v1/logs/batch',
       '/api/v1/ai/chat', '/api/v1/documents/ingest',
+      '/api/v1/account', '/api/v1/account/consent/other',
     ]) {
       expect(
         () => requirePilotClinicalTransport(Uri.parse(path), () => false),
@@ -54,6 +55,20 @@ void main() {
         Uri.parse('/api/v1/auth/login'), () => false,
       ),
       returnsNormally,
+    );
+    // Consent remains a separate patient decision, not a clinical data upload.
+    expect(
+      () => requirePilotClinicalTransport(
+        Uri.parse('/api/v1/account/consent'), () => false,
+      ),
+      returnsNormally,
+    );
+    // A locked patient vault must still block this exact protected endpoint.
+    expect(
+      () => requireUnlockedPatientSyncTransport(
+        Uri.parse('/api/v1/account/consent'), () => false,
+      ),
+      throwsStateError,
     );
   });
 }
