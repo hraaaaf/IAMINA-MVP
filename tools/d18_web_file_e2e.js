@@ -70,17 +70,17 @@ async function click(page,label){
 async function getByScroll(page,label){
   const slug=label.replace(/[^a-z0-9]/gi,'-').slice(0,45);
   const travel=async(direction)=>{
-    for(let i=0;i<18;i++){
+    for(let i=0;i<42;i++){
       const found=await locate(page,label);
       if(found)return found;
-      // A real user wheel + keyboard PageDown/PageUp in Flutter's
-      // SingleChildScrollView, rather than assuming all items are in DOM.
+      // Real screenshot from e87cde proved 450px wheel + PageDown
+      // jumps past the row. Use small, observed wheel increments only
+      // and check semantics after *every* movement.
       await page.mouse.move(175,655);
-      await page.mouse.wheel(0,direction*450);
-      if(i%3===2)await page.keyboard.press(direction>0?'PageDown':'PageUp');
-      await sleep(210);
-      if(i===6)await snap(page,
-        'scroll-'+(direction>0?'down':'up')+'-'+slug);
+      await page.mouse.wheel(0,direction*135);
+      await sleep(155);
+      if(i===6||i===18)await snap(page,
+        'scroll-'+(direction>0?'down':'up')+'-'+(i===6?'mid':'late')+'-'+slug);
     }
     return null;
   };
