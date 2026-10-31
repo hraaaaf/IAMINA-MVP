@@ -318,7 +318,13 @@ class ApiClient {
     bool Function()? allowClinicalTransportForSyntheticTests,
   }) : baseUrl = baseUrl ?? resolvePatientApiOrigin(
          isWeb: kIsWeb,
-         remoteAccountLogin: kRemoteAccountLoginEnabled,
+         // Main does not define the D7-only remote-login symbol. Keep
+         // local-first/production transport unchanged unless explicitly built
+         // for an isolated remote-login QA Preview.
+         remoteAccountLogin: const bool.fromEnvironment(
+           'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED',
+           defaultValue: false,
+         ),
          pageUri: Uri.base,
          configuredBaseUrl: kBaseUrl,
        ),
