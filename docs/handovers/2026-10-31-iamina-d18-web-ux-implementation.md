@@ -18,6 +18,32 @@ Intégrer l'UX approuvée au vrai `ProfileScreen` Web IAMINA : données facultat
 - Poids : version correcte écrite comme nouvelle observation liée à la précédente ; écran n'affiche que la dernière version ; suppression explicite purge la famille.
 - Tests ajoutés/portés : démographie indépendante du profil médical, historique + correction/suppression, crypto, altération/mauvaise phrase secrète, mauvais propriétaire, import non destructif, transfert local volontaire.
 
+## 31/10/2026 — D18 sécurité/privacy : revue de risque ciblée, décision recommandée
+
+**Décision nommée :** `D18-PRIVACY-AT-REST`. **Goal :** autoriser l'usage Web du profil facultatif sans exposer silencieusement les données de santé à une compromission locale ou de même origine. **Succès observable :** stockage local protégé selon modèle de menace approuvé + parcours réel de session/effacement et restauration validés. **Preuve actuelle :** inspection de `frontend/lib/features/profile/d18_backup_section.dart`, `d18_profile_panel.dart`, `d18_encrypted_backup.dart`, `patient_vault_scope.dart` (revue antérieure) et rapports E2E 6/6 + 23/23 + 8/8 ; HEAD `a7652ced439b9ff3ecce5d002376cc7a3bab5b5e` CI 15/15 SUCCESS.
+
+**Constats vérifiés dans le code :** l'export `.iamina` est chiffré et protégé par une phrase secrète ; le texte d'information Web FR/EN/AR indique expressément que **le stockage SQLite/IndexedDB local n'est pas chiffré par IAMINA au repos**. Le stockage est lié au coffre physique patient et non synchronisé automatiquement. La suppression de pesée purge les versions locales ; une sauvegarde antérieure peut réintroduire une pesée effacée, avec avertissement de restauration. L'accès à l'IndexedDB via un script malveillant de même origine (XSS) et l'accès aux données sur appareil partagé/compromis ne sont pas neutralisés par le chiffrement du fichier exporté. La disponibilité de données local-first est exposée à l'effacement/éviction du navigateur ; la restauration chiffrée est une mesure de récupération, pas une garantie de conservation.
+
+**Recommandation technique (NON implémentée) :** pour une utilisation clinique Web avec données de santé, ne pas accepter « avertissement utilisateur seul » comme contrôle de confidentialité suffisant. Prioriser (A) chiffrement applicatif au repos avec clé dérivée d'un secret non conservé dans le navigateur, déverrouillage explicite et purge des clés en mémoire à la déconnexion ; modèle de récupération et rotation documenté ; ou (B) si (A) incompatible avec l'architecture/local-first, restreindre D18 à un mode non clinique synthétique jusqu'à validation documentée des terminaux gérés, session/OS et modèle de menace. Le chiffrement applicatif ne neutralise pas à lui seul un XSS exécuté pendant une session déverrouillée : CSP, dépendances, injection, isolation des sessions et contrôle d'accès restent indispensables. **Décision recommandée : A, sous réserve d'un design de clé et de récupération prouvé ; pas d'implémentation cryptographique improvisée.**
+
+**Matrice de menace / statut :**
+| Menace | Contrôle observé | Lacune / preuve exigée | État |
+| --- | --- | --- | --- |
+| Fichier de sauvegarde volé | AES-256-GCM, PBKDF2, secret non persisté ; WebCrypto 8/8 | revue force des secrets / metadata et limites du modèle | PASS technique, revue sécurité OPEN |
+| Copie locale IndexedDB / appareil partagé | information claire FR/EN/AR ; séparation physique des coffres | chiffrement au repos/clé, verrouillage et suppression session testés | **BLOCKING PRIVACY OPEN** |
+| XSS même origine pendant session ouverte | aucune garantie par chiffrement export | CSP, sanitization, dépendances, test de récupération d'un coffre déverrouillé | NOT_RUN |
+| Bascule réelle compte patient A→B→A | patient-scoped DB, preuves synthétiques A/B/A | test session réelle hébergée et absence de fuite d'état | NOT_RUN |
+| Perte/éviction du navigateur | export manuel + restauration prouvée | UX de rappel/échec de restauration et récupération sans sauvegarde | PARTIAL |
+| Effacement local puis ancienne sauvegarde | avertissement de restauration et import non destructif | confirmation explicite des conséquences et test scénario | PARTIAL |
+| Accessibilité FR/AR | captures géométriques 390/768/1280 | Tab/Shift+Tab, focus visible, lecteurs d'écran, 200% texte | NOT_RUN |
+| Fidélité visuelle | captures du vrai profil Flutter | BEFORE↔AFTER comparables, mêmes états et viewports | NOT_RUN |
+
+**Scoring provisoire de cette revue (pas une certification de lot) :** Goal=confidentialité Web D18 ; succès=risques critiques traités et preuve FUE ; EXECUTION_SCORE `5.9/10` (E2E robuste mais stockage local non protégé au repos), ADVERSARIAL_SCORE `5.9/10` (attaque appareil partagé / XSS et accès intercompte non écartés), gap 0, plafond bloquant privacy `5.9/10`, RETAINED_SCORE `5.9/10`, statut `BLOCKED`. Ce score est **un jugement de revue** fondé sur le risque identifié, non un résultat de pentest ou une mesure expérimentale.
+
+**Human gate réel :** approbation du modèle de menace, du design de clé/recouvrement et de la décision de stockage des données cliniques. Sans cela, pas de `D18_VERIFIED`, pas de merge clinique et pas de Vercel. **Next exact :** concevoir et documenter le schéma de protection des données au repos (clé, récupération, session, migration), faire revue sécurité ciblée, puis implémenter/tester après approbation du choix de risque ; parallèlement exécuter FUE clavier et captures BEFORE/AFTER comparables.
+
+---
+
 ## 31/10/2026 — D18 Web — CI FUE étendue VERTE sur HEAD exact (nouvelle preuve, sans certification produit)
 
 **Goal :** profil facultatif, historique de poids append-only, export chiffré/restauration D18 via vrais widgets Web, persistance et suppression patient-scoped. **Critère de succès du sous-lot automatisé :** 3 rapports obligatoires PASS au même SHA et leur artefact examiné, aucune assertion supprimée pour obtenir le vert.
