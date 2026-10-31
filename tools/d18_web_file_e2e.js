@@ -70,17 +70,17 @@ async function click(page,label){
 async function getByScroll(page,label){
   const slug=label.replace(/[^a-z0-9]/gi,'-').slice(0,45);
   const travel=async(direction)=>{
-    for(let i=0;i<42;i++){
+    for(let i=0;i<88;i++){
       const found=await locate(page,label);
       if(found)return found;
-      // Real screenshot from e87cde proved 450px wheel + PageDown
-      // jumps past the row. Use small, observed wheel increments only
-      // and check semantics after *every* movement.
+      // 135-pixel steps in the previous artifact skipped the row; never
+      // synthesize "pass" from a toast. Probe the actual row action with
+      // 35-pixel wheel increments, checking after every movement.
       await page.mouse.move(175,655);
-      await page.mouse.wheel(0,direction*135);
-      await sleep(155);
-      if(i===6||i===18)await snap(page,
-        'scroll-'+(direction>0?'down':'up')+'-'+(i===6?'mid':'late')+'-'+slug);
+      await page.mouse.wheel(0,direction*35);
+      await sleep(105);
+      if(i===12||i===35)await snap(page,
+        'scroll-'+(direction>0?'down':'up')+'-'+(i===12?'mid':'late')+'-'+slug);
     }
     return null;
   };
@@ -157,6 +157,23 @@ async function enterVerified(page,label,value){
  }
  throw Error('Flutter editable entry not proved for '+label+': '+
    JSON.stringify(failures));
+}
+
+// Probe a user-facing value without changing it. When a saved weight
+// ListTile is tapped via its "Correct reading" action, Flutter loads the
+// actual stored fixed-point number into its editor; Ctrl+A/C then proves it.
+async function readVerifiedEditor(page,label){
+  await page.context().grantPermissions(['clipboard-read','clipboard-write'],
+    {origin:'http://127.0.0.1:7388'});
+  const x=await get(page,label);
+  await x.scrollIntoViewIfNeeded();
+  await x.click({timeout:6000});
+  await page.evaluate(()=>navigator.clipboard.writeText('d18-read-sentinel'));
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.press('ControlOrMeta+C');
+  const value=await page.evaluate(()=>navigator.clipboard.readText());
+  if(value==='d18-read-sentinel')throw Error('Editor did not copy text for '+label);
+  return value;
 }
 
 async function enterSecret(page,label,value){
@@ -263,17 +280,24 @@ async function check(page,label){
   await saveWeight.click({timeout:6000});
   await sleep(450);
   await snap(page,'weight-after-save-before-scroll');
-  await checkByScroll(page,'72.50 kg');
-  steps.push({check:'Dated weight added through real Web date/time pickers',pass:true});
-  await snap(page,'dated-weight-added');
+  // Do not depend on Flutter's merged canvas semantics for a ListTile
+  // title. A real tap of the edit icon must load the saved 72.50 into the
+  // editor; this confirms a persisted row (not merely a success snackbar).
   await clickByScroll(page,'Corriger la pesée');
+  const savedWeight=await readVerifiedEditor(page,'Poids mesuré');
+  if(savedWeight!=='72.50')
+    throw Error('Saved weight is not readable from edit UI: length='+savedWeight.length);
+  steps.push({check:'Dated 72.50 kg reading persisted and reopened through real Web edit action',pass:true});
+  await snap(page,'dated-weight-editor-proof');
   await enterVerified(page,'Poids mesuré','73,00');
   await click(page,'Enregistrer la correction');
-  await checkByScroll(page,'73.00 kg');
-  if((await page.getByText('72.50 kg',{exact:true}).count())>0)
-    throw Error('Superseded weight still visible after append-only correction');
-  steps.push({check:'Corrected weight is current and superseded weight hidden',pass:true});
-  await snap(page,'corrected-weight');
+  await clickByScroll(page,'Corriger la pesée');
+  const correctedWeight=await readVerifiedEditor(page,'Poids mesuré');
+  if(correctedWeight!=='73.00')
+    throw Error('Corrected weight is not readable from edit UI: length='+correctedWeight.length);
+  steps.push({check:'Corrected 73.00 kg is the editable current reading',pass:true});
+  await snap(page,'corrected-weight-editor-proof');
+  await click(page,'Annuler la correction');
   await clickByScroll(page,'Données & appareils');
   await click(page,'Créer une sauvegarde chiffrée');
   await enterSecret(page,'Phrase secrète (12 caractères minimum)',secret);
@@ -364,9 +388,13 @@ async function check(page,label){
       values.includes('1994')?'browser editor':
       accessibleYear==='1994'?'accessibility':'visible text'});
   await check(page,'Préfère ne pas répondre');
-  await checkByScroll(page,'73.00 kg');
+  await clickByScroll(page,'Corriger la pesée');
+  const restoredWeight=await readVerifiedEditor(page,'Poids mesuré');
+  if(restoredWeight!=='73.00')
+    throw Error('Restored weight is not readable from edit UI: length='+restoredWeight.length);
   steps.push({check:'Identity and corrected weight survive encrypted file restoration',pass:true});
   await snap(page,'restored-weight-and-identity');
+  await click(page,'Annuler la correction');
   await clickByScroll(page,'Supprimer la pesée');
   await click(page,'Supprimer');
   await check(page,'Pesée supprimée localement.');
