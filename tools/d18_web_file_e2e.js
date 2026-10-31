@@ -68,21 +68,26 @@ async function click(page,label){
 // Verify real weight history rows using user-like wheel scrolling, not a
 // global DOM query that silently excludes off-screen Flutter canvas content.
 async function getByScroll(page,label){
+  const slug=label.replace(/[^a-z0-9]/gi,'-').slice(0,45);
   const travel=async(direction)=>{
-    for(let i=0;i<22;i++){
+    for(let i=0;i<18;i++){
       const found=await locate(page,label);
       if(found)return found;
-      // Wheel inside the patient Profile's scroll area.
-      await page.mouse.move(305,705);
-      await page.mouse.wheel(0,direction*360);
-      await sleep(240);
+      // A real user wheel + keyboard PageDown/PageUp in Flutter's
+      // SingleChildScrollView, rather than assuming all items are in DOM.
+      await page.mouse.move(175,655);
+      await page.mouse.wheel(0,direction*450);
+      if(i%3===2)await page.keyboard.press(direction>0?'PageDown':'PageUp');
+      await sleep(210);
+      if(i===6)await snap(page,
+        'scroll-'+(direction>0?'down':'up')+'-'+slug);
     }
     return null;
   };
   const found=await travel(1)||await travel(-1);
   if(!found){
-    await snap(page,'scroll-missing-'+label.replace(/[^a-z0-9]/gi,'-').slice(0,45));
-    throw Error('Flutter history item not visible after real scroll: '+label);
+    await snap(page,'scroll-missing-'+slug);
+    throw Error('Flutter history item not visible after user scrolling: '+label);
   }
   return found;
 }
@@ -256,6 +261,8 @@ async function check(page,label){
     throw Error('Add weight disabled despite confirmed editor and picker');
   }
   await saveWeight.click({timeout:6000});
+  await sleep(450);
+  await snap(page,'weight-after-save-before-scroll');
   await checkByScroll(page,'72.50 kg');
   steps.push({check:'Dated weight added through real Web date/time pickers',pass:true});
   await snap(page,'dated-weight-added');
