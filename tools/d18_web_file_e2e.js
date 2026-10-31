@@ -5,7 +5,7 @@
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
 const out='d18-web-fue-proof';
 fs.mkdirSync(out,{recursive:true});
-const origin='http://127.0.0.1:7386/?mode=returning&owner=a&locale=fr';
+const origin='http://127.0.0.1:7386/?mode=returning&ip=none&owner=a&locale=fr';
 const secret='synthetic-d18-browser-phrase-2026';
 const head=process.env.D18_CANDIDATE_SHA||'unknown';
 const steps=[],shots=[];
@@ -54,7 +54,8 @@ async function check(page,label){
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
   let page=await context.newPage();
-  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:60000});await sleep(2800);await semantics(page);
+  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:60000});await sleep(3200);await semantics(page);
+  await check(page,'Informations personnelles facultatives');
   await click(page,'Informations personnelles facultatives');
   await enter(page,'Année de naissance (facultative)','1994');
   await click(page,'Enregistrer');
@@ -108,6 +109,21 @@ async function check(page,label){
   steps.push({check:'Fresh Chromium profile file restoration persists after reload',pass:true});
   await snap(page,'reloaded-restored-year');
  }catch(err){
+  const current=second||context;
+  if(current){
+    const pages=current.pages();
+    const p=pages.length?pages[pages.length-1]:null;
+    if(p){
+      try{
+        const state=await p.evaluate(()=>({title:document.title,
+          bootError:document.documentElement.dataset.d5BootError||null,
+          flutterError:document.documentElement.dataset.d5FlutterError||null,
+          stage:document.documentElement.dataset.d5Stage||null}));
+        steps.push({check:'browser diagnostic',pass:false,...state});
+        await snap(p,'failure-debug');
+      }catch(_){}
+    }
+  }
   steps.push({check:'e2e',pass:false,error:String(err.message||err).slice(0,700)});
   console.error(err);
  }finally{
