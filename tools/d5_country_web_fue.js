@@ -288,7 +288,34 @@ async function isolation(browser){
     if(item.stage==='A reloaded' && item.browserSnapshot?.serviceWorkerControlled){
       try{
         item.swBypassProbe={tried:true};
-        await page.evaluate// Additional D5 acceptance gates, not a replacement for the 19-case matrix.
+        await page.evaluate(async()=>{
+          const registrations=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(r=>r.unregister()));
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        });
+        await page.goto(url('returning','none','a',locale),{
+          waitUntil:'domcontentloaded',timeout:30000
+        });
+        await snooze(4600);
+        await semantics(page);
+        item.swBypassProbe={tried:true,restored:!!await find(page,l.profile),
+          title:await page.title(),
+          initStage:await page.evaluate(()=>document.documentElement?.dataset?.d5Stage||null),
+          frameworkError:await page.evaluate(()=>
+            document.documentElement?.dataset?.d5FlutterError||null),
+          failures:failedRequests.slice(-5)};
+        item.images.push(await capture(page,locale,size,'isolation','SW_BYPASS_PROBE').catch(()=>null));
+      }catch(probeError){
+        item.swBypassProbe={tried:true,error:String(probeError.message||probeError).slice(0,250)};
+      }
+    }
+    report.errors.push(item);
+  }finally{
+    cases.push(item);await context.close();
+  }
+}
+// Additional D5 acceptance gates, not a replacement for the 19-case matrix.
 // Keyboard journeys have no pointer clicks or programmatic focusing.
 async function keyboardJourney(browser,locale,size){
   const l=copy[locale], [width,height]=size;
@@ -361,7 +388,7 @@ async function offlineCountryReload(browser,locale){
     await click(page,l.save);
     // Only call this offline when the actual app SW controls the document.
     await page.waitForFunction(()=>!!navigator.serviceWorker?.controller,
-      {timeout:20000});
+      null,{timeout:20000});
     item.swControlled=await page.evaluate(()=>!!navigator.serviceWorker?.controller);
     await page.context().setOffline(true);
     await page.reload({waitUntil:'domcontentloaded',timeout:30000});
@@ -386,33 +413,7 @@ async function offlineCountryReload(browser,locale){
   }
 }
 
-(async()=>{
-          const registrations=await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map(r=>r.unregister()));
-          const keys=await caches.keys();
-          await Promise.all(keys.map(k=>caches.delete(k)));
-        });
-        await page.goto(url('returning','none','a',locale),{
-          waitUntil:'domcontentloaded',timeout:30000
-        });
-        await snooze(4600);
-        await semantics(page);
-        item.swBypassProbe={tried:true,restored:!!await find(page,l.profile),
-          title:await page.title(),
-          initStage:await page.evaluate(()=>document.documentElement?.dataset?.d5Stage||null),
-          frameworkError:await page.evaluate(()=>
-            document.documentElement?.dataset?.d5FlutterError||null),
-          failures:failedRequests.slice(-5)};
-        item.images.push(await capture(page,locale,size,'isolation','SW_BYPASS_PROBE').catch(()=>null));
-      }catch(probeError){
-        item.swBypassProbe={tried:true,error:String(probeError.message||probeError).slice(0,250)};
-      }
-    }
-    report.errors.push(item);
-  }finally{
-    cases.push(item);await context.close();
-  }
-}
+
 (async()=>{
   const browser=await chromium.launch({headless:true,args:['--force-renderer-accessibility']});
   try{
