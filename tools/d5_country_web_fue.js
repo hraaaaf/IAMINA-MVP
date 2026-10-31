@@ -89,38 +89,52 @@ async function countrySelect(page,l,code) {
   await snooze(450);
   await click(page,l[key]);
 }
-// Read a real, focused Flutter Web editing value after pointer-focusing
-// the visible country dropdown. Flutter CanvasKit renders the selected value
-// in pixels even if its idle semantics subtree omits input.value. No callback,
-// DOM mutation, or hidden test-only state is used. Exact expected value only.
+// Verify the *real* selected value after reload, via a pointer-focused
+// Flutter editor. On Chrome CanvasKit, a selected dropdown stops exposing its
+// placeholder/label to Playwright; getByText('Rechercher un pays') is therefore
+// NOT a valid locator once France/Espagne has been selected. No fake callbacks,
+// DOM assignments, synthetic storage mutations, or country defaults.
 async function assertSelectedCountry(page,expected) {
-  const searchLabel=copy.fr.search;
-  const countryField=await waitFor(page,searchLabel);
-  await countryField.scrollIntoViewIfNeeded();
-  await countryField.click({timeout:5000});
-  let seen={value:null,activeTag:null,values:[],semanticLabels:[]};
-  for(let attempt=0;attempt<30;attempt++){
-    seen=await page.evaluate(()=>{
+  const size=page.viewportSize();
+  if(size.width!==390 || size.height!==844)
+    throw Error('Country reload visual oracle requires certified 390x844 viewport');
+  let didClick=false;
+  const editors=page.getByRole('textbox');
+  for(let i=0;i<await editors.count();i++){
+    const editor=editors.nth(i);
+    if(!await editor.isVisible().catch(()=>false)) continue;
+    const rect=await editor.boundingBox().catch(()=>null);
+    if(rect && rect.y>280 && rect.y<380){
+      await editor.click({timeout:5000});
+      didClick=true;
+      break;
+    }
+  }
+  if(!didClick){
+    // Grounded in the archived exact 390x844 Chrome capture: the live
+    // dropdown rectangle is x=20..328, y=307..354 (click x=94,y=330).
+    // A real mouse click is essential: do not programmatically focus inputs.
+    await page.mouse.click(94,330);
+  }
+  let observed={active:null,values:[],semantics:[]};
+  for(let n=0;n<40;n++){
+    observed=await page.evaluate(()=>{
       const active=document.activeElement;
-      const inputs=[...document.querySelectorAll('input, textarea')];
+      const inputs=[...document.querySelectorAll('input,textarea')];
       return {
-        value:(active instanceof HTMLInputElement ||
-               active instanceof HTMLTextAreaElement) ? active.value : null,
-        activeTag:active?.tagName||null,
-        values:inputs.map(x=>x.value||'').filter(Boolean).slice(0,8),
-        semanticLabels:[...document.querySelectorAll('flt-semantics')]
+        active:('value' in active)?active.value:null,
+        values:inputs.map(x=>x.value||'').filter(Boolean).slice(0,12),
+        semantics:[...document.querySelectorAll('flt-semantics')]
           .map(x=>x.getAttribute('aria-label')||x.getAttribute('aria-valuetext')||'')
-          .filter(Boolean).filter(x=>x.includes('France')||x.includes('Espagne')).slice(0,8)
+          .filter(x=>x.includes('France')||x.includes('Espagne')).slice(0,10),
       };
     });
-    if(seen.value===expected) return;
-    // An idle native editor can be detached while CanvasKit exposes the
-    // selected value through another actual input associated with the menu.
-    if(seen.values.includes(expected)) return;
-    await snooze(170);
+    if(observed.active===expected || observed.values.includes(expected))
+      return;
+    await snooze(150);
   }
-  throw Error('Restored country mismatch, expected '+expected+
-    '; focusedEditor='+JSON.stringify(seen).slice(0,450));
+  throw Error('Selected country mismatch after real pointer focus: expected '+
+    expected+' observed='+JSON.stringify(observed).slice(0,650));
 }
 async function startState(page,l,width,ready) {
   const btn=await find(page,l.start);
