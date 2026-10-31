@@ -16,6 +16,7 @@ on:
       - 'frontend/lib/features/profile/profile_screen.dart'
       - 'frontend/lib/features/profile/profile_screen_presentation.dart'
       - 'frontend/test/services/d7_consent_withdrawal_fue_test.dart'
+      - 'frontend/test/services/d7_consent_evidence_scope_test.dart'
   workflow_dispatch:
 
 permissions:
@@ -54,6 +55,7 @@ jobs:
           set -euo pipefail
           flutter test --reporter expanded test/features/auth/consent_screen_test.dart
           flutter test --reporter expanded test/services/d7_consent_withdrawal_fue_test.dart
+          flutter test --reporter expanded test/services/d7_consent_evidence_scope_test.dart
           # These are synthetic receipts and local vault state; they do not
           # establish hosted Safari authorization or clinical/privacy sign-off.
       - name: Build actual Flutter Web local patient app; never use remote QA or Production

@@ -139,7 +139,9 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
       withdrawalPending = await evidence.hasWithdrawalPending();
       hasVerifiedEvidence = !withdrawalPending && await evidence.hasCurrentEvidence();
     } catch (_) {
-      // Evidence failure must never grant AI processing consent.
+      // Unknown secure storage state must fail closed and remain retryable.
+      withdrawalPending = true;
+      hasVerifiedEvidence = false;
     }
     if (!mounted || generation != _generation ||
         widget.controller.activeDatabase != db ||

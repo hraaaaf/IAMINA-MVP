@@ -93,9 +93,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
       // The UI gate only opens after the exact server response is verified and
       // the same evidence is durably persisted locally.
       // A new explicit grant supersedes any previously pending withdrawal.
-      await evidenceStore.clearWithdrawalPending();
       await evidenceStore.write(claim);
       await db.setAiConsent(granted: true);
+      // Clear the persistent stop marker ONLY once the server receipt and
+      // all local evidence are durable; otherwise a reload must stay denied.
+      await evidenceStore.clearWithdrawalPending();
       consent.markVerifiedConsent();
       if (mounted) context.go('/dashboard');
     } catch (_) {
