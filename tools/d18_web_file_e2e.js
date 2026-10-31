@@ -28,8 +28,37 @@ async function locate(page,label){
  return null;
 }
 async function get(page,label){
- for(let i=0;i<55;i++){const x=await locate(page,label);if(x)return x;await sleep(200);}
- throw Error('Element not visible: '+label);
+ for(let i=0;i<80;i++){const x=await locate(page,label);if(x)return x;await sleep(200);}
+ throw Error('Element not visible after verified Flutter bootstrap: '+label);
+}
+async function bootRealProfile(page){
+ // The separate E2E browser was previously interrogated before the Flutter
+ // bootstrap had run (default index title, no d5Stage); require the app itself
+ // to attest readiness, not just DOMContentLoaded on an empty HTML shell.
+ const network=[];
+ page.on('pageerror',e=>network.push('pageerror '+String(e).slice(0,280)));
+ page.on('requestfailed',r=>network.push('requestfailed '+r.url()+' '+r.failure()));
+ page.on('response',r=>{if(r.status()>=400)network.push('HTTP '+r.status()+' '+r.url());});
+ await page.goto(origin,{waitUntil:'domcontentloaded',timeout:60000});
+ try{
+  await page.waitForFunction(()=>
+    document.documentElement.dataset.d5Stage==='runApp' ||
+    !!document.documentElement.dataset.d5BootError ||
+    document.title.startsWith('D5_FUE_BOOT_FAILURE'),
+    null,{timeout:65000,polling:250});
+ }catch(e){
+  const state=await page.evaluate(()=>({
+    title:document.title,
+    stage:document.documentElement.dataset.d5Stage||null,
+    bootError:document.documentElement.dataset.d5BootError||null,
+    flutterError:document.documentElement.dataset.d5FlutterError||null,
+    scriptCount:document.scripts.length,
+  }));
+  throw Error('Flutter bootstrap failed before UI actions: '+
+    JSON.stringify({state,network:network.slice(-15)}));
+ }
+ await semantics(page);
+ await get(page,'Informations personnelles facultatives');
 }
 async function click(page,label){
  const x=await get(page,label);await x.scrollIntoViewIfNeeded();
@@ -54,7 +83,7 @@ async function check(page,label){
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
   let page=await context.newPage();
-  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:60000});await sleep(3200);await semantics(page);
+  await bootRealProfile(page);
   await check(page,'Informations personnelles facultatives');
   await click(page,'Informations personnelles facultatives');
   await enter(page,'Année de naissance (facultative)','1994');
@@ -81,7 +110,7 @@ async function check(page,label){
   await context.close();context=null;
   second=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
   page=await second.newPage();
-  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:60000});await sleep(2800);await semantics(page);
+  await bootRealProfile(page);
   await click(page,'Données & appareils');
   await click(page,'Restaurer une sauvegarde');
   const chooserPromise=page.waitForEvent('filechooser',{timeout:20000});
@@ -99,7 +128,7 @@ async function check(page,label){
   await click(page,'Restaurer');
   await check(page,'Données D18 restaurées et vérifiées.');
   await snap(page,'restored-success');
-  await page.reload({waitUntil:'domcontentloaded'});await sleep(2700);await semantics(page);
+  await bootRealProfile(page);
   await click(page,'Informations personnelles facultatives');
   const year=await get(page,'Année de naissance (facultative)');
   await year.click();
