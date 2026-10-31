@@ -47,7 +47,14 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
       _error = null;
     });
     try {
-      await context.read<AppLockService>().configure();
+      final lock = context.read<AppLockService>();
+      if (lock.isExplicitlySkipped) {
+        // Clear the scoped no-lock choice and verify/enroll before exposing
+        // account controls. Never silently switch an existing preference.
+        await lock.enableForCurrentVault();
+      } else {
+        await lock.configure();
+      }
       if (mounted) context.go('/onboarding');
     } catch (_) {
       if (mounted) setState(() => _error = AppLocalizations.of(context)!.appLockSetupFailed);
