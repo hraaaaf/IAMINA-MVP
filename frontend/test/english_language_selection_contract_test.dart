@@ -38,8 +38,13 @@ void main() {
     expect(service, contains("static const _supportedLanguages = {'ar', 'en', 'fr'}"));
     expect(service, contains('_storage.write(key: _languageKey, value: locale.languageCode)'));
     expect(service, contains("_storage.write(key: _explicitKey, value: 'true')"));
-    expect(service, contains('final localLanguage = await _storage.read(key: _languageKey)'));
-    expect(service, contains("final isExplicit = await _storage.read(key: _explicitKey) == 'true'"));
+    // The non-clinical UI preference now uses a fail-soft read wrapper:
+    // unreadable WebCrypto bytes must not blank a previously enrolled app.
+    expect(service, contains('final localLanguage = await _readUiPreference(_languageKey)'));
+    expect(service, contains("final isExplicit = await _readUiPreference(_explicitKey) == 'true'"));
+    expect(service, contains('return await _storage.read(key: key)'));
+    expect(service, contains('} catch (error) {'));
+    expect(service, contains('return null;'));
     expect(service, contains('explicitLocalLanguage: isExplicit ? localLanguage : null'));
   });
 

@@ -16,6 +16,7 @@ import '../../services/auth_service.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
+import '../../services/locale_preference_service.dart';
 import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
@@ -46,6 +47,14 @@ String _profileValidationMessage(BuildContext context) {
   return 'Saisissez une plage glycémique valide. Le diagnostic et le traitement peuvent être ajoutés plus tard.';
 }
 
+bool shouldShowReturningCountryPrompt({
+  required bool hasProfile,
+  required bool preferenceLoaded,
+  required String? confirmedCountry,
+  required bool dismissed,
+}) =>
+    hasProfile && preferenceLoaded && confirmedCountry == null && !dismissed;
+
 /// Do not claim remote confirmation while treatment data is pending or in conflict.
 bool d7ProfileSaveCanShowConfirmed({
   required bool mirrorConfirmed,
@@ -72,6 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _resolvingTreatmentConflict = false;
   String _unit = 'mg/dL';
   bool _hasPersistedProfile = false;
+  bool _countryReminderDismissed = false;
   DateTime? _ramadanStartDate;
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;

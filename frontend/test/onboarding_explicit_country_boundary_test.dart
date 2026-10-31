@@ -26,16 +26,19 @@ void main() {
     expect(await storage.read(key: 'iamina.country'), isNull);
     expect(await storage.read(key: 'iamina.local_tone'), isNull);
 
+    await service.bindCountryScope('amina_vault_v1_native_734');
     // Only finishing all explicit onboarding choices may persist a country.
     await service.setExperience(
       language: 'ar', country: 'FR', tone: 'neutral',
     );
-    expect(await storage.read(key: 'iamina.country'), 'FR');
+    expect(await storage.read(key: 'iamina.country'), isNull);
+    expect(await storage.read(key: 'iamina.country.v1.amina_vault_v1_native_734'), 'FR');
 
     // Changing language again never overwrites the actual selected country.
     await service.setLanguageOnly('en');
     expect(await storage.read(key: 'iamina.ui_language'), 'en');
-    expect(await storage.read(key: 'iamina.country'), 'FR');
+    expect(await storage.read(key: 'iamina.country'), isNull);
+    expect(await storage.read(key: 'iamina.country.v1.amina_vault_v1_native_734'), 'FR');
     expect(await storage.read(key: 'iamina.local_tone'), 'neutral');
   });
 

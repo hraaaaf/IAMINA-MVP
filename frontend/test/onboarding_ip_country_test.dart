@@ -30,9 +30,15 @@ void main() {
       throwsArgumentError,
     );
     expect(await storage.read(key: 'iamina.country'), isNull);
+    await service.bindCountryScope('amina_vault_v1_native_734');
     await service.setExperience(language: 'fr', country: 'gb', tone: 'neutral');
     expect(service.country, 'GB');
-    expect(await storage.read(key: 'iamina.country'), 'GB');
+    // A historical browser-global country must remain unset; ownership is scoped.
+    expect(await storage.read(key: 'iamina.country'), isNull);
+    expect(
+      await storage.read(key: 'iamina.country.v1.amina_vault_v1_native_734'),
+      'GB',
+    );
     service.dispose();
   });
 

@@ -16,6 +16,7 @@ String _profileActionCopy(
 extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildPresentation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final localePreferences = context.watch<LocalePreferenceService?>();
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     return Scaffold(
       appBar: isMobile
@@ -43,6 +44,67 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                               context,
                             ).profileCompletionPrompt,
                             compact: true,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        if (shouldShowReturningCountryPrompt(
+                          hasProfile: _hasPersistedProfile,
+                          preferenceLoaded: (localePreferences?.loaded ?? false) &&
+                              (localePreferences?.countryScopeReady ?? false),
+                          confirmedCountry: localePreferences?.country,
+                          dismissed: _countryReminderDismissed,
+                        )) ...[
+                          Card(
+                            key: const ValueKey('d5-country-legacy-prompt'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _profileActionCopy(context,
+                                      fr: 'Précisez votre pays d’utilisation',
+                                      en: 'Confirm your country of use',
+                                      ar: 'حدّد بلد استخدامك',
+                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(_profileActionCopy(context,
+                                    fr: 'Cette information est facultative pour continuer. Vous pouvez la renseigner plus tard.',
+                                    en: 'You can keep using the app and choose your country later.',
+                                    ar: 'يمكنك متابعة استخدام التطبيق واختيار البلد لاحقًا.',
+                                  )),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      TextButton(
+                                        key: const ValueKey('d5-country-later'),
+                                        onPressed: () => _setPresentationState(
+                                          () => _countryReminderDismissed = true,
+                                        ),
+                                        child: Text(_profileActionCopy(context,
+                                          fr: 'Plus tard',
+                                          en: 'Later',
+                                          ar: 'لاحقًا',
+                                        )),
+                                      ),
+                                      OutlinedButton(
+                                        key: const ValueKey('d5-country-choose'),
+                                        onPressed: () => context.push('/preferences'),
+                                        child: Text(_profileActionCopy(context,
+                                          fr: 'Choisir mon pays',
+                                          en: 'Choose my country',
+                                          ar: 'اختر بلدي',
+                                        )),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 14),
                         ],
