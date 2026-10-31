@@ -43,6 +43,16 @@ class _SkippedLock extends AppLockService {
 
 class _FakeConsentEvidenceStore extends ConsentEvidenceStore {
   ConsentNoticeClaim? written;
+  bool withdrawalPending = false;
+
+  @override
+  Future<void> markWithdrawalPending() async { withdrawalPending = true; }
+
+  @override
+  Future<bool> hasWithdrawalPending() async => withdrawalPending;
+
+  @override
+  Future<void> clearWithdrawalPending() async { withdrawalPending = false; }
 
   @override
   Future<ConsentNoticeClaim?> readCurrent() async => written;
