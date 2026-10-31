@@ -56,6 +56,17 @@ jobs:
         run: |
           python3 -m http.server 7386 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-http.log 2>&1 &
           node tools/d18_web_fue.js
+      - name: Build D18-only encrypted backup recovery probe for Chromium
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/d18_web_crypto_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_web_crypto_probe_main.dart
+      - name: Verify WebCrypto and browser-profile loss/restore in real Chromium
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -m http.server 7387 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-crypto-http.log 2>&1 &
+          node tools/d18_web_crypto_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
