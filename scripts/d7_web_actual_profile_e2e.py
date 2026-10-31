@@ -115,6 +115,22 @@ def main():
                         "D7 saved medical summary lacks " + repr(parts)
                     )
 
+                def medical_panel_physically_expanded():
+                    # Flutter semantics may expose children of a visually
+                    # collapsed ExpansionTile. Use rendered card geometry.
+                    medical = page.get_by_role(
+                        "button", name=re.compile(r"^Medical tracking", re.I)
+                    ).first
+                    ramadan = page.get_by_role(
+                        "button", name=re.compile(r"^Ramadan period", re.I)
+                    ).first
+                    medical_box = medical.bounding_box()
+                    next_box = ramadan.bounding_box()
+                    return bool(
+                        medical_box and next_box
+                        and next_box["y"] - medical_box["y"] > 160
+                    )
+
                 def profile_open():
                     page.goto(origin + "/#/profile",
                               wait_until="domcontentloaded", timeout=60000)
@@ -127,7 +143,11 @@ def main():
                     section = page.get_by_role(
                         "button", name=re.compile(r"^Medical tracking", re.I)
                     ).first
-                    section.click(timeout=18000)
+                    # Desktop may already start expanded: an unconditional
+                    # click would collapse the actual form in the screenshot.
+                    if (page.viewport_size or {}).get("width", 0) < 1100 \
+                            or not medical_panel_physically_expanded():
+                        section.click(timeout=18000)
                     # Flutter's ExpansionTile uses an animated semantics tree:
                     # a successful click does not mean its children have
                     # become accessible at the exact same instant.
@@ -207,6 +227,13 @@ def main():
                                 "button", name="Save", exact=True
                             ).first.wait_for(state="visible", timeout=18000)
                             page.wait_for_timeout(250)
+                            # Fail closed if desktop shows only the header,
+                            # regardless of stale Flutter accessibility nodes.
+                            if width >= 1100:
+                                assert medical_panel_physically_expanded(), (
+                                    "FUE-03 desktop screenshot: medical form "
+                                    "is visually collapsed"
+                                )
                             name = f"{stage}-{width}x{height}.png"
                             target = CAPTURE_DIR / name
                             page.screenshot(path=str(target), full_page=True,
