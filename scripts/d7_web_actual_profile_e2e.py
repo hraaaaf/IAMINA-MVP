@@ -193,19 +193,19 @@ def main():
                     try:
                         for width, height in VIEWPORTS:
                             page.set_viewport_size({"width": width, "height": height})
+                            # A responsive rebuild can preserve a stale
+                            # ExpansionTile semantics node while the real
+                            # medical panel is visually collapsed. Reload and
+                            # unlock at the target viewport, then open the
+                            # medical panel through the same real app journey.
+                            reload_and_unlock()
                             medical_summary_contains(*expected)
-                            # Flutter can rebuild/collapse ExpansionTile when
-                            # crossing responsive breakpoints. A summary-only
-                            # screenshot hides the actual clinical state.
-                            # Require visible medical choices at EVERY viewport.
-                            choice = page.get_by_role(
+                            page.get_by_role(
                                 "button", name=re.compile(r"^Type 2 Diabetes$", re.I)
-                            )
-                            if not choice.count():
-                                page.get_by_role(
-                                    "button", name=re.compile(r"^Medical tracking", re.I)
-                                ).first.click(timeout=18000)
-                            choice.first.wait_for(state="visible", timeout=18000)
+                            ).first.wait_for(state="visible", timeout=18000)
+                            page.get_by_role(
+                                "button", name="Save", exact=True
+                            ).first.wait_for(state="visible", timeout=18000)
                             page.wait_for_timeout(250)
                             name = f"{stage}-{width}x{height}.png"
                             target = CAPTURE_DIR / name
