@@ -609,7 +609,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               ),
               Consumer<ConsentService>(
                 builder: (context, consent, _) {
-                  if (!consent.hasConsent) return const SizedBox.shrink();
+                  if (!consent.hasConsent && !consent.hasWithdrawalPending) {
+                    return const SizedBox.shrink();
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: OutlinedButton.icon(
@@ -620,7 +622,14 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                         color: AminaTheme.dangerFg,
                       ),
                       label: Text(
-                        l10n.consentWithdraw,
+                        consent.hasWithdrawalPending
+                            ? _profileUiText(
+                                context,
+                                fr: 'Réessayer le retrait du consentement IA',
+                                en: 'Retry AI consent withdrawal',
+                                ar: 'إعادة محاولة سحب موافقة الذكاء الاصطناعي',
+                              )
+                            : l10n.consentWithdraw,
                         style: const TextStyle(
                           color: AminaTheme.dangerFg,
                           fontWeight: FontWeight.w600,

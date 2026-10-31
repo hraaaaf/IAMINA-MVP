@@ -7,6 +7,7 @@ class ConsentEvidenceStore {
   static const _versionKey = 'iamina.ai_consent.notice_version';
   static const _hashKey = 'iamina.ai_consent.notice_hash';
   static const _localeKey = 'iamina.ai_consent.notice_locale';
+  static const _withdrawalPendingKey = 'iamina.ai_consent.withdrawal_pending';
 
   final FlutterSecureStorage _storage;
   final String? _vaultNamespace;
@@ -28,7 +29,19 @@ class ConsentEvidenceStore {
     return vault == null ? legacyKey : '$legacyKey.v2.$vault';
   }
 
+  // Persist an owner-scoped stop marker before contacting the remote API:
+  // an offline/failed DELETE must not resurrect AI processing on next reload.
+  Future<bool> hasWithdrawalPending() async =>
+      await _storage.read(key: _key(_withdrawalPendingKey)) == 'true';
+
+  Future<void> markWithdrawalPending() async =>
+      _storage.write(key: _key(_withdrawalPendingKey), value: 'true');
+
+  Future<void> clearWithdrawalPending() async =>
+      _storage.delete(key: _key(_withdrawalPendingKey));
+
   Future<ConsentNoticeClaim?> readCurrent() async {
+    if (await hasWithdrawalPending()) return null;
     final values = await Future.wait([
       _storage.read(key: _key(_versionKey)),
       _storage.read(key: _key(_hashKey)),

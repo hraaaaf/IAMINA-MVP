@@ -11,6 +11,7 @@ class ConsentService extends ChangeNotifier {
   bool _hasVerifiedEvidence;
   bool _profileHasTimestamp = false;
   bool _hasCompletedOnboarding = false;
+  bool _withdrawalPending = false;
   StreamSubscription<PatientProfileData?>? _sub;
 
   ConsentService({bool hasVerifiedEvidence = false})
@@ -20,7 +21,8 @@ class ConsentService extends ChangeNotifier {
   bool get isInitialized => _hasConsent != null;
 
   /// Safe default is false. Both local timestamp and verified evidence required.
-  bool get hasConsent => _hasConsent ?? false;
+  bool get hasConsent => !_withdrawalPending && (_hasConsent ?? false);
+  bool get hasWithdrawalPending => _withdrawalPending;
 
   /// First-use preferences are persisted, not a claim of medical completeness.
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
@@ -68,6 +70,7 @@ class ConsentService extends ChangeNotifier {
     _profileHasTimestamp = true;
     _hasConsent = true;
     _hasDeclinedLocally = false;
+    _withdrawalPending = false;
     notifyListeners();
   }
 
@@ -76,6 +79,23 @@ class ConsentService extends ChangeNotifier {
     _hasVerifiedEvidence = false;
     _profileHasTimestamp = false;
     _hasConsent = false;
+    notifyListeners();
+  }
+
+  /// Immediate session egress stop; persisted owner marker is handled by the
+  /// evidence store. This state also makes the retry CTA visible in Profile.
+  void markWithdrawalPending() {
+    _withdrawalPending = true;
+    _hasVerifiedEvidence = false;
+    _hasConsent = false;
+    _hasDeclinedLocally = true;
+    notifyListeners();
+  }
+
+  void markWithdrawalConfirmed() {
+    _withdrawalPending = false;
+    clearVerifiedConsent();
+    _hasDeclinedLocally = true;
     notifyListeners();
   }
 
