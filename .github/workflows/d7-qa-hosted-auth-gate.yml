@@ -63,3 +63,15 @@ jobs:
           node --test frontend/test/qa/d7_hosted_auth_gate.test.mjs
       - name: Verify session isolation without clinical writes or response logs
         run: node scripts/d7_qa_hosted_auth_gate.mjs
+      - name: Install pinned browser driver (no postinstall scripts)
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.58.0
+      - name: Real hosted Flutter Chrome A-B-A read-only
+        run: node scripts/d7_hosted_browser_aba_readonly.mjs
+      - name: Upload bounded browser verdict (no clinical data)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d7-hosted-real-chrome-aba
+          path: d7-hosted-browser-aba-proof/result.json
+          if-no-files-found: warn
+          retention-days: 7
