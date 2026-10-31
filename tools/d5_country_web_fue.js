@@ -98,37 +98,42 @@ async function assertSelectedCountry(page,expected) {
   const size=page.viewportSize();
   if(size.width!==390 || size.height!==844)
     throw Error('Country reload visual oracle requires certified 390x844 viewport');
-  // Observe the actual Flutter accessibility tree. A fixed LTR pointer coordinate
-  // is not valid for RTL layouts, and CanvasKit need not expose an HTML input.
-  const candidates=[
-    page.getByText(expected,{exact:true}),
-    page.getByRole('button',{name:expected,exact:true}),
-    page.getByRole('combobox',{name:expected,exact:true}),
-    page.getByRole('textbox',{name:expected,exact:true}),
+  // Chrome CanvasKit draws the selected value without an exposed DOM value.
+  // The real screenshot confirms France/فرنسا in the country field. Focus its
+  // *live labelled Flutter search control*, not a stale LTR pixel coordinate.
+  const search=expected==='فرنسا'?'ابحث عن بلد':'Rechercher un pays';
+  const probes=[
+    page.getByRole('textbox',{name:search,exact:true}),
+    page.getByRole('combobox',{name:search,exact:true}),
+    page.getByText(search,{exact:true}),
   ];
-  let evidence={expected,locale:await page.evaluate(()=>document.documentElement.lang),
-    direction:await page.evaluate(()=>document.documentElement.dir),labels:[]};
-  for(let n=0;n<40;n++){
-    for(const candidate of candidates){
-      if(await candidate.count() && await candidate.first().isVisible().catch(()=>false))
-        return;
+  let control=null;
+  for(const probe of probes){
+    for(let i=0;i<await probe.count();i++){
+      if(await probe.nth(i).isVisible().catch(()=>false)){
+        control=probe.nth(i);break;
+      }
     }
-    evidence=await page.evaluate(expected=>{
-      const nodes=[...document.querySelectorAll('flt-semantics,[role],input,textarea')];
-      const labels=nodes.map(el=>({
-        label:el.getAttribute('aria-label')||'',
-        value:el.getAttribute('aria-valuetext')||el.value||'',
-        text:(el.textContent||'').slice(0,70),
-      })).filter(x=>x.label||x.value||x.text).slice(0,30);
-      return {expected,locale:document.documentElement.lang,
-        direction:document.documentElement.dir,labels};
+    if(control)break;
+  }
+  if(!control)throw Error('Live country field not accessible: '+search);
+  await control.click({timeout:5000});
+  let observed={expected,active:null,values:[],labels:[]};
+  for(let n=0;n<40;n++){
+    observed=await page.evaluate(expected=>{
+      const active=document.activeElement;
+      const values=[...document.querySelectorAll('input,textarea')]
+        .map(el=>el.value||'').filter(Boolean);
+      const labels=[...document.querySelectorAll('flt-semantics')]
+        .map(el=>el.getAttribute('aria-label')||'').filter(Boolean).slice(-20);
+      return {expected,active:('value' in active)?active.value:null,
+        values,labels};
     },expected);
-    if(evidence.labels.some(x=>x.label===expected||x.value===expected||
-      x.text.trim()===expected))return;
+    if(observed.active===expected || observed.values.includes(expected))return;
     await snooze(150);
   }
-  throw Error('Country not exposed in live Flutter UI after offline reload: '+
-    JSON.stringify(evidence).slice(0,800));
+  throw Error('Country mismatch after clicking live labelled Flutter field: '+
+    JSON.stringify(observed).slice(0,800));
 }
 async function startState(page,l,width,ready) {
   const btn=await find(page,l.start);
