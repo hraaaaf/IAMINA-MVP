@@ -108,6 +108,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           ),
                           const SizedBox(height: 14),
                         ],
+                        if (context.read<AppDatabase>().patientVaultScope != null &&
+                            context.read<AppDatabase>().patientVaultScope!.databaseName !=
+                                'amina_vault_v1_audit') ...[
+                          D18ProfilePanel(db: context.read<AppDatabase>()),
+                          const SizedBox(height: 14),
+                        ],
                         _buildMedicalSection(l10n),
                         const SizedBox(height: 14),
                         _buildRamadanSection(l10n),
