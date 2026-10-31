@@ -181,9 +181,26 @@ async function check(page,label){
   await click(page,'Informations personnelles facultatives');
   const year=await get(page,'Année de naissance (facultative)');
   await year.click();
-  const values=await page.evaluate(()=>
-    [...document.querySelectorAll('input,textarea')].map(x=>x.value||'').filter(Boolean));
-  if(!values.includes('1994'))throw Error('Restored birth year missing in actual Flutter input '+JSON.stringify(values));
+  // Flutter Web keeps the editable text node inside a Shadow DOM root.
+  // document.querySelectorAll('input') on the light DOM returns [] even when
+  // the patient sees 1994 (confirmed by the real failure screenshot).
+  // Playwright locator pierces open shadow roots and reads the real editor.
+  const values=await page.locator('input,textarea').evaluateAll(els=>
+    els.map(x=>typeof x.value==='string'?x.value:'').filter(Boolean));
+  const ariaYear=page.getByRole('textbox',{name:'Année de naissance (facultative)'});
+  let accessibleYear='';
+  if(await ariaYear.count()){
+    accessibleYear=await ariaYear.first().inputValue().catch(()=>'');
+  }
+  const visibleYear=page.getByText('1994',{exact:true});
+  const renderedYear=await visibleYear.count()>0 &&
+    await visibleYear.first().isVisible().catch(()=>false);
+  const restored=values.includes('1994')||accessibleYear==='1994'||renderedYear;
+  if(!restored){
+    throw Error('Restored birth year not readable by Flutter Web semantics; '+
+      'editableInputLengths='+JSON.stringify(values.map(x=>x.length))+
+      ' renderedTextVisible='+renderedYear);
+  }
   steps.push({check:'Fresh Chromium profile file restoration persists after reload',pass:true});
   await snap(page,'reloaded-restored-year');
  }catch(err){
