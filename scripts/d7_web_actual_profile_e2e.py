@@ -194,7 +194,19 @@ def main():
                         for width, height in VIEWPORTS:
                             page.set_viewport_size({"width": width, "height": height})
                             medical_summary_contains(*expected)
-                            page.wait_for_timeout(200)
+                            # Flutter can rebuild/collapse ExpansionTile when
+                            # crossing responsive breakpoints. A summary-only
+                            # screenshot hides the actual clinical state.
+                            # Require visible medical choices at EVERY viewport.
+                            choice = page.get_by_role(
+                                "button", name=re.compile(r"^Type 2 Diabetes$", re.I)
+                            )
+                            if not choice.count():
+                                page.get_by_role(
+                                    "button", name=re.compile(r"^Medical tracking", re.I)
+                                ).first.click(timeout=18000)
+                            choice.first.wait_for(state="visible", timeout=18000)
+                            page.wait_for_timeout(250)
                             name = f"{stage}-{width}x{height}.png"
                             target = CAPTURE_DIR / name
                             page.screenshot(path=str(target), full_page=True,
