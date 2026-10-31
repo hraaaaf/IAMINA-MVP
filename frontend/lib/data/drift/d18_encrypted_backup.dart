@@ -102,10 +102,36 @@ final class D18EncryptedBackup {
     }
     final weights = _objects(decoded['weights'], 'weight observations');
     final seen = <String>{};
+    final replacementTargets = <String>{};
     for (final row in weights) {
       PatientWeightHistoryStore.validateBackupRow(row, owner);
       if (!seen.add(row['client_uuid'] as String)) {
         throw const FormatException('Duplicated weight identifier');
+      }
+      if (row['replaces_uuid'] case final String previous) {
+        if (!replacementTargets.add(previous)) {
+          throw const FormatException('Multiple corrections of one reading');
+        }
+      }
+    }
+    for (final row in weights) {
+      final previous = row['replaces_uuid'];
+      if (previous != null && !seen.contains(previous)) {
+        throw const FormatException('Missing correction ancestor');
+      }
+    }
+    final parents = {
+      for (final row in weights)
+        row['client_uuid'] as String: row['replaces_uuid'] as String?,
+    };
+    for (final id in seen) {
+      final path = <String>{};
+      String? cursor = id;
+      while (cursor != null) {
+        if (!path.add(cursor)) {
+          throw const FormatException('Cyclic D18 correction history');
+        }
+        cursor = parents[cursor];
       }
     }
     return D18BackupPreview(
@@ -139,7 +165,8 @@ final class D18EncryptedBackup {
     };
     // Do not let forged or contaminated local data leave in a backup.
     _parsePayload(payload);
-    final salt = List<int>.generate(16, (_) => Random.secure().nextInt(256));
+    final random = Random.secure();
+    final salt = List<int>.generate(16, (_) => random.nextInt(256));
     final key = await Pbkdf2(
       macAlgorithm: Hmac.sha256(),
       iterations: kdfIterations,
@@ -265,12 +292,12 @@ final class D18EncryptedBackup {
         await db.customStatement('''
           INSERT INTO patient_weight_observations_v1
             (user_id, client_uuid, value_hundredths, unit,
-             kilograms_hundredths, measured_at_utc, provenance)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+             kilograms_hundredths, measured_at_utc, replaces_uuid, provenance)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
           owner, row['client_uuid'], row['value_hundredths'],
           row['unit'], row['kilograms_hundredths'],
-          row['measured_at_utc'], row['provenance'],
+          row['measured_at_utc'], row['replaces_uuid'], row['provenance'],
         ]);
       }
       final actualDetails = await demographics.exportOwnedRows();
