@@ -67,3 +67,26 @@ Le workflow `.github/workflows/d7-fue-returning-patient-web.yml` est **sans secr
 **Prepared patch under PR `fix/d7-consent-revocation-fue-20261031`:** introduces `d7_consent_withdrawal.dart`, owner-scoped marker in secure storage, fail-closed ConsentService, startup pending-state restoration, Profile retry CTA and explicit success/warning messages FR/EN/AR, exact server response check in ApiClient. New C05 tests exercise success, rejection, offline exception, marker failure, cleanup failure, retry and misleading 2xx receipt. Workflow D7 adds these synthetic cases before Chrome patient-profile FUE.
 
 **Important limits / binary gates:** synthetic test suite on a PR can prove only these controlled conditions; it is not evidence for real hosted auth/WebAuthn/remote consent across FR/AR or an independent privacy signoff. **FUE D7 remains NOT_VERIFIED** until all required C01–C05 cases on a real permitted QA environment, profile persistence/negative states, actual viewport comparisons, and Perfection Pass score are reviewed with adequate evidence. Old production remains on `ed8c67e0` unless a separate authorized deployment follows.
+
+
+## 31/10/2026 — Closeout de livraison PR #1209 : production déployée (FUE globale non certifiée)
+
+**Décision et propriétaire** : merge de la PR #1209 et déploiement Vercel Production expressément approuvés. Cela valide **l'autorisation de mise en production**, non la totalité des critères de certification clinique/privacy de la FUE.
+
+**Goal correctif** : ne jamais afficher de faux accusé de réception « Consentement retiré » après échec de suppression serveur. Arrêt local immédiat, marqueur de retrait en attente spécifique au coffre patient, contrôle de réponse serveur `ai_consent_given=false` et avis effacés, nettoyage local après reçu, retry explicite et messages FR/EN/AR.
+
+**Preuves d'intégration** :
+- [PR #1209](https://github.com/hraaaaf/IAMINA-MVP/pull/1209) fusionnée via squash, commit applicatif **`a5d1c61c31d0fcc375dabbeec4607506041504f8`**.
+- Contenu **identique** au commit testé `fab1496f252f051efe1bb1724fa61883bc835818` : Git tree SHA `e5f85796d224bd638eff0f7b3c48874e0d4b0530`.
+- **11/11 workflows pré-merge SUCCESS**, dont [CI complète #41210398742](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41210398742) et [FUE D7 synthétique #41210398830](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41210398830) ; D5 clavier [#41210398745](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41210398745) SUCCESS à la 2e tentative.
+- Vercel frontend production `iamina-review` : deployment **`dpl_9LQqNzbj9RbN51cFLcajifxzq3dm`**, **READY**, target `production`, commit exact `a5d1c61`. Alias public **`https://iamina-review.vercel.app`** vérifié relié à ce deployment ID. Backend et DB non déployés/modifiés.
+- **Smoke public (données anonymes uniquement)** : `GET /login`, `GET /flutter_bootstrap.js` et `GET /main.dart.js` = **HTTP 200** ; backend `GET /api/v1/account/consent` **HTTP 401 sans identifiant** ; backend `GET /api/v1/health` = `status=ok`, `db=ok`, **`cache=unavailable`** (suivi opérations séparé). Sandbox temporaire de contrôle arrêtée.
+- **Rollback** identifié : ancien déploiement frontal `dpl_DiuwDsGWM2eLZhodpFfeZ5tbU7xC`, SHA `ed8c67e0`. Aucun rollback exécuté.
+
+**Statut closeout honnête** :
+- `MERGE=PASS` · `PROD_DEPLOYMENT=READY` · `ALIAS=PASS` · `HTTP_SMOKE=PASS` · `SECURITY_SYNTHETIC_FUE=PASS`.
+- `POST_MERGE_CI` : suivre [CI #41240704162](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41240704162) et audits UI associés jusqu'au verdict final (in_progress lors du lancement/smoke, ne pas inventer de succès).
+- `FUE_C01-C05_HOSTED_AUTH_FR_AR=NOT_CERTIFIED` · `INDEPENDENT_CLINICAL_PRIVACY_REVIEW=NOT_CERTIFIED` · `D7_GLOBAL_VERIFIED=NO`. Les tests synthétiques et le GET anonyme ne prouvent ni un vrai retrait sur compte patient ni une certification réglementaire.
+- Aucun % de certification, double score ni score visuel absolu attribué sans revue des preuves correspondantes.
+
+**Next exact** : vérifier les CI post-merge sur `a5d1c61` ; réaliser la FUE consentement hébergée avec comptes synthétiques autorisés (refus, erreur/retry, retrait, reload, FR/AR), puis audit privacy/clinique indépendant et Perfection Pass documentaire. Le commit documentaire ajouté à cette fiche, s'il existe, ne modifie pas le **SHA du code Vercel déployé** `a5d1c61`.
