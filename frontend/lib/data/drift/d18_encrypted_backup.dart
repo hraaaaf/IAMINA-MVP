@@ -27,7 +27,8 @@ final class D18BackupPreview {
 
   bool get isDeviceOnly => sourceVaultName.startsWith('amina_vault_v1_device_');
   int get observationCount => weights.length;
-  bool get hasDemographics => declarations.isNotEmpty;
+  bool get hasDemographics => declarations.any((row) =>
+      row['birth_year'] != null || row['gender_identity'] != null);
 }
 
 final class D18EncryptedBackup {

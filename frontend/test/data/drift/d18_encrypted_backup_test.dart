@@ -169,6 +169,28 @@ void main() {
     expect(await restored.exportOwnedRows(), isEmpty);
   });
 
+  test('D18 preview never claims erased personal fields are present', () async {
+    final db = _vault(734);
+    addTearDown(db.close);
+    final demographics = PatientProgressiveDemographicsStore(db);
+    await demographics.update(
+      updateBirthYear: true, birthYear: 1994,
+      updateGenderIdentity: true, genderIdentity: 'woman',
+    );
+    await demographics.update(
+      updateBirthYear: true, birthYear: null,
+      updateGenderIdentity: true, genderIdentity: null,
+    );
+    final encrypted = await D18EncryptedBackup.exportEncrypted(
+      db, passphrase: _secret,
+    );
+    final preview = await D18EncryptedBackup.open(
+      encrypted, passphrase: _secret,
+    );
+    expect(preview.hasDemographics, false);
+    expect(preview.observationCount, 0);
+  });
+
   test('weight correction is append-only, latest view, and purge deletes family',
       () async {
     final db = _vault(734);

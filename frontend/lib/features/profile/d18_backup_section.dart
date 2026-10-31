@@ -388,6 +388,16 @@ class _D18RestoreDialogState extends State<_D18RestoreDialog> {
               'La restauration ne remplace jamais vos données existantes. Seul un coffre D18 vide peut être rempli.',
               'Restore never replaces existing data. Only an empty D18 vault can be restored.',
               'لا تستبدل الاستعادة أي بيانات موجودة. يجب أن تكون خزنة D18 فارغة.')),
+            const SizedBox(height: 8),
+            Text(
+              _t(
+                'Une ancienne sauvegarde peut réintroduire des informations supprimées. Vérifiez l’aperçu avant de confirmer.',
+                'An older backup can bring back information you previously deleted. Review the preview before confirming.',
+                'قد تعيد النسخة الاحتياطية القديمة بيانات سبق حذفها. راجع المعاينة قبل التأكيد.',
+              ),
+              key: const Key('d18-restore-old-backup-warning'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               key: const Key('d18-restore-pick'),
