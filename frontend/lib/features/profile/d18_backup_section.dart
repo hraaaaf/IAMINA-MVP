@@ -137,8 +137,9 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
           'لم يتم تأكيد التنزيل.'));
         return;
       }
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t(
+      messenger.showSnackBar(SnackBar(content: Text(_t(
         'Fichier chiffré généré. Gardez-le et sa phrase secrète séparément ; testez la restauration.',
         'Encrypted file generated. Keep the file and passphrase separately; test restoration.',
         'تم إنشاء الملف المشفر. احتفظ به وبالعبارة السرية منفصلين واختبر الاستعادة.'))));
@@ -311,8 +312,9 @@ class _D18RestoreDialogState extends State<_D18RestoreDialog> {
       if (!mounted) return;
       _rawFile = null;
       _preview = null;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t(
+      messenger.showSnackBar(SnackBar(content: Text(_t(
         'Données D18 restaurées et vérifiées. Actualisez le profil.',
         'D18 data restored and checked. Refresh your profile.',
         'تمت استعادة بيانات D18 والتحقق منها. حدّث الملف الشخصي.'))));
