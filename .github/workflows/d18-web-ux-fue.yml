@@ -56,6 +56,10 @@ jobs:
         run: |
           python3 -m http.server 7386 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-http.log 2>&1 &
           node tools/d18_web_fue.js
+      - name: Real IAMINA file download and restoration through Flutter widgets
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node tools/d18_web_file_e2e.js
       - name: Build D18-only encrypted backup recovery probe for Chromium
         working-directory: frontend
         run: |
