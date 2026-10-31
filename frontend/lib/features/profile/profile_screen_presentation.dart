@@ -464,6 +464,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           ),
           onTap: () => context.push('/cgm'),
         ),
+        if (context.read<AppDatabase>().patientVaultScope != null) ...[
+          D18BackupSection(db: context.read<AppDatabase>()),
+        ],
       ],
     );
   }
