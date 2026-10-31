@@ -29,6 +29,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
   bool _identityDirty = false;
   String? _notice;
   String? _pendingWeightUuid;
+  String? _editingWeightUuid;
   int _loadEpoch = 0;
 
   String _t(String fr, String en, String ar) =>
@@ -47,6 +48,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
       _loading = true; _busy = false;
       _yearDirty = false; _identityDirty = false; _notice = null;
       _pendingWeightUuid = null;
+      _editingWeightUuid = null;
       _measuredAt = null;
       _reload();
     }
@@ -155,12 +157,14 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
         clientUuid: clientUuid,
         value: _weight.text.trim().replaceAll(',', '.'),
         unit: _unit, measuredAtUtc: _measuredAt!.toUtc(),
+        replacesUuid: _editingWeightUuid,
       );
       if (!mounted || !identical(db, widget.db)) return;
       final history = await PatientWeightHistoryStore(db).recent(limit: 20);
       if (!mounted || !identical(db, widget.db)) return;
       setState(() {
         _pendingWeightUuid = null;
+        _editingWeightUuid = null;
         _history = history; _weight.clear(); _measuredAt = null;
         _notice = _t('Pesée ajoutée ; historique conservé.',
             'Reading added; history preserved.', 'تمت إضافة القياس مع حفظ السجل.');
@@ -170,6 +174,53 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
           'Pesée refusée. Vérifiez la valeur, la date et votre profil.',
           'Reading refused. Check amount, date and profile.',
           'تم رفض القياس. تحقق من القيمة والتاريخ وملف المريض.'));
+    } finally {
+      if (mounted && identical(db, widget.db)) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _deleteReading(LocalWeightObservation row) async {
+    if (_busy) return;
+    final db = widget.db;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_t('Supprimer cette pesée ?', 'Delete this reading?',
+            'هل تريد حذف هذا القياس؟')),
+        content: Text(_t(
+          'Cette action supprime également les anciennes versions corrigées de cette pesée sur cet appareil. Les fichiers de sauvegarde déjà exportés restent inchangés.',
+          'This also deletes previous corrected versions on this device. Previously exported backups are not affected.',
+          'سيتم حذف النسخ السابقة على هذا الجهاز، ولن تتغير النسخ الاحتياطية المصدرة.')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(_t('Annuler', 'Cancel', 'إلغاء'))),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(_t('Supprimer', 'Delete', 'حذف'))),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted || !identical(db, widget.db)) return;
+    setState(() { _busy = true; _notice = null; });
+    try {
+      await PatientWeightHistoryStore(db).deleteFamily(row.clientUuid);
+      final history = await PatientWeightHistoryStore(db).recent(limit: 20);
+      if (!mounted || !identical(db, widget.db)) return;
+      setState(() {
+        _history = history;
+        if (_editingWeightUuid == row.clientUuid) {
+          _editingWeightUuid = null;
+          _weight.clear();
+          _measuredAt = null;
+        }
+        _notice = _t('Pesée supprimée localement.',
+            'Reading deleted locally.', 'تم حذف القياس محليًا.');
+      });
+    } catch (_) {
+      if (mounted && identical(db, widget.db)) {
+        setState(() => _notice = _t(
+          'Suppression impossible ; données inchangées.',
+          'Deletion failed; data unchanged.', 'تعذر الحذف؛ لم تتغير البيانات.'));
+      }
     } finally {
       if (mounted && identical(db, widget.db)) setState(() => _busy = false);
     }
@@ -340,14 +391,29 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                     : _date(_measuredAt!)),
               ),
             ),
+            if (_editingWeightUuid != null)
+              Align(alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  key: const Key('d18-cancel-correction'),
+                  onPressed: _busy ? null : () => setState(() {
+                    _editingWeightUuid = null;
+                    _pendingWeightUuid = null;
+                    _weight.clear();
+                    _measuredAt = null;
+                  }),
+                  child: Text(_t('Annuler la correction',
+                      'Cancel correction', 'إلغاء التصحيح')),
+                ),
+              ),
             SizedBox(width: double.infinity,
               child: FilledButton(
                 key: const Key('d18-save-weight'),
                 onPressed: _busy || _loading || _measuredAt == null ||
                         _weight.text.trim().isEmpty
                     ? null : _addWeight,
-                child: Text(_t('Ajouter cette pesée',
-                    'Add this reading', 'إضافة هذا القياس')),
+                child: Text(_editingWeightUuid != null
+                    ? _t('Enregistrer la correction', 'Save correction', 'حفظ التصحيح')
+                    : _t('Ajouter cette pesée', 'Add this reading', 'إضافة هذا القياس')),
               )),
             const SizedBox(height: 12),
             if (_history.isEmpty)
@@ -367,8 +433,32 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                   subtitle: Text(
                     _date(row.measuredAtUtc) + ' · ' +
                     _t('Déclaré par le patient', 'Patient-entered',
-                        'صرّح به المريض'),
+                        'صرّح به المريض') +
+                    (row.replacesUuid == null ? '' :
+                      _t(' · corrigée', ' · corrected', ' · مصحّحة')),
                   ),
+                  trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      key: ValueKey('d18-edit-' + row.clientUuid),
+                      tooltip: _t('Corriger la pesée', 'Correct reading',
+                          'تصحيح القياس'),
+                      onPressed: _busy ? null : () => setState(() {
+                        _editingWeightUuid = row.clientUuid;
+                        _pendingWeightUuid = null;
+                        _weight.text = (row.valueHundredths / 100).toStringAsFixed(2);
+                        _unit = row.unit;
+                        _measuredAt = row.measuredAtUtc.toLocal();
+                      }),
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                    IconButton(
+                      key: ValueKey('d18-delete-' + row.clientUuid),
+                      tooltip: _t('Supprimer la pesée', 'Delete reading',
+                          'حذف القياس'),
+                      onPressed: _busy ? null : () => _deleteReading(row),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ]),
                 ),
             ],
           ],
