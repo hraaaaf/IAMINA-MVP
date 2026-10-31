@@ -5,10 +5,10 @@
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
 const out='d18-web-fue-proof';
 fs.mkdirSync(out,{recursive:true});
-const origin='http://127.0.0.1:7386/?mode=returning&ip=none&owner=a&locale=fr';
+const origin='http://127.0.0.1:7388/?mode=returning&ip=none&owner=a&locale=fr';
 const secret='synthetic-d18-browser-phrase-2026';
 const head=process.env.D18_CANDIDATE_SHA||'unknown';
-const steps=[],shots=[];
+const steps=[],shots=[],browserErrors=[];
 const sleep=n=>new Promise(r=>setTimeout(r,n));
 async function semantics(page){
  const t=page.locator('flt-semantics-placeholder');
@@ -83,6 +83,8 @@ async function check(page,label){
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
   let page=await context.newPage();
+   page.on('pageerror',e=>browserErrors.push('pageerror: '+String(e).slice(0,450)));
+   page.on('requestfailed',r=>browserErrors.push('failed '+r.url()+' '+String(r.failure()?.errorText||'')));
   await bootRealProfile(page);
   await check(page,'Informations personnelles facultatives');
   await click(page,'Informations personnelles facultatives');
@@ -110,6 +112,8 @@ async function check(page,label){
   await context.close();context=null;
   second=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
   page=await second.newPage();
+   page.on('pageerror',e=>browserErrors.push('pageerror: '+String(e).slice(0,450)));
+   page.on('requestfailed',r=>browserErrors.push('failed '+r.url()+' '+String(r.failure()?.errorText||'')));
   await bootRealProfile(page);
   await click(page,'Données & appareils');
   await click(page,'Restaurer une sauvegarde');
@@ -153,7 +157,7 @@ async function check(page,label){
       }catch(_){}
     }
   }
-  steps.push({check:'e2e',pass:false,error:String(err.message||err).slice(0,700)});
+  steps.push({check:'e2e',pass:false,error:String(err.message||err).slice(0,700),browserErrors:browserErrors.slice(-15)});
   console.error(err);
  }finally{
   if(context)await context.close();

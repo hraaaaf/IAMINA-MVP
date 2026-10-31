@@ -59,7 +59,13 @@ jobs:
       - name: Real IAMINA file download and restoration through Flutter widgets
         env:
           D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node tools/d18_web_file_e2e.js
+        run: |
+          # Keep the server alive in the same Actions step as this browser process.
+          python3 -m http.server 7388 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-file-e2e-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7388/ > /dev/null
+          node tools/d18_web_file_e2e.js
       - name: Build D18-only encrypted backup recovery probe for Chromium
         working-directory: frontend
         run: |
