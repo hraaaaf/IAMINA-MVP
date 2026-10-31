@@ -138,8 +138,14 @@ async function check(page,label){
   await check(page,'Informations enregistrées localement uniquement.');
   await snap(page,'birth-year-saved');
   // Real optional demographic selection, not just a Dart widget test.
+  // Flutter DropdownButton draws its open menu into the canvas. The option
+  // is visibly present (failure screenshot) but not exposed by Web semantics
+  // while the popup is open. Use the actual keyboard selection path instead
+  // of a DOM locator for an inaccessible canvas item.
   await click(page,'Non renseignée');
-  await click(page,'Préfère ne pas répondre');
+  for(let item=0;item<5;item++)await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await check(page,'Préfère ne pas répondre');
   await click(page,'Enregistrer');
   await check(page,'Informations enregistrées localement uniquement.');
   steps.push({check:'Optional self-declared identity saved through real Web UI',pass:true});
