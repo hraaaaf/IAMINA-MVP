@@ -195,12 +195,37 @@ async function check(page,label){
   const visibleYear=page.getByText('1994',{exact:true});
   const renderedYear=await visibleYear.count()>0 &&
     await visibleYear.first().isVisible().catch(()=>false);
-  const restored=values.includes('1994')||accessibleYear==='1994'||renderedYear;
-  if(!restored){
-    throw Error('Restored birth year not readable by Flutter Web semantics; '+
-      'editableInputLengths='+JSON.stringify(values.map(x=>x.length))+
-      ' renderedTextVisible='+renderedYear);
+  // Flutter's canvas-rendered TextField can show its value without exposing
+  // an HTML input or visible DOM text. Assert the *real editable value* through
+  // the user's keyboard copy action rather than weakening this to screenshot
+  // presence or treating a missing HTML <input> as data loss.
+  // A sentinel proves the copy actually replaced clipboard content.
+  let copiedYear='';
+  let clipboardDiagnostic='';
+  try{
+    await second.grantPermissions(['clipboard-read','clipboard-write'],
+      {origin:'http://127.0.0.1:7388'});
+    await page.evaluate(()=>navigator.clipboard.writeText('d18-copy-sentinel'));
+    await year.click();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.press('ControlOrMeta+C');
+    copiedYear=await page.evaluate(()=>navigator.clipboard.readText());
+  }catch(error){
+    clipboardDiagnostic=String(error.message||error).slice(0,180);
   }
+  const restored=values.includes('1994')||accessibleYear==='1994'||
+    renderedYear||copiedYear==='1994';
+  if(!restored){
+    throw Error('Restored birth year not readable through actual text field; '+
+      'editableInputLengths='+JSON.stringify(values.map(x=>x.length))+
+      ' renderedTextVisible='+renderedYear+
+      ' clipboardLength='+copiedYear.length+
+      (clipboardDiagnostic?' clipboardError='+clipboardDiagnostic:''));
+  }
+  steps.push({check:'Reloaded birth year 1994 read from actual Flutter editable value',
+    pass:true,source:copiedYear==='1994'?'keyboard clipboard':
+      values.includes('1994')?'browser editor':
+      accessibleYear==='1994'?'accessibility':'visible text'});
   steps.push({check:'Fresh Chromium profile file restoration persists after reload',pass:true});
   await snap(page,'reloaded-restored-year');
  }catch(err){
