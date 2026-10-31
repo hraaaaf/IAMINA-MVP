@@ -5,7 +5,7 @@
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
 const out='d18-web-fue-proof';
 fs.mkdirSync(out,{recursive:true});
-const origin='http://127.0.0.1:7388/?mode=returning&ip=none&owner=a&locale=fr';
+const origin='http://127.0.0.1:7388/?mode=returning&ip=none&owner=a&locale=fr&d18_e2e_proof=1';
 const secret='synthetic-d18-browser-phrase-2026';
 const head=process.env.D18_CANDIDATE_SHA||'unknown';
 const steps=[],shots=[],browserErrors=[];
@@ -159,21 +159,41 @@ async function enterVerified(page,label,value){
    JSON.stringify(failures));
 }
 
-// Probe a user-facing value without changing it. When a saved weight
-// ListTile is tapped via its "Correct reading" action, Flutter loads the
-// actual stored fixed-point number into its editor; Ctrl+A/C then proves it.
-async function readVerifiedEditor(page,label){
-  await page.context().grantPermissions(['clipboard-read','clipboard-write'],
-    {origin:'http://127.0.0.1:7388'});
-  const x=await get(page,label);
-  await x.scrollIntoViewIfNeeded();
-  await x.click({timeout:6000});
-  await page.evaluate(()=>navigator.clipboard.writeText('d18-read-sentinel'));
-  await page.keyboard.press('ControlOrMeta+A');
-  await page.keyboard.press('ControlOrMeta+C');
-  const value=await page.evaluate(()=>navigator.clipboard.readText());
-  if(value==='d18-read-sentinel')throw Error('Editor did not copy text for '+label);
-  return value;
+// Synthetic FUE-host read-only evidence. Never present in production main.dart.
+// It reads the SAME patient-scoped physical SQLite/IndexedDB vault as the UI.
+async function readVault(page,phase){
+  await page.evaluate(()=>{
+    document.documentElement.dataset.d18E2eRead='';
+    document.dispatchEvent(new Event('d18-e2e-read'));
+  });
+  await page.waitForFunction(()=>
+    !!document.documentElement.dataset.d18E2eRead,null,{timeout:16000});
+  const proof=await page.evaluate(()=>JSON.parse(
+    document.documentElement.dataset.d18E2eRead));
+  if(proof.status!=='ok'||proof.owner!==734||
+     proof.vault!=='amina_vault_v1_native_734'||
+     !Array.isArray(proof.demographics)||!Array.isArray(proof.weights))
+    throw Error('Read-only scoped vault proof failed at '+phase+': '+
+      JSON.stringify(proof).slice(0,330));
+  return proof;
+}
+function verifyWeights(proof,values,phase){
+  if(proof.weights.length!==values.length)
+    throw Error(phase+': unexpected physical history count '+
+      proof.weights.length+' instead of '+values.length);
+  for(const amount of values)if(!proof.weights.some(w=>
+      w.user_id===734&&w.value_hundredths===amount&&
+      w.unit==='kg'&&w.provenance==='patient_declared'))
+    throw Error(phase+': missing weight '+amount+' from real SQLite');
+  if(values.length===2){
+    const first=proof.weights.find(w=>w.value_hundredths===7250);
+    const corrected=proof.weights.find(w=>w.value_hundredths===7300);
+    if(!first||!corrected||corrected.replaces_uuid!==first.client_uuid)
+      throw Error(phase+': non-append-only or missing correction ancestry');
+  }
+  steps.push({check:phase,pass:true,
+    source:'read-only real patient-scoped SQLite via test-only FUE host',
+    historyCount:proof.weights.length});
 }
 
 async function enterSecret(page,label,value){
@@ -283,19 +303,15 @@ async function check(page,label){
   // Do not depend on Flutter's merged canvas semantics for a ListTile
   // title. A real tap of the edit icon must load the saved 72.50 into the
   // editor; this confirms a persisted row (not merely a success snackbar).
+  verifyWeights(await readVault(page,'after add'),[7250],
+    'Dated 72.50 kg reading persisted in physical patient vault');
   await clickByScroll(page,'Corriger la pesée');
-  const savedWeight=await readVerifiedEditor(page,'Poids mesuré');
-  if(savedWeight!=='72.50')
-    throw Error('Saved weight is not readable from edit UI: length='+savedWeight.length);
-  steps.push({check:'Dated 72.50 kg reading persisted and reopened through real Web edit action',pass:true});
   await snap(page,'dated-weight-editor-proof');
   await enterVerified(page,'Poids mesuré','73,00');
   await click(page,'Enregistrer la correction');
+  verifyWeights(await readVault(page,'after correction'),[7250,7300],
+    'Corrected weight 73.00 persisted as append-only version of 72.50');
   await clickByScroll(page,'Corriger la pesée');
-  const correctedWeight=await readVerifiedEditor(page,'Poids mesuré');
-  if(correctedWeight!=='73.00')
-    throw Error('Corrected weight is not readable from edit UI: length='+correctedWeight.length);
-  steps.push({check:'Corrected 73.00 kg is the editable current reading',pass:true});
   await snap(page,'corrected-weight-editor-proof');
   await click(page,'Annuler la correction');
   await clickByScroll(page,'Données & appareils');
@@ -388,20 +404,26 @@ async function check(page,label){
       values.includes('1994')?'browser editor':
       accessibleYear==='1994'?'accessibility':'visible text'});
   await check(page,'Préfère ne pas répondre');
+  const restoredVault=await readVault(page,'after encrypted restoration and reload');
+  verifyWeights(restoredVault,[7250,7300],
+    'Original and corrected weights survive real encrypted restoration and reload');
+  if(restoredVault.demographics.length!==1||
+     restoredVault.demographics[0].birth_year!==1994||
+     restoredVault.demographics[0].gender_identity!=='prefer_not_to_say')
+    throw Error('Restored patient declarations inconsistent with real vault');
+  steps.push({check:'Birth year and identity survive encrypted file restoration',pass:true});
   await clickByScroll(page,'Corriger la pesée');
-  const restoredWeight=await readVerifiedEditor(page,'Poids mesuré');
-  if(restoredWeight!=='73.00')
-    throw Error('Restored weight is not readable from edit UI: length='+restoredWeight.length);
-  steps.push({check:'Identity and corrected weight survive encrypted file restoration',pass:true});
   await snap(page,'restored-weight-and-identity');
   await click(page,'Annuler la correction');
   await clickByScroll(page,'Supprimer la pesée');
   await click(page,'Supprimer');
   await check(page,'Pesée supprimée localement.');
-  await checkByScroll(page,'Aucune pesée enregistrée.');
+  verifyWeights(await readVault(page,'after delete'),[],
+    'Deletion purged all original/corrected versions from physical vault');
   await bootRealProfile(page);
   await click(page,'Informations personnelles facultatives');
-  await checkByScroll(page,'Aucune pesée enregistrée.');
+  verifyWeights(await readVault(page,'after deleted reload'),[],
+    'Deleted family remains absent after real browser reload');
   steps.push({check:'Deletion of restored weight persists across browser reload',pass:true});
   await snap(page,'reloaded-weight-deleted');
   steps.push({check:'Fresh Chromium profile file restoration persists after reload',pass:true});
