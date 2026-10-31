@@ -1,0 +1,113 @@
+name: D7 FUE — returning patient real Web (synthetic, no secrets)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d7-fue-returning-patient-web.yml'
+      - 'scripts/d7_web_actual_profile_e2e.py'
+      - 'docs/assessments/2026-10-31-d7-first-user-experience.md'
+      - 'frontend/lib/features/auth/consent_screen.dart'
+      - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
+      - 'frontend/lib/services/api_client.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-real-fue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d7-real-web-fue:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: D7 owner-scoped save and responsive treatment choices (FR EN AR)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter test --reporter expanded test/features/profile/d7_profile_owner_save_widget_test.dart
+          flutter test --platform chrome --reporter expanded test/features/profile/d7_web_type_transition_contract_test.dart
+          flutter test --platform chrome --reporter expanded test/features/profile/d7_web_treatment_choice_responsive_test.dart
+      - name: Build actual Flutter Web local patient app; never use remote QA or Production
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+          test -s build/web/index.html
+      - name: Install pinned disposable Chrome browser
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+          python3 -m py_compile scripts/d7_web_actual_profile_e2e.py
+      - name: First user experience on real Web — 8 phases and 9 captures
+        run: |
+          set -euo pipefail
+          python3 scripts/d7_web_actual_profile_e2e.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,hashlib,re,struct
+          p=Path('d7-web-real-profile-chrome-proof.json')
+          d=json.loads(p.read_text())
+          assert d['result']=='PASS'
+          assert d['hosted_preview']=='NOT_RUN'
+          assert d['remote_sync']=='NOT_RUN'
+          assert d['real_app_fr_ar_rtl']=='NOT_RUN'
+          assert d['phases']==[
+            'genuine_local_webauthn_enrollment',
+            'profile_type2_and_patient_declared_treatments',
+            'physical_reload_type2_and_treatments_preserved',
+            'patient_type1_without_automatic_treatment_change',
+            'patient_unknown_without_automatic_treatment_change',
+            'explicit_no_treatment_then_physical_reload',
+            'explicit_treatment_reentry_then_physical_reload',
+            'responsive_390_768_1280_and_egress_check',
+          ]
+          captures=d['captures']
+          assert len(captures)==9
+          expected={(state,f'{width}x{height}')
+            for state in ('type2','unknown','explicit_none')
+            for width,height in ((390,844),(768,1024),(1280,900))}
+          seen=set()
+          for c in captures:
+            item=(c['stage'],c['viewport'])
+            assert item in expected and item not in seen
+            seen.add(item)
+            file=Path('d7-web-real-profile-captures')/c['file']
+            raw=file.read_bytes()
+            assert raw[:8]==bytes.fromhex('89504e470d0a1a0a')
+            w,h=struct.unpack('>II',raw[16:24])
+            ew,eh=map(int,c['viewport'].split('x'))
+            assert w==ew and h>=eh
+            assert re.fullmatch(r'[0-9a-f]{64}',c['sha256'])
+            assert hashlib.sha256(raw).hexdigest()==c['sha256']
+          assert seen==expected
+          PY
+      - name: Keep bounded synthetic-only FUE evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d7-fue-actual-web-8phases-9png
+          path: |
+            d7-web-real-profile-chrome-proof.json
+            d7-web-real-profile-captures/*.png
+          retention-days: 7
+          if-no-files-found: warn
