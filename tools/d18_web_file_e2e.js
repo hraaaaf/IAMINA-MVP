@@ -137,6 +137,31 @@ async function check(page,label){
   await click(page,'Enregistrer');
   await check(page,'Informations enregistrées localement uniquement.');
   await snap(page,'birth-year-saved');
+  // Real optional demographic selection, not just a Dart widget test.
+  await click(page,'Non renseignée');
+  await click(page,'Préfère ne pas répondre');
+  await click(page,'Enregistrer');
+  await check(page,'Informations enregistrées localement uniquement.');
+  steps.push({check:'Optional self-declared identity saved through real Web UI',pass:true});
+
+  // Exercise dated weight entry and append-only correction before exporting.
+  // A timestamp must be chosen explicitly; opening the form is insufficient.
+  await enter(page,'Poids mesuré','72,50');
+  await click(page,'Choisir la date et l’heure de la pesée');
+  await click(page,'OK'); // explicit date confirmation
+  await click(page,'OK'); // explicit time confirmation
+  await click(page,'Ajouter cette pesée');
+  await check(page,'72.50 kg');
+  steps.push({check:'Dated weight added through real Web date/time pickers',pass:true});
+  await snap(page,'dated-weight-added');
+  await click(page,'Corriger la pesée');
+  await enter(page,'Poids mesuré','73,00');
+  await click(page,'Enregistrer la correction');
+  await check(page,'73.00 kg');
+  if((await page.getByText('72.50 kg',{exact:true}).count())>0)
+    throw Error('Superseded weight still visible after append-only correction');
+  steps.push({check:'Corrected weight is current and superseded weight hidden',pass:true});
+  await snap(page,'corrected-weight');
   await click(page,'Données & appareils');
   await click(page,'Créer une sauvegarde chiffrée');
   await enterSecret(page,'Phrase secrète (12 caractères minimum)',secret);
@@ -226,6 +251,19 @@ async function check(page,label){
     pass:true,source:copiedYear==='1994'?'keyboard clipboard':
       values.includes('1994')?'browser editor':
       accessibleYear==='1994'?'accessibility':'visible text'});
+  await check(page,'Préfère ne pas répondre');
+  await check(page,'73.00 kg');
+  steps.push({check:'Identity and corrected weight survive encrypted file restoration',pass:true});
+  await snap(page,'restored-weight-and-identity');
+  await click(page,'Supprimer la pesée');
+  await click(page,'Supprimer');
+  await check(page,'Pesée supprimée localement.');
+  await check(page,'Aucune pesée enregistrée.');
+  await bootRealProfile(page);
+  await click(page,'Informations personnelles facultatives');
+  await check(page,'Aucune pesée enregistrée.');
+  steps.push({check:'Deletion of restored weight persists across browser reload',pass:true});
+  await snap(page,'reloaded-weight-deleted');
   steps.push({check:'Fresh Chromium profile file restoration persists after reload',pass:true});
   await snap(page,'reloaded-restored-year');
  }catch(err){
