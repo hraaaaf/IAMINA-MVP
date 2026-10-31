@@ -50,20 +50,35 @@ async function fetchJson(context,token,path) {
 }
 async function login(page,context,email,password,round) {
   await enterLogin(page);
-  stage=round+'_LOGIN_UI';
   const inputs=page.locator('input:not([type="hidden"])');
   const emailField=page.locator('input[type="email"],input[type="text"]').first();
   const pwd=page.locator('input[type="password"]').first();
-  await (await emailField.count()?emailField:inputs.first()).fill(email);
-  await (await pwd.count()?pwd:inputs.nth(1)).fill(password);
+  stage=round+'_EMAIL_FILL';
+  await (await emailField.count()?emailField:inputs.first())
+    .fill(email,{timeout:15000});
+  stage=round+'_PASSWORD_FILL';
+  await (await pwd.count()?pwd:inputs.nth(1))
+    .fill(password,{timeout:15000});
+  stage=round+'_SUBMIT_DISCOVERY';
+  const submit=page.getByRole('button',{name:LOGIN}).last();
+  await submit.waitFor({state:'visible',timeout:15000});
+  stage=round+'_SUBMIT_CLICK';
   const responsePromise=page.waitForResponse(r=>
     r.url().split('?')[0]===ORIGIN+'/api/v1/auth/login' &&
     r.request().method()==='POST',{timeout:35000});
-  await page.getByRole('button',{name:LOGIN}).last().click({timeout:20000});
+  await submit.click({timeout:20000});
+  stage=round+'_LOGIN_HTTP_RESPONSE';
   const res=await responsePromise;
   if(res.status()!==200)fail(round+'_LOGIN_HTTP_NOT_200');
   const data=await res.json();
-  await page.waitForTimeout(500);
+  stage=round+'_LOGIN_NAVIGATION';
+  // HTTP 200 precedes secure-storage persistence and GoRouter navigation.
+  await page.waitForURL(url=>{
+    const u=new URL(url);
+    const path=u.hash.startsWith('#/')?u.hash.slice(1):u.pathname;
+    return path!=='/login';
+  },{timeout:30000}).catch(()=>fail(round+'_LOGIN_NAVIGATION_TIMEOUT'));
+  stage=round+'_LOGIN_CONTRACT';
   if(!Number.isSafeInteger(data?.user?.id) || data.user.id<=0 ||
     data?.user?.email?.toLowerCase()!==email.toLowerCase() ||
     data.token_type!=='Bearer' ||
@@ -95,8 +110,8 @@ async function login(page,context,email,password,round) {
   record(round+'_FLUTTER_PROFILE_SIGNOUT_VISIBLE');
   return {id:data.user.id,profile,signout};
 }
-async function logout(page,account) {
-  stage=account+'_LOGOUT_UI';
+async function logout(page,account,round) {
+  stage=round+'_LOGOUT_UI';
   await account.signout.click({timeout:18000});
   const confirm=page.getByRole('button',{name:CONFIRM}).last();
   await confirm.waitFor({state:'visible',timeout:12000});
@@ -158,11 +173,11 @@ async function main() {
     await page.waitForSelector('flutter-view,flt-glass-pane',{timeout:45000});
     record('VERCEL_PROTECTED_FLUTTER_BOOT');
     const a1=await login(page,context,a,process.env.D7_QA_A_PASSWORD,'A1');
-    await logout(page,a1);
+    await logout(page,a1,'A1');
     const b1=await login(page,context,b,process.env.D7_QA_B_PASSWORD,'B');
     if(a1.id===b1.id)fail('SAME_SERVER_OWNER');
     record('DISTINCT_SERVER_OWNERS');
-    await logout(page,b1);
+    await logout(page,b1,'B');
     const a2=await login(page,context,a,process.env.D7_QA_A_PASSWORD,'A2');
     if(a1.id!==a2.id)fail('A_OWNER_CHANGED');
     if(JSON.stringify(a1.profile)!==JSON.stringify(a2.profile))

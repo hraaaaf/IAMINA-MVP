@@ -32,6 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/d7_qa_hosted_auth_gate.mjs
+          node --check scripts/d7_hosted_browser_aba_readonly.mjs
           node --test frontend/test/qa/d7_hosted_auth_gate.test.mjs
 
   qa-hosted-identity:
