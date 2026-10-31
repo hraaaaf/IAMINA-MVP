@@ -288,7 +288,105 @@ async function isolation(browser){
     if(item.stage==='A reloaded' && item.browserSnapshot?.serviceWorkerControlled){
       try{
         item.swBypassProbe={tried:true};
-        await page.evaluate(async()=>{
+        await page.evaluate// Additional D5 acceptance gates, not a replacement for the 19-case matrix.
+// Keyboard journeys have no pointer clicks or programmatic focusing.
+async function keyboardJourney(browser,locale,size){
+  const l=copy[locale], [width,height]=size;
+  const context=await browser.newContext({
+    viewport:{width,height},locale:locale==='ar'?'ar-MA':'fr-FR',
+    serviceWorkers:'allow',colorScheme:'light',
+  });
+  const page=await context.newPage();
+  const item={kind:'keyboard_tab_shift_enter',locale,viewport:width+'x'+height,
+    pass:false,images:[],focusTrail:[]};
+  try{
+    await load(page,url('new','ma','a',locale),l.language);
+    const language=await waitFor(page,l.language);
+    async function reachByTab(target,label){
+      for(let i=0;i<65;i++){
+        await page.keyboard.press('Tab');
+        const focused=await target.evaluate(el=>
+          el===document.activeElement || el.contains(document.activeElement)
+        ).catch(()=>false);
+        const active=await page.evaluate(()=>({
+          tag:document.activeElement?.tagName||'none',
+          name:document.activeElement?.getAttribute('aria-label')||'',
+          role:document.activeElement?.getAttribute('role')||'',
+        }));
+        if(item.focusTrail.length<16)item.focusTrail.push({label,focused,...active});
+        if(focused)return;
+      }
+      throw Error('Tab did not reach '+label+'; '+JSON.stringify(item.focusTrail.slice(-8)));
+    }
+    await reachByTab(language,'language');
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    if(!await language.evaluate(el=>el===document.activeElement ||
+        el.contains(document.activeElement)).catch(()=>false))
+      throw Error('Shift+Tab then Tab did not return to language choice');
+    item.images.push(await capture(page,locale,size,'keyboard','language-focused'));
+    await page.keyboard.press('Enter');
+    const confirm=await waitFor(page,l.confirm);
+    await reachByTab(confirm,'confirm');
+    item.images.push(await capture(page,locale,size,'keyboard','confirm-focused'));
+    await page.keyboard.press('Enter');
+    await snooze(300);
+    if(await visible(page,l.confirm))
+      throw Error('Enter did not explicitly confirm suggested country');
+    await startState(page,l,width,true);
+    item.images.push(await capture(page,locale,size,'keyboard','confirmed'));
+    item.pass=true;
+  }catch(e){
+    item.error=String(e.message||e).slice(0,850);
+    item.images.push(await capture(page,locale,size,'keyboard','FAILED').catch(()=>null));
+    report.errors.push(item);
+  }finally{cases.push(item);await context.close();}
+}
+
+// Verify offline app-shell + encrypted country persistence on the *same*
+// browser origin, authenticated synthetic vault A. No backend or real patient.
+async function offlineCountryReload(browser,locale){
+  const l=copy[locale],size=[390,844];
+  const context=await browser.newContext({
+    viewport:{width:390,height:844},
+    locale:locale==='ar'?'ar-MA':'fr-FR',serviceWorkers:'allow',
+  });
+  const page=await context.newPage();
+  const item={kind:'offline_country_reload',locale,viewport:'390x844',
+    pass:false,images:[],swControlled:false};
+  try{
+    await load(page,url('returning','none','a',locale),l.choose);
+    await click(page,l.choose);
+    await countrySelect(page,l,'FR');
+    await click(page,l.save);
+    // Only call this offline when the actual app SW controls the document.
+    await page.waitForFunction(()=>!!navigator.serviceWorker?.controller,
+      {timeout:20000});
+    item.swControlled=await page.evaluate(()=>!!navigator.serviceWorker?.controller);
+    await page.context().setOffline(true);
+    await page.reload({waitUntil:'domcontentloaded',timeout:30000});
+    await snooze(3400);
+    await semantics(page);
+    await waitFor(page,l.profile);
+    if(await visible(page,l.choose))throw Error('Country lost during offline PWA reload');
+    item.images.push(await capture(page,locale,size,'offline','profile-restored'));
+    await click(page,l.preferences);
+    await assertSelectedCountry(page,l.fr);
+    item.images.push(await capture(page,locale,size,'offline','country-restored'));
+    if(!await page.evaluate(()=>!navigator.onLine))
+      throw Error('Browser was unexpectedly online');
+    item.pass=true;
+  }catch(e){
+    item.error=String(e.message||e).slice(0,850);
+    item.images.push(await capture(page,locale,size,'offline','FAILED').catch(()=>null));
+    report.errors.push(item);
+  }finally{
+    await page.context().setOffline(false).catch(()=>{});
+    cases.push(item);await context.close();
+  }
+}
+
+(async()=>{
           const registrations=await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.map(r=>r.unregister()));
           const keys=await caches.keys();
@@ -336,10 +434,17 @@ async function isolation(browser){
       }
     }
     await isolation(browser);
+    // Dedicated keyboards (FR+AR, mobile+desktop) and offline SW journeys.
+    for(const locale of ['fr','ar']){
+      for(const size of [[390,844],[1280,900]])
+        await keyboardJourney(browser,locale,size);
+      await offlineCountryReload(browser,locale);
+    }
   }finally{await browser.close();}
-  report.requiredCount=19;
+  report.requiredCount=25;
   report.passed=cases.filter(x=>x.pass).length;
-  report.fuePass=report.passed===19&&report.errors.length===0;
+  report.fuePass=report.passed===report.requiredCount&&
+    report.errors.length===0;
   fs.writeFileSync(path.join(out,'result.json'),JSON.stringify(report,null,2));
   console.log('D5_WEB_FUE='+JSON.stringify({passed:report.passed,total:report.requiredCount,
     failed:report.errors.map(x=>({kind:x.kind,locale:x.locale,viewport:x.viewport,
