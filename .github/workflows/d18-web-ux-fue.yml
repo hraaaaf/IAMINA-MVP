@@ -57,6 +57,7 @@ jobs:
           python3 -m http.server 7386 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-http.log 2>&1 &
           node tools/d18_web_fue.js
       - name: Real IAMINA file download and restoration through Flutter widgets
+        continue-on-error: true
         env:
           D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -77,6 +78,30 @@ jobs:
         run: |
           python3 -m http.server 7387 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-crypto-http.log 2>&1 &
           node tools/d18_web_crypto_probe.js
+      - name: Strict D18 release gate — all independent evidence required
+        if: always()
+        run: |
+          node - <<'JS'
+          const fs=require('fs');
+          const dir='d18-web-fue-proof/';
+          const head=process.env.GITHUB_SHA;
+          const reports=['report.json','ui-file-roundtrip-report.json','encrypted-recovery-report.json'];
+          const failures=[];
+          for(const file of reports){
+            const path=dir+file;
+            if(!fs.existsSync(path)){failures.push(file+' missing');continue;}
+            let report;
+            try{report=JSON.parse(fs.readFileSync(path,'utf8'));}catch(e){failures.push(file+' unreadable');continue;}
+            const ok=file==='report.json'
+              ?report.passed===6&&report.total===6&&report.errors.length===0
+              :file==='encrypted-recovery-report.json'
+                ?report.passed===8&&report.total===8&&report.steps.length===8&&report.steps.every(x=>x.pass)
+                :report.passed===true&&report.steps?.length>0&&report.steps.every(x=>x.pass);
+            if(!ok)failures.push(file+' FAILED; inspect artifact');
+            console.log(file+': '+(ok?'PASS':'FAIL'));
+          }
+          if(failures.length){console.error(failures.join('\n'));process.exit(1);}
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:

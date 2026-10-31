@@ -69,6 +69,51 @@ async function enter(page,label,value){
  await x.click({timeout:6000});await page.keyboard.press('ControlOrMeta+A');
  await page.keyboard.insertText(value);await sleep(180);
 }
+async function enterSecret(page,label,value){
+ // Obscured Flutter TextFields are password controls, NOT accessible-role
+ // textboxes; a click on their label may never focus the actual editor.
+ // Exercise the real editable input and verify only its LENGTH, never log secrets.
+ const labelNode=await get(page,label);
+ await labelNode.scrollIntoViewIfNeeded();
+ await labelNode.click({timeout:6000});
+ await sleep(130);
+ const candidates=[
+   page.locator('input[type="password"]:focus'),
+   page.locator('input[type="password"]'),
+   page.locator('input[autocomplete="new-password"]'),
+ ];
+ let typed=false;
+ for(const group of candidates){
+   for(let i=0;i<await group.count();i++){
+     const input=group.nth(i);
+     if(!await input.isVisible().catch(()=>false))continue;
+     if(!await input.isEditable().catch(()=>false))continue;
+     try {
+       await input.fill(value,{timeout:3000});
+       if((await input.inputValue()).length===value.length) {
+         typed=true;break;
+       }
+     }catch(_){}
+   }
+   if(typed)break;
+ }
+ if(!typed){
+   await labelNode.click({timeout:6000});
+   await page.keyboard.press('ControlOrMeta+A');
+   await page.keyboard.type(value,{delay:15});
+   await sleep(220);
+   const active=await page.evaluate(()=>{
+     const el=document.activeElement;
+     return {tag:el?.tagName||null,type:el?.getAttribute('type')||null,
+       length:typeof el?.value==='string'?el.value.length:null};
+   });
+   if(active.length!==value.length){
+     const count=await page.locator('input[type="password"]').count();
+     throw Error('Secure Flutter field not populated: '+label+
+       ' active='+JSON.stringify(active)+' passwordInputs='+count);
+   }
+ }
+}
 async function snap(page,name){
  const file='file-e2e-'+name+'.png';
  await page.screenshot({path:path.join(out,file),fullPage:false,animations:'disabled'});
@@ -94,8 +139,8 @@ async function check(page,label){
   await snap(page,'birth-year-saved');
   await click(page,'Données & appareils');
   await click(page,'Créer une sauvegarde chiffrée');
-  await enter(page,'Phrase secrète (12 caractères minimum)',secret);
-  await enter(page,'Confirmer la phrase secrète',secret);
+  await enterSecret(page,'Phrase secrète (12 caractères minimum)',secret);
+  await enterSecret(page,'Confirmer la phrase secrète',secret);
   await click(page,'Chiffrer le fichier');
   await check(page,'Télécharger le fichier');
   const downloadPromise=page.waitForEvent('download',{timeout:20000});
@@ -123,7 +168,7 @@ async function check(page,label){
   await chooser.setFiles({name:'iamina-d18-backup.iamina',
     mimeType:'application/octet-stream',buffer:payload});
   await sleep(450);
-  await enter(page,'Phrase secrète',secret);
+  await enterSecret(page,'Phrase secrète',secret);
   await click(page,'Déchiffrer et examiner');
   await check(page,'Aperçu vérifié du fichier');
   await check(page,'Informations personnelles : présentes');

@@ -24,7 +24,7 @@ async function phase(page,name,payload){
  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
  let context,other;
  try{
-  context=await browser.newContext({viewport:{width:390,height:844}});
+  context=await browser.newContext({viewport:{width:390,height:844},locale:'fr-FR'});
   const page=await context.newPage();
   await phase(page,'seed_a');
   const ciphertext=await page.locator('#d18-crypto-synthetic-export').textContent();
@@ -33,7 +33,7 @@ async function phase(page,name,payload){
   await phase(page,'verify_a');
   // Brand-new browser profile: no source IndexedDB state, only encrypted file.
   await context.close();context=null;
-  other=await browser.newContext({viewport:{width:390,height:844}});
+  other=await browser.newContext({viewport:{width:390,height:844},locale:'fr-FR'});
   const fresh=await other.newPage();
   await phase(fresh,'wrong_pass',ciphertext);
   await phase(fresh,'tampered',ciphertext);
