@@ -64,6 +64,40 @@ async function click(page,label){
  const x=await get(page,label);await x.scrollIntoViewIfNeeded();
  await x.click({timeout:6000});await sleep(350);
 }
+// Flutter semantics only exposes objects in the actual scrolled viewport.
+// Verify real weight history rows using user-like wheel scrolling, not a
+// global DOM query that silently excludes off-screen Flutter canvas content.
+async function getByScroll(page,label){
+  const travel=async(direction)=>{
+    for(let i=0;i<22;i++){
+      const found=await locate(page,label);
+      if(found)return found;
+      // Wheel inside the patient Profile's scroll area.
+      await page.mouse.move(305,705);
+      await page.mouse.wheel(0,direction*360);
+      await sleep(240);
+    }
+    return null;
+  };
+  const found=await travel(1)||await travel(-1);
+  if(!found){
+    await snap(page,'scroll-missing-'+label.replace(/[^a-z0-9]/gi,'-').slice(0,45));
+    throw Error('Flutter history item not visible after real scroll: '+label);
+  }
+  return found;
+}
+async function checkByScroll(page,label){
+  const found=await getByScroll(page,label);
+  await found.scrollIntoViewIfNeeded();
+  steps.push({check:label,pass:true,source:'real-scrolled-Flutter-viewport'});
+}
+async function clickByScroll(page,label){
+  const found=await getByScroll(page,label);
+  await found.scrollIntoViewIfNeeded();
+  await found.click({timeout:6000});
+  await sleep(350);
+}
+
 async function enter(page,label,value){
  const x=await get(page,label);await x.scrollIntoViewIfNeeded();
  await x.click({timeout:6000});await page.keyboard.press('ControlOrMeta+A');
@@ -222,18 +256,18 @@ async function check(page,label){
     throw Error('Add weight disabled despite confirmed editor and picker');
   }
   await saveWeight.click({timeout:6000});
-  await check(page,'72.50 kg');
+  await checkByScroll(page,'72.50 kg');
   steps.push({check:'Dated weight added through real Web date/time pickers',pass:true});
   await snap(page,'dated-weight-added');
-  await click(page,'Corriger la pesée');
+  await clickByScroll(page,'Corriger la pesée');
   await enterVerified(page,'Poids mesuré','73,00');
   await click(page,'Enregistrer la correction');
-  await check(page,'73.00 kg');
+  await checkByScroll(page,'73.00 kg');
   if((await page.getByText('72.50 kg',{exact:true}).count())>0)
     throw Error('Superseded weight still visible after append-only correction');
   steps.push({check:'Corrected weight is current and superseded weight hidden',pass:true});
   await snap(page,'corrected-weight');
-  await click(page,'Données & appareils');
+  await clickByScroll(page,'Données & appareils');
   await click(page,'Créer une sauvegarde chiffrée');
   await enterSecret(page,'Phrase secrète (12 caractères minimum)',secret);
   await enterSecret(page,'Confirmer la phrase secrète',secret);
@@ -256,7 +290,7 @@ async function check(page,label){
    page.on('pageerror',e=>browserErrors.push('pageerror: '+String(e).slice(0,450)));
    page.on('requestfailed',r=>browserErrors.push('failed '+r.url()+' '+String(r.failure()?.errorText||'')));
   await bootRealProfile(page);
-  await click(page,'Données & appareils');
+  await clickByScroll(page,'Données & appareils');
   await click(page,'Restaurer une sauvegarde');
   const chooserPromise=page.waitForEvent('filechooser',{timeout:20000});
   await click(page,'Choisir un fichier .iamina');
@@ -323,16 +357,16 @@ async function check(page,label){
       values.includes('1994')?'browser editor':
       accessibleYear==='1994'?'accessibility':'visible text'});
   await check(page,'Préfère ne pas répondre');
-  await check(page,'73.00 kg');
+  await checkByScroll(page,'73.00 kg');
   steps.push({check:'Identity and corrected weight survive encrypted file restoration',pass:true});
   await snap(page,'restored-weight-and-identity');
-  await click(page,'Supprimer la pesée');
+  await clickByScroll(page,'Supprimer la pesée');
   await click(page,'Supprimer');
   await check(page,'Pesée supprimée localement.');
-  await check(page,'Aucune pesée enregistrée.');
+  await checkByScroll(page,'Aucune pesée enregistrée.');
   await bootRealProfile(page);
   await click(page,'Informations personnelles facultatives');
-  await check(page,'Aucune pesée enregistrée.');
+  await checkByScroll(page,'Aucune pesée enregistrée.');
   steps.push({check:'Deletion of restored weight persists across browser reload',pass:true});
   await snap(page,'reloaded-weight-deleted');
   steps.push({check:'Fresh Chromium profile file restoration persists after reload',pass:true});
