@@ -81,7 +81,7 @@ async function check(page,label){
  let browser,context,second;
  try{
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
-  context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
+  context=await browser.newContext({viewport:{width:390,height:844},locale:'fr-FR',acceptDownloads:true});
   let page=await context.newPage();
    page.on('pageerror',e=>browserErrors.push('pageerror: '+String(e).slice(0,450)));
    page.on('requestfailed',r=>browserErrors.push('failed '+r.url()+' '+String(r.failure()?.errorText||'')));
@@ -110,7 +110,7 @@ async function check(page,label){
     bytes:payload.length,filename:download.suggestedFilename()});
   await snap(page,'encrypted-file-downloaded');
   await context.close();context=null;
-  second=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
+  second=await browser.newContext({viewport:{width:390,height:844},locale:'fr-FR',acceptDownloads:true});
   page=await second.newPage();
    page.on('pageerror',e=>browserErrors.push('pageerror: '+String(e).slice(0,450)));
    page.on('requestfailed',r=>browserErrors.push('failed '+r.url()+' '+String(r.failure()?.errorText||'')));
