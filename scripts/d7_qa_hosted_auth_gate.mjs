@@ -1,7 +1,7 @@
 // D7 hosted QA AUTH-ONLY gate: temporary, deployment-scoped Vercel Share Link.
 // Never log/share QA credentials, the share token, session cookie or bearer.
 const EXPECTED_ORIGIN =
-  'https://iamina-review-ggdtqis0g-achraf-benmoussa-s-projects.vercel.app';
+  'https://iamina-review-git-cert-d7-we-5e65d5-achraf-benmoussa-s-projects.vercel.app';
 
 function fail(code) { throw new Error('D7_QA_' + code); }
 function assertCredentials(creds) {
@@ -123,7 +123,7 @@ export async function runHostedAuthGate({
     fail('OWNER_A_B_A_MISMATCH');
   return {
     verdict: 'AUTH_ONLY_PASS',
-    hosted_preview_sha: 'ec5234476618f849c68489adb08dfe7fd00a2c4c',
+    hosted_preview_sha: '027f5caf189adc951182a328526163dfd6270d27',
     negative_login: 'DJANGO_401_JSON',
     existing_account_login: 'A_200_B_200_A_200',
     distinct_owners: true,
@@ -132,6 +132,10 @@ export async function runHostedAuthGate({
   };
 }
 if (process.argv[1]?.endsWith('d7_qa_hosted_auth_gate.mjs')) {
+  if (process.env.D7_PREVIEW_SHA !== '027f5caf189adc951182a328526163dfd6270d27') {
+    console.error('D7_QA_PREVIEW_SHA_MISMATCH');
+    process.exit(1);
+  }
   const creds = {
     aEmail: process.env.D7_QA_A_EMAIL,
     aPassword: process.env.D7_QA_A_PASSWORD,
