@@ -18,6 +18,16 @@ Intégrer l'UX approuvée au vrai `ProfileScreen` Web IAMINA : données facultat
 - Poids : version correcte écrite comme nouvelle observation liée à la précédente ; écran n'affiche que la dernière version ; suppression explicite purge la famille.
 - Tests ajoutés/portés : démographie indépendante du profil médical, historique + correction/suppression, crypto, altération/mauvaise phrase secrète, mauvais propriétaire, import non destructif, transfert local volontaire.
 
+## 31/10/2026 — Exécution du gate POC : environnement et CI (sans résultat crypto inventé)
+
+**Tentative réelle :** inspection du runtime de travail : Chromium et Node présents, **Dart/Flutter absents** ; accès externe au registre pub.dev indisponible (résolution DNS). Les binaires `sqlite3mc.wasm` ne sont pas présents dans les fichiers montés. Impossible de lancer ici un POC WASM/Drift fidèle aux versions verrouillées. **Résultat : POC BLOCKED_EXTERNAL_TOOLING**, pas « PASS ». Il serait trompeur d'utiliser un simple test de contrat statique comme preuve de chiffrement.
+
+**CI observée sur HEAD précédent `84ded8f4` :** 16 workflows détectés, dont plusieurs in_progress ; **D7 returning patient Web FUE #41252769623 FAIL**. Log précis : `frontend/test/services/d7_consent_withdrawal_fue_test.dart` introuvable lors de l'étape `D7 C01-C05 consent safety, refusal, lock and retry synthetic FUE`. C'est un échec de **fixture de test manquante**, distinct du chiffrement D18 et de la régression produit ; il interdit de déclarer la CI globale verte. TD-008 #41252769487 et D18 #41252769806 étaient in_progress au relevé. **Next indépendant :** rétablir la fixture D7 manquante ou corriger son chemin en vérifiant la référence canonique, puis exécuter POC sur runner équipé de Dart/Flutter/WASM ; ne pas relancer aveuglément le run D7.
+
+**Aucune donnée clinique, crypto, déploiement ou migration modifiés.** Scores D18 restent privacy BLOCKED 5.9 ; aucune certification FUE obtenue sur ce HEAD.
+
+---
+
 ## 31/10/2026 — POC chiffrement Web / gate préflight versions réelles
 
 **Goal :** vérifier le candidat `sqlite3mc.wasm` **sur les dépendances réellement verrouillées** avant toute migration. **Succès observable :** preuve Web exécutable avec base synthétique, mauvaise clé rejetée, persistance et octets non lisibles sans clé, Drift worker fonctionnel ; **statut : NON EXÉCUTÉ**, aucun binaire WASM chiffrant ni runner Dart disponibles dans l'environnement de cette revue.
