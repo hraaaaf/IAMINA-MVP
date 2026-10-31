@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/amina_visual_language.dart';
 import '../../data/drift/d18_encrypted_backup.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_progressive_demographics_store.dart';
+import '../../data/drift/patient_weight_history_store.dart';
 
 /// D18-specific backup UI: intentionally separate from clinical document import.
 class D18BackupSection extends StatelessWidget {
@@ -280,6 +282,10 @@ class _D18RestoreDialogState extends State<_D18RestoreDialog> {
       final data = await D18EncryptedBackup.open(
         _rawFile!, passphrase: _phrase.text,
       );
+      if ((await PatientProgressiveDemographicsStore(widget.db).read()) != null ||
+          (await PatientWeightHistoryStore(widget.db).recent(limit: 1)).isNotEmpty) {
+        throw StateError('D18 destination contains existing data');
+      }
       if (!mounted) return;
       _phrase.clear();
       final target = widget.db.patientVaultScope?.databaseName;

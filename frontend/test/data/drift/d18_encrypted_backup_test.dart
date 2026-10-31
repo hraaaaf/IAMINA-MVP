@@ -139,6 +139,36 @@ void main() {
         1994);
   });
 
+  test('encrypted backup roundtrip retains correction chain and purges correctly',
+      () async {
+    final source = _vault(734), target = _vault(734);
+    addTearDown(source.close);
+    addTearDown(target.close);
+    final history = PatientWeightHistoryStore(source);
+    await history.append(
+      clientUuid: _uuid1, value: '74', unit: 'kg',
+      measuredAtUtc: DateTime.utc(2026, 10, 14),
+    );
+    await history.append(
+      clientUuid: _uuid2, value: '72', unit: 'kg',
+      measuredAtUtc: DateTime.utc(2026, 10, 14),
+      replacesUuid: _uuid1,
+    );
+    final ciphertext = await D18EncryptedBackup.exportEncrypted(
+      source, passphrase: _secret,
+    );
+    final preview = await D18EncryptedBackup.open(
+      ciphertext, passphrase: _secret,
+    );
+    expect(preview.observationCount, 2);
+    await D18EncryptedBackup.restoreInto(target, preview);
+    final restored = PatientWeightHistoryStore(target);
+    expect((await restored.recent()).single.clientUuid, _uuid2);
+    expect((await restored.exportOwnedRows()).length, 2);
+    await restored.deleteFamily(_uuid2);
+    expect(await restored.exportOwnedRows(), isEmpty);
+  });
+
   test('weight correction is append-only, latest view, and purge deletes family',
       () async {
     final db = _vault(734);

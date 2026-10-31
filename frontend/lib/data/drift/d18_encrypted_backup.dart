@@ -18,7 +18,7 @@ final class D18BackupPreview {
   final List<Map<String, dynamic>> declarations;
   final List<Map<String, dynamic>> weights;
 
-  const D18BackupPreview({
+  const D18BackupPreview._({
     required this.sourceVaultName,
     required this.sourceOwner,
     required this.createdAtUtc,
@@ -124,17 +124,19 @@ final class D18EncryptedBackup {
       for (final row in weights)
         row['client_uuid'] as String: row['replaces_uuid'] as String?,
     };
+    final knownAcyclic = <String>{};
     for (final id in seen) {
       final path = <String>{};
       String? cursor = id;
-      while (cursor != null) {
+      while (cursor != null && !knownAcyclic.contains(cursor)) {
         if (!path.add(cursor)) {
           throw const FormatException('Cyclic D18 correction history');
         }
         cursor = parents[cursor];
       }
+      knownAcyclic.addAll(path);
     }
-    return D18BackupPreview(
+    return D18BackupPreview._(
       sourceVaultName: vault,
       sourceOwner: owner,
       createdAtUtc: created,
