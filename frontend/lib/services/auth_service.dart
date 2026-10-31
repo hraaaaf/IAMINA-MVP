@@ -17,6 +17,14 @@ const String kAuthBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+class NativeLoginRejected implements Exception {
+  const NativeLoginRejected();
+}
+class NativeLoginServiceUnavailable implements Exception {
+  final int statusCode;
+  const NativeLoginServiceUnavailable(this.statusCode);
+}
+
 const bool kOfflineDemo = bool.fromEnvironment(
   'IAMINA_OFFLINE_DEMO',
   defaultValue: false,
@@ -26,6 +34,15 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   'IAMINA_REMOTE_ACCOUNT_ENROLLMENT',
   defaultValue: false,
 );
+
+const bool kRemoteAccountLoginEnabled = bool.fromEnvironment(
+  'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED',
+  defaultValue: false,
+);
+
+String get _nativeAuthOrigin => kIsWeb && kRemoteAccountLoginEnabled
+    ? Uri.base.origin
+    : kAuthBaseUrl;
 
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
@@ -319,7 +336,8 @@ class AuthService extends ChangeNotifier {
         return;
       }
     }
-    throw StateError('Authentication failed');
+    if (nativeResponse.statusCode == 401) throw const NativeLoginRejected();
+    throw NativeLoginServiceUnavailable(nativeResponse.statusCode);
   }
 
   Future<void> registerWithEmail(String email, String password) async {
@@ -361,7 +379,7 @@ class AuthService extends ChangeNotifier {
     if (token != null) {
       try {
         await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          Uri.parse('$_nativeAuthOrigin/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
       } catch (error, stackTrace) {
@@ -421,7 +439,7 @@ class AuthService extends ChangeNotifier {
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('$_nativeAuthOrigin$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );

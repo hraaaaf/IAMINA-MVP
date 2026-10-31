@@ -651,7 +651,8 @@ class _LoginCard extends StatelessWidget {
           const SizedBox(height: 6),
           _DemoButton(isLoading: isLoading, label: demoLabel, onTap: onDemo),
           const SizedBox(height: 8),
-          _SignupRow(isLoading: isLoading, onTap: onSignup),
+          if (!kRemoteAccountLoginEnabled || kRemoteAccountEnrollmentEnabled)
+            _SignupRow(isLoading: isLoading, onTap: onSignup),
         ],
       ),
     );
