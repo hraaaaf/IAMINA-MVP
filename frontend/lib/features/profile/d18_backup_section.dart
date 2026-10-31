@@ -5,6 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'd18_backup_download_stub.dart'
+    if (dart.library.html) 'd18_backup_download_web.dart' as backup_download;
+
 import '../../core/theme/amina_visual_language.dart';
 import '../../data/drift/d18_encrypted_backup.dart';
 import '../../data/drift/database.dart';
@@ -89,6 +92,7 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
   final _secret = TextEditingController();
   final _confirm = TextEditingController();
   bool _busy = false;
+  Uint8List? _prepared;
   String? _error;
 
   String _t(String fr, String en, String ar) =>
@@ -100,6 +104,8 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
   void dispose() {
     _secret.dispose();
     _confirm.dispose();
+    _prepared?.fillRange(0, _prepared!.length, 0);
+    _prepared = null;
     super.dispose();
   }
 
@@ -118,34 +124,12 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
       final encrypted = await D18EncryptedBackup.exportEncrypted(
         db, passphrase: _secret.text,
       );
-      // Never save plaintext, passphrases, identifiers or clinical values
-      // into the filename or browser storage.
+      // The browser download must be triggered from a *new* direct user click.
+      // file_picker 8.1.4 used by IAMINA has no Web saveFile() implementation.
       if (!mounted || !identical(db, widget.db)) return;
       _secret.clear();
       _confirm.clear();
-      final result = await FilePicker.platform.saveFile(
-        dialogTitle: _t('Sauvegarde personnelle chiffrée',
-            'Encrypted personal backup', 'نسخة احتياطية مشفرة'),
-        fileName: 'iamina-d18-backup.iamina',
-        type: FileType.custom,
-        allowedExtensions: const ['iamina'],
-        bytes: Uint8List.fromList(utf8.encode(encrypted)),
-      );
-      if (!mounted) return;
-      if (result == null) {
-        setState(() => _error = _t(
-          'Téléchargement non confirmé. Aucune sauvegarde n’est garantie.',
-          'Download not confirmed. No backup is guaranteed.',
-          'لم يتم تأكيد التنزيل.'));
-        return;
-      }
-      final message = _t(
-        'Fichier chiffré généré. Gardez-le et sa phrase secrète séparément ; testez la restauration.',
-        'Encrypted file generated. Keep the file and passphrase separately; test restoration.',
-        'تم إنشاء الملف المشفر. احتفظ به وبالعبارة السرية منفصلين واختبر الاستعادة.');
-      final messenger = ScaffoldMessenger.of(context);
-      Navigator.of(context).pop();
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      setState(() => _prepared = Uint8List.fromList(utf8.encode(encrypted)));
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = _t(
@@ -154,6 +138,31 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
         'تعذر التصدير، لم تُنشأ نسخة احتياطية.'));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _download() {
+    final bytes = _prepared;
+    if (_busy || bytes == null) return;
+    try {
+      // Synchronous click handler; only an actual user gesture may start it.
+      if (!backup_download.triggerD18BackupDownload(bytes)) {
+        throw StateError('Unsupported browser download');
+      }
+      final message = _t(
+        'Téléchargement lancé. Vérifiez que le fichier est conservé ; testez ensuite sa restauration.',
+        'Download started. Check that the file was saved, then test its restoration.',
+        'بدأ التنزيل. تحقق من حفظ الملف واختبر الاستعادة.');
+      final messenger = ScaffoldMessenger.of(context);
+      bytes.fillRange(0, bytes.length, 0);
+      _prepared = null;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      setState(() => _error = _t(
+        'Le téléchargement a échoué. Rien n’a été sauvegardé automatiquement.',
+        'Download failed. Nothing was saved automatically.',
+        'فشل التنزيل ولم يتم الحفظ تلقائيًا.'));
     }
   }
 
@@ -199,6 +208,14 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
             'Sans cette phrase secrète, IAMINA ne pourra pas restaurer vos données. Elle n’est pas enregistrée.',
             'Without this passphrase IAMINA cannot restore your data. It is not stored.',
             'دون العبارة السرية لا يمكن استعادة البيانات. لا يتم حفظها.')),
+          if (_prepared != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(_t(
+                'Le fichier est chiffré et prêt : cliquez sur Télécharger. IAMINA ne peut pas confirmer son stockage sur votre appareil.',
+                'The encrypted file is ready: click Download. IAMINA cannot confirm it was saved on your device.',
+                'الملف المشفر جاهز: انقر للتنزيل. لا يمكن تأكيد حفظه تلقائيًا.')),
+            ),
           if (_error != null) Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Text(_error!, key: const Key('d18-export-error'),
@@ -210,12 +227,20 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
     actions: [
       TextButton(onPressed: _busy ? null : () => Navigator.pop(context),
         child: Text(_t('Annuler', 'Cancel', 'إلغاء'))),
-      FilledButton(
-        key: const Key('d18-export-create'),
-        onPressed: _busy ? null : _export,
-        child: Text(_t('Chiffrer et télécharger',
-            'Encrypt and download', 'تشفير وتنزيل')),
-      ),
+      if (_prepared == null)
+        FilledButton(
+          key: const Key('d18-export-create'),
+          onPressed: _busy ? null : _export,
+          child: Text(_t('Chiffrer le fichier',
+              'Encrypt file', 'تشفير الملف')),
+        )
+      else
+        FilledButton(
+          key: const Key('d18-export-download'),
+          onPressed: _busy ? null : _download,
+          child: Text(_t('Télécharger le fichier',
+              'Download file', 'تنزيل الملف')),
+        ),
     ],
   );
 }
