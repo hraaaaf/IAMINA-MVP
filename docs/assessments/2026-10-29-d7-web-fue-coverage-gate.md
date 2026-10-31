@@ -235,3 +235,15 @@ _Note : ce closeout documentaire peut produire un nouveau HEAD, dont la CI est �
 **AFTER réel** : NON OBSERVÉ, donc aucun score visuel ni PASS FUE-04. La Preview Vercel toujours READY `dpl_8AwbJeb4smvuZkDcZcdw3zwPTnkn` est sur l'ancien commit `8258a884` ; correctif **NON DÉPLOYÉ**. Production inchangée, PR #1196 ouverte/non fusionnable. Le prochain acte requiert une **autorisation explicite de nouvelle Preview Vercel**, puis vérification READY, recette iPhone même viewport avec consentement + verrou, comparaison BEFORE/AFTER, puis A→B→A et confidentialité clinique. Si échec : inspecter preuve du vrai statut réseau sans lire de secret ni données de santé.
 
 **Décision FUE-04** : **NO-GO** jusqu'au test humain.
+
+## 31/10/2026 — D7 FUE-04 : retour positif de recette humaine sur la Preview corrigée
+
+**Résultat rapporté par l'utilisateur** : après ouverture de la nouvelle Preview D7 et les instructions de recette iPhone, l'utilisateur a confirmé dans la conversation : **« C bon tout marche ! »**. Cela constitue une **acceptation humaine déclarative du parcours testé**, en réponse à la demande d'essayer « Accepter et continuer », puis la sauvegarde de traitements et la déconnexion/reconnexion A → B → A. Le message ne détaille ni captures AFTER ni chaque résultat individuel : ne pas transformer cette déclaration en preuves techniques indépendantes par sous-étape.
+
+**Environnement effectivement concerné** : [Preview Vercel immuable](https://iamina-review-kal2o4kc8-achraf-benmoussa-s-projects.vercel.app/login), déploiement `dpl_HHtvRc69EbVdrUDXT2Bp9XMZQJNv` confirmé `READY`, SHA applicatif `2fe625cf2854f49d20ceba8d426f021eeffd35f4` ; SSO Preview actif. **BEFORE** : capture Safari avec erreur de consentement à 09:46 sur l'ancien déploiement. **AFTER** : retour utilisateur favorable, **aucune capture équivalente fournie** ; score visuel non coté.
+
+**Preuves automatisées préexistantes** : [CI #41190432994](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41190432994) `SUCCESS` sur le commit produit `1c0c68bb` (27 tests Flutter et proxy Node validés), puis commit purement documentaire `2fe625cf` déployé. Le navigateur Chrome automatisé distant A→B→A n'est toujours **pas certifié PASS** sur cette nouvelle Preview ; la recette manuelle ne remplace pas la revue médicale/confidentialité indépendante.
+
+**Verdict exact** : **FUE-04 = VALIDATION HUMAINE RAPPORTÉE POSITIVE** sur la Preview, **certification technique E2E / clinique / privacy non clôturée**. Ne pas déclarer GO production ni 100 % du chantier. PR #1196 reste ouverte/non fusionnable selon le dernier contrôle, production Vercel inchangée. Aucun merge ni déploiement supplémentaire autorisé par ce simple retour.
+
+**Next exact** : réconcilier les preuves manuelles et le dernier run Chrome hébergé, lever les éventuelles divergences et examiner la revue clinique/privacy indépendante ; traiter les conflits PR avant toute proposition de merge soumise à validation humaine. Pas de déploiement Production sans autorisation.
