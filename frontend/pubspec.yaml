@@ -48,6 +48,8 @@ dependencies:
   file_picker: ^8.1.4
   # FRUG-1 pre-upload raster minimization + exact-byte digest
   crypto: 3.0.7
+  # D18: authenticated, password-derived local-only patient backup (WebCrypto on browsers)
+  cryptography: ^2.9.0
   image: 4.9.1
 
   # Utilities
