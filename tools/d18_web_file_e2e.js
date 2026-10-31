@@ -69,6 +69,57 @@ async function enter(page,label,value){
  await x.click({timeout:6000});await page.keyboard.press('ControlOrMeta+A');
  await page.keyboard.insertText(value);await sleep(180);
 }
+// Real Flutter canvas editor proof: a click/insertText alone may silently
+// type into no field. Verify the actual user's Select All → Copy result before
+// proceeding. Retry a coordinate-based field focus if semantics stole focus.
+async function enterVerified(page,label,value){
+ await page.context().grantPermissions(['clipboard-read','clipboard-write'],
+   {origin:'http://127.0.0.1:7388'});
+ const failures=[];
+ for(let attempt=0;attempt<3;attempt++){
+   const target=await get(page,label);
+   await target.scrollIntoViewIfNeeded();
+   if(attempt===1){
+     const bounds=await target.boundingBox();
+     if(!bounds)throw Error('Missing editable bounds for '+label);
+     await page.mouse.click(bounds.x+bounds.width*0.50,
+       bounds.y+bounds.height*0.50);
+   }else if(attempt===2){
+     const inputs=page.getByRole('textbox',{name:label,exact:false});
+     if(await inputs.count()){
+       await inputs.first().click({timeout:3000});
+     }else{
+       await target.click({timeout:3000});
+     }
+   }else{
+     await target.click({timeout:3000});
+   }
+   await page.keyboard.press('ControlOrMeta+A');
+   if(attempt===2){
+     await page.keyboard.type(value,{delay:35});
+   }else{
+     await page.keyboard.insertText(value);
+   }
+   await sleep(120);
+   await page.evaluate(()=>navigator.clipboard.writeText('d18-unfocused-sentinel'));
+   await page.keyboard.press('ControlOrMeta+A');
+   await page.keyboard.press('ControlOrMeta+C');
+   const copied=await page.evaluate(()=>navigator.clipboard.readText());
+   if(copied===value){
+     steps.push({check:'User keyboard confirms '+label+' value',pass:true});
+     return;
+   }
+   const state=await page.evaluate(()=>{
+     const el=document.activeElement;
+     return {tag:el?.tagName||null,role:el?.getAttribute('role')||null,
+       inputLength:typeof el?.value==='string'?el.value.length:null};
+   });
+   failures.push({attempt,copyLength:copied.length,focus:state});
+ }
+ throw Error('Flutter editable entry not proved for '+label+': '+
+   JSON.stringify(failures));
+}
+
 async function enterSecret(page,label,value){
  // Obscured Flutter TextFields are password controls, NOT accessible-role
  // textboxes; a click on their label may never focus the actual editor.
@@ -152,16 +203,30 @@ async function check(page,label){
 
   // Exercise dated weight entry and append-only correction before exporting.
   // A timestamp must be chosen explicitly; opening the form is insufficient.
-  await enter(page,'Poids mesuré','72,50');
+  // Reset focus after DropdownButton overlay, preserving the saved
+  // profile. Then insist on a real keyboard copy proof of the weight editor.
+  await bootRealProfile(page);
+  await click(page,'Informations personnelles facultatives');
+  await enterVerified(page,'Poids mesuré','72,50');
+  await snap(page,'weight-entry-verified');
   await click(page,'Choisir la date et l’heure de la pesée');
   await click(page,'OK'); // explicit date confirmation
   await click(page,'OK'); // explicit time confirmation
-  await click(page,'Ajouter cette pesée');
+  if(await locate(page,'Choisir la date et l’heure de la pesée')){
+    await snap(page,'weight-time-not-set');
+    throw Error('Date/time picker did not commit a real measuredAt value');
+  }
+  await snap(page,'weight-date-time-verified');
+  const saveWeight=await get(page,'Ajouter cette pesée');
+  if(!await saveWeight.isEnabled()){
+    throw Error('Add weight disabled despite confirmed editor and picker');
+  }
+  await saveWeight.click({timeout:6000});
   await check(page,'72.50 kg');
   steps.push({check:'Dated weight added through real Web date/time pickers',pass:true});
   await snap(page,'dated-weight-added');
   await click(page,'Corriger la pesée');
-  await enter(page,'Poids mesuré','73,00');
+  await enterVerified(page,'Poids mesuré','73,00');
   await click(page,'Enregistrer la correction');
   await check(page,'73.00 kg');
   if((await page.getByText('72.50 kg',{exact:true}).count())>0)
