@@ -437,7 +437,7 @@ class _D18ProfilePanelState extends State<D18ProfilePanel> {
                     (row.replacesUuid == null ? '' :
                       _t(' · corrigée', ' · corrected', ' · مصحّحة')),
                   ),
-                  trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
+                  trailing: Wrap(spacing: 0, alignment: WrapAlignment.end, children: [
                     IconButton(
                       key: ValueKey('d18-edit-' + row.clientUuid),
                       tooltip: _t('Corriger la pesée', 'Correct reading',
