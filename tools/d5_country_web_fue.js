@@ -98,43 +98,37 @@ async function assertSelectedCountry(page,expected) {
   const size=page.viewportSize();
   if(size.width!==390 || size.height!==844)
     throw Error('Country reload visual oracle requires certified 390x844 viewport');
-  let didClick=false;
-  const editors=page.getByRole('textbox');
-  for(let i=0;i<await editors.count();i++){
-    const editor=editors.nth(i);
-    if(!await editor.isVisible().catch(()=>false)) continue;
-    const rect=await editor.boundingBox().catch(()=>null);
-    if(rect && rect.y>280 && rect.y<380){
-      await editor.click({timeout:5000});
-      didClick=true;
-      break;
-    }
-  }
-  if(!didClick){
-    // Grounded in the archived exact 390x844 Chrome capture: the live
-    // dropdown rectangle is x=20..328, y=307..354 (click x=94,y=330).
-    // A real mouse click is essential: do not programmatically focus inputs.
-    await page.mouse.click(94,330);
-  }
-  let observed={active:null,values:[],semantics:[]};
+  // Observe the actual Flutter accessibility tree. A fixed LTR pointer coordinate
+  // is not valid for RTL layouts, and CanvasKit need not expose an HTML input.
+  const candidates=[
+    page.getByText(expected,{exact:true}),
+    page.getByRole('button',{name:expected,exact:true}),
+    page.getByRole('combobox',{name:expected,exact:true}),
+    page.getByRole('textbox',{name:expected,exact:true}),
+  ];
+  let evidence={expected,locale:await page.evaluate(()=>document.documentElement.lang),
+    direction:await page.evaluate(()=>document.documentElement.dir),labels:[]};
   for(let n=0;n<40;n++){
-    observed=await page.evaluate(()=>{
-      const active=document.activeElement;
-      const inputs=[...document.querySelectorAll('input,textarea')];
-      return {
-        active:('value' in active)?active.value:null,
-        values:inputs.map(x=>x.value||'').filter(Boolean).slice(0,12),
-        semantics:[...document.querySelectorAll('flt-semantics')]
-          .map(x=>x.getAttribute('aria-label')||x.getAttribute('aria-valuetext')||'')
-          .filter(x=>x.includes('France')||x.includes('Espagne')).slice(0,10),
-      };
-    });
-    if(observed.active===expected || observed.values.includes(expected))
-      return;
+    for(const candidate of candidates){
+      if(await candidate.count() && await candidate.first().isVisible().catch(()=>false))
+        return;
+    }
+    evidence=await page.evaluate(expected=>{
+      const nodes=[...document.querySelectorAll('flt-semantics,[role],input,textarea')];
+      const labels=nodes.map(el=>({
+        label:el.getAttribute('aria-label')||'',
+        value:el.getAttribute('aria-valuetext')||el.value||'',
+        text:(el.textContent||'').slice(0,70),
+      })).filter(x=>x.label||x.value||x.text).slice(0,30);
+      return {expected,locale:document.documentElement.lang,
+        direction:document.documentElement.dir,labels};
+    },expected);
+    if(evidence.labels.some(x=>x.label===expected||x.value===expected||
+      x.text.trim()===expected))return;
     await snooze(150);
   }
-  throw Error('Selected country mismatch after real pointer focus: expected '+
-    expected+' observed='+JSON.stringify(observed).slice(0,650));
+  throw Error('Country not exposed in live Flutter UI after offline reload: '+
+    JSON.stringify(evidence).slice(0,800));
 }
 async function startState(page,l,width,ready) {
   const btn=await find(page,l.start);
