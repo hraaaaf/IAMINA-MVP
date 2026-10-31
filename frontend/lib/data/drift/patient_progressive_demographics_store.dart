@@ -106,9 +106,8 @@ final class PatientProgressiveDemographicsStore {
     await _ensureTable();
     return db.transaction(() async {
       final owner = _owner;
-      if (await db.getProfileForLocalUserId(owner) == null) {
-        throw StateError('No patient-owned profile in selected vault');
-      }
+      // A verified, physically selected patient vault is sufficient; D18 must
+      // not force completion of the medical profile or onboarding.
       final previous = await read();
       final year = updateBirthYear ? birthYear : previous?.birthYear;
       final identity =
