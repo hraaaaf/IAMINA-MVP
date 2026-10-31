@@ -13,6 +13,7 @@ final class LocalWeightObservation {
   final int kilogramsHundredths;
   final DateTime measuredAtUtc;
   final String provenance;
+  final String? replacesUuid;
 
   const LocalWeightObservation({
     required this.ownerId,
@@ -22,6 +23,7 @@ final class LocalWeightObservation {
     required this.kilogramsHundredths,
     required this.measuredAtUtc,
     required this.provenance,
+    this.replacesUuid,
   });
 }
 
@@ -82,6 +84,7 @@ final class PatientWeightHistoryStore {
         kilograms_hundredths INTEGER NOT NULL
           CHECK (kilograms_hundredths > 0),
         measured_at_utc TEXT NOT NULL,
+        replaces_uuid TEXT,
         provenance TEXT NOT NULL CHECK (provenance = 'patient_declared'),
         PRIMARY KEY (user_id, client_uuid)
       )
@@ -89,6 +92,11 @@ final class PatientWeightHistoryStore {
     await db.customStatement('''
       CREATE INDEX IF NOT EXISTS patient_weight_obs_owner_time_v1
       ON patient_weight_observations_v1 (user_id, measured_at_utc DESC)
+    ''');
+    await db.customStatement('''
+      CREATE UNIQUE INDEX IF NOT EXISTS patient_weight_obs_one_correction_v1
+      ON patient_weight_observations_v1 (user_id, replaces_uuid)
+      WHERE replaces_uuid IS NOT NULL
     ''');
   }
 
@@ -103,6 +111,7 @@ final class PatientWeightHistoryStore {
       kilogramsHundredths: row['kilograms_hundredths']! as int,
       measuredAtUtc: at,
       provenance: row['provenance']! as String,
+      replacesUuid: row['replaces_uuid'] as String?,
     );
   }
 
@@ -111,6 +120,7 @@ final class PatientWeightHistoryStore {
     required String value,
     required String unit,
     required DateTime measuredAtUtc,
+    String? replacesUuid,
   }) async {
     final id = clientUuid.toLowerCase();
     if (!RegExp(_uuidV4).hasMatch(id)) {
@@ -123,26 +133,37 @@ final class PatientWeightHistoryStore {
       throw ArgumentError.value(measuredAtUtc, 'measuredAtUtc',
           'UTC timestamp cannot be in the future');
     }
+    if (replacesUuid != null &&
+        (!RegExp(_uuidV4).hasMatch(replacesUuid) || replacesUuid == id)) {
+      throw ArgumentError.value(replacesUuid, 'replacesUuid');
+    }
     final original = _parseHundredths(value);
     final metric = _toKilogramsHundredths(original, unit);
     await _ensureTable();
     return db.transaction(() async {
       final owner = _owner;
-      if (await db.getProfileForLocalUserId(owner) == null) {
-        throw StateError('No patient-owned profile in selected vault');
+      if (replacesUuid != null) {
+        final originalRows = await db.customSelect('''
+          SELECT client_uuid FROM patient_weight_observations_v1
+          WHERE user_id = ? AND client_uuid = ?
+        ''', variables: [Variable<int>(owner), Variable<String>(replacesUuid)]).get();
+        if (originalRows.length != 1) {
+          throw StateError('Correction requires existing patient measurement');
+        }
       }
       await db.customStatement('''
         INSERT INTO patient_weight_observations_v1
           (user_id, client_uuid, value_hundredths, unit,
-           kilograms_hundredths, measured_at_utc, provenance)
-        VALUES (?, ?, ?, ?, ?, ?, 'patient_declared')
+           kilograms_hundredths, measured_at_utc, replaces_uuid, provenance)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'patient_declared')
         ON CONFLICT(user_id, client_uuid) DO NOTHING
       ''', [
         owner, id, original, unit, metric, measuredAtUtc.toIso8601String(),
+        replacesUuid,
       ]);
       final rows = await db.customSelect('''
         SELECT user_id, client_uuid, value_hundredths, unit,
-               kilograms_hundredths, measured_at_utc, provenance
+               kilograms_hundredths, measured_at_utc, provenance, replaces_uuid
         FROM patient_weight_observations_v1
         WHERE user_id = ? AND client_uuid = ?
       ''', variables: [Variable<int>(owner), Variable<String>(id)]).get();
@@ -152,7 +173,8 @@ final class PatientWeightHistoryStore {
           existing.unit != unit ||
           existing.kilogramsHundredths != metric ||
           existing.measuredAtUtc != measuredAtUtc ||
-          existing.provenance != 'patient_declared') {
+          existing.provenance != 'patient_declared' ||
+          existing.replacesUuid != replacesUuid) {
         throw StateError('D18 weight UUID conflict; history not overwritten');
       }
       return existing;
@@ -164,12 +186,54 @@ final class PatientWeightHistoryStore {
     await _ensureTable();
     final rows = await db.customSelect('''
       SELECT user_id, client_uuid, value_hundredths, unit,
-             kilograms_hundredths, measured_at_utc, provenance
-      FROM patient_weight_observations_v1
-      WHERE user_id = ?
+             kilograms_hundredths, measured_at_utc, provenance, replaces_uuid
+      FROM patient_weight_observations_v1 AS obs
+      WHERE obs.user_id = ? AND NOT EXISTS (
+        SELECT 1 FROM patient_weight_observations_v1 newer
+        WHERE newer.user_id = obs.user_id AND newer.replaces_uuid = obs.client_uuid
+      )
       ORDER BY measured_at_utc DESC, client_uuid DESC LIMIT ?
     ''', variables: [Variable<int>(_owner), Variable<int>(limit)]).get();
     return rows.map((row) => _fromData(row.data)).toList(growable: false);
+  }
+
+  /// Purge every prior revision of a measurement when the patient explicitly
+  /// deletes the current reading. No hidden previous value may reappear.
+  Future<void> deleteFamily(String latestUuid) async {
+    if (!RegExp(_uuidV4).hasMatch(latestUuid)) {
+      throw ArgumentError.value(latestUuid, 'latestUuid');
+    }
+    await _ensureTable();
+    await db.transaction(() async {
+      final owner = _owner;
+      final children = await db.customSelect('''
+        SELECT client_uuid FROM patient_weight_observations_v1
+        WHERE user_id = ? AND replaces_uuid = ?
+      ''', variables: [Variable<int>(owner), Variable<String>(latestUuid)]).get();
+      if (children.isNotEmpty) {
+        throw StateError('Only the latest measurement may be deleted');
+      }
+      final family = <String>[];
+      String? current = latestUuid;
+      while (current != null) {
+        if (family.contains(current) || family.length > 20000) {
+          throw StateError('Corrupt correction chain');
+        }
+        final rows = await db.customSelect('''
+          SELECT replaces_uuid FROM patient_weight_observations_v1
+          WHERE user_id = ? AND client_uuid = ?
+        ''', variables: [Variable<int>(owner), Variable<String>(current)]).get();
+        if (rows.length != 1) throw StateError('Missing reading in correction history');
+        family.add(current);
+        current = rows.single.read<String?>('replaces_uuid');
+      }
+      for (final id in family) {
+        await db.customStatement('''
+          DELETE FROM patient_weight_observations_v1
+          WHERE user_id = ? AND client_uuid = ?
+        ''', [owner, id]);
+      }
+    });
   }
 
   /// A read-only export for a later versioned, owner-verified local backup.
@@ -189,7 +253,7 @@ final class PatientWeightHistoryStore {
     }
     final rows = await db.customSelect('''
       SELECT user_id, client_uuid, value_hundredths, unit,
-             kilograms_hundredths, measured_at_utc, provenance
+             kilograms_hundredths, measured_at_utc, provenance, replaces_uuid
       FROM patient_weight_observations_v1 WHERE user_id = ?
       ORDER BY measured_at_utc DESC, client_uuid DESC
     ''', variables: [Variable<int>(_owner)]).get();
@@ -200,7 +264,7 @@ final class PatientWeightHistoryStore {
   static void validateBackupRow(Map<String, dynamic> row, int owner) {
     const fields = {
       'user_id', 'client_uuid', 'value_hundredths', 'unit',
-      'kilograms_hundredths', 'measured_at_utc', 'provenance',
+      'kilograms_hundredths', 'measured_at_utc', 'replaces_uuid', 'provenance',
     };
     if (row.keys.toSet().difference(fields).isNotEmpty ||
         fields.difference(row.keys.toSet()).isNotEmpty ||
@@ -211,7 +275,11 @@ final class PatientWeightHistoryStore {
         row['kilograms_hundredths'] is! int ||
         row['unit'] is! String ||
         row['measured_at_utc'] is! String ||
-        row['provenance'] != 'patient_declared') {
+        row['provenance'] != 'patient_declared' ||
+        (row['replaces_uuid'] != null &&
+         (row['replaces_uuid'] is! String ||
+          !RegExp(_uuidV4).hasMatch(row['replaces_uuid'] as String) ||
+          row['replaces_uuid'] == row['client_uuid']))) {
       throw const FormatException('Invalid D18 weight backup row');
     }
     try {
