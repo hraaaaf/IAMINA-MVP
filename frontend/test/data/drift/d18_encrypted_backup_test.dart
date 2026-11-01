@@ -108,8 +108,10 @@ void main() {
     );
     final altered = jsonDecode(encrypted) as Map<String, dynamic>;
     final sealed = altered['sealed'] as String;
-    altered['sealed'] = '${sealed.substring(0, sealed.length - 1)}'
-        '${sealed.endsWith('A') ? 'B' : 'A'}';
+    final tamperIndex = sealed.length ~/ 2;
+    altered['sealed'] = '${sealed.substring(0, tamperIndex)}'
+        '${sealed[tamperIndex] == 'A' ? 'B' : 'A'}'
+        '${sealed.substring(tamperIndex + 1)}';
     await expectLater(
       D18EncryptedBackup.open(jsonEncode(altered), passphrase: _secret),
       throwsA(anything),
