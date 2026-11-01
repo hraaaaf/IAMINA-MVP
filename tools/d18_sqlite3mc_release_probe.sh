@@ -13,5 +13,5 @@ unzip -q "$WORK/$VERSION" -d "$WORK/extracted"
 find "$WORK/extracted" -type f -print | sort
 WASM="$(find "$WORK/extracted" -type f -name '*.wasm' -print -quit)"
 test -n "$WASM" || { echo 'NO_WASM_IN_RELEASE'; exit 1; }
-node tools/d18_sqlite_cipher_preflight.js "$WASM"
+node tools/d18_sqlite_cipher_preflight.cjs "$WASM"
 echo 'D18 release SHA and WASM structure inspected; encrypted persistence NOT verified'
