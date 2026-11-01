@@ -52,12 +52,12 @@ async function processPhase(context, phase){
   let context;
   try {
     context=await chromium.launchPersistentContext(root,
-      {headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+      {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
     await processPhase(context,'seed_a');
     await context.close();context=null;
     // Chromium is a NEW process but has the SAME isolated temporary user profile.
     context=await chromium.launchPersistentContext(root,
-      {headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+      {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
     for(const phase of ['verify_a','verify_b','verify_legacy']){
       await processPhase(context,phase);
     }
