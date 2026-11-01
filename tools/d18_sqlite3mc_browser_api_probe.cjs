@@ -155,9 +155,19 @@ const os=require('node:os');
       finally{if(id)await p('close',{dbId:id})}
      }
      if(phase==='write'){details.write=await attempt('D18_RESTART_KEY',true);details.ok=details.write.ok}
+     else if(phase==='rotate'){
+      let id;
+      try{
+       const o=await p('open',{filename:file,vfs});if(o.type==='error')throw o;id=o.dbId;
+       const k=await p('exec',{dbId:id,sql:"PRAGMA key='D18_RESTART_KEY'"});if(k.type==='error')throw k;
+       const r=await p('exec',{dbId:id,sql:"PRAGMA rekey='D18_ROTATED_KEY'"});if(r.type==='error')throw r;
+       details.ok=true;
+      }catch(e){details.error=e?.result?.message||String(e)}
+      finally{if(id)await p('close',{dbId:id})}
+     }
      else{
-      details.wrong=await attempt('D18_WRONG_KEY',false);
-      details.correct=await attempt('D18_RESTART_KEY',false);
+      details.wrong=await attempt(phase==='rotated-reopen'?'D18_RESTART_KEY':'D18_WRONG_KEY',false);
+      details.correct=await attempt(phase==='rotated-reopen'?'D18_ROTATED_KEY':'D18_RESTART_KEY',false);
       details.ok=!details.wrong.ok&&details.correct.ok&&details.correct.rows.some(r=>r[0]==='D18_RESTART_SENTINEL');
      }
      return details;
@@ -168,9 +178,16 @@ const os=require('node:os');
    const first=await restartPhase('write');
    console.log(JSON.stringify({persistentProcessWrite:first}));
    if(!first.ok)throw Error('D18 persistent Chromium initial keyed write failed');
+   // Rotation is a separate gate: use a second process to rekey, then a third to verify.
    const second=await restartPhase('reopen');
    console.log(JSON.stringify({persistentProcessRestart:second}));
    if(!second.ok)throw Error('D18 persistent Chromium restart wrong-key/correct-key gate failed');
+   const rotate=await restartPhase('rotate');
+   console.log(JSON.stringify({persistentProcessRotation:rotate}));
+   if(!rotate.ok)throw Error('D18 OPFS rekey failed');
+   const rotated=await restartPhase('rotated-reopen');
+   console.log(JSON.stringify({persistentProcessRotatedRestart:rotated}));
+   if(!rotated.ok)throw Error('D18 OPFS rotated key restart gate failed');
   }finally{fs.rmSync(profile,{recursive:true,force:true})}
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
