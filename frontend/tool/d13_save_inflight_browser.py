@@ -37,6 +37,16 @@ def run(browser, lang, size, out):
         assert page.get_by_role("textbox").count()>0
         assert page.get_by_role("dialog").count()==0
         proof["stages"].append("app_back_refused")
+        # A page-backed Flutter GoRouter route may bypass PopScope via native
+        # browser history. Prove this separately from the in-app back button.
+        pending_url = page.url
+        page.evaluate("window.history.back()")
+        page.wait_for_timeout(500)
+        assert page.url == pending_url, "Browser history escaped the in-flight save: " + page.url
+        assert page.get_by_role("textbox").count() > 0, "Browser back disposed the draft during the INSERT"
+        assert page.evaluate("document.documentElement.dataset.d13Stage") == "held"
+        proof["stages"].append("browser_history_back_refused")
+        page.screenshot(path=str(out/("browser-back-"+case+".png")))
         page.evaluate("window.dispatchEvent(new Event('d13-release'))")
         page.wait_for_function("document.documentElement.dataset.d13Stage === 'written'",timeout=15000)
         page.get_by_text(re.compile(r"126\s*mg/dL")).first.wait_for(timeout=12000)
