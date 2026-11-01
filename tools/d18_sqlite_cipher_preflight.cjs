@@ -24,8 +24,8 @@ try {
   process.exit(1);
 }
 const wasmModule = new WebAssembly.Module(wasm);
-const exports = WebAssembly.Module.exports(wasmModule).map(item => item.name);
-const sqliteExports = exports.filter(name => /sqlite3_(open|prepare|exec|key|rekey)/i.test(name));
+const wasmExports = WebAssembly.Module.exports(wasmModule).map(item => item.name);
+const sqliteExports = wasmExports.filter(name => /sqlite3_(open|prepare|exec|key|rekey)/i.test(name));
 if (sqliteExports.length === 0) {
   console.error('REJECTED: valid WASM is not identifiable as a SQLite engine; no SQLite entrypoints');
   process.exit(1);
