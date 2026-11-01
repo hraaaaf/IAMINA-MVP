@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : inventaire SQLite complet en préflight (non certifié CI)
+
+Implémentation `frontend/lib/data/drift/d18_schema_inventory.dart` (commit `3b003c75`) : lecture transactionnelle de `sqlite_master` (tables, index, vues, triggers), comptage de toutes les tables, identifiants SQL échappés, `PRAGMA user_version`, rejet des bases legacy/audit. Test `frontend/test/data/drift/d18_schema_inventory_test.dart` (commit `647ecbd1`) : table et index dynamiques, non-modification de la source, refus legacy/audit. **Tests non exécutés/CI non vérifiée ; aucun export/import ni chiffrement produit implémenté.** Next : exécuter `flutter test test/data/drift/d18_schema_inventory_test.dart` depuis `frontend/`, corriger échecs, puis tester vrai Drift Web et backend OPFS/IndexedDB. Pas de merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 : full-vault export gate BLOQUÉ (preuve code)
 
 `frontend/lib/data/drift/local_backup.dart` exporte les cinq tables Drift déclarées et, pour les coffres scopés, les déclarations de traitement ; il n'exporte pas les tables SQL dynamiques D18 (ex. `patient_progressive_demographics_v1`) ni tous les objets SQLite. `restoreVaultJson()` efface les tables supportées avant restauration transactionnelle. **Ne jamais utiliser cet export JSON pour une migration complète chiffrée**. ADR actualisé commit `aacbced5`. Next : test navigateur réel de l'adaptateur Drift + inventaire `sqlite_master`, copie complète isolée et contrôle d'intégrité/rollback. Aucun merge/deploy.
