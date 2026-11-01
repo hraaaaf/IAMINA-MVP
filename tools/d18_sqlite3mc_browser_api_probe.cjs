@@ -79,6 +79,50 @@ const path=require('node:path');
    return out;
   });
   console.log(JSON.stringify({multipleciphersOpfsExploration:opfs}));
+  const persistence=await page.evaluate(async()=>{
+   const p=globalThis.d18Worker, file='/d18-test-encrypted.sqlite3',vfs='multipleciphers-opfs';
+   const out={wrongKeyRejected:false,correctKeyRecovered:false,rawBytesInspected:false,plaintextFound:null,encryptedPersistenceVerified:false};
+   async function run(key){
+    let id;
+    try{
+     const o=await p('open',{filename:file,vfs});id=o.dbId;
+     if(o.type==='error')throw o;
+     const k=await p('exec',{dbId:id,sql:"PRAGMA key='"+key+"'"});
+     if(k.type==='error')throw k;
+     const q=await p('exec',{dbId:id,sql:'SELECT v FROM synthetic',rowMode:'array',resultRows:[]});
+     if(q.type==='error')throw q;
+     return {ok:true,rows:q.result?.resultRows||[]};
+    }catch(e){return {ok:false,error:e?.result?.message||e?.message||String(e)}}
+    finally{if(id)await p('close',{dbId:id})}
+   }
+   out.wrong=await run('D18_INCORRECT_KEY');
+   out.wrongKeyRejected=!out.wrong.ok;
+   out.correct=await run('D18_TEST_ONLY');
+   out.correctKeyRecovered=out.correct.ok&&out.correct.rows.some(r=>r[0]==='D18_TEST_ONLY');
+   try{
+    const root=await navigator.storage.getDirectory();
+    const names=[];
+    for await(const [name,handle] of root.entries()){
+     names.push(name);
+     if(handle.kind==='file'){
+      const bytes=new Uint8Array(await (await handle.getFile()).arrayBuffer());
+      const text=new TextDecoder('latin1').decode(bytes);
+      if(name.includes('d18-test-encrypted')){
+       out.rawBytesInspected=true;
+       out.plaintextFound=text.includes('D18_TEST_ONLY')||text.includes('CREATE TABLE');
+       out.sqliteHeaderVisible=text.startsWith('SQLite format 3');
+      }
+     }
+    }
+    out.opfsRootEntries=names;
+   }catch(e){out.rawError=String(e)}
+   out.encryptedPersistenceVerified=out.wrongKeyRejected&&out.correctKeyRecovered&&out.rawBytesInspected&&out.plaintextFound===false&&out.sqliteHeaderVisible===false;
+   return out;
+  });
+  console.log(JSON.stringify({opfsPersistenceExploration:persistence}));
+  if(opfs.wrote&&!persistence.correctKeyRecovered)throw Error('D18 keyed OPFS failed correct-key reopen');
+  if(opfs.wrote&&!persistence.wrongKeyRejected)throw Error('D18 keyed OPFS failed wrong-key rejection');
+
   if(worker.opfsRegistered)console.log('OPFS_VFS_AVAILABLE_REQUIRES_KEYED_PERSISTENCE_TEST');
   console.log(JSON.stringify({persistenceGate:worker.opfsRegistered?'OPFS_AVAILABLE_NOT_YET_ENCRYPTION_PROOF':'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
