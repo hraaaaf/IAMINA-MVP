@@ -78,10 +78,15 @@ class AddLogSheet extends StatefulWidget {
   });
 
   @override
-  State<AddLogSheet> createState() => _AddLogSheetState();
+  State<AddLogSheet> createState() => AddLogSheetState();
 }
 
-class _AddLogSheetState extends State<AddLogSheet> {
+class AddLogSheetState extends State<AddLogSheet> {
+  /// Exit gate shared with the page header outside this widget's PopScope.
+  Future<bool> confirmExitRequested() => mounted
+      ? _confirmLeave(AppLocalizations.of(context)!)
+      : Future.value(false);
+
   final TextEditingController _glucoseController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
   AudioRecorder? _mealVoiceRecorder;

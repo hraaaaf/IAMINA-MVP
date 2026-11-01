@@ -11,10 +11,17 @@ String _addLogCopy(BuildContext context, String fr, String en, String ar) {
   return fr;
 }
 
-class AddLogScreen extends StatelessWidget {
+class AddLogScreen extends StatefulWidget {
   final AddLogFocus focus;
 
   const AddLogScreen({super.key, this.focus = AddLogFocus.none});
+
+  @override
+  State<AddLogScreen> createState() => _AddLogScreenState();
+}
+
+class _AddLogScreenState extends State<AddLogScreen> {
+  final _sheetKey = GlobalKey<AddLogSheetState>();
 
   @override
   Widget build(BuildContext context) {
@@ -22,9 +29,9 @@ class AddLogScreen extends StatelessWidget {
     final compact = width < 600;
     final tablet = width >= 600 && width < 1000;
     final desktop = width >= 1000;
-    final effectiveFocus = desktop && focus == AddLogFocus.none
+    final effectiveFocus = desktop && widget.focus == AddLogFocus.none
         ? AddLogFocus.activity
-        : focus;
+        : widget.focus;
 
     return Scaffold(
       body: AminaLegacyPageHeaderBridge(
@@ -40,7 +47,13 @@ class AddLogScreen extends StatelessWidget {
           'Simply record what just happened.',
           'سجّل ببساطة ما حدث للتو.',
         ),
-        leading: const AminaPageExitButton(),
+        leading: AminaPageExitButton(
+          beforeExit: () async {
+            final sheet = _sheetKey.currentState;
+            if (sheet == null) return false;
+            return sheet.confirmExitRequested();
+          },
+        ),
         legacyTopExtent: 0,
         contentTopInset: 12,
         child: SizedBox.expand(
@@ -54,7 +67,7 @@ class AddLogScreen extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 height: compact ? double.infinity : null,
-                child: AddLogSheet(isPage: true, focus: effectiveFocus),
+                child: AddLogSheet(key: _sheetKey, isPage: true, focus: effectiveFocus),
               ),
             ),
           ),

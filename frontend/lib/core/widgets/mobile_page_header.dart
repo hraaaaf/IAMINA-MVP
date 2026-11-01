@@ -7,11 +7,14 @@ import '../theme/app_theme.dart';
 class AminaPageExitButton extends StatelessWidget {
   final String fallbackRoute;
   final bool close;
+  /// Optional guard: other pages retain the existing exit behavior.
+  final Future<bool> Function()? beforeExit;
 
   const AminaPageExitButton({
     super.key,
     this.fallbackRoute = '/dashboard',
     this.close = false,
+    this.beforeExit,
   });
 
   @override
@@ -20,7 +23,9 @@ class AminaPageExitButton extends StatelessWidget {
     return IconButton(
       key: const ValueKey('amina-page-exit'),
       tooltip: close ? material.closeButtonTooltip : material.backButtonTooltip,
-      onPressed: () {
+      onPressed: () async {
+        final check = beforeExit;
+        if (check != null && (!await check() || !context.mounted)) return;
         final router = GoRouter.of(context);
         if (router.canPop()) {
           router.pop();

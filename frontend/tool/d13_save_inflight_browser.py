@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """D13 strict synthetic Flutter Web FUE (real Chromium/real Drift Web)."""
 import argparse, json, pathlib, re, shutil, subprocess, sys, time, urllib.request
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 
 PORT = 7453
 VIEWS = ((390,844),(768,1024),(1280,900))
@@ -21,9 +21,14 @@ def run(browser, lang, size, out):
         assert page.evaluate("document.documentElement.dataset.d13Count")=="0"
         proof["stages"].append("empty")
         page.get_by_role("button",name="D13_OPEN").click(timeout=10000)
-        page.get_by_role("textbox").first.fill("126",timeout=10000)
+        glucose=page.get_by_role("textbox").first
+        glucose.click(timeout=10000)
+        page.keyboard.type("126",delay=70)
+        save=page.get_by_role("button",name=re.compile("Enregistrer|حفظ|Save",re.I))
+        expect(save).to_be_enabled(timeout=6000)
+        proof["stages"].append("glucose_input_confirmed")
         page.screenshot(path=str(out/("before-"+case+".png")))
-        page.get_by_role("button",name=re.compile("Enregistrer|حفظ|Save",re.I)).click(timeout=10000)
+        save.click(timeout=10000)
         page.wait_for_function("document.documentElement.dataset.d13Stage === 'held'",timeout=15000)
         proof["stages"].append("real_insert_blocked")
         page.screenshot(path=str(out/("pending-"+case+".png")))

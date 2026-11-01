@@ -7,8 +7,9 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'data/drift/database.dart';
-import 'features/dashboard/widgets/add_log_sheet.dart';
+import 'features/journal/add_log_screen.dart';
 import 'l10n/app_localizations.dart';
 
 void stage(String v) => html.document.documentElement?.dataset['d13Stage'] = v;
@@ -29,22 +30,11 @@ class HoldInsert extends QueryInterceptor {
 }
 
 class Probe extends StatelessWidget {
-  final AppDatabase db;
-  const Probe(this.db, {super.key});
+  const Probe({super.key});
   @override
   Widget build(BuildContext c) => Scaffold(
     body: Center(child: FilledButton(
-      onPressed: () => Navigator.of(c).push<void>(
-        MaterialPageRoute<void>(builder: (_) => Scaffold(
-          body: MultiProvider(
-            providers: [
-              Provider<AppDatabase>.value(value: db),
-              Provider<PatientProfileData?>.value(value: null),
-            ],
-            child: const AddLogSheet(),
-          ),
-        )),
-      ),
+      onPressed: () => GoRouter.of(c).go('/add'),
       child: const Text('D13_OPEN'),
     )),
   );
@@ -72,11 +62,22 @@ Future<void> main() async {
     );
     html.document.documentElement?.dataset['d13Count'] = (await db.countLogs()).toString();
     stage('ready');
-    runApp(MaterialApp(
-      locale: Locale(lang),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Probe(db),
+    final router = GoRouter(routes: [
+      GoRoute(path: '/', builder: (_, __) => const Probe()),
+      GoRoute(path: '/add', builder: (_, __) => const AddLogScreen()),
+      GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('D13_EXIT_OK'))),
+    ]);
+    runApp(MultiProvider(
+      providers: [
+        Provider<AppDatabase>.value(value: db),
+        Provider<PatientProfileData?>.value(value: null),
+      ],
+      child: MaterialApp.router(
+        locale: Locale(lang),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
     ));
   } catch (e, stack) {
     html.document.documentElement?.dataset['d13Error'] = e.toString();
