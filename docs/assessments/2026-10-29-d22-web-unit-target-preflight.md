@@ -205,3 +205,14 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 **Préparation technique supplémentaire :** enrichir l'oracle D22 test-only pour refuser explicitement les lectures manuelles / sources inconnues en tant que preuve de TIR CGM et pour exiger une fenêtre temporelle documentée et une règle de métrique revue. Aucun seuil, facteur, valeur patient ou comportement de production modifié. Le produit complet demeure FUE_NO_GO / RELEASE_NO_GO.
 
 **Next exact :** CI exacte du nouveau HEAD, review G1/G6/G7 et revue clinique des principes approuvés, puis implémentation du modèle vérifié, tests négatifs/migrations et FUE Web FR/AR 390/768/1280. 
+
+
+## 01/11/2026 — D22-B G1/G4 : candidat typé en PR Draft #1214, sans activation clinique
+
+**Goal limité et observé :** préparer le contrat d'unité source/provenance sans aucune conversion de cible active ni migration. [PR #1214](https://github.com/hraaaaf/IAMINA-MVP/pull/1214) contient un **module candidat non utilisé en production**, neuf tests synthétiques à exécuter et la [fiche dédiée](2026-11-01-d22-b-staged-unit-contract.md). Branche `fix/d22-b-web-unit-authority-staged-20261101` basée en Git sur D22-A `3e55ff0`; base PR temporairement `main` pour déclencher le workflow CI, puisque `.github/workflows/ci.yml` ne vérifie que les PR vers main/dev. PR en **Draft**, ne pas fusionner ni confondre ce diff cumulatif avec deux décisions certifiées.
+
+**Contrat proposé :** seules les unités source explicites `mg/dL` et `mmol/L` passent le parser strict ; les unités inconnues ou anciennes sont inclassables, la chaîne de saisie est conservée, le facteur purement mathématique proposé `18.01559` (NIST glucose, 180.1559 g/mol) est isolé et non branché à `GlucoseFormatter`. Aucun seuil médical ni TIR n'est calculé. Le contrôle de forme d'une cible ne constitue **jamais** une authentification endocrinologique.
+
+**Limites non corrigées :** SQL defaults 70/180, `onboarding_chat_screen.dart` écrit 70/180 pour mmol/L, `profile_screen.dart` sauvegarde les valeurs brutes sans source, `glucose_formatter.dart` possède encore un fallback implicite vers mg/dL. Tous les consommateurs, migrations G7, validations G1/G4 et clinicien G2–G5, G6 FR/AR RTL, FUE D22 Chrome F01–F07 **restent à faire**. Aucun patient réel ni Vercel nouveau. Les tests D22-B ne doivent être déclarés réussis **qu'après vérification du run exact-HEAD** ; toute preuve de l'ancien HEAD D22-A est distincte.
+
+**Next exact :** vérifier CI Flutter PR #1214 sur son commit final, diagnostiquer/corriger en cas d'échec ; si vert, documenter la seule préparation non clinique, puis obtenir revue clinique/privacy/DB avant de brancher le runtime et d'exécuter les FUE réelles.
