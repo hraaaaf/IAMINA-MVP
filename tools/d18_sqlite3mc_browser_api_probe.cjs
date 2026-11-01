@@ -2,6 +2,8 @@
 'use strict';
 const {chromium}=require('playwright');
 const path=require('node:path');
+const fs=require('node:fs');
+const os=require('node:os');
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
@@ -126,5 +128,49 @@ const path=require('node:path');
   if(worker.opfsRegistered)console.log('OPFS_VFS_AVAILABLE_REQUIRES_KEYED_PERSISTENCE_TEST');
   console.log(JSON.stringify({persistenceGate:worker.opfsRegistered?'OPFS_AVAILABLE_NOT_YET_ENCRYPTION_PROOF':'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
+
+
+  // Independent Chromium processes, same persistent profile; synthetic data only.
+  const profile=fs.mkdtempSync(path.join(os.tmpdir(),'d18-opfs-restart-'));
+  async function restartPhase(phase){
+   const context=await chromium.launchPersistentContext(profile,{headless:true,args:['--no-sandbox']});
+   try{
+    const tab=context.pages()[0]||await context.newPage();
+    await tab.goto('http://127.0.0.1:7398/d18-probe.html');
+    return await tab.evaluate(async(phase)=>{
+     const script=document.createElement('script');script.src='/jswasm/sqlite3-worker1-promiser.js';
+     await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=reject;document.head.appendChild(script)});
+     const p=await new Promise((resolve,reject)=>{try{const x=sqlite3Worker1Promiser({onready:()=>resolve(x),onerror:reject})}catch(e){reject(e)}});
+     const file='/d18-restart-encrypted.sqlite3',vfs='multipleciphers-opfs';
+     const details={phase,isolated:crossOriginIsolated,ok:false};
+     async function attempt(key,write){
+      let id;
+      try{
+       const o=await p('open',{filename:file,vfs});if(o.type==='error')throw o;id=o.dbId;
+       const k=await p('exec',{dbId:id,sql:"PRAGMA key='"+key+"'"});if(k.type==='error')throw k;
+       const sql=write?"CREATE TABLE synthetic(v TEXT); INSERT INTO synthetic VALUES('D18_RESTART_SENTINEL')":'SELECT v FROM synthetic';
+       const q=await p('exec',{dbId:id,sql,rowMode:'array',resultRows:[]});if(q.type==='error')throw q;
+       return {ok:true,rows:q.result?.resultRows||[]};
+      }catch(e){return {ok:false,error:e?.result?.message||String(e)}}
+      finally{if(id)await p('close',{dbId:id})}
+     }
+     if(phase==='write'){details.write=await attempt('D18_RESTART_KEY',true);details.ok=details.write.ok}
+     else{
+      details.wrong=await attempt('D18_WRONG_KEY',false);
+      details.correct=await attempt('D18_RESTART_KEY',false);
+      details.ok=!details.wrong.ok&&details.correct.ok&&details.correct.rows.some(r=>r[0]==='D18_RESTART_SENTINEL');
+     }
+     return details;
+    },phase);
+   }finally{await context.close()}
+  }
+  try{
+   const first=await restartPhase('write');
+   console.log(JSON.stringify({persistentProcessWrite:first}));
+   if(!first.ok)throw Error('D18 persistent Chromium initial keyed write failed');
+   const second=await restartPhase('reopen');
+   console.log(JSON.stringify({persistentProcessRestart:second}));
+   if(!second.ok)throw Error('D18 persistent Chromium restart wrong-key/correct-key gate failed');
+  }finally{fs.rmSync(profile,{recursive:true,force:true})}
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
