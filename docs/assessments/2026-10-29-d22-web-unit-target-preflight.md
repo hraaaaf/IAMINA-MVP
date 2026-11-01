@@ -250,3 +250,12 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 - **AFTER requis mais pas encore observé** : capture au même état/viewport sur Chrome FR/AR (390×844, 768×1024, 1280×900), vérification clavier/RTL/zoom 200 %, screenshot contrast BEFORE/AFTER et score visuel. Le mode dégradé est visible par conception : il ne s'agit pas de masquer une vraie cible validée, puisqu'aucune autorité G2/G7 fiable n'existe en base actuellement.
 
 **Aucun score visuel ni FUE certifiée tant que la confrontation réelle n'a pas été exécutée.**
+
+
+## 01/11/2026 — G7 : rehearsal SQLite synthétique ajoutée, migration réelle non autorisée
+
+**Résultat observé (source Git seulement)** : le test `frontend/test/d22_g7_migration_rehearsal_test.dart` simule sur deux coffres SQLite/Drift en mémoire l'ajout d'une table de provenance externe, la conservation des bornes brutes historiques, l'état `unknown` et une panne injectée annulée par transaction. [Dossier G7](2026-11-01-d22-g7-synthetic-migration-rehearsal.md).
+
+**Important :** la migration n'a PAS été appliquée à une base réelle, `schemaVersion=12` et les defaults SQL legacy 70/180 demeurent ; aucun runtime ne consomme le sidecar. Le modèle ne prétend pas authentifier une cible prescrite. Tests nouveaux = **NOT_RUN jusqu'au verdict CI sur SHA exact**. FUE Web D22 spécifique F01–F07 = NOT_RUN. Merge et Vercel sans autorisation = interdits.
+
+**Next exact :** CI Flutter synthétique sur nouveau HEAD, corrections si échec, puis revue spécialisée DB/privacy G7 et clinique G1/G4 avant toute migration versionnée de patients.
