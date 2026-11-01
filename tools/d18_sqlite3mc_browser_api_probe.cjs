@@ -28,9 +28,14 @@ const path=require('node:path');
     try{const p=sqlite3Worker1Promiser({onready:()=>resolve(p),onerror:reject});}catch(e){reject(e)}
    });
    const config=await promiser('config-get',{});
-   return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),vfsList:config.result?.vfsList,opfsStorageApi:typeof navigator.storage?.getDirectory};
+   const vfsList=config.result?.vfsList||[];
+   const opfsRegistered=vfsList.some(v=>/opfs/i.test(v));
+   const kvvfsRegistered=vfsList.includes('kvvfs');
+   return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),vfsList,opfsRegistered,kvvfsRegistered,opfsStorageApi:typeof navigator.storage?.getDirectory};
   });
   console.log(JSON.stringify(worker));
+  if(worker.opfsRegistered)throw Error('Unexpected OPFS VFS: review persistence test requirements');
+  console.log(JSON.stringify({persistenceGate:'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
