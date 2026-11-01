@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 sqlite3mc WASM acquisition probe VERIFIED GREEN
+
+GitHub Actions [#41308799558](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41308799558), job `124854658956`, **SUCCESS**. Logs : `D18 WASM preflight: 4 synthetic checks PASS; encryption NOT tested`, binaire WASM inspecté avec `status: BINARY_VALID_ONLY`, SHA256 binaire `0b5a4bfff35f1ec87bf6f68ea293f425b86cbd661b77628a955cb827c9fbf524`, `encryptedDatabaseVerified: false`, et `D18 release SHA and WASM structure inspected; encrypted persistence NOT verified`. Archive amont vérifiée contre SHA256 épinglé. **Sous-lot acquisition/intégrité clôturé ; intégration Drift, clé, persistance et chiffrement au repos toujours ouverts.** Pas de merge/deploy.
+
+---
+
 ## 01/11/2026 — Probe sqlite3mc : correction du déclenchement PR
 
 HEAD précédent `3fc3e7ac` : D18 #41266682333 SUCCESS, CI #41266682462 SUCCESS. Aucun run du nouveau probe dans la liste des runs PR ; l'API GitHub utilisée filtre uniquement les runs `pull_request` (ce qui peut masquer des runs `push`). Commit `bdd8a0b9` : ajout du déclencheur `pull_request` sur chemins pertinents à `.github/workflows/d18-sqlite3mc-release-probe.yml`, sans modifier l'application. Nouveau run non encore observé. Archive v2.6.1 et SHA256 vérifiés sur page release amont, mais **pas encore téléchargés et validés en CI**. Aucune preuve d'intégration Drift ni de chiffrement au repos.
