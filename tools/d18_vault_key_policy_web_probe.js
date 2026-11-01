@@ -9,7 +9,9 @@ fs.mkdirSync(out,{recursive:true});
  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
  const events=[];
  try {
-   const context=await browser.newContext();
+   // Flutter Web's locale-sensitive bootstrap requires a valid locale.
+   // Match the proven D18 real-Drift Chromium harness.
+   const context=await browser.newContext({locale:'fr-FR'});
    const page=await context.newPage();
    page.on('pageerror',e=>{if(events.length<25)events.push('pageerror: '+e.message.slice(0,300));});
    page.on('requestfailed',r=>{if(events.length<25)events.push('request: '+r.url().slice(0,250));});

@@ -1,3 +1,12 @@
+## 01/11/2026 — D18-A : Flutter WebCrypto browser harness fails before test entrypoint, locale fix awaiting CI
+
+At **2270201297e77ddf9a064e8e58f82a2b0b565399**, [D18 scoped CI #41361186898](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41361186898) **FAILURE** exclusively in `d18-key-policy-tests` → `Check WebCrypto unlock, cross-vault isolation and independent offline recovery`. GitHub logs show `dart analyze` PASS, **3/3 native D18 key-policy tests PASS**, Flutter Web build PASS. Chromium page never reaches `main()` (`stage:null`) and pageerror is **`RangeError: Incorrect locale information provided`**, then wait 150 s times out. Other scoped jobs `inventory-tests` SUCCESS and `real-drift-web-chrome` SUCCESS; [CI #41361186784](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41361186784) SUCCESS; [UX #41361186786](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41361186786) SUCCESS on same HEAD. **No evidence yet of WebCrypto browser recovery PASS.**
+
+**Harness fix prepared:** `tools/d18_vault_key_policy_web_probe.js` uses `browser.newContext({locale:'fr-FR'})`, matching the already passing real Drift Chromium D18 harness. This corrects environment configuration, **not encryption logic**, and leaves all cryptographic fail-closed assertions intact. New SHA must pass the actual browser run before success can be claimed.
+
+**Next exact:** inspect dedicated key-policy CI, its real Chromium report and all exact-SHA jobs; if failing diagnose without removing conditions. Clinical Drift at-rest encryption and lossless migration STILL OPEN. PR #1207 DRAFT, NO MERGE, NO VERCEL.
+---
+
 ## 01/11/2026 — D18-A : vraie sonde WebCrypto de politique des clés préparée (ci non validée)
 
 Nouvelle entrypoint **CI-only** `frontend/lib/d18_vault_key_policy_web_probe_main.dart` et harness `tools/d18_vault_key_policy_web_probe.js`. Exécute en réel Flutter Web/Chromium la même politique de clés que le module isolé (8 jalons : création, unlock, mauvais secret, refus cross-vault, recovery, reset, ancien code rejeté sur nouvelle enveloppe, nouveau code correct), sans base clinique ni stockage du secret. Workflow `.github/workflows/d18-schema-inventory.yml` enrichi, artefact `d18-a-webcrypto-key-proof/report.json`. **Nouveau HEAD à vérifier en CI**, aucune preuve navigateur avant succès du job. Zéro modification du stockage produit, zéro migration, zéro merge/deploy.
