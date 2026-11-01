@@ -1,0 +1,35 @@
+name: D18 real Drift Web vault smoke (experimental)
+on:
+  push:
+    branches:
+      - feat/iamina-d18-web-progressive-profile-20261031
+    paths:
+      - frontend/test/data/drift/d18_real_web_vault_smoke_test.dart
+      - .github/workflows/d18-real-drift-web-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d18-real-drift-web-smoke-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Static analysis
+        run: dart analyze test/data/drift/d18_real_web_vault_smoke_test.dart
+      - name: Run actual Drift Web factory on Chromium
+        run: |
+          export CHROME_EXECUTABLE=/usr/bin/chromium
+          flutter test --no-pub --platform chrome --timeout 90s test/data/drift/d18_real_web_vault_smoke_test.dart
