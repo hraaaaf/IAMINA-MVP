@@ -66,15 +66,15 @@ const path=require('node:path');
    let id;
    try{
     const o=await p('open',{filename:'/d18-test.sqlite3',vfs:'opfs'});
-    if(o.type==='error')throw Error(JSON.stringify(o.result));
+    if(o.type==='error')throw Error(JSON.stringify({type:o.type,result:o.result,message:o.result?.message,operation:'open'}));
     id=o.dbId;out.opened=true;
     const k=await p('exec',{dbId:id,sql:"PRAGMA key='D18_TEST_ONLY'"});
-    if(k.type==='error')throw Error(JSON.stringify(k.result));
+    if(k.type==='error')throw Error(JSON.stringify({type:k.type,result:k.result,message:k.result?.message,operation:'key'}));
     out.keyAccepted=true;
     const w=await p('exec',{dbId:id,sql:"CREATE TABLE IF NOT EXISTS synthetic(v TEXT); INSERT INTO synthetic VALUES('D18_TEST_ONLY')"});
-    if(w.type==='error')throw Error(JSON.stringify(w.result));
+    if(w.type==='error')throw Error(JSON.stringify({type:w.type,result:w.result,message:w.result?.message,operation:'write'}));
     out.wrote=true;
-   }catch(e){out.error=String(e)}
+   }catch(e){out.error=String(e);out.errorMessage=e?.message||null}
    finally{if(id)await p('close',{dbId:id})}
    return out;
   });
