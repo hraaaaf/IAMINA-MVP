@@ -55,8 +55,22 @@ jobs:
       - run: flutter pub get
       - name: Analyze real-browser smoke
         run: dart analyze test/data/drift/d18_real_web_vault_smoke_test.dart
+      - name: Stage exact production SQLite WASM and Drift worker for Chrome test
+        run: |
+          set -euo pipefail
+          test -s web/sqlite3.wasm
+          test -s web/drift_worker.js
+          mkdir -p lib/d18_ci_web_assets
+          cp web/sqlite3.wasm lib/d18_ci_web_assets/sqlite3.wasm
+          cp web/drift_worker.js lib/d18_ci_web_assets/drift_worker.js
+          cmp web/sqlite3.wasm lib/d18_ci_web_assets/sqlite3.wasm
+          cmp web/drift_worker.js lib/d18_ci_web_assets/drift_worker.js
       - name: Real Drift Web vault on Chromium (not native)
         run: |
+          set -euo pipefail
           export CHROME_EXECUTABLE="$(command -v google-chrome || command -v chromium)"
           test -n "$CHROME_EXECUTABLE"
-          flutter test --no-pub --platform chrome --timeout 90s test/data/drift/d18_real_web_vault_smoke_test.dart
+          flutter test --no-pub --platform chrome --timeout 90s \
+            --dart-define=D18_WEB_WASM_URI=packages/amina/d18_ci_web_assets/sqlite3.wasm \
+            --dart-define=D18_WEB_WORKER_URI=packages/amina/d18_ci_web_assets/drift_worker.js \
+            test/data/drift/d18_real_web_vault_smoke_test.dart
