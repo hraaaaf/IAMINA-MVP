@@ -260,7 +260,15 @@ async function check(page,label){
   await bootRealProfile(page);
   await check(page,'Informations personnelles facultatives');
   await click(page,'Informations personnelles facultatives');
-  await enter(page,'Année de naissance (facultative)','1994');
+  // Flutter Web can expose a textbox semantics node while its actual editor
+  // has not received keyboard focus. Prove the entered year via clipboard
+  // before asserting the Save button is enabled (same method as weight).
+  await enterVerified(page,'Année de naissance (facultative)','1994');
+  const saveDemographics=await get(page,'Enregistrer');
+  if(!await saveDemographics.isEnabled()){
+    await snap(page,'birth-year-save-disabled');
+    throw Error('Demographics save disabled after verified birth-year entry');
+  }
   await click(page,'Enregistrer');
   await check(page,'Informations enregistrées localement uniquement.');
   await snap(page,'birth-year-saved');
