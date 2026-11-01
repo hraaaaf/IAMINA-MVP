@@ -19,7 +19,6 @@ import 'clinical_engine.dart';
 import 'widgets/glucose_chart_with_events.dart';
 import '../journal/widgets/amina_chat_view.dart';
 import '../../data/models/ai_models.dart';
-import '../../services/api_client.dart';
 
 part 'widgets/top_bar.dart';
 part 'widgets/hero_section.dart';
@@ -50,9 +49,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   final List<Animation<double>> _fadeAnims = [];
   final List<Animation<Offset>> _slideAnims = [];
   static const _itemCount = 6;
-
-  SummaryResponse? _aiSummary;
-  bool _isLoadingSummary = false;
 
   List<LogEntryData> _cachedLogs = [];
   String? _cachedUnit;
@@ -91,22 +87,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       final db = context.read<AppDatabase>();
       final count = await db.select(db.logEntries).get().then((r) => r.length);
       if (count == 0 && kDebugMode) await db.seedDemoData();
-      _fetchAiSummary();
     });
-  }
-
-  Future<void> _fetchAiSummary() async {
-    if (!mounted) return;
-    setState(() => _isLoadingSummary = true);
-    try {
-      final api = context.read<ApiClient>();
-      final res = await api.getAiSummary(days: _range);
-      if (mounted) setState(() => _aiSummary = res);
-    } catch (e) {
-      debugPrint('Error fetching AI summary: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingSummary = false);
-    }
   }
 
   @override
@@ -187,8 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             final prevStart = start.subtract(Duration(days: _range));
             return StreamBuilder<List<LogEntryData>>(
               stream: db.watchLogsInRange(prevStart, start),
-              builder: (context, prevSnap) {
-                final prevLogs = prevSnap.data ?? [];
+              builder: (context, _) {
 
                 final screenW = MediaQuery.of(context).size.width;
                 final hPad = screenW >= 1400
@@ -211,7 +191,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           range: _range,
                           onRangeChanged: (r) {
                             setState(() => _range = r);
-                            _fetchAiSummary();
                           },
                           syncService: context.read<SyncService>(),
                           onChatTap: _openChat,
