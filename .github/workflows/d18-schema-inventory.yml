@@ -1,0 +1,39 @@
+name: D18 scoped SQLite inventory tests
+on:
+  push:
+    branches:
+      - feat/iamina-d18-web-progressive-profile-20261031
+    paths:
+      - frontend/lib/data/drift/d18_schema_inventory.dart
+      - frontend/test/data/drift/d18_schema_inventory_test.dart
+      - .github/workflows/d18-schema-inventory.yml
+  pull_request:
+    paths:
+      - frontend/lib/data/drift/d18_schema_inventory.dart
+      - frontend/test/data/drift/d18_schema_inventory_test.dart
+      - .github/workflows/d18-schema-inventory.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d18-schema-inventory-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  inventory-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze D18 inventory files
+        run: dart analyze lib/data/drift/d18_schema_inventory.dart test/data/drift/d18_schema_inventory_test.dart
+      - name: Test D18 inventory and scope guard
+        run: flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart
