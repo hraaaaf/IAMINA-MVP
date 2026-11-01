@@ -24,9 +24,7 @@ try {
  fs.writeFileSync(valid,Buffer.concat([Buffer.from('0061736d01000000','hex'),custom]));
  assert.doesNotThrow(()=>new WebAssembly.Module(fs.readFileSync(valid)));
  r=run(valid);
- assert.equal(r.status,0,r.stderr);
- const result=JSON.parse(r.stdout);
- assert.equal(result.status,'BINARY_VALID_ONLY');
- assert.equal(result.encryptedDatabaseVerified,false);
+ assert.equal(r.status,1,'valid non-SQLite WASM must be rejected');
+ assert.match(r.stderr,/not identifiable as a SQLite engine/);
  console.log('D18 WASM preflight: 4 synthetic checks PASS; encryption NOT tested');
 } finally {fs.rmSync(temp,{recursive:true,force:true});}
