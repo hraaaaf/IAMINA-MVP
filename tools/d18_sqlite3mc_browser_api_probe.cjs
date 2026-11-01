@@ -4,6 +4,7 @@ const {chromium}=require('playwright');
 const path=require('node:path');
 const fs=require('node:fs');
 const os=require('node:os');
+const {execFileSync}=require('node:child_process');
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
@@ -210,9 +211,12 @@ const os=require('node:os');
       return {transactionLeftOpen:true};
      });
      console.log(JSON.stringify({crashBeforeTermination:before}));
-     const proc=crashed.browser()?.process();
-     if(!proc)throw Error('D18 cannot access Chromium process for hard termination');
-     proc.kill('SIGKILL');killed=true;
+     const lines=execFileSync('ps',['-eo','pid=,args='],{encoding:'utf8'}).split('\\n');
+     const match=lines.map(line=>line.trim()).find(line=>line.includes('--user-data-dir='+crashProfile)&&!line.includes('--type='));
+     if(!match)throw Error('D18 cannot identify persistent Chromium root process');
+     const pid=Number(match.match(/^\\d+/)?.[0]);
+     if(!Number.isSafeInteger(pid)||pid<=1)throw Error('D18 unsafe Chromium PID');
+     process.kill(pid,'SIGKILL');killed=true;
     }finally{if(!killed)await crashed.close()}
     const recovered=await chromium.launchPersistentContext(crashProfile,{headless:true,args:['--no-sandbox']});
     try{
