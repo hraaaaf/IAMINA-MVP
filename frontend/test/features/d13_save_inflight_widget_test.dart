@@ -66,6 +66,59 @@ void main() {
     (locale: const Locale('ar'), viewport: const Size(1280, 900)),
   ]) {
     testWidgets(
+      'D13 ${testCase.locale.languageCode} offers explicit discard but '
+      'preserves the draft when editing continues',
+      (tester) async {
+        tester.view.physicalSize = testCase.viewport;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final db = AppDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+
+        await tester.pumpWidget(_routeHarness(db, testCase.locale));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('open-add-log')));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+
+        await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
+        await tester.pumpAndSettle();
+        final prompt = find.byType(AlertDialog);
+        expect(prompt, findsOneWidget);
+        final actions = find.descendant(
+          of: prompt,
+          matching: find.byType(TextButton),
+        );
+        expect(actions, findsNWidgets(2));
+        await tester.tap(actions.first); // Continue editing.
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<TextField>(
+            find.byKey(const Key('glucose-input')),
+          ).controller?.text,
+          '126',
+        );
+
+        await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+        await tester.tap(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextButton),
+          ).last,
+        ); // Explicit discard.
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('open-add-log')), findsOneWidget);
+        expect(find.byKey(const Key('glucose-input')), findsNothing);
+        expect(await db.select(db.logEntries).get(), isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
       'D13 ${testCase.locale.languageCode} blocks back while real Drift insert '
       'is pending and writes exactly once after release',
       (tester) async {
