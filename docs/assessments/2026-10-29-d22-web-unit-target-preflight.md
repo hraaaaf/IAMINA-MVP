@@ -237,3 +237,16 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 **LIMITES explicites :** la base Drift conserve temporairement les defaults SQL 70/180 (la suppression et la migration de legacy nécessitent revue G7, sauvegarde et rollback). Le formateur général, les facteurs historiques 18.0/18.018 et les consommateurs externes restent à auditer/réconcilier avec G1/G4. L'interface perd provisoirement ses cartes d'objectifs — dégradation volontaire de sécurité. FUE réelle Chrome D22 F01–F07, comparaison visuelle BEFORE/AFTER 390/768/1280 et revue linguistique native **NOT_RUN**. Aucun déploiement Vercel ou merge ne résulte de ce changement.
 
 **Next :** CI Flutter tests + PWA sur SHA exact → correction des échecs → preuves widgets et FUE Chrome (environnement de test autorisé) → G1/G4 clinique et G7 privacy/DB → migration versionnée et restitution de fonctionnalités avec provenance authentifiée.
+
+### D22-B P0 — Target / mockup textuel AVANT preuve visuelle
+
+**BEFORE vérifiable dans l'ancien code** : (profil) choix d'unité puis champs cibles 70/180 non typés ; (dashboard) tuiles pourcentages de lectures ponctuelles appelés TIR et couleurs dans/hors cible ; (journal) couleurs alignées sur 70/180 même sans cible validée.
+
+**Goal/UI reference approuvé pour la préparation sécurisée (pas une validation UX)** :
+
+- Profil FR : `Unité de mesure: [mg/dL] [mmol/L]` puis `Objectifs glycémiques — Objectifs non vérifiés. Aucun classement médical avant validation.`, pas d'éditeur de cible. AR : `الأهداف غير مؤكدة. لا تصنيف طبي قبل التحقق.`.
+- Dashboard FR : `Objectifs non vérifiés. Impossible de calculer le temps dans la cible à partir de relevés ponctuels.` puis un journal de nombres sans couleur « dans/hors cible ». AR : `الأهداف غير مؤكدة. لا يمكن حساب الوقت ضمن النطاق من قياسات متفرقة.`.
+- Dashboard Premium : dernière mesure avec statut `cible non configurée` et tendance sans bornes cible ; Journal : historique consultable sans attribution de statut clinique.
+- **AFTER requis mais pas encore observé** : capture au même état/viewport sur Chrome FR/AR (390×844, 768×1024, 1280×900), vérification clavier/RTL/zoom 200 %, screenshot contrast BEFORE/AFTER et score visuel. Le mode dégradé est visible par conception : il ne s'agit pas de masquer une vraie cible validée, puisqu'aucune autorité G2/G7 fiable n'existe en base actuellement.
+
+**Aucun score visuel ni FUE certifiée tant que la confrontation réelle n'a pas été exécutée.**
