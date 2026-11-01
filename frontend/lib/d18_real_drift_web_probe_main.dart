@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter
 // D18 CI-only synthetic Web persistence probe through the real Drift factory.
 // Not a clinical data migration, at-rest encryption test or patient account.
 import 'dart:html' as html;
@@ -74,8 +75,7 @@ Future<void> _verifyLegacy() async {
   final legacy = AppDatabase.defaults();
   try {
     final rows = await legacy.customSelect(
-      "SELECT COUNT(*) AS n FROM sqlite_master WHERE name = ?",
-      [_table],
+      "SELECT COUNT(*) AS n FROM sqlite_master WHERE name = '$_table'",
     ).getSingle();
     _check(rows.read<int>('n') == 0, 'Legacy vault unexpectedly contains A probe');
   } finally {
