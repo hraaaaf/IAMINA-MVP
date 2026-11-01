@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 export Web : prévention d'un téléchargement périmé
+
+**Goal :** après une nouvelle tentative d'export D18, ne jamais proposer le fichier chiffré issu d'une tentative précédente. **Avant :** `_prepared` restait défini quand `D18EncryptedBackup.exportEncrypted` échouait, donc le bouton télécharger pouvait encore servir le backup précédent. **Changement :** `frontend/lib/features/profile/d18_backup_section.dart` efface les octets de `_prepared` via `fillRange(0, length, 0)` puis remet `_prepared = null` avant chaque tentative valide d'export. **Commit :** `8ea64e5bc3a2e8b7c0c395b9dfb442c7bbe7745f`. **Preuve :** inspection du chemin de contrôle et diff de code ; CI de ce commit non encore certifiée. **Risque résiduel :** mémoire navigateur / copie antérieure déjà téléchargée hors de portée ; chiffrement de la base Web non résolu. **Next :** test widget export succès→échec→bouton absent et FUE Web ; POC chiffrement entier séparé. Aucun merge ni déploiement.
+
+---
+
 # IAMINA — D18 Web / profil progressif + sauvegarde chiffrée — 2026-10-31
 
 ## Goal
