@@ -227,7 +227,7 @@ def main():
                             # target input controls on the real profile.
                             target_editors = page.get_by_role(
                                 "textbox", name=re.compile(
-                                    r"\\b(minimum|maximum)\\b", re.I
+                                    r"\b(minimum|maximum)\b", re.I
                                 )
                             )
                             assert target_editors.count() == 0, (
