@@ -220,6 +220,15 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             ),
           ),
         const SizedBox(height: 28),
+        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          ['mg/dL', 'mmol/L'],
+          ['mg/dL', 'mmol/L'],
+          _unit,
+          (val) => _setPresentationState(() => _unit = val),
+        ),
+        const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
         const SizedBox(height: 12),
         LayoutBuilder(
@@ -246,15 +255,6 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               ],
             );
           },
-        ),
-        const SizedBox(height: 28),
-        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
-        const SizedBox(height: 12),
-        _buildChoiceGrid(
-          ['mg/dL', 'mmol/L'],
-          ['mg/dL', 'mmol/L'],
-          _unit,
-          (val) => _setPresentationState(() => _unit = val),
         ),
         const SizedBox(height: 28),
         SizedBox(
