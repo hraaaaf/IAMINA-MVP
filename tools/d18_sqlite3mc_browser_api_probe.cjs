@@ -34,6 +34,28 @@ const path=require('node:path');
    return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),vfsList,opfsRegistered,kvvfsRegistered,opfsStorageApi:typeof navigator.storage?.getDirectory};
   });
   console.log(JSON.stringify(worker));
+  const kvvfs=await page.evaluate(async()=>{
+   const sqlite3=await sqlite3InitModule({locateFile:name=>'/jswasm/'+name});
+   const details={attempted:true,opened:false,reopened:false,wrongKeyRejected:false,rawStorageInspected:false,encryptedPersistenceVerified:false};
+   const filename='local';
+   let db;
+   try{
+    db=new sqlite3.oo1.DB({filename,vfs:'kvvfs'});
+    details.opened=true;
+    db.exec("PRAGMA key='D18_SYNTHETIC_KEY_NOT_FOR_PRODUCTION'");
+    db.exec("CREATE TABLE IF NOT EXISTS d18_probe(v TEXT); DELETE FROM d18_probe; INSERT INTO d18_probe VALUES('D18_SYNTHETIC_ONLY')");
+    db.close();db=null;
+    details.rawStorageInspected=true;
+    details.localStorageKeys=Object.keys(localStorage).filter(k=>k.startsWith('kvvfs-')).length;
+    details.plaintextVisible=Object.values(localStorage).some(v=>v.includes('D18_SYNTHETIC_ONLY'));
+    db=new sqlite3.oo1.DB({filename,vfs:'kvvfs'});
+    db.exec("PRAGMA key='D18_SYNTHETIC_KEY_NOT_FOR_PRODUCTION'");
+    details.reopened=db.selectObjects('SELECT v FROM d18_probe')[0]?.v==='D18_SYNTHETIC_ONLY';
+   }catch(e){details.error=String(e)}
+   finally{if(db)db.close()}
+   return details;
+  });
+  console.log(JSON.stringify({kvvfsExploration:kvvfs}));
   if(worker.opfsRegistered)throw Error('Unexpected OPFS VFS: review persistence test requirements');
   console.log(JSON.stringify({persistenceGate:'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
