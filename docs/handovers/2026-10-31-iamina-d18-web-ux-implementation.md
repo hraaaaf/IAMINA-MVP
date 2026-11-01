@@ -1,3 +1,9 @@
+## 01/11/2026 — Preflight WASM : tests synthétiques exécutés
+
+HEAD code `c9eb9a06` : `tools/d18_sqlite_cipher_preflight_test.js` ajoute quatre contrôles (binaire absent, non-WASM, WASM malformé, WASM structurellement valide mais non chiffrant). Une copie locale équivalente du test a été exécutée avec Node 22 : `4 synthetic checks PASS; encryption NOT tested`. L'absence de moteur sqlite3mc WASM compatible empêche toujours la preuve Chromium de chiffrement au repos. CI GitHub sur ce HEAD à vérifier. Aucun merge/deploy.
+
+---
+
 ## 01/11/2026 — WASM encrypted SQLite candidate preflight
 
 Added `tools/d18_sqlite_cipher_preflight.js` (`eb1cb8c4`). Local Node checks: missing binary exits 2; invalid binary exits 1. The probe only checks WASM structure and prints a SHA-256 for provenance; it explicitly does not certify encryption. No sqlite3mc WASM binary was available in the execution environment and direct GitHub fetch failed DNS resolution, so keyed database persistence/reopen tests are **blocked**, not passed. Next: obtain a pinned, auditable candidate WASM + matching Drift worker, then implement and run real browser keyed open/restart/wrong-key tests. No merge/deploy.
