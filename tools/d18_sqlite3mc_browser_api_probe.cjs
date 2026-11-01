@@ -211,10 +211,10 @@ const {execFileSync}=require('node:child_process');
       return {transactionLeftOpen:true};
      });
      console.log(JSON.stringify({crashBeforeTermination:before}));
-     const lines=execFileSync('ps',['-eo','pid=,args='],{encoding:'utf8'}).split('\\n');
+     const lines=execFileSync('ps',['-eo','pid=,args='],{encoding:'utf8'}).split(String.fromCharCode(10));
      const match=lines.map(line=>line.trim()).find(line=>line.includes('--user-data-dir='+crashProfile)&&!line.includes('--type='));
      if(!match)throw Error('D18 cannot identify persistent Chromium root process');
-     const pid=Number(match.match(/^\\d+/)?.[0]);
+     const pid=Number(match.match(/^[0-9]+/)?.[0]);
      if(!Number.isSafeInteger(pid)||pid<=1)throw Error('D18 unsafe Chromium PID');
      process.kill(pid,'SIGKILL');killed=true;
     }finally{if(!killed)await crashed.close()}
