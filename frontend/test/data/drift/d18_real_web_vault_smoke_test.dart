@@ -13,7 +13,6 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('real Drift Web vault A/B persistence and legacy quarantine', () async {
-    expect(kIsWeb, isTrue, reason: 'Browser only; native is not evidence');
     final suffix = DateTime.now().microsecondsSinceEpoch;
     final a = PatientVaultScope.deviceLocal(
       'aaaaaaaa-aaaa-4aaa-8aaa-${suffix.toRadixString(16).padLeft(12, '0').substring(0, 12)}',
@@ -53,5 +52,5 @@ void main() {
     } finally {
       await dbB.close();
     }
-  });
+  }, skip: !kIsWeb);
 }
