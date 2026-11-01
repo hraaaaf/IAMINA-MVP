@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 OPFS worker VFS VERIFIED GREEN with COOP/COEP
+
+Run [#41322017662](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41322017662), job `124894118686`, SUCCESS. Chromium `crossOriginIsolated:true`, `sharedArrayBuffer:"function"`, worker `opfsRegistered:true`, `vfsList` includes `opfs-wl` and `opfs`. Previous missing OPFS was caused by absent browser cross-origin isolation in probe server. `kvvfs` still rejects `PRAGMA key`; `encryptedPersistenceVerified:false`. Next: worker-backed OPFS encrypted open/write/close/reopen and wrong-key fail-closed with raw OPFS byte inspection; do not claim at-rest encryption or merge/deploy yet.
+
+---
+
 ## 01/11/2026 — D18 KV VFS incompatibility VERIFIED
 
 Run [#41315678291](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41315678291), job `124875080793`, SUCCESS as *diagnostic*. `kvvfsExploration.attempted:true`, `opened:true`, `reopened:false`, `encryptedPersistenceVerified:false`; error **`SQLite3Error: SQLITE_ERROR: sqlite3 result code 1: Setting key failed. Encryption is not supported by the VFS.`** Therefore `kvvfs` is not a viable encrypted persistence backend for this pinned sqlite3mc build. The green CI reflects diagnostic completion, not security readiness. Next: investigate a sqlite3mc-compatible persistent encrypted VFS/OPFS-enabled WASM build; require keyed reopen, wrong-key rejection, and raw storage inspection. No merge/deploy.
