@@ -146,18 +146,29 @@ def main():
                             section = page.get_by_role(
                                 "button", name=re.compile(r"^Medical tracking", re.I)
                             ).first
+                            # Flutter's semantic header is exposed through
+                            # the computed accessible name, but not through an
+                            # HTML aria-label attribute. Inspect only the
+                            # header line of the widget's ARIA snapshot:
+                            # descendants contain both unit choice buttons.
                             for _ in range(55):
-                                label = section.get_attribute("aria-label") or ""
-                                if unit in label:
+                                snapshot = section.aria_snapshot()
+                                header = next(
+                                    (line.strip() for line in snapshot.splitlines()
+                                     if "button" in line and "Medical tracking" in line),
+                                    "",
+                                )
+                                if unit in header:
                                     break
                                 page.wait_for_timeout(200)
                             else:
                                 raise AssertionError(
-                                    f"Persisted profile header has no {unit}: {label[:300]!r}"
+                                    f"Persisted profile summary has no {unit}: "
+                                    f"{snapshot[:350]!r}"
                                 )
                             other_unit = "mg/dL" if unit == "mmol/L" else "mmol/L"
-                            assert other_unit not in label, (
-                                f"Profile summary unexpectedly contains both units: {label!r}"
+                            assert other_unit not in header, (
+                                f"Profile header unexpectedly contains both units: {header!r}"
                             )
 
                         # Actual local account, onboarding, local WebAuthn and
