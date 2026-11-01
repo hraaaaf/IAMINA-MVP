@@ -11,17 +11,37 @@ const out = 'd18-real-drift-web-proof';
 fs.mkdirSync(out,{recursive:true});
 const steps = [];
 async function verify(page,phase){
+  const events=[];
+  const log=(kind,value)=>{if(events.length<45)events.push({kind,value:String(value).slice(0,450)});};
+  page.on('console',m=>{if(m.type()==='error'||m.type()==='warning')log('console:'+m.type(),m.text());});
+  page.on('pageerror',e=>log('pageerror',e.message));
+  page.on('requestfailed',r=>log('requestfailed',r.url()+':'+(r.failure()?.errorText||'unknown')));
+  page.on('response',r=>{if(r.status()>=400)log('http',r.status()+' '+r.url());});
   const address = new URL(origin);
   address.searchParams.set('phase',phase);
   await page.goto(address.toString(),{waitUntil:'domcontentloaded',timeout:45000});
-  await page.waitForFunction(() => document.title.startsWith('D18_DRIFT_PASS:') ||
-    document.title.startsWith('D18_DRIFT_FAIL:'),null,{timeout:90000});
+  try {
+    await page.waitForFunction(() => document.title.startsWith('D18_DRIFT_PASS:') ||
+      document.title.startsWith('D18_DRIFT_FAIL:'),null,{timeout:30000});
+  }catch(e){
+    const state=await page.evaluate(()=>({
+      title:document.title,
+      stage:document.documentElement.dataset.d18Stage||null,
+      error:document.documentElement.dataset.d18Error||null,
+      body:document.body?.innerText?.slice(0,1000)||'',
+      href:location.href,
+    })).catch(err=>({readError:String(err)}));
+    const snapshot={phase,state,events,timeout:String(e).slice(0,200)};
+    steps.push({phase,pass:false,diagnostic:snapshot});
+    throw Error('D18 browser stalled '+JSON.stringify(snapshot).slice(0,4200));
+  }
   const result = await page.evaluate(()=>({
     title: document.title,
+    stage: document.documentElement.dataset.d18Stage || null,
     error: document.documentElement.dataset.d18Error || null,
   }));
   const pass = result.title === 'D18_DRIFT_PASS:' + phase;
-  steps.push({phase,pass,...(!pass?{error:result.error}: {})});
+  steps.push({phase,pass,...(!pass?{error:result.error,stage:result.stage,events}: {})});
   if(!pass)throw Error(phase + ': ' + JSON.stringify(result));
 }
 async function processPhase(context, phase){

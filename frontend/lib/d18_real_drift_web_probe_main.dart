@@ -18,19 +18,28 @@ void _check(bool ok, String reason) {
   if (!ok) throw StateError(reason);
 }
 
+void _stage(String value) {
+  html.document.documentElement?.dataset['d18Stage'] = value;
+}
+
 Future<void> _seedA() async {
+  _stage('seed_constructor');
   final db = AppDatabase.forPatientVault(PatientVaultScope.deviceLocal(_a));
   try {
+    _stage('seed_create_table');
     await db.customStatement(
       'CREATE TABLE "$_table" (id INTEGER PRIMARY KEY, sentinel TEXT NOT NULL)',
     );
+    _stage('seed_create_index');
     await db.customStatement(
       'CREATE INDEX d18_browser_probe_sentinel_idx ON "$_table"(sentinel)',
     );
+    _stage('seed_insert');
     await db.customStatement(
       'INSERT INTO "$_table" (id, sentinel) VALUES (?, ?)',
       [1, _sentinel],
     );
+    _stage('inspect_schema');
     final inventory = await inspectD18VaultSchema(db);
     _check(inventory.vaultName.endsWith(_a.replaceAll('-', '')),
         'Unexpected vault A namespace');
@@ -39,6 +48,7 @@ Future<void> _seedA() async {
     _check(inventory.objects.any((o) => o.name == 'd18_browser_probe_sentinel_idx'),
         'Missing dynamically declared index');
   } finally {
+    _stage('closing');
     await db.close();
   }
 }
@@ -88,6 +98,7 @@ Future<void> main() async {
   const marker = 'D18_DRIFT';
   final phase = Uri.base.queryParameters['phase'] ?? '';
   html.document.title = '${marker}_PENDING';
+  _stage('entered_main');
   try {
     switch (phase) {
       case 'seed_a':
@@ -105,8 +116,10 @@ Future<void> main() async {
       default:
         throw StateError('Unknown D18 synthetic phase');
     }
+    _stage('passed');
     html.document.title = '${marker}_PASS:$phase';
   } catch (error, stack) {
+    _stage('exception');
     html.document.documentElement?.dataset['d18Error'] =
         error.toString().substring(0, error.toString().length.clamp(0, 450));
     html.document.title = '${marker}_FAIL:$phase';
