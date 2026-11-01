@@ -14,4 +14,10 @@ find "$WORK/extracted" -type f -print | sort
 WASM="$(find "$WORK/extracted" -type f -name '*.wasm' -print -quit)"
 test -n "$WASM" || { echo 'NO_WASM_IN_RELEASE'; exit 1; }
 node tools/d18_sqlite_cipher_preflight.cjs "$WASM"
-echo 'D18 release SHA and WASM structure inspected; encrypted persistence NOT verified'
+ROOT="$(dirname "$(dirname "$WASM")")"
+printf '%s\\n' '<!doctype html><meta charset="utf-8"><script src="/jswasm/sqlite3.js"></script>' > "$ROOT/d18-probe.html"
+python3 -m http.server 7398 --bind 127.0.0.1 --directory "$ROOT" > "$WORK/http.log" 2>&1 &
+SERVER_PID=$!
+trap 'kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$WORK"' EXIT
+node tools/d18_sqlite3mc_browser_api_probe.cjs
+echo 'D18 browser key API discovery complete; encrypted persistence NOT verified'
