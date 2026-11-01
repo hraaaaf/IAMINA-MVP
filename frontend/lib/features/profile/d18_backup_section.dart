@@ -128,6 +128,10 @@ class _D18ExportDialogState extends State<_D18ExportDialog> {
       return;
     }
     final db = widget.db;
+    // Invalidate any earlier backup before preparing a new one. Otherwise a
+    // failed export could leave the previous download button active.
+    _prepared?.fillRange(0, _prepared!.length, 0);
+    _prepared = null;
     setState(() { _busy = true; _error = null; });
     try {
       final encrypted = await D18EncryptedBackup.exportEncrypted(
