@@ -28,7 +28,7 @@ const path=require('node:path');
     try{const p=sqlite3Worker1Promiser({onready:()=>resolve(p),onerror:reject});}catch(e){reject(e)}
    });
    const config=await promiser('config-get',{});
-   return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),opfsStorageApi:typeof navigator.storage?.getDirectory};
+   return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),vfsList:config.result?.vfsList,opfsStorageApi:typeof navigator.storage?.getDirectory};
   });
   console.log(JSON.stringify(worker));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
