@@ -29,6 +29,7 @@ const path=require('node:path');
    const promiser=await new Promise((resolve,reject)=>{
     try{const p=sqlite3Worker1Promiser({onready:()=>resolve(p),onerror:reject});}catch(e){reject(e)}
    });
+   globalThis.d18Worker=promiser;
    const config=await promiser('config-get',{});
    const vfsList=config.result?.vfsList||[];
    const opfsRegistered=vfsList.some(v=>/opfs/i.test(v));
@@ -59,6 +60,25 @@ const path=require('node:path');
    return details;
   });
   console.log(JSON.stringify({kvvfsExploration:kvvfs}));
+  const opfs=await page.evaluate(async()=>{
+   const p=globalThis.d18Worker;
+   const out={opened:false,keyAccepted:false,wrote:false,encryptedPersistenceVerified:false};
+   let id;
+   try{
+    const o=await p('open',{filename:'/d18-test.sqlite3',vfs:'opfs'});
+    if(o.type==='error')throw Error(JSON.stringify(o.result));
+    id=o.dbId;out.opened=true;
+    const k=await p('exec',{dbId:id,sql:"PRAGMA key='D18_TEST_ONLY'"});
+    if(k.type==='error')throw Error(JSON.stringify(k.result));
+    out.keyAccepted=true;
+    const w=await p('exec',{dbId:id,sql:"CREATE TABLE IF NOT EXISTS synthetic(v TEXT); INSERT INTO synthetic VALUES('D18_TEST_ONLY')"});
+    if(w.type==='error')throw Error(JSON.stringify(w.result));
+    out.wrote=true;
+   }catch(e){out.error=String(e)}
+   finally{if(id)await p('close',{dbId:id})}
+   return out;
+  });
+  console.log(JSON.stringify({opfsKeyedExploration:opfs}));
   if(worker.opfsRegistered)console.log('OPFS_VFS_AVAILABLE_REQUIRES_KEYED_PERSISTENCE_TEST');
   console.log(JSON.stringify({persistenceGate:worker.opfsRegistered?'OPFS_AVAILABLE_NOT_YET_ENCRYPTION_PROOF':'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
