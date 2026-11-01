@@ -139,3 +139,18 @@ AR, structure RTL à valider par relecteur arabophone
 **Sources externes à vérifier pour revue humaine :** [ADA Standards of Care 2026 §6](https://doi.org/10.2337/dc26-s006) (objectifs individualisés ; métriques CGM/TIR) ; [ADA patient education](https://diabetes.org/living-with-diabetes/treatment-care/checking-your-blood-sugar) ; [Alberta Health Services, conversion blood glucose](https://www.albertahealthservices.ca/assets/info/hp/edu/if-hp-edu-er-nursing-blood-glucose-conversion-chart.pdf) (conversion usuelle affichée ~18). Ces sources ne tranchent pas le facteur/arrondi logiciel G4 ni l'approbation de cibles individuelles.
 
 **Human gate :** G1–G7 signés (D19), revue FR/AR native, sécurité/privacy et produit. **Tant qu'absent : MOCKUP_CANDIDATE uniquement**, aucune implémentation D22, aucune certification FUE ou note visuelle.
+
+
+## 01/11/2026 — G4 : base métrologique primaire vérifiée, arbitrage toujours ouvert
+
+**Référence primaire** : [NIST Chemistry WebBook — D-Glucose, SRD 69](https://webbook.nist.gov/cgi/cbook.cgi?ID=C50997&Mask=26D), masse molaire 180.1559 g/mol ; [PubChem NIH — D-Glucose](https://pubchem.ncbi.nlm.nih.gov/compound/D-Glucose), masse molaire arrondie 180.16 g/mol. Pour une **concentration de masse de glucose** exprimée en mg/dL et une concentration de quantité en mmol/L, l'algèbre dimensionnelle donne :
+
+```text
+1 mmol/L glucose = 0.1801559 g/L
+                 = 18.01559 mg/dL
+mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
+```
+
+**Précision constatée des variantes applicatives** : le `18.016` proposé par D19 approxime cette valeur physique ; `18.018` (helper actuel) et `18.0` (certains écrans) sont d'autres approximations. À titre purement numérique, `180 mg/dL / 18.01559 = 9.99135 mmol/L`, contre `180 / 18.018 = 9.99001 mmol/L` ; une décimale affichée masque souvent l'écart mais **ne suffit pas** à fixer le contrat d'édition, d'arrondi et les classements près des frontières.
+
+**Recommandation ingénierie SOUMISE À G4, non signée :** adopter une constante/version commune compatible avec la référence métrologique, définir les décimales par surface et préserver systématiquement la valeur brute en stockage sans double conversion. Les limites patient et le choix d'unité canonique restent **G1/G2/G5 à valider** ; aucun seuil, plage, précision/arrondi réglementaire ou valeur patient n'est autorisé par cette démonstration.
