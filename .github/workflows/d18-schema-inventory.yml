@@ -9,6 +9,9 @@ on:
       - frontend/test/data/drift/d18_real_web_vault_smoke_test.dart
       - frontend/lib/d18_real_drift_web_probe_main.dart
       - tools/d18_real_drift_web_smoke.js
+      - frontend/lib/data/drift/d18_vault_key_policy.dart
+      - frontend/test/data/drift/d18_vault_key_policy_test.dart
+      - docs/security/d18-local-passphrase-recovery-policy.md
       - .github/workflows/d18-schema-inventory.yml
   pull_request:
     paths:
@@ -40,6 +43,25 @@ jobs:
         run: dart analyze lib/data/drift/d18_schema_inventory.dart test/data/drift/d18_schema_inventory_test.dart
       - name: Test D18 inventory and scope guard
         run: flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart
+
+  d18-key-policy-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze D18-A key policy
+        run: dart analyze lib/data/drift/d18_vault_key_policy.dart test/data/drift/d18_vault_key_policy_test.dart
+      - name: Test independent offline recovery, cross-vault reject, key rotation and no plaintext in envelope
+        run: flutter test --no-pub --timeout 180s test/data/drift/d18_vault_key_policy_test.dart
 
   real-drift-web-chrome:
     runs-on: ubuntu-latest

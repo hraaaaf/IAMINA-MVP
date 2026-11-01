@@ -1,3 +1,12 @@
+## 01/11/2026 — Decision D18-A OPTION A explicitly APPROVED / key policy implementation staged
+
+User approved **A**: local patient passphrase + **independent offline encrypted recovery**; not a deployment or merge approval. New security spec `docs/security/d18-local-passphrase-recovery-policy.md`: random 256-bit DEK, PBKDF2-HMAC-SHA256 (600k, unique salt) AES-GCM password wrapper, separate random 256-bit offline recovery code AEAD wrapper, patient scope bound as AAD, explicit lock, rotate recovery code on reset, no plaintext secret persistence. Clearly states that lost passphrase+code is irrecoverable, browser eviction not recovered by code alone, and old envelope copies make revocation nontrivial.
+
+New isolated Dart key wrapping helper `frontend/lib/data/drift/d18_vault_key_policy.dart` plus security tests in `frontend/test/data/drift/d18_vault_key_policy_test.dart`, new scoped key-policy CI job `.github/workflows/d18-schema-inventory.yml`. **All tests on new SHA PENDING, no claim of success**. This key lifecycle does **not** encrypt the production `driftDatabase`; previous real Chrome 5/5 and UX/CI green on `fe341dd5` remain scoped prior evidence only.
+
+**Next exact:** inspect key-policy CI for compilation/security failures, correct without weakening negative tests, prove PASS on same SHA; then integrate tested at-rest encrypted backend, identity-bound full-vault migration and rollback, security and visual review. NO AUTO-MIGRATION / NO MERGE / NO VERCEL.
+---
+
 ## 01/11/2026 — D18 A : exact-HEAD CI GREEN + strengthened historical-data preservation test
 
 **Previous HEAD 337e46f998438992986cadfdeb9d5215663d45c4 (VERIFIED):** [CI #41355139193](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41355139193) SUCCESS ; [D18 Web UX #41355139290](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41355139290) SUCCESS ; [D18 scoped SQLite #41355139188](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41355139188) SUCCESS. Real `driftDatabase` Web job log: `seed_a`, `verify_a`, `verify_b`, `verify_legacy` **4/4 PASS** after independent Chromium-process restart using one temporary profile. This proves persistent scoped synthetic data and distinct namespaces under tested browser conditions. It is NOT evidence of encrypted at-rest clinical vault nor total schema migration.
