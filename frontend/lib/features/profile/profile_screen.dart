@@ -38,6 +38,8 @@ String _profileUiText(
   };
 }
 
+// D22: kept for the future authenticated target editor after G1/G7 gates.
+// ignore: unused_element
 String _profileValidationMessage(BuildContext context) {
   final code = Localizations.localeOf(context).languageCode;
   if (code == 'ar') {
