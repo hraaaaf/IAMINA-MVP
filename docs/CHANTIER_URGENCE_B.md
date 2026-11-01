@@ -152,3 +152,19 @@
 - **Merge vérifié :** [CI générale prémerge #40905311044](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40905311044) **SUCCESS** au SHA source exact ; [PR #1194](https://github.com/hraaaaf/IAMINA-MVP/pull/1194) **MERGED** à `main@5f006bf40f3c92901963571db778e73f65ed5e3e`. [CI générale postmerge #40906393038](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40906393038) **IN_PROGRESS au premier relevé**, verdict requis.
 - **Limites :** c'est le vrai AuthService dans **une application instrumentée CI-only** sur loopback, mais pas le vrai parcours UI `ProfileScreen` de la Preview Vercel, ni des comptes hébergés QA A/B. `frontend/vercel_build.sh` met `IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false` en Preview, masquant le login natif dans `LoginScreen`. Une correction du build Preview protégée et son déploiement demandent un gate Vercel séparé. Aucune signature sécurité, clinique, privacy qualifiée. **D7 global : OPEN / FUE_NO_GO.**
 - **Next exact :** vérifier postmerge #40906393038 puis clôture documentaire/Notion avec CI exacte → progression vers vrai `ProfileScreen`/sécurité, avant toute certification D7 Web.
+
+
+## 01/11/2026 — Release D7 #1212 prod (correctif sécurité, non-certification globale)
+
+**Décision / Goal :** à la demande explicite du propriétaire (« merge to main et deploy to prod »), livrer exclusivement le patch Web D7 qui impose le refus de consentement IA lorsque `AppLockService` est absent, sans modifier les données patients ni prétendre certifier tout D7.
+
+**Résultat produit vérifié :**
+- [PR #1212](https://github.com/hraaaaf/IAMINA-MVP/pull/1212) **MERGED squash** dans `main` : `d4fdf6d4b2046b0633ca77c7de80be4d3b53bb60`. Source `ConsentScreen` contient `lock == null || !lock.isUnlocked`; 2 fichiers Flutter modifiés, zéro migration/API.
+- GitHub PR HEAD `f776817d` : **8/8 workflows SUCCESS** (Flutter, local Web D7 FUE, auth/app-lock et visuels), test négatif explicite PASS ; backend et PostgreSQL SKIPPED par scope, pas crédités.
+- Vercel projet `iamina-review`, déploiement Production **`dpl_DyVNLd3dA4EuUk4aiYaX1HRGqhSz` READY**, source `main@d4fdf6d4`; alias `https://iamina-review.vercel.app` indépendamment vérifié affecté à ce déploiement. Vercel commit status success. Erreurs runtime agrégées récentes : aucune observée, trafic réel non prouvé. Smoke HTTP public externe non effectué à cause de contraintes réseau.
+- Rollback possible vers ancien déploiement `dpl_9LQqNzbj9RbN51cFLcajifxzq3dm` (référence uniquement, pas exécuté).
+- Fichier de preuve détaillée : [`docs/assessments/2026-10-31-d7-first-user-experience.md`](assessments/2026-10-31-d7-first-user-experience.md).
+
+**Niveau de décision B :** `D7_SECURITY_PATCH_RELEASED_TO_PRODUCTION=YES` ; `D7_GLOBAL_CERTIFIED=NO` et **B 0/17 décisions closes**. La confirmation utilisateur de recette iPhone (5/5 ancienne Preview) et son accord de release n'équivalent pas aux tests négatifs de session QA hébergés et à une relecture clinique/privacy qualifiée, ni à la FUE FR/AR et Perfection Pass complets.
+
+**Next exact / séquence :** collecter preuve applicative Production avec données fictives, finir QA hébergée A/B + erreur/retry/retrait avec preuve, FR/AR RTL et accessibilité aux trois viewports, revue de risque clinique/privacy, scoring exécution/adversarial, Perfection Pass sur le code livré, clôture D7 vérifiée ; puis D22 uniquement selon gates D19 G1–G7 de chantier A. Toute nouvelle modification clinique exige ses validations avant release.
