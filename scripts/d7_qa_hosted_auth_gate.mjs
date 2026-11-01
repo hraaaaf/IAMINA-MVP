@@ -11,7 +11,7 @@ function assertCredentials(creds) {
   }
   // Refuse real or unclassified identities before any outbound request.
   for (const email of [creds.aEmail, creds.bEmail]) {
-    if (!/^[^@\\s]+@example\\.(invalid|test)$/.test(email.trim().toLowerCase()))
+    if (!/^[^@\s]+@example\.(invalid|test)$/.test(email.trim().toLowerCase()))
       fail('NON_SYNTHETIC_IDENTITY');
   }
   if (creds.aEmail.trim().toLowerCase() === creds.bEmail.trim().toLowerCase())
