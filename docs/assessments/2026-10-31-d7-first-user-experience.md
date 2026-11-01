@@ -176,3 +176,27 @@ This is **file-scoped code parity, not entire Web bundle hash parity or hosted i
 **Result / verdict at exact app SHA:** `D7_TEMPORARY_PREVIEW_ACCESS=CONFIRMED`, `D7_HTTP_APP_ROOT=PASS`, `D7_HOSTED_DJANGO_AUTH_A_B_A=NOT_RUN`, `D7_HOSTED_FULL_BROWSER_FUE=NOT_RUN`, `D7_INDEPENDENT_CLINICAL_PRIVACY=OPEN`, `D7_GLOBAL_CERTIFIED=NO`. The manual 7/7 and the local synthetic 8/8 remain valid within their original scope. No Vercel deployment, Production, merge or DB change.
 
 **Next exact:** qualified owner configures/verifies GitHub Environment `d7-qa` reviewer + branch restriction and the five required secrets **inside GitHub, not this document**, then dispatches the manual workflow at the QA branch while Share Link valid; verify exact run and resolve any fail; obtain a browser automation runner (authorized existing browser session or funded provider) for full hosted FUE A→B→A/consent/FR-AR+three viewports; obtain independent clinical/privacy signoff and Perfection Pass. If link expires, request new scoped time-limited approval; do not silently create a permanent bypass.
+
+
+## 01/11/2026 — Nouvelle Preview D7 : 5/5 parcours acceptés explicitement par le propriétaire
+
+**Décision / objectif :** enregistrer strictement la validation propriétaire de la FUE iPhone sur la **nouvelle** Preview sans lui attribuer l'autorité d'un test API, d'une revue clinique indépendante ni d'un audit multi-viewports non réalisés.
+
+**Déclaration exacte de l'utilisateur :** « Je confirme explicitement que les 5 contrôles manuels D7 sur la nouvelle Preview iPhone ont été conformes, sans anomalie. Enregistre uniquement la validation manuelle et poursuis les gates indépendants. »
+
+**Cinq contrôles acceptés sur attestation propriétaire uniquement :**
+1. **Connexion et retour au Profil :** `PASS_MANUAL_OWNER_ATTESTED` ;
+2. **Persistance médicale type 2→type 1 et traitements après reload :** `PASS_MANUAL_OWNER_ATTESTED` ;
+3. **Incertitude, aucun traitement déclaré, déclaration ultérieure :** `PASS_MANUAL_OWNER_ATTESTED` ;
+4. **Consentement IA, verrou et retrait :** `PASS_MANUAL_OWNER_ATTESTED` ;
+5. **Isolation A→B→A et affichage FR/AR sur iPhone :** `PASS_MANUAL_OWNER_ATTESTED`.
+
+**Liaison SHA/Preview vérifiée indépendamment :** déploiement `dpl_FgjkGwopBMJwGz56yKyLwgFpSGQn`, URL `https://iamina-review-r1vf4wi8m-achraf-benmoussa-s-projects.vercel.app`, `readyState=READY`, `target=null` (Preview), branche `qa/d7-c05-preview-a5d1c61-20261031`, code `55fa500f56d86d7fa014b5b1849d7e7cdad3ea59`. L'app web hébergée est identifiée ; aucun accès à la session iPhone, ni screenshot nominatif collecté. L'attestation **ne confirme pas** que les cinq cas négatifs/retry C04, toutes les dimensions 768/1280, les preuves backend et l'a11y 200 % ont été exécutés selon la matrice complète.
+
+**Preuves indépendantes *de l'attestation*, déjà acquises et séparées :** run [D7 Web local #41210398830](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41210398830) COMPLETED/SUCCESS sur source `fab1496f`; 15/15 blobs D7 pertinents comparés au code Preview `55fa500`; 8 phases WebAuthn/Flutter local et 9/9 PNG rehashés, FR/EN/AR widgets, consentement et retrait synthétiques. **Le test local et la recette du propriétaire ne s'additionnent pas pour transformer `HOSTED_AUTH_A_B_A=NOT_RUN` en PASS API**, ni pour certifier la sécurité.
+
+**Verdict honnête :** `D7_NEW_PREVIEW_MANUAL_OWNER=PASS_5_OF_5`, `D7_PREVIEW_DEPLOY=READY`, `D7_HOSTED_AUTH_AUTOMATED=NOT_VERIFIED`, `D7_HOSTED_NEGATIVE_RECOVERY=NOT_FULLY_VERIFIED`, `D7_768_1280_REAL_FR_AR_FUE=NOT_FULLY_VERIFIED`, `D7_CLINICAL_PRIVACY_RISK_SIGNOFF=PENDING`, `D7_EXECUTION_ADVERSARIAL_SCORES=NOT_ASSIGNED`, `D7_PERFECTION_PASS=NOT_DONE`, **`D7_GLOBAL=FUE_NO_GO / NOT_VERIFIED`**. Compteur B officiel inchangé `0/17`.
+
+**Politique qualité :** `docs/QUALITY_SCORING_POLICY.md` permet un reviewer interne/adversarial pour une décision D ; la **revue indépendante stricte** est requise pour prétendre à un score ≥9.5, tandis que les approbations de spécialistes de risque déjà imposées demeurent obligatoires. Ne pas supposer qu'une revue par le même agent est indépendante ; ne pas inventer de score >9 ni de signature privacy/clinique.
+
+**Next exact :** poursuivre les preuves autonomes non sensibles du circuit authentifié/consentement et la revue adversariale bornée au code, sans accès à de vrais dossiers ; consigner les cas `PASS/FAIL/NOT_RUN` et les impacts ; s'arrêter au véritable human gate d'accès GitHub Environment `d7-qa` + tests hébergés et validation de risque par personne qualifiée. Aucun déploiement/merge/production/DB ni élargissement du Share Link sur cette confirmation.
