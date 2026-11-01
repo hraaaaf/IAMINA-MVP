@@ -143,11 +143,23 @@ def main():
                     section = page.get_by_role(
                         "button", name=re.compile(r"^Medical tracking", re.I)
                     ).first
-                    # Desktop may already start expanded: an unconditional
-                    # click would collapse the actual form in the screenshot.
-                    if (page.viewport_size or {}).get("width", 0) < 1100 \
-                            or not medical_panel_physically_expanded():
+                    # D22 shared Profile regression: geometry alone is not
+                    # evidence that Flutter's ExpansionTile is expanded. The
+                    # old >160px spacing heuristic returned a false positive
+                    # on the 1180px desktop after a physical reload, leaving
+                    # an aria-description="Collapsed" medical section closed.
+                    # Read the actual Flutter semantics state before clicking;
+                    # never click an already expanded tile (would collapse it).
+                    state = section.get_attribute("aria-description")
+                    if state == "Collapsed":
                         section.click(timeout=18000)
+                    elif state == "Expanded":
+                        pass
+                    elif not medical_panel_physically_expanded():
+                        # Compatibility fallback for engines without state.
+                        section.click(timeout=18000)
+                    # Keep the real visible-choice assertion below. No retry
+                    # may invent, force or waive successful expansion.
                     # Flutter's ExpansionTile uses an animated semantics tree:
                     # a successful click does not mean its children have
                     # become accessible at the exact same instant.
