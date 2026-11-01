@@ -203,8 +203,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         diabetesType: drift.Value(_diabetesType),
         treatment: drift.Value(_treatment),
         unitPreference: drift.Value(_unit),
-        targetRangeLow: const drift.Value(70),
-        targetRangeHigh: const drift.Value(180),
+        // D22: target authority is not established at onboarding. Legacy
+        // database defaults remain stored but MUST NOT be interpreted until
+        // an approved, reversible G7 schema records source and authority.
       );
 
       await db

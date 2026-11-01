@@ -1,6 +1,13 @@
 part of '../dashboard_screen.dart';
 
+// D22 fail-closed hides these legacy target-bound cards until the clinical
+// provenance and G7 migration gates are approved.
+// ignore_for_file: unused_element, unused_element_parameter
+
 String _dashboardFirstName() {
+  // Synthetic preview and locked-out states may have no initialized Firebase.
+  // Never crash the neutral D22 dashboard for a missing optional greeting.
+  if (Firebase.apps.isEmpty) return '';
   final user = FirebaseAuth.instance.currentUser;
   if (user == null || user.isAnonymous) return '';
   final name = user.displayName ?? user.email ?? '';

@@ -1,0 +1,88 @@
+name: D22 Web — fail-closed target real Chrome synthetic smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d22-web-fail-closed-chrome.yml'
+      - 'scripts/d22_web_fail_closed_fue.py'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/lib/features/auth/onboarding_chat_screen.dart'
+      - 'frontend/lib/features/dashboard/clinical_engine.dart'
+      - 'frontend/lib/features/dashboard/dashboard_screen.dart'
+      - 'frontend/lib/features/dashboard/dashboard_premium_screen.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d22-fail-closed-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d22-real-chrome-partial:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Compile actual local Flutter Web patient app — no hosted API
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Install pinned disposable Chromium
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+          python3 -m py_compile scripts/d22_web_fail_closed_fue.py
+      - name: Execute D22 actual Web scoped F01 F03 and English viewport checks
+        run: |
+          set -euo pipefail
+          python3 scripts/d22_web_fail_closed_fue.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib, struct, re
+          folder = Path("d22-web-real-chrome")
+          result = json.loads((folder/"proof.json").read_text())
+          assert result["result"] == "PASS_PARTIAL"
+          assert len(result["captures"]) == 3
+          assert len(result["verified_scenarios"]) == 5
+          for item in result["captures"]:
+              content = (folder/item["file"]).read_bytes()
+              assert content[:8] == bytes.fromhex("89504e470d0a1a0a")
+              w, h = struct.unpack(">II", content[16:24])
+              ew, eh = [int(x) for x in item["viewport"].split("x")]
+              assert (w, h) == (ew, eh) or (w == ew and h >= eh)
+              assert re.fullmatch(r"[a-f0-9]{64}", item["sha256"])
+              assert hashlib.sha256(content).hexdigest() == item["sha256"]
+          assert any("F02" in x for x in result["not_run"])
+          assert any("F06" in x for x in result["not_run"])
+          assert any("FR/AR" in x for x in result["not_run"])
+          PY
+      - name: Keep bounded synthetic real-Chrome evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d22-web-fail-closed-chrome-partial-proof
+          path: |
+            d22-web-real-chrome/proof.json
+            d22-web-real-chrome/*.png
+          retention-days: 7
+          if-no-files-found: warn

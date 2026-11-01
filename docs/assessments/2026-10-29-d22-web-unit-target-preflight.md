@@ -168,3 +168,106 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 **Owner priority decision / counters:** owner explicitly accepts D7 as working and asks to mark 1/17 and advance. Record `CHANTIER_B_OWNER_ACCEPTED=1/17 (5.88%)` separately from `CHANTIER_B_FORMALLY_D_CERTIFIED=0/17`. Product D7 on Production is released; its independent clinical/privacy certification remains open (do not invent expert review). D22 is next active item, not completed.
 
 **Current real block and next exact:** [D19 gate G1–G7](2026-10-29-d19-d22-web-clinical-decision-gate.md) remains unsigned; [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) OPEN/DRAFT/nonmergeable. Source `main` still writes `70/180` regardless of `mmol/L`, target before unit in profile, raw `toStringAsFixed(0)` display and raw save; do **not** authorize a medical refactor while G1–G7 pending. Next **human gate**: qualified clinical and data/privacy review/approvals on unit authority, personalized target provenance, legacy and migration, factor/rounding, permissible classifications and FR/AR RTL wording. After those decisions, collect actual BEFORE screenshots at 390/768/1280 → target mockup → bounded implementation → AFTER identical viewports + tests and owner safety review → score/perfection → merge/release only if authorized. D22 `BLOCKED_D19`, FUE `NOT_RUN`.
+
+
+## 01/11/2026 — D22-A Web : candidat d'ordre visuel isolé, NON LIVRÉ
+
+**Décision :** implémenter un seul sous-ensemble non clinique de D22 sur branche isolée, sans merge ni activation de cibles : le choix « Unité de mesure » précède désormais le bloc « Objectifs glycémiques » dans `_buildMedicalSection` du Profil. **Goal** : éliminer l'inversion visuelle connue sans modifier les valeurs, l'interprétation, les données patients ou les règles cliniques.
+
+- **Base contrôlée** : `main@cb60a2fdc04d52b028770cd783eb8f0ec45f7d05`.
+- **Branche candidate** : `fix/d22-web-unit-first-candidate-20261101`.
+- **Diff préliminaire** : `frontend/lib/features/profile/profile_screen_presentation.dart` (déplacement du bloc UI existant, sans changement de ses contrôleurs/handlers), plus `frontend/test/d22_profile_unit_before_target_source_contract_test.dart` (deux tests de contrat **statique source uniquement**).
+- **Preuve de lecture GitHub** : la branche contient `l10n.measureUnit` avant `l10n.glucoseTarget`, dans la même section et avec les deux champs Low/High préservés. Aucun run Flutter/Chrome n'a encore été prouvé pour ce candidat à la date de création de cette note.
+- **BEFORE/AFTER réels** : `NOT_RUN` (aucune capture Web 390/768/1280 FR/AR et aucune comparaison de rendu).
+- **Risque persistant critique** : l'onboarding écrit toujours `70/180` quel que soit `mmol/L` ; Profile lit et écrit les bornes brutes ; les rapports et classifications demandent une revue d'autorité. La seule inversion visuelle **ne sécurise pas la glycémie**.
+- **Gates** : G1–G7 cliniques/DB/privacy/RTL toujours `PENDING`. D22 `FUE_NO_GO`, `RELEASE_NO_GO`. Aucune conversion ni migration, aucun déploiement Vercel autorisé. Ne pas fusionner ce candidat seul en donnant l'impression d'une correction globale.
+- **Next exact** : obtenir les arbitrages humains, puis traiter les conversions et la provenance sur le même contrat approuvé ; tests runtime Flutter + FUE navigateur, BEFORE/AFTER, scoring et certification. Le présent candidat est révisable/abandonnable si G6 impose un autre parcours.
+
+
+### 01/11/2026 — D22-A : test de rendu Flutter FR/AR × 3 ajouté (en attente de preuve CI)
+
+- **Code ajouté à la PR candidate #1213** : `frontend/test/features/profile/d22_web_unit_first_widget_test.dart`, six scénarios synthétiques réutilisant le vrai `ProfileScreen` avec coffre patient fictif et `ExpansionTile` médicale dépliée, en FR/AR aux tailles 390×844, 768×1024, 1280×900.
+- Les assertions ciblent l'existence des titres localisés, leur ordre vertical réellement calculé par Flutter et le sens RTL/LTR ; elles ne changent **aucune** borne glycémiques ou autorité clinique.
+- **Statut probatoire à la création** : widget tests nouveaux **non encore exécutés par une CI vérifiée** ; aucun parcours Chrome FUE D22 spécifique, aucune comparaison BEFORE/AFTER signée. Les runs verts du SHA précédent `5933bb9f` deviennent historiques pour cette branche.
+- **Maintien du NO-GO** : ni les six tests widget ni la CI ne peuvent remplacer G1–G7, la correction `onboarding 70/180` et la FUE réelle ; PR reste Draft sans merge/déploiement.
+
+
+## 01/11/2026 — décision propriétaire D22 G2–G5 produit approuvée ; travaux techniques sûrs
+
+**Goal :** figer explicitement les quatre principes G2–G5 au niveau produit, sans jamais les représenter comme des recommandations médicales ni comme un contrat numérique clinique signé.
+
+**Validé par le propriétaire (produit uniquement) :** G2 absence de cible automatiquement autorisée ; G3 legacy inconnu conservé brut sans conversion/classification ; G4 préférence d'affichage séparée de l'intégrité des valeurs, facteur/arrondi précis encore en revue ; G5 aucune classe cible sans autorité individuelle ni faux TIR CGM à partir de relevés manuels.
+
+**Gates inchangés :** G1, G6, G7 restent PENDING. Revue clinique spécialisée des G2–G5 et facteur numérique G4 restent PENDING. L'onboarding conserve toujours le défaut 70/180 et le profil la saisie brute ; ce commit de préparation NE les corrige PAS. Pas de migration et pas de Vercel.
+
+**Preuve déjà établie avant ce changement :** PR #1213 HEAD 5e16882, CI #41314664294 SUCCESS, 8/8 tests spécifiques D22 réussis, mais FUE réelle D22 Chrome/BEFORE-AFTER NOT_RUN ; une automatisation D5 hors périmètre a échoué. Ces preuves précédentes ne certifient pas le futur SHA.
+
+**Préparation technique supplémentaire :** enrichir l'oracle D22 test-only pour refuser explicitement les lectures manuelles / sources inconnues en tant que preuve de TIR CGM et pour exiger une fenêtre temporelle documentée et une règle de métrique revue. Aucun seuil, facteur, valeur patient ou comportement de production modifié. Le produit complet demeure FUE_NO_GO / RELEASE_NO_GO.
+
+**Next exact :** CI exacte du nouveau HEAD, review G1/G6/G7 et revue clinique des principes approuvés, puis implémentation du modèle vérifié, tests négatifs/migrations et FUE Web FR/AR 390/768/1280. 
+
+
+## 01/11/2026 — D22-B G1/G4 : candidat typé en PR Draft #1214, sans activation clinique
+
+**Goal limité et observé :** préparer le contrat d'unité source/provenance sans aucune conversion de cible active ni migration. [PR #1214](https://github.com/hraaaaf/IAMINA-MVP/pull/1214) contient un **module candidat non utilisé en production**, neuf tests synthétiques à exécuter et la [fiche dédiée](2026-11-01-d22-b-staged-unit-contract.md). Branche `fix/d22-b-web-unit-authority-staged-20261101` basée en Git sur D22-A `3e55ff0`; base PR temporairement `main` pour déclencher le workflow CI, puisque `.github/workflows/ci.yml` ne vérifie que les PR vers main/dev. PR en **Draft**, ne pas fusionner ni confondre ce diff cumulatif avec deux décisions certifiées.
+
+**Contrat proposé :** seules les unités source explicites `mg/dL` et `mmol/L` passent le parser strict ; les unités inconnues ou anciennes sont inclassables, la chaîne de saisie est conservée, le facteur purement mathématique proposé `18.01559` (NIST glucose, 180.1559 g/mol) est isolé et non branché à `GlucoseFormatter`. Aucun seuil médical ni TIR n'est calculé. Le contrôle de forme d'une cible ne constitue **jamais** une authentification endocrinologique.
+
+**Limites non corrigées :** SQL defaults 70/180, `onboarding_chat_screen.dart` écrit 70/180 pour mmol/L, `profile_screen.dart` sauvegarde les valeurs brutes sans source, `glucose_formatter.dart` possède encore un fallback implicite vers mg/dL. Tous les consommateurs, migrations G7, validations G1/G4 et clinicien G2–G5, G6 FR/AR RTL, FUE D22 Chrome F01–F07 **restent à faire**. Aucun patient réel ni Vercel nouveau. Les tests D22-B ne doivent être déclarés réussis **qu'après vérification du run exact-HEAD** ; toute preuve de l'ancien HEAD D22-A est distincte.
+
+**Next exact :** vérifier CI Flutter PR #1214 sur son commit final, diagnostiquer/corriger en cas d'échec ; si vert, documenter la seule préparation non clinique, puis obtenir revue clinique/privacy/DB avant de brancher le runtime et d'exécuter les FUE réelles.
+
+## 01/11/2026 — D22-B P0 runtime shielding: autorité clinique non disponible
+
+**Goal :** bloquer immédiatement deux sorties trompeuses du produit Flutter Web : (1) cible « 70–180 » implicitement prescrite, (2) TIR calculé sur relevés ponctuels. Le garde-fou est un **mode dégradé** — pas une réforme clinique ou DB approuvée.
+
+**BEFORE (source HEAD 2c802231)** : Onboarding écrivait 70/180 même sous mmol/L ; le profil éditait/resauvegardait des nombres sans unité source, la requête Drift laissait des valeurs par défaut 70/180 ; dashboard classique utilisait 70/180 et ClinicalEngine.calcTIR comptait les mesures dans la plage au lieu du temps CGM ; Premium et Journal classaient sous/sur/dans cible avec legacy.
+
+**AFTER — correction proposée (NON vérifiée au navigateur)** :
+- Onboarding ne passe plus de bornes 70/180 explicites lors du choix d'unité (les **defaults SQL existants demeurent**, non interprétés).
+- Le profil masque les éditeurs d'objectif non validés et laisse les anciennes valeurs identiques lors de la sauvegarde et du changement d'unité ; l'upsert d'un profil existant devient un UPDATE limité aux champs explicitement validés. Le schéma G7, avant migration/nullable, reste à signer.
+- Le dashboard classique remplace la présentation des KPIs/TIR et des graphiques cliniquement colorés par un message FR/EN/AR « objectifs non vérifiés / TIR impossible à partir de relevés ponctuels » et conserve uniquement le journal descriptif de mesures non colorées par objectif.
+- Le Premium ne dispose d'aucune cible validée dans ce contrat et affiche donc l'état « objectif non configuré », sans « dans/hors cible » ; ses tendances reçoivent des limites nulles.
+- Le Journal retire ses fallbacks 70/180 et toute coloration fondée sur la plage non vérifiée ; les mesures restent consultables.
+- ClinicalEngine.calcTIR conserve la signature de l'ancienne API mais refuse tout appel : aucune mesure ponctuelle ne peut être convertie en TIR CGM. La future métrique CGM exige provenance vérifiée et véritable dimension temporelle avant toute activation.
+- Ajout de tests négatifs source et fonctionnels, CI GitHub exacte à joindre au verdict.
+
+**Contrat provisoire** : aucune classification cible n'est permise, même si le profil possède des nombres. Une valeur historique ne doit être ni effacée ni convertie, et un texte de provenance arbitraire n'est pas une validation soignante.
+
+**LIMITES explicites :** la base Drift conserve temporairement les defaults SQL 70/180 (la suppression et la migration de legacy nécessitent revue G7, sauvegarde et rollback). Le formateur général, les facteurs historiques 18.0/18.018 et les consommateurs externes restent à auditer/réconcilier avec G1/G4. L'interface perd provisoirement ses cartes d'objectifs — dégradation volontaire de sécurité. FUE réelle Chrome D22 F01–F07, comparaison visuelle BEFORE/AFTER 390/768/1280 et revue linguistique native **NOT_RUN**. Aucun déploiement Vercel ou merge ne résulte de ce changement.
+
+**Next :** CI Flutter tests + PWA sur SHA exact → correction des échecs → preuves widgets et FUE Chrome (environnement de test autorisé) → G1/G4 clinique et G7 privacy/DB → migration versionnée et restitution de fonctionnalités avec provenance authentifiée.
+
+### D22-B P0 — Target / mockup textuel AVANT preuve visuelle
+
+**BEFORE vérifiable dans l'ancien code** : (profil) choix d'unité puis champs cibles 70/180 non typés ; (dashboard) tuiles pourcentages de lectures ponctuelles appelés TIR et couleurs dans/hors cible ; (journal) couleurs alignées sur 70/180 même sans cible validée.
+
+**Goal/UI reference approuvé pour la préparation sécurisée (pas une validation UX)** :
+
+- Profil FR : `Unité de mesure: [mg/dL] [mmol/L]` puis `Objectifs glycémiques — Objectifs non vérifiés. Aucun classement médical avant validation.`, pas d'éditeur de cible. AR : `الأهداف غير مؤكدة. لا تصنيف طبي قبل التحقق.`.
+- Dashboard FR : `Objectifs non vérifiés. Impossible de calculer le temps dans la cible à partir de relevés ponctuels.` puis un journal de nombres sans couleur « dans/hors cible ». AR : `الأهداف غير مؤكدة. لا يمكن حساب الوقت ضمن النطاق من قياسات متفرقة.`.
+- Dashboard Premium : dernière mesure avec statut `cible non configurée` et tendance sans bornes cible ; Journal : historique consultable sans attribution de statut clinique.
+- **AFTER requis mais pas encore observé** : capture au même état/viewport sur Chrome FR/AR (390×844, 768×1024, 1280×900), vérification clavier/RTL/zoom 200 %, screenshot contrast BEFORE/AFTER et score visuel. Le mode dégradé est visible par conception : il ne s'agit pas de masquer une vraie cible validée, puisqu'aucune autorité G2/G7 fiable n'existe en base actuellement.
+
+**Aucun score visuel ni FUE certifiée tant que la confrontation réelle n'a pas été exécutée.**
+
+
+## 01/11/2026 — G7 : rehearsal SQLite synthétique ajoutée, migration réelle non autorisée
+
+**Résultat observé (source Git seulement)** : le test `frontend/test/d22_g7_migration_rehearsal_test.dart` simule sur deux coffres SQLite/Drift en mémoire l'ajout d'une table de provenance externe, la conservation des bornes brutes historiques, l'état `unknown` et une panne injectée annulée par transaction. [Dossier G7](2026-11-01-d22-g7-synthetic-migration-rehearsal.md).
+
+**Important :** la migration n'a PAS été appliquée à une base réelle, `schemaVersion=12` et les defaults SQL legacy 70/180 demeurent ; aucun runtime ne consomme le sidecar. Le modèle ne prétend pas authentifier une cible prescrite. Tests nouveaux = **NOT_RUN jusqu'au verdict CI sur SHA exact**. FUE Web D22 spécifique F01–F07 = NOT_RUN. Merge et Vercel sans autorisation = interdits.
+
+**Next exact :** CI Flutter synthétique sur nouveau HEAD, corrections si échec, puis revue spécialisée DB/privacy G7 et clinique G1/G4 avant toute migration versionnée de patients.
+
+## 01/11/2026 — D22-B : FUE Web réelle partielle introduite (sans réinterprétation clinique)
+
+**Goal :** vérifier à travers le navigateur Chrome et le build Flutter release l'ouverture réelle de la section médicale, le changement de **préférence d'affichage** mg/dL → mmol/L → mg/dL avec reload, et l'absence d'édition d'une cible non vérifiée. FUE synthétique locale exclusivement, aucune valeur patient réelle.
+
+**Source ajoutée :** `scripts/d22_web_fail_closed_fue.py`, CI `.github/workflows/d22-web-fail-closed-chrome.yml`, [contrat FUE partielle](2026-11-01-d22-web-partial-chrome-fue.md). 3 tailles Chrome anglais 390×844, 768×1024, 1280×900, PNG + SHA256. La recette reprend le vrai login WebAuthn local, le profil Flutter release et l'absence d'appels réseau externes. CI d'exécution et preuves **NOT_RUN avant le verdict du workflow**. Les captures AFTER ne sont pas une comparaison BEFORE/AFTER car la référence BEFORE manque.
+
+**Diagnostic D7 commun au profil :** dans `scripts/d7_web_actual_profile_e2e.py` l'heuristique de hauteur du volet médical pouvait prétendre le volet ouvert alors que `aria-description="Collapsed"`. Nouveau comportement du script basé d'abord sur le vrai `aria-description` Flutter ; le choix médical doit ensuite réellement apparaître, aucun skip ni fausse réussite. Ce correctif n'est pas une validation de D7 avant run Chrome vert.
+
+**D22 F01/F03/F07 :** seuls sous-oracles *EN* avec un unique compte synthétique sont testables ici. **F02, F04, F05, F06, F07 complet FR/AR/RTL/zoom/clavier : NOT_RUN.** Signatures G1/G4 endocrino, G6 et G7 sécurité/DB/privacy PENDING. `schemaVersion=12`, SQL defaults cibles 70/180 toujours présents ; les métriques de cibles restent fail-closed. Pas de merge ni déploiement Vercel.
+
+**Next exact :** déclencher CI sur HEAD final, vérifier logs Chrome et captures PNG ; corriger et retester jusqu'à preuve bornée. Puis restaurer base D22-A, poursuivre FUE restantes sous contrats cliniques et data signés, préparer la vraie migration après gate humain.

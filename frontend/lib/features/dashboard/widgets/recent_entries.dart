@@ -5,9 +5,8 @@ part of '../dashboard_screen.dart';
 class _RecentEntries extends StatelessWidget {
   final List<LogEntryData> logs;
   final String unit;
-  final double low, high;
   final bool isDesktop;
-  const _RecentEntries({required this.logs, required this.unit, required this.low, required this.high, this.isDesktop = false});
+  const _RecentEntries({required this.logs, required this.unit, this.isDesktop = false});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +34,7 @@ class _RecentEntries extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: 8),
-        ...recent.map((log) => _LogRow(log: log, unit: unit, low: low, high: high, isDesktop: isDesktop)),
+        ...recent.map((log) => _LogRow(log: log, unit: unit, isDesktop: isDesktop)),
       ]),
     );
   }
@@ -44,15 +43,9 @@ class _RecentEntries extends StatelessWidget {
 class _LogRow extends StatelessWidget {
   final LogEntryData log;
   final String unit;
-  final double low, high;
   final bool isDesktop;
-  const _LogRow({required this.log, required this.unit, required this.low, required this.high, this.isDesktop = false});
+  const _LogRow({required this.log, required this.unit, this.isDesktop = false});
 
-  Color _valueColor(double v) {
-    if (v < low) return AminaTheme.dangerRed;
-    if (v > high) return AminaTheme.warningOrange;
-    return AminaTheme.teal600;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +71,7 @@ class _LogRow extends StatelessWidget {
           Text(time, style: TextStyle(fontSize: timeFontSize, color: AminaTheme.textSecondary(context))),
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(val.toStringAsFixed(0), style: TextStyle(fontSize: valFontSize, fontWeight: FontWeight.w800, color: _valueColor(val), letterSpacing: -0.5)),
+          Text(val.toStringAsFixed(0), style: TextStyle(fontSize: valFontSize, fontWeight: FontWeight.w800, color: AminaTheme.textPrimary(context), letterSpacing: -0.5)),
           Text(unit, style: TextStyle(fontSize: unitFontSize, color: AminaTheme.textSecondary(context))),
         ]),
       ]),

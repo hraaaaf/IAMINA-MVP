@@ -40,8 +40,6 @@ class _JournalScreenState extends State<JournalScreen> {
     final db = Provider.of<AppDatabase>(context, listen: false);
     final profile = context.watch<PatientProfileData?>();
     final unit = profile?.unitPreference ?? 'mg/dL';
-    final targetLow = profile?.targetRangeLow ?? 70.0;
-    final targetHigh = profile?.targetRangeHigh ?? 180.0;
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final horizontalPadding = viewportWidth >= 1100
         ? (viewportWidth - 980) / 2
@@ -120,8 +118,6 @@ class _JournalScreenState extends State<JournalScreen> {
                               (log) => _buildEntryCapsule(
                                 log,
                                 unit,
-                                targetLow,
-                                targetHigh,
                               ),
                             ),
                           ],
@@ -458,8 +454,6 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget _buildEntryCapsule(
     LogEntryData log,
     String unit,
-    double low,
-    double high,
   ) {
     final l10n = AppLocalizations.of(context)!;
     final val = log.bloodSugar;
@@ -483,12 +477,8 @@ class _JournalScreenState extends State<JournalScreen> {
       compactMealSummary = mealDescription;
     }
 
-    Color color = AminaTheme.successEmerald;
-    if (val < 70) {
-      color = AminaTheme.dangerRed;
-    } else if (val < low || val > high) {
-      color = AminaTheme.accentAmber;
-    }
+    // An unverified legacy target cannot color a reading as in/out of range.
+    final color = AminaTheme.textPrimary(context);
 
     return Dismissible(
       key: ValueKey(log.id),

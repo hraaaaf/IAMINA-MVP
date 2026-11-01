@@ -38,6 +38,8 @@ String _profileUiText(
   };
 }
 
+// D22: kept for the future authenticated target editor after G1/G7 gates.
+// ignore: unused_element
 String _profileValidationMessage(BuildContext context) {
   final code = Localizations.localeOf(context).languageCode;
   if (code == 'ar') {
@@ -75,6 +77,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _targetLowController = TextEditingController();
   final _targetHighController = TextEditingController();
+  // Legacy numeric bounds have neither unit source nor clinical authority.
+  // Keep target editing closed until G1/G2/G4/G7 are approved and persisted.
+  bool get _d22TargetsEditable => false;
   String? _diabetesType;
   String? _treatment; // legacy clinical scalar stays unchanged
   D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
@@ -114,8 +119,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _diabetesType = profile.diabetesType;
         _treatment = profile.treatment;
         _unit = profile.unitPreference;
-        _targetLowController.text = profile.targetRangeLow.toStringAsFixed(0);
-        _targetHighController.text = profile.targetRangeHigh.toStringAsFixed(0);
+        // Preserve legacy raw numeric bounds in storage, never round them
+        // into editable text or infer their units from unitPreference.
         _ramadanStartDate = profile.ramadanStartDate;
         _ramadanEndDate = profile.ramadanEndDate;
       });
@@ -685,41 +690,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _saveProfile() async {
     final diabetesType = _diabetesType;
     final treatment = _treatment;
-    final low = double.tryParse(_targetLowController.text.trim());
-    final high = double.tryParse(_targetHighController.text.trim());
-    final validRange =
-        low != null &&
-        high != null &&
-        low.isFinite &&
-        high.isFinite &&
-        low > 0 &&
-        high > 0 &&
-        low < high;
-
-    if (!validRange) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_profileValidationMessage(context))),
-      );
-      return;
-    }
-
     final db = context.read<AppDatabase>();
-    await db
-        .into(db.patientProfiles)
-        .insertOnConflictUpdate(
-          PatientProfilesCompanion.insert(
-            userId: drift.Value(db.activeProfileRowId),
-            preferredLanguage: drift.Value(
-              Localizations.localeOf(context).languageCode,
+    final userId = db.activeProfileRowId;
+    final locale = Localizations.localeOf(context).languageCode;
+    final existing = await db.getProfileForLocalUserId(userId);
+    // D22: changing the display unit or other profile fields must never
+    // re-save, round, or reassign an unverified legacy target. Updating only
+    // known fields preserves the original numerical bounds byte-for-byte.
+    if (existing != null) {
+      await (db.update(db.patientProfiles)
+            ..where((row) => row.userId.equals(userId)))
+          .write(
+            PatientProfilesCompanion(
+              preferredLanguage: drift.Value(locale),
+              updatedAt: drift.Value(DateTime.now()),
+              diabetesType: drift.Value(diabetesType),
+              treatment: drift.Value(treatment),
+              unitPreference: drift.Value(_unit),
             ),
-            updatedAt: DateTime.now(),
-            diabetesType: drift.Value(diabetesType),
-            treatment: drift.Value(treatment),
-            unitPreference: drift.Value(_unit),
-            targetRangeLow: drift.Value(low),
-            targetRangeHigh: drift.Value(high),
-          ),
-        );
+          );
+    } else {
+      // The old schema still contains SQL defaults; no source or authority
+      // is inferred from them. Their removal needs reviewed G7 migration.
+      await db.into(db.patientProfiles).insert(
+        PatientProfilesCompanion.insert(
+          userId: drift.Value(userId),
+          preferredLanguage: drift.Value(locale),
+          updatedAt: DateTime.now(),
+          diabetesType: drift.Value(diabetesType),
+          treatment: drift.Value(treatment),
+          unitPreference: drift.Value(_unit),
+        ),
+      );
+    }
 
     bool remoteMirrorConfirmed = context.read<ApiClient>().canSyncClinicalData;
     if (_treatmentTouched && db.patientVaultScope != null) {

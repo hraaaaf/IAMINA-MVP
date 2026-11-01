@@ -89,8 +89,11 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow;
-        final high = profile?.targetRangeHigh;
+        // D22: existing profile bounds cannot prove source unit/authority.
+        // Do not present a personal target until the reviewed G1/G2/G7
+        // schema makes that evidence available.
+        const double? low = null;
+        const double? high = null;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),
@@ -485,7 +488,8 @@ class _LatestReadingCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              Flexible(
+                child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
@@ -503,13 +507,15 @@ class _LatestReadingCard extends StatelessWidget {
                 ),
                 child: Text(
                   status,
-                  maxLines: 1,
+                  maxLines: 2,
+                  softWrap: true,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     color: statusForeground,
                   ),
+                ),
                 ),
               ),
             ],

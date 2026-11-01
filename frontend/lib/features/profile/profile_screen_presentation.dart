@@ -220,9 +220,37 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             ),
           ),
         const SizedBox(height: 28),
+        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          ['mg/dL', 'mmol/L'],
+          ['mg/dL', 'mmol/L'],
+          _unit,
+          (val) => _setPresentationState(() => _unit = val),
+        ),
+        const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
         const SizedBox(height: 12),
-        LayoutBuilder(
+        if (!_d22TargetsEditable)
+          Container(
+            key: const Key('d22-unverified-target-blocked'),
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _profileUiText(
+                context,
+                fr: 'Objectifs non vérifiés. Aucun classement médical avant validation.',
+                en: 'Targets unverified. No medical classification before review.',
+                ar: 'الأهداف غير مؤكدة. لا تصنيف طبي قبل التحقق.',
+              ),
+            ),
+          )
+        else
+          LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 460;
             final low = _buildTextField(
@@ -246,15 +274,6 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               ],
             );
           },
-        ),
-        const SizedBox(height: 28),
-        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
-        const SizedBox(height: 12),
-        _buildChoiceGrid(
-          ['mg/dL', 'mmol/L'],
-          ['mg/dL', 'mmol/L'],
-          _unit,
-          (val) => _setPresentationState(() => _unit = val),
         ),
         const SizedBox(height: 28),
         SizedBox(
