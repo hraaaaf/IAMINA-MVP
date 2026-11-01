@@ -221,6 +221,18 @@ def main():
                             assert section.get_attribute("aria-description") == "Expanded"
                             tree = page.locator("body").aria_snapshot()
                             assert "Targets unverified." in tree
+                            # Negative F03 oracle: an explanatory banner by
+                            # itself is not proof that legacy target bounds
+                            # cannot be edited. Reject accessible min/max
+                            # target input controls on the real profile.
+                            target_editors = page.get_by_role(
+                                "textbox", name=re.compile(
+                                    r"\\b(minimum|maximum)\\b", re.I
+                                )
+                            )
+                            assert target_editors.count() == 0, (
+                                "Unverified glucose target still exposes editable bounds"
+                            )
                             # These are only post-change English captures, not a
                             # BEFORE/AFTER score or a clinical target migration.
                             target = OUT / f"f03-unknown-target-{width}x{height}.png"
