@@ -1,12 +1,18 @@
 // D7 hosted QA AUTH-ONLY gate: temporary, deployment-scoped Vercel Share Link.
 // Never log/share QA credentials, the share token, session cookie or bearer.
 const EXPECTED_ORIGIN =
-  'https://iamina-review-ggdtqis0g-achraf-benmoussa-s-projects.vercel.app';
+  'https://iamina-review-3boz2bqz6-achraf-benmoussa-s-projects.vercel.app';
+const PREVIEW_SHA = '55fa500f56d86d7fa014b5b1849d7e7cdad3ea59';
 
 function fail(code) { throw new Error('D7_QA_' + code); }
 function assertCredentials(creds) {
   for (const key of ['aEmail', 'aPassword', 'bEmail', 'bPassword', 'accessBypass']) {
     if (typeof creds[key] !== 'string' || !creds[key]) fail('REQUIRED_SECRET_MISSING');
+  }
+  // Refuse real or unclassified identities before any outbound request.
+  for (const email of [creds.aEmail, creds.bEmail]) {
+    if (!/^[^@\\s]+@example\\.(invalid|test)$/.test(email.trim().toLowerCase()))
+      fail('NON_SYNTHETIC_IDENTITY');
   }
   if (creds.aEmail.trim().toLowerCase() === creds.bEmail.trim().toLowerCase())
     fail('SAME_QA_IDENTITY');
@@ -81,6 +87,9 @@ export async function runHostedAuthGate({
   fetcher = globalThis.fetch, origin = EXPECTED_ORIGIN, creds,
 }) {
   if (origin !== EXPECTED_ORIGIN) fail('UNEXPECTED_TARGET');
+  // This is the verified immutable Vercel Preview, not a mutable branch alias.
+  if (process.env.D7_PREVIEW_SHA && process.env.D7_PREVIEW_SHA !== PREVIEW_SHA)
+    fail('PREVIEW_SHA_MISMATCH');
   assertCredentials(creds);
   // Fail closed before sending any A/B password if the temporary link expired.
   const cookie = await shareLinkSession(fetcher, origin, creds.accessBypass);
@@ -123,7 +132,7 @@ export async function runHostedAuthGate({
     fail('OWNER_A_B_A_MISMATCH');
   return {
     verdict: 'AUTH_ONLY_PASS',
-    hosted_preview_sha: 'ec5234476618f849c68489adb08dfe7fd00a2c4c',
+    preview_sha_pinned: PREVIEW_SHA,
     negative_login: 'DJANGO_401_JSON',
     existing_account_login: 'A_200_B_200_A_200',
     distinct_owners: true,
