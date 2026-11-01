@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 Chromium worker/OPFS discovery VERIFIED GREEN
+
+Run [#41312403276](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41312403276), job `124865343681`, SUCCESS. Browser evidence: `sqliteRoundtrip:true`, `keyApi:"function"`, `opfsApi:"undefined"`, `opfsStorageApi:"function"`, `workerApi:"function"`, `encryptedPersistenceVerified:false`; worker `workerReady:true`, `configType:"config-get"`, `configKeys:["bigIntEnabled","version","vfsList"]`. Browser OPFS API and upstream SQLite worker work, but `oo1.OpfsDb` absent in main-thread context. **No keyed persistent database or wrong-key proof yet.** Next: inspect worker VFS list, prove persisted encrypted keyed SQLite across browser restart and wrong-key rejection. No merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 : worker/OPFS discovery (test CI pending)
 
 Commit `5054aab4` extends the isolated Chromium probe to load upstream `sqlite3-worker1-promiser.js`, require worker readiness and inspect `config-get`, `navigator.storage.getDirectory` and worker API. This targets the observed `oo1.OpfsDb:undefined` on #41312036909 without modifying the application or claiming persistence. **Not yet CI-verified**. Next: inspect worker result; only then implement keyed persisted database, wrong-key and restart checks. No merge/deploy.
