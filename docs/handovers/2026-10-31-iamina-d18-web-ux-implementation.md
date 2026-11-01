@@ -1,3 +1,9 @@
+## 01/11/2026 — Correction du préflight WASM (fail-closed)
+
+`e230b70e` modifie le préflight : un WASM structurellement valide sans export SQLite identifiable est désormais **rejeté** (exit 1), au lieu de produire BINARY_VALID_ONLY. `802acff7` adapte la régression synthétique correspondante. Attention : des moteurs SQLite avec API encapsulée pourraient aussi être rejetés ; ce filtre n'est ni une preuve de chiffrement ni un substitut à un test moteur/worker. Nouveau HEAD CI à vérifier. POC Chromium et moteur chiffré toujours absents ; aucun merge/deploy.
+
+---
+
 ## 01/11/2026 — Preflight WASM : tests synthétiques exécutés
 
 HEAD code `c9eb9a06` : `tools/d18_sqlite_cipher_preflight_test.js` ajoute quatre contrôles (binaire absent, non-WASM, WASM malformé, WASM structurellement valide mais non chiffrant). Une copie locale équivalente du test a été exécutée avec Node 22 : `4 synthetic checks PASS; encryption NOT tested`. L'absence de moteur sqlite3mc WASM compatible empêche toujours la preuve Chromium de chiffrement au repos. CI GitHub sur ce HEAD à vérifier. Aucun merge/deploy.
