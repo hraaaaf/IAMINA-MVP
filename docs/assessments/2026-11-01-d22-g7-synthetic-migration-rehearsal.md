@@ -20,3 +20,11 @@ Date: 2026-11-01 · parent PR #1214.
 **Known gap:** rehearsal does not amend existing SQL defaults or build an activated authoritative new schema; no patient data migrated. It deliberately tests only synthetic SQLite/Drift and therefore cannot substitute for a browser FUE, a native-vault backup restore, privacy review or medical certification.
 
 **Next exact:** exact-HEAD Flutter test proof; review sidecar versioned design with DB/privacy and endocrinology authority; then implement production migration under separate gate, run data integrity+rollback and F01–F07 real Chrome before release. No Vercel deploy or merge authorized.
+
+## 2026-11-01 — adversarial SQLite NULL-check fix (candidate only)
+
+CI of SHA `7725ef7` demonstrated **919 PASS, 1 FAIL, 7 SKIP**: the first rehearsal's nullable units were accepted by SQLite's three-valued `CHECK` expression when `authority_state` was changed to `approved` (NULL does **not** fail a SQLite CHECK). This was a genuine weakness in the proposed synthetic schema, not a medically approved state.
+
+**Decision:** the pre-authority sidecar must NEVER contain an `approved` state. Its only permitted states are `unknown` and `review_pending`, enforced by `NOT NULL CHECK`; nullable unit fields each enforce `IS NULL OR unit IN ('mg/dL','mmol/L')`. Source strings, even with typed units, cannot grant clinical approval. Only a later independently reviewed and authenticated patient-specific clinical record may support approval, with explicit G1/G4/G7 specialist sign-off, a migration plan and audit trail.
+
+New synthetic negative cases test `NULL`, invalid aliases and forged approval even when both units + a plausible reference are supplied. **No change to AppDatabase v12 or real user data; added tests not yet CI-verified**.

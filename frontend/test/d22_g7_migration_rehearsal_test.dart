@@ -32,19 +32,15 @@ void main() {
         owner_id INTEGER NOT NULL PRIMARY KEY,
         legacy_low REAL NOT NULL,
         legacy_high REAL NOT NULL,
-        low_source_unit TEXT,
-        high_source_unit TEXT,
+        low_source_unit TEXT
+          CHECK (low_source_unit IS NULL OR low_source_unit IN ('mg/dL', 'mmol/L')),
+        high_source_unit TEXT
+          CHECK (high_source_unit IS NULL OR high_source_unit IN ('mg/dL', 'mmol/L')),
+        -- No "approved" state exists in rehearsal: a text source reference
+        -- can never authenticate an endocrinologist's clinical approval.
         authority_state TEXT NOT NULL DEFAULT 'unknown'
-          CHECK (authority_state IN ('unknown', 'review_pending', 'approved')),
-        provenance TEXT,
-        CHECK (
-          authority_state != 'approved'
-          OR (
-            low_source_unit IN ('mg/dL', 'mmol/L')
-            AND high_source_unit IN ('mg/dL', 'mmol/L')
-            AND provenance IS NOT NULL AND length(trim(provenance)) > 0
-          )
-        )
+          CHECK (authority_state IN ('unknown', 'review_pending')),
+        provenance TEXT
       )
     ''');
     await db.customStatement('''
@@ -77,7 +73,7 @@ void main() {
     expect(after.unitPreference, before.unitPreference);
   });
 
-  test('G7 candidate schema cannot approve legacy without explicit unit data',
+  test('G7 rehearsal never permits clinical approval, even with forged evidence',
       () async {
     final db = await dbFor(734);
     addTearDown(db.close);
@@ -94,6 +90,53 @@ void main() {
       'SELECT authority_state FROM d22_target_source_rehearsal',
     ).get();
     expect(rows.single.read<String>('authority_state'), 'unknown');
+  });
+
+  test('G7 NULL units are allowed as unknown, invalid aliases are rejected',
+      () async {
+    final db = await dbFor(734);
+    addTearDown(db.close);
+    await createCandidateSidecar(db);
+    final initial = await db.customSelect(
+      'SELECT low_source_unit, high_source_unit FROM d22_target_source_rehearsal',
+    ).getSingle();
+    expect(initial.readNullable<String>('low_source_unit'), isNull);
+    expect(initial.readNullable<String>('high_source_unit'), isNull);
+    await expectLater(
+      db.customStatement("""
+        UPDATE d22_target_source_rehearsal
+        SET low_source_unit = 'mgdl' WHERE owner_id = 734
+      """),
+      throwsA(isA<Exception>()),
+    );
+    final remaining = await db.customSelect(
+      'SELECT low_source_unit FROM d22_target_source_rehearsal',
+    ).getSingle();
+    expect(remaining.readNullable<String>('low_source_unit'), isNull);
+  });
+
+  test('G7 fake clinical approval is rejected even with filled units',
+      () async {
+    final db = await dbFor(734);
+    addTearDown(db.close);
+    await createCandidateSidecar(db);
+    await db.customStatement("""
+      UPDATE d22_target_source_rehearsal
+      SET low_source_unit = 'mg/dL', high_source_unit = 'mg/dL',
+          provenance = 'untrusted-claim', authority_state = 'review_pending'
+      WHERE owner_id = 734
+    """);
+    await expectLater(
+      db.customStatement("""
+        UPDATE d22_target_source_rehearsal
+        SET authority_state = 'approved' WHERE owner_id = 734
+      """),
+      throwsA(isA<Exception>()),
+    );
+    final remaining = await db.customSelect(
+      'SELECT authority_state FROM d22_target_source_rehearsal',
+    ).getSingle();
+    expect(remaining.read<String>('authority_state'), 'review_pending');
   });
 
   test('G7 transaction failure rolls back sidecar and keeps source profile',
