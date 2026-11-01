@@ -182,3 +182,11 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 - **Risque persistant critique** : l'onboarding écrit toujours `70/180` quel que soit `mmol/L` ; Profile lit et écrit les bornes brutes ; les rapports et classifications demandent une revue d'autorité. La seule inversion visuelle **ne sécurise pas la glycémie**.
 - **Gates** : G1–G7 cliniques/DB/privacy/RTL toujours `PENDING`. D22 `FUE_NO_GO`, `RELEASE_NO_GO`. Aucune conversion ni migration, aucun déploiement Vercel autorisé. Ne pas fusionner ce candidat seul en donnant l'impression d'une correction globale.
 - **Next exact** : obtenir les arbitrages humains, puis traiter les conversions et la provenance sur le même contrat approuvé ; tests runtime Flutter + FUE navigateur, BEFORE/AFTER, scoring et certification. Le présent candidat est révisable/abandonnable si G6 impose un autre parcours.
+
+
+### 01/11/2026 — D22-A : test de rendu Flutter FR/AR × 3 ajouté (en attente de preuve CI)
+
+- **Code ajouté à la PR candidate #1213** : `frontend/test/features/profile/d22_web_unit_first_widget_test.dart`, six scénarios synthétiques réutilisant le vrai `ProfileScreen` avec coffre patient fictif et `ExpansionTile` médicale dépliée, en FR/AR aux tailles 390×844, 768×1024, 1280×900.
+- Les assertions ciblent l'existence des titres localisés, leur ordre vertical réellement calculé par Flutter et le sens RTL/LTR ; elles ne changent **aucune** borne glycémiques ou autorité clinique.
+- **Statut probatoire à la création** : widget tests nouveaux **non encore exécutés par une CI vérifiée** ; aucun parcours Chrome FUE D22 spécifique, aucune comparaison BEFORE/AFTER signée. Les runs verts du SHA précédent `5933bb9f` deviennent historiques pour cette branche.
+- **Maintien du NO-GO** : ni les six tests widget ni la CI ne peuvent remplacer G1–G7, la correction `onboarding 70/180` et la FUE réelle ; PR reste Draft sans merge/déploiement.
