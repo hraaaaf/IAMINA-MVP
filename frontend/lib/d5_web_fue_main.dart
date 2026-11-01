@@ -2,6 +2,10 @@
 // patient-vault scoped DB/storage, and a deterministic IP *test input*. This
 // entrypoint is never included in production lib/main.dart or deployed.
 import 'dart:html' as html; // Synthetic Web-only phase probe; never used in app main.
+import 'dart:convert';
+
+import 'data/drift/patient_progressive_demographics_store.dart';
+import 'data/drift/patient_weight_history_store.dart';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
@@ -92,6 +96,30 @@ Future<void> _runD5(void Function(String stage) mark) async {
   // Same isolation primitive as the app, not a shared synthetic demo DB.
   final scope = PatientVaultScope.nativeDjango(owner);
   final db = AppDatabase.forPatientVault(scope);
+  // Synthetic FUE-host only: this entrypoint is excluded from production.
+  // Reads the exact same scoped Drift/IndexedDB vault as the real UI; never
+  // inserts, modifies, or fabricates any clinical data.
+  if (query['d18_e2e_proof'] == '1') {
+    html.document.addEventListener('d18-e2e-read', (_) async {
+      try {
+        final demographics =
+            await PatientProgressiveDemographicsStore(db).exportOwnedRows();
+        final weights = await PatientWeightHistoryStore(db).exportOwnedRows();
+        html.document.documentElement?.dataset['d18E2eRead'] = jsonEncode({
+          'status': 'ok',
+          'vault': scope.databaseName,
+          'owner': db.activeProfileRowId,
+          'demographics': demographics,
+          'weights': weights,
+        });
+      } catch (error) {
+        html.document.documentElement?.dataset['d18E2eRead'] = jsonEncode({
+          'status': 'error',
+          'error': error.runtimeType.toString(),
+        });
+      }
+    });
+  }
   final api = ApiClient();
   final auth = AuthService();
   final lock = AppLockService();

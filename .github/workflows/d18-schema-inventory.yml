@@ -1,0 +1,147 @@
+name: D18 scoped SQLite inventory tests
+on:
+  push:
+    branches:
+      - feat/iamina-d18-web-progressive-profile-20261031
+    paths:
+      - frontend/lib/data/drift/d18_schema_inventory.dart
+      - frontend/test/data/drift/d18_schema_inventory_test.dart
+      - frontend/test/data/drift/d18_real_web_vault_smoke_test.dart
+      - frontend/lib/d18_real_drift_web_probe_main.dart
+      - tools/d18_real_drift_web_smoke.js
+      - frontend/lib/data/drift/d18_vault_key_policy.dart
+      - frontend/test/data/drift/d18_vault_key_policy_test.dart
+      - frontend/lib/d18_vault_key_policy_web_probe_main.dart
+      - tools/d18_vault_key_policy_web_probe.js
+      - docs/security/d18-local-passphrase-recovery-policy.md
+      - .github/workflows/d18-schema-inventory.yml
+  pull_request:
+    paths:
+      - frontend/lib/data/drift/d18_schema_inventory.dart
+      - frontend/test/data/drift/d18_schema_inventory_test.dart
+      - .github/workflows/d18-schema-inventory.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d18-schema-inventory-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  inventory-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze D18 inventory files
+        run: dart analyze lib/data/drift/d18_schema_inventory.dart test/data/drift/d18_schema_inventory_test.dart
+      - name: Test D18 inventory and scope guard
+        run: flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart
+
+  d18-key-policy-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze D18-A key policy
+        run: dart analyze lib/data/drift/d18_vault_key_policy.dart test/data/drift/d18_vault_key_policy_test.dart
+      - name: Test independent offline recovery, cross-vault reject, key rotation and no plaintext in envelope
+        run: flutter test --no-pub --timeout 180s test/data/drift/d18_vault_key_policy_test.dart
+
+      - name: Build real Flutter Web key-policy probe
+        run: flutter build web --release --no-web-resources-cdn --no-wasm-dry-run -t lib/d18_vault_key_policy_web_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Chromium
+        working-directory: .
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Check WebCrypto unlock, cross-vault isolation and independent offline recovery
+        working-directory: .
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7390 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d18-key-web-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 8 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7390/ -o /tmp/d18-key-web-index.html
+          node tools/d18_vault_key_policy_web_probe.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-a-webcrypto-key-proof
+          path: d18-a-webcrypto-key-proof/report.json
+          if-no-files-found: warn
+          retention-days: 10
+
+  real-drift-web-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve pinned Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Analyze real Web executable and browser smoke
+        working-directory: frontend
+        run: dart analyze lib/d18_real_drift_web_probe_main.dart test/data/drift/d18_real_web_vault_smoke_test.dart
+      - name: Compile real Drift Flutter Web entrypoint
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t lib/d18_real_drift_web_probe_main.dart
+      - name: Ensure built assets are byte-identical to product assets
+        run: |
+          set -euo pipefail
+          cmp frontend/web/sqlite3.wasm frontend/build/web/sqlite3.wasm
+          cmp frontend/web/drift_worker.js frontend/build/web/drift_worker.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test physical A/B vault and independent Chromium restart
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7389 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-drift-web-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 8 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7389/sqlite3.wasm -o /tmp/d18-ci-sqlite3.wasm
+          cmp /tmp/d18-ci-sqlite3.wasm frontend/web/sqlite3.wasm
+          curl --fail --silent http://127.0.0.1:7389/drift_worker.js -o /tmp/d18-ci-worker.js
+          cmp /tmp/d18-ci-worker.js frontend/web/drift_worker.js
+          node tools/d18_real_drift_web_smoke.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-real-drift-web-chromium-proof
+          path: d18-real-drift-web-proof/report.json
+          if-no-files-found: warn
+          retention-days: 10

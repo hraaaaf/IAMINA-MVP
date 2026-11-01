@@ -1,0 +1,113 @@
+name: D18 Web patient-profile UX + encrypted-backup browser proof
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-web-ux-fue.yml'
+      - 'tools/d18_web_fue.js'
+      - 'tools/d18_web_file_e2e.js'
+      - 'tools/d18_web_crypto_probe.js'
+      - 'frontend/lib/d5_web_fue_main.dart'
+      - 'frontend/lib/features/profile/**'
+      - 'frontend/lib/data/drift/d18_encrypted_backup.dart'
+      - 'frontend/lib/data/drift/patient_progressive_demographics_store.dart'
+      - 'frontend/lib/data/drift/patient_weight_history_store.dart'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d18-web-profile-ux-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d18-real-chrome:
+    name: D18 real Flutter Profile Web FR/AR 390/768/1280
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve pinned Flutter packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Analyze real patient-profile Web entrypoint
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos lib/d5_web_fue_main.dart
+      - name: Build production Flutter screens in offline Web host
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t lib/d5_web_fue_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise D18 real browser screens and capture evidence
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -m http.server 7386 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-http.log 2>&1 &
+          node tools/d18_web_fue.js
+      - name: Real IAMINA file download and restoration through Flutter widgets
+        continue-on-error: true
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Keep the server alive in the same Actions step as this browser process.
+          python3 -m http.server 7388 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-file-e2e-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7388/ > /dev/null
+          node tools/d18_web_file_e2e.js
+      - name: Build D18-only encrypted backup recovery probe for Chromium
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/d18_web_crypto_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_web_crypto_probe_main.dart
+      - name: Verify WebCrypto and browser-profile loss/restore in real Chromium
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -m http.server 7387 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-crypto-http.log 2>&1 &
+          node tools/d18_web_crypto_probe.js
+      - name: Strict D18 release gate — all independent evidence required
+        if: always()
+        run: |
+          node - <<'JS'
+          const fs=require('fs');
+          const dir='d18-web-fue-proof/';
+          const head=process.env.GITHUB_SHA;
+          const reports=['report.json','ui-file-roundtrip-report.json','encrypted-recovery-report.json'];
+          const failures=[];
+          for(const file of reports){
+            const path=dir+file;
+            if(!fs.existsSync(path)){failures.push(file+' missing');continue;}
+            let report;
+            try{report=JSON.parse(fs.readFileSync(path,'utf8'));}catch(e){failures.push(file+' unreadable');continue;}
+            const ok=file==='report.json'
+              ?report.passed===6&&report.total===6&&report.errors.length===0
+              :file==='encrypted-recovery-report.json'
+                ?report.passed===8&&report.total===8&&report.steps.length===8&&report.steps.every(x=>x.pass)
+                :report.passed===true&&report.steps?.length>0&&report.steps.every(x=>x.pass);
+            if(!ok)failures.push(file+' FAILED; inspect artifact');
+            console.log(file+': '+(ok?'PASS':'FAIL'));
+          }
+          if(failures.length){console.error(failures.join('\n'));process.exit(1);}
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-web-profile-fr-ar-390-768-1280-${{ github.event.pull_request.head.sha }}
+          path: d18-web-fue-proof/
+          if-no-files-found: warn
+          retention-days: 14

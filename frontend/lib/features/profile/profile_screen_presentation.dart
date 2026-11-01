@@ -108,6 +108,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           ),
                           const SizedBox(height: 14),
                         ],
+                        if (_d18WebVault case final AppDatabase d18Db) ...[
+                          D18ProfilePanel(db: d18Db),
+                          const SizedBox(height: 14),
+                        ],
                         _buildMedicalSection(l10n),
                         const SizedBox(height: 14),
                         _buildRamadanSection(l10n),
@@ -458,6 +462,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           ),
           onTap: () => context.push('/cgm'),
         ),
+        if (_d18WebVault case final AppDatabase d18Db) ...[
+          D18BackupSection(db: d18Db),
+        ],
       ],
     );
   }
