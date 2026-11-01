@@ -120,7 +120,7 @@ abstract final class D18VaultKeyPolicy {
     if (bytes.length != 32) {
       throw const FormatException('Invalid D18 data-key length');
     }
-    return SecretKeyData(bytes, overwriteWhenDestroyed: true);
+    return SecretKeyData(List<int>.of(bytes), overwriteWhenDestroyed: true);
   }
 
   static String _encode({
@@ -185,7 +185,7 @@ abstract final class D18VaultKeyPolicy {
       if (bytes.length != 32 || _recoveryCode(bytes) != code) {
         throw const FormatException('Invalid offline recovery code');
       }
-      return SecretKeyData(bytes, overwriteWhenDestroyed: true);
+      return SecretKeyData(List<int>.of(bytes), overwriteWhenDestroyed: true);
     } on FormatException {
       throw const FormatException('Invalid offline recovery code');
     }
@@ -298,7 +298,8 @@ abstract final class D18VaultKeyPolicy {
     );
     try {
       final keyBytes = await original.requireUnlockedKey().extractBytes();
-      final dataKey = SecretKeyData(keyBytes, overwriteWhenDestroyed: true);
+      // Keep the recovered key independent: original.lock() zeroes its buffer.
+      final dataKey = SecretKeyData(List<int>.of(keyBytes), overwriteWhenDestroyed: true);
       try {
         final salt = _random(16);
         final passKey = await _derive(newPassphrase, salt);
