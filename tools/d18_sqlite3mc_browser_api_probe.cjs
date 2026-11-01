@@ -188,6 +188,53 @@ const os=require('node:os');
    const rotated=await restartPhase('rotated-reopen');
    console.log(JSON.stringify({persistentProcessRotatedRestart:rotated}));
    if(!rotated.ok)throw Error('D18 OPFS rotated key restart gate failed');
+
+   // Abrupt termination: a committed row must survive; a transaction without COMMIT must not.
+   const crashProfile=fs.mkdtempSync(path.join(os.tmpdir(),'d18-opfs-crash-'));
+   try{
+    const crashed=await chromium.launchPersistentContext(crashProfile,{headless:true,args:['--no-sandbox']});
+    let killed=false;
+    try{
+     const tab=crashed.pages()[0]||await crashed.newPage();
+     await tab.goto('http://127.0.0.1:7398/d18-probe.html');
+     const before=await tab.evaluate(async()=>{
+      const script=document.createElement('script');script.src='/jswasm/sqlite3-worker1-promiser.js';
+      await new Promise((ok,fail)=>{script.onload=ok;script.onerror=fail;document.head.appendChild(script)});
+      const p=await new Promise((ok,fail)=>{try{const w=sqlite3Worker1Promiser({onready:()=>ok(w),onerror:fail})}catch(e){fail(e)}});
+      const o=await p('open',{filename:'/d18-crash.sqlite3',vfs:'multipleciphers-opfs'});
+      const id=o.dbId;
+      const exec=async sql=>{const r=await p('exec',{dbId:id,sql});if(r.type==='error')throw Error(JSON.stringify(r.result))};
+      await exec("PRAGMA key='D18_CRASH_KEY'");
+      await exec("CREATE TABLE t(v TEXT); INSERT INTO t VALUES('COMMITTED_BEFORE_CRASH')");
+      await exec("BEGIN IMMEDIATE; INSERT INTO t VALUES('UNCOMMITTED_AT_CRASH')");
+      return {transactionLeftOpen:true};
+     });
+     console.log(JSON.stringify({crashBeforeTermination:before}));
+     const proc=crashed.browser()?.process();
+     if(!proc)throw Error('D18 cannot access Chromium process for hard termination');
+     proc.kill('SIGKILL');killed=true;
+    }finally{if(!killed)await crashed.close()}
+    const recovered=await chromium.launchPersistentContext(crashProfile,{headless:true,args:['--no-sandbox']});
+    try{
+     const tab=recovered.pages()[0]||await recovered.newPage();
+     await tab.goto('http://127.0.0.1:7398/d18-probe.html');
+     const result=await tab.evaluate(async()=>{
+      const script=document.createElement('script');script.src='/jswasm/sqlite3-worker1-promiser.js';
+      await new Promise((ok,fail)=>{script.onload=ok;script.onerror=fail;document.head.appendChild(script)});
+      const p=await new Promise((ok,fail)=>{try{const w=sqlite3Worker1Promiser({onready:()=>ok(w),onerror:fail})}catch(e){fail(e)}});
+      const o=await p('open',{filename:'/d18-crash.sqlite3',vfs:'multipleciphers-opfs'}),id=o.dbId;
+      try{
+       const key=await p('exec',{dbId:id,sql:"PRAGMA key='D18_CRASH_KEY'"});if(key.type==='error')throw Error(JSON.stringify(key.result));
+       const q=await p('exec',{dbId:id,sql:'SELECT v FROM t ORDER BY rowid',rowMode:'array',resultRows:[]});
+       if(q.type==='error')throw Error(JSON.stringify(q.result));
+       const rows=q.result?.resultRows||[];
+       return {rows,ok:rows.length===1&&rows[0][0]==='COMMITTED_BEFORE_CRASH'};
+      }finally{await p('close',{dbId:id})}
+     });
+     console.log(JSON.stringify({abruptProcessRecovery:result}));
+     if(!result.ok)throw Error('D18 abrupt Chromium termination recovery gate failed');
+    }finally{await recovered.close()}
+   }finally{fs.rmSync(crashProfile,{recursive:true,force:true})}
   }finally{fs.rmSync(profile,{recursive:true,force:true})}
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
