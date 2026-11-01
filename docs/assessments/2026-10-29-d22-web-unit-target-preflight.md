@@ -91,3 +91,51 @@ Conversion documentaire du glucose : `mmol/L ≈ (mg/dL) ÷ 18` ; `mg/dL ≈ (mm
 **Succès de ce sous-lot :** revue source actuelle exacte, dossier D19/G1–G7 réidentifié, aucun changement runtime/DB/clinical/API/UI, aucune CI clinique ni score FUE inventés. La CI existante du préflight [#40845836231](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40845836231) porte sur un ancien SHA ; elle n'est pas une preuve du comportement actuel hébergé. **`D22_PRODUCT=BLOCKED_D19` ; `D22_FUE=NOT_RUN`.**
 
 **Next exact :** obtenir une décision signée et datée de clinicien/endocrinologue, ingénierie calcul et privacy sur G1–G7 ; en attendant, préparer uniquement tests et maquettes non prescriptives hors production. Dès approbation : BEFORE 390/768/1280, mockup unité→cible, implémentation bornée avec migration réversible, AFTER mêmes états/viewports, FUE FR/AR clavier/offline/A→B→A, CI exact SHA, contre-revue, Perfection Pass ; fusion/déploiement Vercel uniquement sur GO distinct explicite. Ne pas toucher à la production avec cette préparation.
+
+
+## 01/11/2026 — Mockup fonctionnel candidat Web, D19 PENDING
+
+**Goal UI/UX (en attente d'approbation clinique G1–G7) :** rendre l'unité explicite **avant** toute cible et empêcher qu'une plage numérique sans provenance soit présentée comme un objectif médical validé. Aucun écran de production ni patient data n'est modifié dans cette préparation.
+
+**BEFORE vérifié par source (pas par capture) :** `profile_screen_presentation.dart` affiche `glucoseTarget` avant `measureUnit` ; `profile_screen.dart` lit les bornes brutes au format entier et sauvegarde brutes ; `onboarding_chat_screen.dart` écrit 70/180 malgré `unitPreference='mmol/L'`. Captures BEFORE aux tailles 390/768/1280 **NON COLLECTÉES**, donc aucun score visuel ni assurance de rendu.
+
+**Référence/wireframe texte uniquement (PROPOSITION, pas une implémentation ni capture) :**
+
+```text
+FR, écran Profil / Suivi médical
+┌─────────────────────────────────────┐
+│ Unité de mesure                     │
+│ (●) mg/dL   ( ) mmol/L              │
+├─────────────────────────────────────┤
+│ Objectifs glycémiques personnels    │
+│ Statut : Non défini / À confirmer   │
+│ [Aucune cible validée affichable]   │
+│                                     │
+│ Une cible ne peut être utilisée     │
+│ pour un calcul qu'avec sa source,   │
+│ son unité et sa validation.         │
+└─────────────────────────────────────┘
+
+AR, structure RTL à valider par relecteur arabophone
+┌─────────────────────────────────────┐
+│                      وحدة القياس    │
+│              mmol/L  |  mg/dL       │
+├─────────────────────────────────────┤
+│           الأهداف الشخصية للغلوكوز   │
+│            غير محددة / قيد التحقق   │
+│ [لا توجد أهداف مؤكدة لعرضها]        │
+└─────────────────────────────────────┘
+```
+
+**Oracles visuels et accessibilité à créer après gate :** FR/AR RTL à 390×844, 768×1024 et 1280×900 ; ordre réel des champs, focus Tab/Shift+Tab, labels et unités visibles, aucun débordement, police 200 %, app-lock et reload, ligne legacy inconnue sans réinterprétation. Avant implémentation, enregistrer screenshots BEFORE du **même SHA** dans les trois viewports ; après correction obtenir AFTER aux mêmes états, comparaison Target↔Render, score visuel et revue linguistique native.
+
+**Proposition de contrat de données séparée de l'UI :**
+- `unitPreference` est un choix d'affichage. `sourceUnit` décrit l'unité de la quantité originelle ; ne pas les fusionner.
+- Les anciennes bornes sans provenance doivent rester brutes et être marquées d'un statut distinct jusqu'à examen qualifié. Les mots « objectif validé » ne découlent jamais de `70/180`.
+- Les valeurs affichées arrondies ne sont **pas** une nouvelle saisie clinique ; un save sans modification ne doit pas écraser le brut.
+- Aucune classification, aucun TIR dérivé de relevés manuels, ni aucun export d'objectif clinique à partir d'une plage inconnue.
+- **Tous ces choix restent CANDIDATS.** Référence candidate de tests uniquement : [PR #1211 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/1211), où l'oracle est privé au test, sans preuve que le produit actuel le satisfait.
+
+**Sources externes à vérifier pour revue humaine :** [ADA Standards of Care 2026 §6](https://doi.org/10.2337/dc26-s006) (objectifs individualisés ; métriques CGM/TIR) ; [ADA patient education](https://diabetes.org/living-with-diabetes/treatment-care/checking-your-blood-sugar) ; [Alberta Health Services, conversion blood glucose](https://www.albertahealthservices.ca/assets/info/hp/edu/if-hp-edu-er-nursing-blood-glucose-conversion-chart.pdf) (conversion usuelle affichée ~18). Ces sources ne tranchent pas le facteur/arrondi logiciel G4 ni l'approbation de cibles individuelles.
+
+**Human gate :** G1–G7 signés (D19), revue FR/AR native, sécurité/privacy et produit. **Tant qu'absent : MOCKUP_CANDIDATE uniquement**, aucune implémentation D22, aucune certification FUE ou note visuelle.
