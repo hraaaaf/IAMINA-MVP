@@ -103,6 +103,22 @@ void main() {
           );
           expect(find.text('mg/dL'), findsWidgets);
           expect(find.text('mmol/L'), findsWidgets);
+          // D22-B F03 safety: stored synthetic 84/168 has no source-unit
+          // or clinician authority. It must not appear as an editable
+          // patient target in any of the six FR/AR responsive fixtures.
+          expect(
+            find.byKey(const Key('d22-unverified-target-blocked')),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: medical,
+              matching: find.byType(TextField),
+            ),
+            findsNothing,
+          );
+          expect(find.text('84'), findsNothing);
+          expect(find.text('168'), findsNothing);
           expect(tester.takeException(), isNull);
         },
       );
