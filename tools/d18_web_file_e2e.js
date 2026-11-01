@@ -339,6 +339,18 @@ async function check(page,label){
   steps.push({check:'Real browser Blob download encrypted file',pass:true,
     bytes:payload.length,filename:download.suggestedFilename()});
   await snap(page,'encrypted-file-downloaded');
+  // A completed download must consume its prepared buffer and close the
+  // dialog. On a new export, a rejected passphrase must never expose the
+  // previously downloaded file as a stale "ready" action.
+  await clickByScroll(page,'Créer une sauvegarde chiffrée');
+  await click(page,'Chiffrer le fichier'); // deliberately invalid empty form
+  await check(page,'Utilisez au moins 12 caractères et confirmez exactement la phrase secrète.');
+  if(await locate(page,'Télécharger le fichier')){
+    await snap(page,'stale-backup-download-visible');
+    throw Error('Stale encrypted backup download exposed after invalid new export');
+  }
+  steps.push({check:'Completed backup consumed; rejected new export exposes no stale download',pass:true});
+  await snap(page,'rejected-new-export-no-stale-download');
   await context.close();context=null;
   second=await browser.newContext({viewport:{width:390,height:844},locale:'fr-FR',acceptDownloads:true});
   page=await second.newPage();
