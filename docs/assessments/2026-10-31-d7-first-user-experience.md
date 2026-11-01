@@ -125,3 +125,39 @@ Le workflow `.github/workflows/d7-fue-returning-patient-web.yml` est **sans secr
 **Statuts strictement séparés :** `D7_MANUAL_OWNER_CHECKLIST=ACCEPTED_7_OF_7`, `D7_HOSTED_AUTH_AUTOMATED_C01_C05=NOT_VERIFIED`, `D7_INDEPENDENT_CLINICAL_PRIVACY_SIGNOFF=PENDING`, `D7_GLOBAL_VERIFIED=NO`. `QUALITY_SCORING_POLICY` interdit le score final et la mention VERIFIED avant toutes les preuves/gates et un Perfection Pass ; aucun score final inventé.
 
 **Next exact :** conserver le GO manuel du propriétaire ; achever le test automatisé protégé A→B→A + C01–C05 sur Preview `55fa500` avec GitHub Environment `d7-qa` et secrets non divulgués ; tester l'interleaving de session pendant le retrait/consentement ; obtenir l'avis indépendant clinique/privacy ; Perfection Pass et closeout D7. En parallèle autorisé, **préparer D22 par revue documentaire sans changer les cibles médicales**. D22 ne peut être implémentée/clôturée avant arbitrages D19 G1–G7. **Aucun merge / nouveau Vercel / migration / Production sans nouveau GO explicite.**
+
+
+## 01/11/2026 — D7 certification evidence closeout: 15/15 blob parity, 9/9 PNG, hosted NO-GO
+
+**Decision / Goal:** evaluate whether D7 « patient declaring diabetes type and actually followed treatments, without automatic prescription » is certifiable on immutable QA Preview `dpl_9uEbft6CgxjtkEBjtvG6tiFjeZP8`, source SHA `55fa500f56d86d7fa014b5b1849d7e7cdad3ea59`. Success requires all required F01–F08, C01–C05, scoped identity, clinical/privacy signoff, quality scores and Perfection Pass. **Outcome: TECHNICAL_LOCAL_PASS / MANUAL_OWNER_ATTESTED_7_OF_7 / GLOBAL_CERTIFICATION_NO_GO.** A positive manual 7/7 claim is not discarded, but does not fill missing independent evidence.
+
+**Exact GitHub evidence:** [D7 FUE #41210398830](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41210398830), tested code SHA `fab1496f252f051efe1bb1724fa61883bc835818`: `d7-real-web-fue` completed/success. All named steps passed, including Flutter Profile owner-save, Chrome diabetes type change FR/EN/AR×390/768/1280, C01–C05 synthetic consent/refusal/lock/fail-closed/retry tests, real local Flutter Web build and 8-phase Chrome actual-app run. These were in **one synthetic LOCAL WebAuthn vault**, not authenticated Django hosted A/B.
+
+**Source parity:** independently compared blobs between tested `fab1496f` and deployed `55fa500f`; all **15/15** matched exactly:
+1. `frontend/lib/features/profile/profile_screen.dart`
+2. `frontend/lib/features/auth/consent_screen.dart`
+3. `frontend/lib/services/consent_service.dart`
+4. `frontend/lib/services/consent_evidence_store.dart`
+5. `frontend/lib/services/consent_api_extension.dart`
+6. `frontend/lib/services/d7_consent_withdrawal.dart`
+7. `frontend/lib/services/api_client.dart`
+8. `frontend/lib/services/patient_vault_app_host.dart`
+9. `frontend/lib/features/profile/medical_treatment_multi_selector.dart`
+10. `frontend/lib/data/drift/patient_treatment_declaration_store.dart`
+11. `frontend/test/features/auth/consent_screen_test.dart`
+12. `frontend/test/services/d7_consent_withdrawal_fue_test.dart`
+13. `frontend/test/services/d7_consent_evidence_scope_test.dart`
+14. `scripts/d7_web_actual_profile_e2e.py`
+15. `.github/workflows/d7-fue-returning-patient-web.yml`.
+
+This is **file-scoped code parity, not entire Web bundle hash parity or hosted integration proof**. PR [#1208](https://github.com/hraaaaf/IAMINA-MVP/pull/1208) (selective consent/app-lock) merged to main at `ed8c67e`; PR [#1209](https://github.com/hraaaaf/IAMINA-MVP/pull/1209) (fail-closed consent withdrawal) merged at `a5d1c61`; the related 15 files' versions are also verified in QA.
+
+**Artifact review, independently checked from downloaded original:** GitHub artifact `d7-fue-actual-web-8phases-9png`, ID `13045104982` (787,405 ZIP bytes; `expired=false` at review). `d7-web-real-profile-chrome-proof.json` declares 8 phases and `result=PASS`, but explicitly marks `real_app_fr_ar_rtl=NOT_RUN`, `hosted_preview=NOT_RUN`, `remote_sync=NOT_RUN`, `clinical_privacy_signoff=NOT_RUN`. All **9/9 actual PNG bytes independently hash-verified** against SHA-256 in JSON, PNG magic and dimensions checked: state `type2`, `unknown`, `explicit_none` × viewport `390×844`, `768×1024`, `1280×900`. The screenshots show **English** local Web only. Review of `type2-390x844.png` notes the bottom navigation label `Measurements` ellipsizes to `Measureme...`; log as minor F08 UI observation, not a proven clinical/security blocker. No same-state BEFORE→AFTER reference, no full-scale 200% or real RTL screenshots; do not assign a certified visual score.
+
+**Hosted authenticated QA gate examined:** `.github/workflows/d7-qa-hosted-auth-gate.yml` is guarded by explicit `workflow_dispatch` from `qa/d7-c05-preview-a5d1c61-20261031` and GitHub Environment `d7-qa`, requiring `D7_QA_A_EMAIL`, `D7_QA_A_PASSWORD`, `D7_QA_B_EMAIL`, `D7_QA_B_PASSWORD`, and temporary Vercel `D7_QA_SSO_ACCESS`. Actual runner `scripts/d7_qa_hosted_auth_gate.mjs` checks Vercel share cookie, Django negative 401, real A→B→A login and owner-ID distinction; on success its **own verdict is `AUTH_ONLY_PASS`** and **`browser_profile_and_treatment_fue=NOT_RUN`**. No verified hosted workflow dispatch result, environment approval record or credentials were available in this assessment; no test was dispatched or sensitive QA password logged. Source parity does not establish the same-origin proxy/Neon behavior.
+
+**Open binary gates (not optional):** (i) full hosted QA authenticated browser F01–F08/C01–C05 including consent server receipts, withdrawal retries/offline and A→B→A owner isolation, FR/AR RTL, keyboard/a11y and 390/768/1280; (ii) documented independent qualified clinical and privacy/security review, including non-prescriptive language, source/provenance, owner scoped clinical consent and absence of false server ACK; (iii) final score under `docs/QUALITY_SCORING_POLICY.md` and Perfection Pass on exact applicable HEAD. Missing required proof caps quality score at 7.9/10; **do not invent an execution/adversarial score or call D7 VERIFIED**. Frontend changes following this report would require fresh PREVIEW evidence at the new SHA.
+
+**Current authorization boundary:** Vercel Preview READY at `55fa500` checked via Vercel read-only deployment metadata; no new deployment, share link generation, SSO bypass modification, GitHub secret write, database mutation, merge or production release. Creating a new temporary Vercel share URL grants bearer access for a limited period and is a security decision requiring owner authorization; not done here.
+
+**Next exact / remaining sequence:** security owner provisions/approves isolated `d7-qa` Environment with required reviewer/branch restriction and 5 secrets, approves deployment-limited share access, dispatches auth-only gate and records its exact run; execute full authenticated QA browser scenarios with non-sensitive evidence; commission independent clinical+privacy reviews; remediate findings if any, rerun on exact source, record execution/adversarial scores and Perfection Pass; only then consider formal D7 certification and an explicit separate merge/deploy gate. If the auth-only gate succeeds, **do not mistake that for D7 global certification**. D22 work may continue documentary while gate remains, but cannot close out of order.
