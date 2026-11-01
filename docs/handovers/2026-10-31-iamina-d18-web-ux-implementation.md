@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : connexion Drift Web et isolation des coffres IDENTIFIÉES
+
+Source vérifiée : `frontend/lib/data/drift/database.dart` : `driftDatabase` + `DriftWebOptions(sqlite3Wasm:'sqlite3.wasm',driftWorker:'drift_worker.js')`, schéma 12. `AppDatabase.defaults()` ouvre la base historique non attribuée `amina` ; `forPatientVault(scope)` ouvre une base physique distincte. `patient_vault_scope.dart` nomme les coffres `amina_vault_v1_native_<Django ID>` / `amina_vault_v1_device_<UUIDv4>` et l'audit séparé. **Interdit d'attribuer automatiquement `amina` au compte connecté.** ADR enrichi commit `8b8e618c`. Prochaine étape : prouver le backend effectif Drift Web et un export/import fidèle sur tous les schémas avant implémentation migration chiffrée. Aucune intégration/merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 migration synthétique VERIFIED ; intégration produit NON autorisée
 
 [Run #41334344187](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41334344187) SUCCESS, commit `660e8d26` : `syntheticMigrationRehearsal` rapporte `sourcePreserved:true`, `destinationVerified:true`, `wrongKeyRejected:true`, `cutoverAllowed:true`. Le dernier booléen ne concerne **que le test synthétique** ; aucun basculement IAMINA ni transfert des données réelles. Les scénarios précédents (restart, rekey, SIGKILL) sont aussi validés sur Chromium synthétique.
