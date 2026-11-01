@@ -72,3 +72,22 @@ Conversion documentaire du glucose : `mmol/L ≈ (mg/dL) ÷ 18` ; `mg/dL ≈ (mm
 
 - **CI postmerge #1174 :** [#40848461692](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40848461692) **SUCCESS**, SHA exact `main@278159a2988c860861e24301c6db37588f1b4eb8` ; closeout du préflight documentaire achevé, sans changement de code clinique.
 - **Gate suivant documenté (NON APPROUVÉ) :** [Fiche D19→D22 : G1–G7, oracles F01–F07, signataires et séquence restante](2026-10-29-d19-d22-web-clinical-decision-gate.md). Le présent fichier reste canonique pour D22 ; l'autre fiche est le dossier de décision soumis aux humains. PR #920 reste DRAFT ; D22 FUE_NO_GO.
+
+
+## 01/11/2026 — Reprise D22 après validation propriétaire D7 (lecture seule)
+
+**Décision et objectif :** ouvrir le prochain dossier de priorité Chantier B, D22 « unité de mesure avant objectifs glycémiques », sans activer un changement patient ni anticiper le gate clinique D19. Le propriétaire atteste avoir testé et accepté 7/7 scénarios de recette manuelle D7 ; cette attestation n'est pas un signoff clinic/privacy indépendant et ne clos pas la certification globale D7. La roadmap B confirmée demeure `D7 → D22 → D8`, puis D10 ; D8 dépend de D22 et D5.
+
+**Contrôle actuel `main`, sans modification :**
+- `onboarding_chat_screen.dart` blob `a54de29c3b0b2c17c32ed64330bc449425c79c5d` : choix `mg/dL` / `mmol/L` (lignes 437–443) ; enregistrement de `unitPreference: _unit` mais `targetRangeLow: 70`, `targetRangeHigh: 180` (lignes 205–207) sans contrat de provenance/stockage explicite.
+- `profile_screen.dart` blob `d6ab40a135ee4218c430fe6e2f78874c4dcafe21` : lecture `targetRangeLow/High.toStringAsFixed(0)` (117–118), sauvegarde brute `targetRangeLow/High` et `unitPreference` (718–720), sans conversion démontrée.
+- `profile_screen_presentation.dart` blob `0bd06f5141f627a90b6eec647746b0dacd595353` : la section `glucoseTarget` (223) précède `measureUnit` (251), contrairement à D22.
+- `glucose_formatter.dart` blob `9932d16e358511f1f0ebd37e896e9760317f32d7` : facteur d'affichage `18.018` (ligne 4). Choix de facteur source D19 non encore approuvé ; aucune conversion de cible déduite de cet helper.
+
+**Arbitrage D19 vérifié le 01/11 :** [PR #920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) `OPEN` / `DRAFT` / `MERGED=false` / `MERGEABLE=false`, HEAD annoncé `81bf4d6ac4e182f3058ca6ff52b504ce8404beb9`. Les sept décisions G1–G7 de [la fiche clinique](2026-10-29-d19-d22-web-clinical-decision-gate.md) restent sans signataires enregistrés : unité canonique (G1), source/validation de la cible (G2), legacy inconnu (G3), facteur/arrondi (G4), classement/TIR des mesures (G5), texte et parcours FR/AR (G6), rollback/scope/migration (G7). La documentation existante recommande à titre technique un stockage canonique explicite avec provenance et un fail-closed sur legacy non sûr, **pas une validation médicale ni une prescription**.
+
+**Constat / risque :** une préférence `mmol/L` associée à des bornes nues `70/180` représente une ambiguïté susceptible d'affecter affichage et classification. C'est un **défaut de contrat source actuel**, non un incident patient démontré. Ne jamais réécrire ces bornes ni convertir des dossiers historiques sans preuve d'origine.
+
+**Succès de ce sous-lot :** revue source actuelle exacte, dossier D19/G1–G7 réidentifié, aucun changement runtime/DB/clinical/API/UI, aucune CI clinique ni score FUE inventés. La CI existante du préflight [#40845836231](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40845836231) porte sur un ancien SHA ; elle n'est pas une preuve du comportement actuel hébergé. **`D22_PRODUCT=BLOCKED_D19` ; `D22_FUE=NOT_RUN`.**
+
+**Next exact :** obtenir une décision signée et datée de clinicien/endocrinologue, ingénierie calcul et privacy sur G1–G7 ; en attendant, préparer uniquement tests et maquettes non prescriptives hors production. Dès approbation : BEFORE 390/768/1280, mockup unité→cible, implémentation bornée avec migration réversible, AFTER mêmes états/viewports, FUE FR/AR clavier/offline/A→B→A, CI exact SHA, contre-revue, Perfection Pass ; fusion/déploiement Vercel uniquement sur GO distinct explicite. Ne pas toucher à la production avec cette préparation.
