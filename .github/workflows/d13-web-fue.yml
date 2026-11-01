@@ -1,0 +1,45 @@
+name: D13 Web real Drift save-in-flight FUE
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
+      - 'frontend/lib/d13_save_inflight_browser_main.dart'
+      - 'frontend/tool/d13_save_inflight_browser.py'
+      - 'frontend/test/features/d13_save_inflight_widget_test.dart'
+      - '.github/workflows/d13-web-fue.yml'
+permissions:
+  contents: read
+concurrency:
+  group: d13-web-fue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: python3 -m pip install --quiet playwright
+      - name: Synthetic web proof build
+        working-directory: frontend
+        run: |
+          flutter pub get
+          dart analyze lib/d13_save_inflight_browser_main.dart
+          flutter build web --release -t lib/d13_save_inflight_browser_main.dart --no-web-resources-cdn
+          test -s build/web/sqlite3.wasm
+          test -s build/web/drift_worker.js
+      - name: FR AR Web Chromium real Drift 6 cases
+        run: python3 frontend/tool/d13_save_inflight_browser.py --build frontend/build/web --out "$GITHUB_WORKSPACE/d13-fue"
+      - name: Always preserve screenshots and JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d13-fue-fr-ar-chromium-six
+          path: d13-fue/**
+          retention-days: 7
+          if-no-files-found: warn
+
