@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import 'database.dart';
 import 'patient_vault_scope.dart';
 
