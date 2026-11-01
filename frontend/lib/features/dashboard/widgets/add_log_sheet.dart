@@ -680,7 +680,9 @@ class AddLogSheetState extends State<AddLogSheet> {
     if (widget.isPage) {
       GoRouter.of(context).go('/dashboard');
     } else {
-      Navigator.maybePop(context);
+      // The user explicitly confirmed discard (or reached the saved receipt).
+      // maybePop is vetoed by our PopScope(canPop: false); pop is intentional.
+      Navigator.of(context).pop();
     }
   }
 }
