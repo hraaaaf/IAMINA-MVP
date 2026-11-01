@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 KV VFS incompatibility VERIFIED
+
+Run [#41315678291](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41315678291), job `124875080793`, SUCCESS as *diagnostic*. `kvvfsExploration.attempted:true`, `opened:true`, `reopened:false`, `encryptedPersistenceVerified:false`; error **`SQLite3Error: SQLITE_ERROR: sqlite3 result code 1: Setting key failed. Encryption is not supported by the VFS.`** Therefore `kvvfs` is not a viable encrypted persistence backend for this pinned sqlite3mc build. The green CI reflects diagnostic completion, not security readiness. Next: investigate a sqlite3mc-compatible persistent encrypted VFS/OPFS-enabled WASM build; require keyed reopen, wrong-key rejection, and raw storage inspection. No merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 persistence gate VERIFIED GREEN
 
 Run [#41313544113](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41313544113), job `124868750666`, SUCCESS. Chromium output: `opfsRegistered:false`, `kvvfsRegistered:true`, `persistenceGate:"BLOCKED_NO_OPFS_VFS"`, `encryptedPersistenceVerified:false`. This validates the explicit *negative* persistence gate, **not encryption at rest**. Next: isolated keyed persistence investigation with available `kvvfs` or a compatible OPFS-enabled build; require close/reopen, wrong-key rejection and raw bytes inspection. No merge/deploy.
