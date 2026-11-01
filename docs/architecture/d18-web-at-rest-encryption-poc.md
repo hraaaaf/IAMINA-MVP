@@ -27,3 +27,7 @@ Decision goal: protect the **whole clinical patient vault** persisted by Drift, 
 
 ## Stop conditions
 No production migration, no claim of certified at-rest encryption, no merge or Vercel deployment until the evidence above is met. If compatible encrypted SQLite WASM cannot be established, assess an **application-level encrypted vault** with atomic authenticated snapshots; do not label ordinary Drift SQLite as encrypted.
+
+## 2026-11-01 — OPFS research gate
+
+CI #41315678291 proves kvvfs cannot activate sqlite3mc encryption. SQLite upstream documents OPFS VFS as Worker-only (https://sqlite.org/wasm/doc/trunk/persistence.md). SQLite3MultipleCiphers documents its file-backed VFS encryption model (https://utelle.github.io/SQLite3MultipleCiphers/docs/architecture/arch_vfs/). Current WASM worker has no OPFS VFS. Next: separate pinned worker-OPFS-capable candidate and full keyed restart/wrong-key proof; no production integration.
