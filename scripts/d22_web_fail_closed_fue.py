@@ -137,14 +137,28 @@ def main():
                             page.wait_for_url(re.compile(r"/dashboard"), timeout=30000)
 
                         def assert_profile_unit(unit):
+                            # Unlocking returns to /dashboard, not /profile.
+                            # Navigate to the real profile before inspecting
+                            # persisted state. Child choice buttons always
+                            # contain both units, so a whole subtree snapshot
+                            # would be a false-positive persistence oracle.
+                            profile_open()
                             section = page.get_by_role(
                                 "button", name=re.compile(r"^Medical tracking", re.I)
                             ).first
-                            section.wait_for(state="visible", timeout=25000)
-                            assert unit in section.aria_snapshot(), (
-                                f"Display unit {unit} not persisted in the medical summary"
+                            for _ in range(55):
+                                label = section.get_attribute("aria-label") or ""
+                                if unit in label:
+                                    break
+                                page.wait_for_timeout(200)
+                            else:
+                                raise AssertionError(
+                                    f"Persisted profile header has no {unit}: {label[:300]!r}"
+                                )
+                            other_unit = "mg/dL" if unit == "mmol/L" else "mmol/L"
+                            assert other_unit not in label, (
+                                f"Profile summary unexpectedly contains both units: {label!r}"
                             )
-                            profile_open()
 
                         # Actual local account, onboarding, local WebAuthn and
                         # IndexedDB; same setup as the already-certified D7 FUE.
