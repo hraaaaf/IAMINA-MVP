@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// D22 — NON-PRODUCTION / NON-CLINICAL candidate acceptance oracle only.
 ///
-/// It models the *proposed* fail-closed data contract while D19 G1–G7 are
+/// It models the *proposed* fail-closed data contract. G2–G5 product
+/// principles are approved; qualified clinical review and G1/G6/G7 remain
 /// PENDING. No patient-facing code imports these helpers. Passing this test
 /// does NOT imply the existing onboarding/profile/dashboard is safe.
 enum _ReviewStatus { legacyUnknown, explicitlyVerified }
@@ -71,7 +72,7 @@ bool _hasPotentialCgmTimeEvidence({
     metricContractClinicallyReviewed;
 
 void main() {
-  group('D22 candidate safety contract — test-only, G1–G7 still pending', () {
+  group('D22 candidate safety contract — product principles only; clinical pending', () {
     const legacy = _CandidateRange(
       ownerId: 1001,
       status: _ReviewStatus.legacyUnknown,
@@ -117,7 +118,7 @@ void main() {
 
     test('D22 G1: unknown source/display unit cannot silently fall back', () {
       expect(() => candidate.withDisplayPreference('glucose'), throwsArgumentError);
-      final unknownSource = _CandidateRange(
+      const unknownSource = _CandidateRange(
         ownerId: 1001,
         status: _ReviewStatus.explicitlyVerified,
         sourceUnit: 'unknown',
@@ -137,7 +138,7 @@ void main() {
 
     test('D22 G2/G3: missing provenance or invalid bounds stay unknown', () {
       for (final bad in [
-        _CandidateRange(
+        const _CandidateRange(
           ownerId: 1001,
           status: _ReviewStatus.explicitlyVerified,
           sourceUnit: 'mg/dL',
@@ -145,7 +146,7 @@ void main() {
           upperMgDl: 147,
           sourceReference: null,
         ),
-        _CandidateRange(
+        const _CandidateRange(
           ownerId: 1001,
           status: _ReviewStatus.explicitlyVerified,
           sourceUnit: 'mg/dL',
@@ -153,7 +154,7 @@ void main() {
           upperMgDl: 91,
           sourceReference: 'synthetic',
         ),
-        _CandidateRange(
+        const _CandidateRange(
           ownerId: 1001,
           status: _ReviewStatus.explicitlyVerified,
           sourceUnit: 'mg/dL',
