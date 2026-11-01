@@ -1,3 +1,13 @@
+## 01/11/2026 — D18 migration synthétique VERIFIED ; intégration produit NON autorisée
+
+[Run #41334344187](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41334344187) SUCCESS, commit `660e8d26` : `syntheticMigrationRehearsal` rapporte `sourcePreserved:true`, `destinationVerified:true`, `wrongKeyRejected:true`, `cutoverAllowed:true`. Le dernier booléen ne concerne **que le test synthétique** ; aucun basculement IAMINA ni transfert des données réelles. Les scénarios précédents (restart, rekey, SIGKILL) sont aussi validés sur Chromium synthétique.
+
+**Point critique** : la source simulée est une DB SQLite OPFS non chiffrée, tandis que l'application utilise potentiellement un autre adaptateur Drift/IndexedDB. Ne pas extrapoler cette preuve à la migration réelle. Le chemin exact de la connexion Web, les schémas/migrations, les règles de multi-identités et la gestion de clé doivent être inspectés sur le HEAD produit avant toute implémentation. Aucune preuve de ces éléments dans ce lot. Garder source intacte, sauvegarde chiffrée indépendante, comparaison exhaustive et rollback ; aucune migration automatique sans approbation clinique/sécurité. Aucun merge ni déploiement Vercel.
+
+**Next exact :** localiser les fichiers réels de connexion SQLite Web dans le repo (recherche de code sur branche, non présumer `lib/` racine), documenter l'adaptateur source, puis concevoir migration idempotente et tests fail-closed.
+
+---
+
 ## 01/11/2026 — D18 OPFS worker VFS VERIFIED GREEN with COOP/COEP
 
 Run [#41322017662](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41322017662), job `124894118686`, SUCCESS. Chromium `crossOriginIsolated:true`, `sharedArrayBuffer:"function"`, worker `opfsRegistered:true`, `vfsList` includes `opfs-wl` and `opfs`. Previous missing OPFS was caused by absent browser cross-origin isolation in probe server. `kvvfs` still rejects `PRAGMA key`; `encryptedPersistenceVerified:false`. Next: worker-backed OPFS encrypted open/write/close/reopen and wrong-key fail-closed with raw OPFS byte inspection; do not claim at-rest encryption or merge/deploy yet.
