@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 sqlite3mc Chromium API probe VERIFIED GREEN
+
+GitHub Actions [#41312036909](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41312036909), job `124864238545`, **SUCCESS** on code commit `613e2405`. Browser evidence: `sqliteRoundtrip:true`, `keyApi:"function"`, `opfsApi:"undefined"`, `encryptedPersistenceVerified:false`. **Implication:** in-memory SQLite and `sqlite3_key` API proven in Chromium; `oo1.OpfsDb` absent in this context, so persistence adapter/worker must be investigated before attempting keyed OPFS/restart. Do not conflate API presence with keyed encryption. No merge/deploy. Next: isolated persistent backend proof (OPFS/alternative) + keyed reopen/wrong-key.
+
+---
+
 ## 01/11/2026 — D18 POC Chromium : découverte API réelle du moteur
 
 Après probe acquisition #41308799558 SUCCESS, commits `17c7cced`, `64c05057`, `1876f451`, `4066f850` ajoutent un **test navigateur synthétique isolé** sur la release WASM épinglée : charge `sqlite3.js` dans Chromium, crée une DB en mémoire, effectue un aller-retour SQLite et vérifie si `sqlite3.capi.sqlite3_key` est exposé ; rejette l'absence d'API de clé. Workflow CI installe Playwright/Chromium pour ce probe. **CI à vérifier : test non encore validé, ne démontre pas OPFS/IndexedDB, fermeture/réouverture, ni chiffrement au repos.** Si le moteur encapsule autrement la clé, inspecter la JS API et corriger le probe sans masquer l'absence de clé. Aucun changement production, merge ou déploiement.
