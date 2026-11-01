@@ -10,6 +10,7 @@ const path=require('node:path');
   const result=await page.evaluate(async()=>{
    if(typeof sqlite3InitModule!=='function')throw Error('sqlite3InitModule missing');
    const sqlite3=await sqlite3InitModule({locateFile:name=>'/jswasm/'+name});
+   globalThis.__d18Sqlite3=sqlite3;
    const db=new sqlite3.oo1.DB(':memory:');
    try{
     db.exec('CREATE TABLE synthetic (v TEXT); INSERT INTO synthetic VALUES (\'D18_SYNTHETIC_ONLY\')');
@@ -35,7 +36,8 @@ const path=require('node:path');
   });
   console.log(JSON.stringify(worker));
   const kvvfs=await page.evaluate(async()=>{
-   const sqlite3=await sqlite3InitModule({locateFile:name=>'/jswasm/'+name});
+   const sqlite3=globalThis.__d18Sqlite3;
+   if(!sqlite3)throw Error('Missing cached sqlite3 instance');
    const details={attempted:true,opened:false,reopened:false,wrongKeyRejected:false,rawStorageInspected:false,encryptedPersistenceVerified:false};
    const filename='local';
    let db;
