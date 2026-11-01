@@ -25,6 +25,7 @@ jobs:
       - name: Verify synthetic gate (no secrets)
         run: |
           set -euo pipefail
+          git merge-base --is-ancestor 55fa500f56d86d7fa014b5b1849d7e7cdad3ea59 HEAD
           node --check scripts/d7_qa_hosted_auth_gate.mjs
           node --test frontend/test/qa/d7_hosted_auth_gate.test.mjs
 
@@ -32,9 +33,10 @@ jobs:
     # Cannot run on a PR event, from Production/main, or without explicit
     # manual dispatch. The d7-qa Environment must require owner approval
     # and restrict execution to the QA branch before secrets are configured.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/cert/d7-web-fue-preview-20261029'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/qa/d7-c05-preview-a5d1c61-20261031'
     runs-on: ubuntu-latest
     environment: d7-qa
+    # Runner code may advance; the target remains the immutable 55fa500 Preview.
     timeout-minutes: 10
     env:
       D7_QA_A_EMAIL: ${{ secrets.D7_QA_A_EMAIL }}
@@ -42,6 +44,7 @@ jobs:
       D7_QA_B_EMAIL: ${{ secrets.D7_QA_B_EMAIL }}
       D7_QA_B_PASSWORD: ${{ secrets.D7_QA_B_PASSWORD }}
       D7_QA_SSO_ACCESS: ${{ secrets.D7_QA_SSO_ACCESS }}
+      D7_PREVIEW_SHA: 55fa500f56d86d7fa014b5b1849d7e7cdad3ea59
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,6 +55,7 @@ jobs:
           set -euo pipefail
           # A protected environment reviewer must check the deployed SHA
           # and this runner's commit before approving the gate.
+          git merge-base --is-ancestor 55fa500f56d86d7fa014b5b1849d7e7cdad3ea59 HEAD
           node --check scripts/d7_qa_hosted_auth_gate.mjs
           node --test frontend/test/qa/d7_hosted_auth_gate.test.mjs
       - name: Verify session isolation without clinical writes or response logs
