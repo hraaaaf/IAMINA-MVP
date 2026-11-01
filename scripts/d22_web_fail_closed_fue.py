@@ -244,6 +244,28 @@ def main():
                             assert target_editors.count() == 0, (
                                 "Unverified glucose target still exposes editable bounds"
                             )
+                            # Flutter scrolls its own profile content inside
+                            # the canvas. A full_page Playwright screenshot
+                            # does NOT capture offscreen Flutter scroll items.
+                            # Ensure the clinical fail-closed banner itself is
+                            # visibly inside every captured viewport, including
+                            # mobile above the fixed bottom navigation.
+                            banner = page.get_by_text(
+                                "Targets unverified. No medical classification before review."
+                            ).first
+                            bottom_safe = height - (95 if width < 700 else 12)
+                            for _ in range(16):
+                                rect = banner.bounding_box()
+                                if (rect is not None and rect["y"] >= 80
+                                        and rect["y"] + rect["height"] < bottom_safe):
+                                    break
+                                page.mouse.move(width * 0.5, height * 0.52)
+                                page.mouse.wheel(0, 260)
+                                page.wait_for_timeout(180)
+                            else:
+                                raise AssertionError(
+                                    f"F03 banner outside visible {width}x{height} screenshot: {rect}"
+                                )
                             # These are only post-change English captures, not a
                             # BEFORE/AFTER score or a clinical target migration.
                             target = OUT / f"f03-unknown-target-{width}x{height}.png"
