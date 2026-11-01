@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : CI ciblée Flutter ajoutée, résultat à vérifier
+
+Workflow `.github/workflows/d18-schema-inventory.yml` commit `c6a563c3` : Flutter 3.41.0, `flutter pub get`, `dart analyze` ciblé et `flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart`. Déclenchement push branche D18 sur chemins préflight/test/workflow et PR. À la première interrogation GitHub, aucun run indexé sur commit ; **ne pas déclarer les tests verts**. Next : lire run et logs, corriger si rouge ; si vert, instrumenter test Web réel de `driftDatabase`/backend. Aucun merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 : inventaire SQLite complet en préflight (non certifié CI)
 
 Implémentation `frontend/lib/data/drift/d18_schema_inventory.dart` (commit `3b003c75`) : lecture transactionnelle de `sqlite_master` (tables, index, vues, triggers), comptage de toutes les tables, identifiants SQL échappés, `PRAGMA user_version`, rejet des bases legacy/audit. Test `frontend/test/data/drift/d18_schema_inventory_test.dart` (commit `647ecbd1`) : table et index dynamiques, non-modification de la source, refus legacy/audit. **Tests non exécutés/CI non vérifiée ; aucun export/import ni chiffrement produit implémenté.** Next : exécuter `flutter test test/data/drift/d18_schema_inventory_test.dart` depuis `frontend/`, corriger échecs, puis tester vrai Drift Web et backend OPFS/IndexedDB. Pas de merge/deploy.
