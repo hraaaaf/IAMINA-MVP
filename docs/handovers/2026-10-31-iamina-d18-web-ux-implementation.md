@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 browser : régression téléchargement périmé
+
+HEAD fonctionnel `3770d1b1` : `tools/d18_web_file_e2e.js` vérifie désormais après un téléchargement réel que la nouvelle ouverture du dialogue et une tentative d'export invalide (phrase vide) montrent le message de validation, mais **aucun** bouton de téléchargement d'un ancien fichier. Screenshot de preuve `rejected-new-export-no-stale-download`; échec explicite si action périmée visible. Limite : ce scénario teste consommation après téléchargement, **pas** un échec crypto après un export préparé encore en mémoire ; ce dernier nécessite une injection d'échec ou un test widget dédié. CI de ce nouveau HEAD à vérifier. Pas de merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 FUE navigateur
 
 Run D18 #41255659421 rouge sur af8e63dc : bouton Enregistrer désactivé après saisie de l'année, Playwright timeout. Cause précise non prouvée. Commit a67ab5a2 : le test vérifie désormais la saisie effective par copier/coller avant clic, exige bouton actif et capture si inactif. Pas de suppression d'assertion, pas de changement clinique. CI nouveau HEAD à vérifier. Next : consulter les preuves du nouveau run, tester export réussi puis export échoué, FUE 200%, POC crypto. D7 hors lot.
