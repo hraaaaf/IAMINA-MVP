@@ -53,6 +53,7 @@ async function processPhase(context, phase){
   try {
     context=await chromium.launchPersistentContext(root,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
+    await processPhase(context,'seed_legacy');
     await processPhase(context,'seed_a');
     await context.close();context=null;
     // Chromium is a NEW process but has the SAME isolated temporary user profile.
@@ -69,9 +70,9 @@ async function processPhase(context, phase){
   }
   const proof={kind:'real IAMINA driftDatabase Web, synthetic Chrome separate-process restart',
     head:process.env.D18_CANDIDATE_SHA||'unknown',
-    expected:['seed_a','verify_a','verify_b','verify_legacy'],
+    expected:['seed_legacy','seed_a','verify_a','verify_b','verify_legacy'],
     steps,passed:steps.filter(s=>s.pass).length};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(proof,null,2));
   console.log(JSON.stringify(proof));
-  if(proof.passed!==4 || steps.length!==4 || steps.some(s=>!s.pass))process.exitCode=1;
+  if(proof.passed!==5 || steps.length!==5 || steps.some(s=>!s.pass))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
