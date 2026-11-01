@@ -16,10 +16,11 @@ const path=require('node:path');
     db.exec('CREATE TABLE synthetic (v TEXT); INSERT INTO synthetic VALUES (\'D18_SYNTHETIC_ONLY\')');
     const rows=db.selectObjects('SELECT v FROM synthetic');
     if(rows[0]?.v!=='D18_SYNTHETIC_ONLY')throw Error('SQLite roundtrip failed');
-    return {sqliteRoundtrip:true,keyApi:typeof sqlite3.capi.sqlite3_key,opfsApi:typeof sqlite3.oo1.OpfsDb,opfsStorageApi:typeof navigator.storage?.getDirectory,workerApi:typeof Worker,encryptedPersistenceVerified:false};
+    return {sqliteRoundtrip:true,keyApi:typeof sqlite3.capi.sqlite3_key,opfsApi:typeof sqlite3.oo1.OpfsDb,opfsStorageApi:typeof navigator.storage?.getDirectory,crossOriginIsolated:globalThis.crossOriginIsolated,sharedArrayBuffer:typeof SharedArrayBuffer,workerApi:typeof Worker,encryptedPersistenceVerified:false};
    }finally{db.close()}
   });
   console.log(JSON.stringify(result));
+  if(!result.crossOriginIsolated||result.sharedArrayBuffer!=='function')throw Error('BLOCKED: Chromium probe lacks COOP/COEP isolation');
   const worker=await page.evaluate(async()=>{
    const url='/jswasm/sqlite3-worker1-promiser.js';
    const script=document.createElement('script');script.src=url;
@@ -32,7 +33,7 @@ const path=require('node:path');
    const vfsList=config.result?.vfsList||[];
    const opfsRegistered=vfsList.some(v=>/opfs/i.test(v));
    const kvvfsRegistered=vfsList.includes('kvvfs');
-   return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),vfsList,opfsRegistered,kvvfsRegistered,opfsStorageApi:typeof navigator.storage?.getDirectory};
+   return {workerReady:true,configType:config.type,configKeys:Object.keys(config.result||{}),vfsList,opfsRegistered,kvvfsRegistered,opfsStorageApi:typeof navigator.storage?.getDirectory,crossOriginIsolated:globalThis.crossOriginIsolated,sharedArrayBuffer:typeof SharedArrayBuffer};
   });
   console.log(JSON.stringify(worker));
   const kvvfs=await page.evaluate(async()=>{
@@ -58,8 +59,8 @@ const path=require('node:path');
    return details;
   });
   console.log(JSON.stringify({kvvfsExploration:kvvfs}));
-  if(worker.opfsRegistered)throw Error('Unexpected OPFS VFS: review persistence test requirements');
-  console.log(JSON.stringify({persistenceGate:'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
+  if(worker.opfsRegistered)console.log('OPFS_VFS_AVAILABLE_REQUIRES_KEYED_PERSISTENCE_TEST');
+  console.log(JSON.stringify({persistenceGate:worker.opfsRegistered?'OPFS_AVAILABLE_NOT_YET_ENCRYPTION_PROOF':'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
