@@ -16,7 +16,7 @@ test -n "$WASM" || { echo 'NO_WASM_IN_RELEASE'; exit 1; }
 node tools/d18_sqlite_cipher_preflight.cjs "$WASM"
 ROOT="$(dirname "$(dirname "$WASM")")"
 printf '%s\\n' '<!doctype html><meta charset="utf-8"><script src="/jswasm/sqlite3.js"></script>' > "$ROOT/d18-probe.html"
-python3 -m http.server 7398 --bind 127.0.0.1 --directory "$ROOT" > "$WORK/http.log" 2>&1 &
+python3 tools/d18_cross_origin_isolated_server.py "$ROOT" > "$WORK/http.log" 2>&1 &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$WORK"' EXIT
 node tools/d18_sqlite3mc_browser_api_probe.cjs
