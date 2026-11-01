@@ -56,6 +56,20 @@ final class _CandidateRange {
   }
 }
 
+/// Test-only provenance: do not infer a CGM device from manual logs.
+enum _ReadingOrigin { manual, cgm, unknown }
+
+/// Proposed G5 metadata check. This NEVER computes TIR or grants
+/// clinical authority; the reviewed metric contract is an external gate.
+bool _hasPotentialCgmTimeEvidence({
+  required _ReadingOrigin origin,
+  required bool hasDocumentedTimeWindow,
+  required bool metricContractClinicallyReviewed,
+}) =>
+    origin == _ReadingOrigin.cgm &&
+    hasDocumentedTimeWindow &&
+    metricContractClinicallyReviewed;
+
 void main() {
   group('D22 candidate safety contract — test-only, G1–G7 still pending', () {
     const legacy = _CandidateRange(
@@ -151,6 +165,48 @@ void main() {
         expect(bad.hasAuthority, isFalse);
         expect(bad.canEvaluateForOwner(1001, 100), isFalse);
       }
+    });
+
+    test('D22 G5: manual/unknown samples never establish CGM time evidence', () {
+      for (final origin in [_ReadingOrigin.manual, _ReadingOrigin.unknown]) {
+        expect(
+          _hasPotentialCgmTimeEvidence(
+            origin: origin,
+            hasDocumentedTimeWindow: true,
+            metricContractClinicallyReviewed: true,
+          ),
+          isFalse,
+        );
+      }
+    });
+
+    test('D22 G5: CGM evidence also needs window and metric review', () {
+      expect(
+        _hasPotentialCgmTimeEvidence(
+          origin: _ReadingOrigin.cgm,
+          hasDocumentedTimeWindow: false,
+          metricContractClinicallyReviewed: true,
+        ),
+        isFalse,
+      );
+      expect(
+        _hasPotentialCgmTimeEvidence(
+          origin: _ReadingOrigin.cgm,
+          hasDocumentedTimeWindow: true,
+          metricContractClinicallyReviewed: false,
+        ),
+        isFalse,
+      );
+      // This is only a synthetic metadata prerequisite, NOT a TIR result
+      // and NOT a real clinical approval.
+      expect(
+        _hasPotentialCgmTimeEvidence(
+          origin: _ReadingOrigin.cgm,
+          hasDocumentedTimeWindow: true,
+          metricContractClinicallyReviewed: true,
+        ),
+        isTrue,
+      );
     });
   });
 }

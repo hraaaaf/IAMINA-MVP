@@ -190,3 +190,18 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 - Les assertions ciblent l'existence des titres localisés, leur ordre vertical réellement calculé par Flutter et le sens RTL/LTR ; elles ne changent **aucune** borne glycémiques ou autorité clinique.
 - **Statut probatoire à la création** : widget tests nouveaux **non encore exécutés par une CI vérifiée** ; aucun parcours Chrome FUE D22 spécifique, aucune comparaison BEFORE/AFTER signée. Les runs verts du SHA précédent `5933bb9f` deviennent historiques pour cette branche.
 - **Maintien du NO-GO** : ni les six tests widget ni la CI ne peuvent remplacer G1–G7, la correction `onboarding 70/180` et la FUE réelle ; PR reste Draft sans merge/déploiement.
+
+
+## 01/11/2026 — décision propriétaire D22 G2–G5 produit approuvée ; travaux techniques sûrs
+
+**Goal :** figer explicitement les quatre principes G2–G5 au niveau produit, sans jamais les représenter comme des recommandations médicales ni comme un contrat numérique clinique signé.
+
+**Validé par le propriétaire (produit uniquement) :** G2 absence de cible automatiquement autorisée ; G3 legacy inconnu conservé brut sans conversion/classification ; G4 préférence d'affichage séparée de l'intégrité des valeurs, facteur/arrondi précis encore en revue ; G5 aucune classe cible sans autorité individuelle ni faux TIR CGM à partir de relevés manuels.
+
+**Gates inchangés :** G1, G6, G7 restent PENDING. Revue clinique spécialisée des G2–G5 et facteur numérique G4 restent PENDING. L'onboarding conserve toujours le défaut 70/180 et le profil la saisie brute ; ce commit de préparation NE les corrige PAS. Pas de migration et pas de Vercel.
+
+**Preuve déjà établie avant ce changement :** PR #1213 HEAD 5e16882, CI #41314664294 SUCCESS, 8/8 tests spécifiques D22 réussis, mais FUE réelle D22 Chrome/BEFORE-AFTER NOT_RUN ; une automatisation D5 hors périmètre a échoué. Ces preuves précédentes ne certifient pas le futur SHA.
+
+**Préparation technique supplémentaire :** enrichir l'oracle D22 test-only pour refuser explicitement les lectures manuelles / sources inconnues en tant que preuve de TIR CGM et pour exiger une fenêtre temporelle documentée et une règle de métrique revue. Aucun seuil, facteur, valeur patient ou comportement de production modifié. Le produit complet demeure FUE_NO_GO / RELEASE_NO_GO.
+
+**Next exact :** CI exacte du nouveau HEAD, review G1/G6/G7 et revue clinique des principes approuvés, puis implémentation du modèle vérifié, tests négatifs/migrations et FUE Web FR/AR 390/768/1280. 

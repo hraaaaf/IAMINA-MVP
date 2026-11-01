@@ -65,3 +65,19 @@ Surfaces potentielles supplémentaires à inventorier avant FUE : historique, aj
 5. Certification/examen adversarial, CI exact HEAD, merge approuvé, CI postmerge, closeout canoniques. **Vercel séparé et explicitement autorisé seulement.**
 
 **Résultat de cette fiche :** le gate devient actionnable et vérifiable ; **aucune décision médicale ni D22 fonctionnel n'est validé par ce document**.
+
+
+## 01/11/2026 — décision propriétaire D22 G2–G5 produit approuvée (NON clinique)
+
+**Déclaration explicite :** « Je valide les quatre principes produit G2–G5 de D22. Poursuis les travaux techniques autorisés, sans considérer cela comme une certification clinique et sans déploiement Vercel. »
+
+**État actuel :** G2, G3, G4, G5 = APPROUVÉ AU NIVEAU PRODUIT UNIQUEMENT. La table historique « toutes PENDING » ci-dessus reste la preuve du statut initial ; cette section met à jour seulement l'autorité produit.
+
+- **G2 / Owner PRODUCT_APPROVED :** aucune cible individuelle présentée comme prescrite ou médicalement validée sans patient, source/autorité clinique traçable et confirmation. **Clinicien qualifié : PENDING.**
+- **G3 / Owner PRODUCT_APPROVED :** préserver brutes les anciennes valeurs d'unité/provenance inconnue ; aucun reclassement, conversion ou attribution d'autorité silencieux. **Clinicien et privacy/migration : PENDING.**
+- **G4 / Owner PRODUCT_APPROVED :** unité d'affichage sans réécriture silencieuse ; contrat unique documenté pour la conversion/les arrondis. **Facteur exact 18.018 vs 18.016 vs 18.0, règles d'édition et validation clinique : PENDING.**
+- **G5 / Owner PRODUCT_APPROVED :** aucune classification « dans/hors cible » sans objectif personnel vérifié ; aucune mesure de temps dans la cible CGM déduite de relevés manuels épars. **Contrat des métriques et revue clinique : PENDING.**
+
+**Restent à autoriser par autorités qualifiées :** G1 unité source/canonique, G2–G5 détails cliniques, G6 FR/AR/RTL et terminologie, G7 DB/privacy/rollback/identité. La déclaration propriétaire ne prouve aucune qualification d'endocrinologie et ne remplace pas les signatures spécialisées. Ni merge, ni modification patient, ni déploiement Vercel autorisés.
+
+**Traçabilité :** [PR #1213 — décision propriétaire](https://github.com/hraaaaf/IAMINA-MVP/pull/1213#issuecomment-6560126684) et Notion Chantier B. Des oracles synthétiques sans intégration runtime peuvent désormais être renforcés ; ils ne prouvent pas le comportement patient ni la FUE.
