@@ -71,7 +71,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
   Future<void> _accept() async {
     final lock = context.read<AppLockService?>();
-    if (lock != null && !lock.isUnlocked) {
+    // Missing security provider is NOT proof of an unlocked patient vault.
+    // Refuse consent fail-closed instead of treating null as permission.
+    if (lock == null || !lock.isUnlocked) {
       _showLockRequired();
       return;
     }
