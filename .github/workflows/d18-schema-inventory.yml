@@ -6,6 +6,7 @@ on:
     paths:
       - frontend/lib/data/drift/d18_schema_inventory.dart
       - frontend/test/data/drift/d18_schema_inventory_test.dart
+      - frontend/test/data/drift/d18_real_web_vault_smoke_test.dart
       - .github/workflows/d18-schema-inventory.yml
   pull_request:
     paths:
@@ -37,3 +38,25 @@ jobs:
         run: dart analyze lib/data/drift/d18_schema_inventory.dart test/data/drift/d18_schema_inventory_test.dart
       - name: Test D18 inventory and scope guard
         run: flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart
+
+  real-drift-web-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze real-browser smoke
+        run: dart analyze test/data/drift/d18_real_web_vault_smoke_test.dart
+      - name: Real Drift Web vault on Chromium (not native)
+        run: |
+          export CHROME_EXECUTABLE="$(command -v google-chrome || command -v chromium)"
+          test -n "$CHROME_EXECUTABLE"
+          flutter test --no-pub --platform chrome --timeout 90s test/data/drift/d18_real_web_vault_smoke_test.dart
