@@ -638,6 +638,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Future<bool> _confirmLeave(AppLocalizations l10n) async {
+    // An in-flight patient record must not be treated as a discardable draft.
+    if (_saving) return false;
     if (_mealVoiceBusy) {
       _message(
         _voiceCopy(
