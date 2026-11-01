@@ -104,20 +104,48 @@ def main():
                                 "button", name=re.compile(r"^Medical tracking", re.I)
                             ).first
                             section.wait_for(state="visible", timeout=25000)
-                            state = section.get_attribute("aria-description")
-                            if state == "Collapsed":
-                                section.click(timeout=18000)
-                            elif state != "Expanded":
-                                raise AssertionError("D22 profile tile has no accessible expansion state")
-                            # Verify visible, rendered children; do not infer success
-                            # from a click, a stale semantic node or whitespace geometry.
-                            page.get_by_role(
+                            # A Flutter responsive rebuild can re-collapse
+                            # the ExpansionTile after its initial click (seen
+                            # in D7 shared Chrome run at a8ca3c5). Reopen
+                            # only when the real accessible state is Collapsed,
+                            # and require BOTH rendered choice and clinical
+                            # banner; an ARIA-only expansion is insufficient.
+                            choice = page.get_by_role(
                                 "button", name=re.compile(r"^Type 2 Diabetes$", re.I)
-                            ).first.wait_for(state="visible", timeout=18000)
-                            page.get_by_text(
+                            ).first
+                            banner = page.get_by_text(
                                 "Targets unverified. No medical classification before review."
-                            ).first.wait_for(state="visible", timeout=18000)
-                            return section
+                            ).first
+                            reopen_count = 0
+                            stable = 0
+                            for _ in range(80):
+                                state = section.get_attribute("aria-description")
+                                if state == "Collapsed" and reopen_count < 4:
+                                    section.click(timeout=18000)
+                                    reopen_count += 1
+                                    stable = 0
+                                    page.wait_for_timeout(350)
+                                    continue
+                                if state not in ("Collapsed", "Expanded"):
+                                    raise AssertionError(
+                                        f"D22 profile tile invalid expansion state: {state!r}"
+                                    )
+                                ready = (
+                                    state == "Expanded"
+                                    and choice.count() > 0 and choice.is_visible()
+                                    and banner.count() > 0 and banner.is_visible()
+                                )
+                                if ready:
+                                    stable += 1
+                                    if stable >= 3:
+                                        return section
+                                else:
+                                    stable = 0
+                                page.wait_for_timeout(220)
+                            raise AssertionError(
+                                f"D22 profile medical panel never rendered open: "
+                                f"state={state!r} reopen_count={reopen_count}"
+                            )
 
                         def save_profile():
                             page.get_by_role(
