@@ -33,6 +33,11 @@ final class _TestApiClient extends ApiClient {
   ChopperClient get client => _testClient;
 }
 
+class _UnlockedLock extends AppLockService {
+  @override
+  bool get isUnlocked => true;
+}
+
 class _SkippedLock extends AppLockService {
   @override
   bool get isExplicitlySkipped => true;
@@ -125,6 +130,7 @@ void main() {
   late _TestApiClient apiClient;
   late ConsentService consentService;
   late _FakeConsentEvidenceStore evidenceStore;
+  late _UnlockedLock unlockedLock;
   late ConsentNoticeClaim claim;
   late http.Request? capturedRequest;
   late bool responseSuccess;
@@ -149,6 +155,7 @@ void main() {
     responseCompleter = null;
     consentService = ConsentService();
     evidenceStore = _FakeConsentEvidenceStore();
+    unlockedLock = _UnlockedLock();
 
     chopper = ChopperClient(
       baseUrl: Uri.parse('http://localhost:8000'),
@@ -172,6 +179,7 @@ void main() {
 
   tearDown(() async {
     consentService.dispose();
+    unlockedLock.dispose();
     chopper.dispose();
     await db.close();
   });
@@ -181,6 +189,7 @@ void main() {
     apiClient: apiClient,
     consentService: consentService,
     evidenceStore: evidenceStore,
+    appLockService: unlockedLock,
   );
 
   testWidgets('renders without error (smoke test)', (tester) async {
@@ -277,6 +286,25 @@ void main() {
     completer.complete(successResponse());
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('missing app-lock service cannot grant consent even with valid API', (tester) async {
+    await tester.pumpWidget(_makeApp(
+      db: db,
+      apiClient: apiClient,
+      consentService: consentService,
+      evidenceStore: evidenceStore,
+      // Unavailable provider must NOT default to a valid unlocked vault.
+    ));
+    await tester.pumpAndSettle();
+    final accept = find.text('Accepter et continuer');
+    await tester.ensureVisible(accept);
+    await tester.tap(accept);
+    await tester.pump();
+    expect(capturedRequest, isNull);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.textContaining('activez d’abord le verrouillage'), findsOneWidget);
   });
 
   testWidgets('no-lock choice cannot consent and offers explicit lock setup', (tester) async {
