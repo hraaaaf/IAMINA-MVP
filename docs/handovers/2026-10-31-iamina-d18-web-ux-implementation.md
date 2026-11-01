@@ -1,3 +1,9 @@
+## 01/11/2026 — Source WASM chiffrée officielle trouvée ; acquisition CI en vérification
+
+Sources primaires : `utelle/SQLite3MultipleCiphers` publie v2.6.1 / SQLite 3.54.0, archive `sqlite3mc-2.6.1-sqlite-3.54.0-wasm.zip`, SHA256 annoncé `aba121490fd6123bcbef8404ee26df9b26c0301063781e2aa31f05aed6f48384` ; documentation officielle Drift Web impose un WASM/worker compatible. Commits `66fe46c8` et `20788682` ajoutent un probe CI isolé qui télécharge l'archive, vérifie SHA256 et inspecte WASM. **Non exécuté/validé à la rédaction ; aucune preuve de clé, persistance, worker Drift ni chiffrement au repos.** Attention : le préflight actuel exige des exports `sqlite3_*` qui peuvent ne pas être directement exposés par le WASM officiel ; si le probe échoue, inspecter la JS API fournie et ne pas supprimer les vérifications sans remplacement par un test effectif. Aucun déploiement/merge.
+
+---
+
 ## 01/11/2026 — Correction du préflight WASM (fail-closed)
 
 `e230b70e` modifie le préflight : un WASM structurellement valide sans export SQLite identifiable est désormais **rejeté** (exit 1), au lieu de produire BINARY_VALID_ONLY. `802acff7` adapte la régression synthétique correspondante. Attention : des moteurs SQLite avec API encapsulée pourraient aussi être rejetés ; ce filtre n'est ni une preuve de chiffrement ni un substitut à un test moteur/worker. Nouveau HEAD CI à vérifier. POC Chromium et moteur chiffré toujours absents ; aucun merge/deploy.
