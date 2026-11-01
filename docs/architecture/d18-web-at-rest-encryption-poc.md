@@ -31,3 +31,7 @@ No production migration, no claim of certified at-rest encryption, no merge or V
 ## 2026-11-01 — OPFS research gate
 
 CI #41315678291 proves kvvfs cannot activate sqlite3mc encryption. SQLite upstream documents OPFS VFS as Worker-only (https://sqlite.org/wasm/doc/trunk/persistence.md). SQLite3MultipleCiphers documents its file-backed VFS encryption model (https://utelle.github.io/SQLite3MultipleCiphers/docs/architecture/arch_vfs/). Current WASM worker has no OPFS VFS. Next: separate pinned worker-OPFS-capable candidate and full keyed restart/wrong-key proof; no production integration.
+
+## 2026-11-01 — OPFS key incompatibility proven
+
+Run [#41324645925](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41324645925) SUCCESS as diagnostic only. Worker OPFS open succeeds, but `PRAGMA key` fails with **`SQLITE_ERROR: sqlite3 result code 1: Setting key failed. Encryption is not supported by the VFS.`** Therefore the pinned sqlite3mc v2.6.1 WASM release does not provide keyed OPFS persistence in this configuration, despite OPFS VFS registration under COOP/COEP. Both `kvvfs` and `opfs` rejected keying. `encryptedPersistenceVerified:false`; no data written. **Stop** repeating this distribution's keyed VFS probe. Next architecture decision: assess a purpose-built encrypted OPFS VFS / sqlite3mc-compatible WASM build against a WebCrypto AES-GCM encrypted snapshot vault with atomic write, recovery, and multi-tab constraints. No production integration, merge or deploy.
