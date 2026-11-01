@@ -31,5 +31,5 @@ jobs:
         run: dart analyze test/data/drift/d18_real_web_vault_smoke_test.dart
       - name: Run actual Drift Web factory on Chromium
         run: |
-          export CHROME_EXECUTABLE=/usr/bin/chromium
+          export CHROME_EXECUTABLE="$(command -v google-chrome || command -v chromium)"
           flutter test --no-pub --platform chrome --timeout 90s test/data/drift/d18_real_web_vault_smoke_test.dart
