@@ -141,37 +141,43 @@ def main():
                         "button", name=re.compile(r"^Medical tracking", re.I)
                     ).first
                     section.wait_for(state="visible", timeout=25000)
-                    state = section.get_attribute("aria-description")
-                    if state == "Collapsed":
-                        section.click(timeout=18000)
-                    elif state != "Expanded":
-                        raise AssertionError(
-                            f"D7 medical section has no accessible expansion state: {state!r}"
-                        )
-                    # Flutter's semantics nodes can remain in the tree across
-                    # responsive rebuilds, even if the painted tile is closed.
-                    # Require the EXPANDED state, a visible real choice and
-                    # spatial separation to the next tile after the transition.
-                    # Presence of text in body.aria_snapshot() alone is not proof.
+                    # The Flutter ExpansionTile may rebuild in a collapsed
+                    # state *after* the first click, especially following a
+                    # physical reload and responsive screenshot series. D7
+                    # observed exactly this on explicit_none (a8ca3c5).
+                    # Re-open only when genuinely Collapsed; never accept a
+                    # stale semantic child or silently skip a failed panel.
                     choice = page.get_by_role(
                         "button", name=re.compile(r"^Type 2 Diabetes$", re.I)
                     ).first
-                    for _ in range(55):
+                    open_attempts = 0
+                    consecutive_ready = 0
+                    for _ in range(80):
                         state = section.get_attribute("aria-description")
+                        if state == "Collapsed" and open_attempts < 4:
+                            section.click(timeout=18000)
+                            open_attempts += 1
+                            consecutive_ready = 0
+                            page.wait_for_timeout(350)
+                            continue
+                        if state not in ("Expanded", "Collapsed"):
+                            raise AssertionError(
+                                f"D7 medical section has no accessible expansion state: {state!r}"
+                            )
                         ready = (
                             state == "Expanded" and choice.count() > 0
                             and choice.is_visible()
                             and medical_panel_physically_expanded()
                         )
                         if ready:
-                            page.wait_for_timeout(300)
-                            if (
-                                section.get_attribute("aria-description") == "Expanded"
-                                and medical_panel_physically_expanded()
-                            ):
+                            consecutive_ready += 1
+                            if consecutive_ready >= 3:
                                 return
-                        page.wait_for_timeout(200)
-                    print("D7 medical panel state:", state, flush=True)
+                        else:
+                            consecutive_ready = 0
+                        page.wait_for_timeout(220)
+                    print("D7 medical panel state:", state,
+                          "open_attempts:", open_attempts, flush=True)
                     print("D7 medical panel ARIA:",
                           page.locator("body").aria_snapshot()[:3800], flush=True)
                     raise AssertionError("D7 medical section not physically expanded in Chrome")
