@@ -78,7 +78,7 @@ const path=require('node:path');
    finally{if(id)await p('close',{dbId:id})}
    return out;
   });
-  console.log(JSON.stringify({opfsKeyedExploration:opfs}));
+  console.log(JSON.stringify({multipleciphersOpfsExploration:opfs}));
   if(worker.opfsRegistered)console.log('OPFS_VFS_AVAILABLE_REQUIRES_KEYED_PERSISTENCE_TEST');
   console.log(JSON.stringify({persistenceGate:worker.opfsRegistered?'OPFS_AVAILABLE_NOT_YET_ENCRYPTION_PROOF':'BLOCKED_NO_OPFS_VFS',encryptedPersistenceVerified:false}));
   if(result.keyApi!=='function')throw Error('BLOCKED: sqlite3_key is not exposed by sqlite3mc browser C API');
