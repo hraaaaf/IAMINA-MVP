@@ -1,0 +1,23 @@
+name: D18 sqlite3mc upstream WASM acquisition probe
+on:
+  push:
+    branches:
+      - feat/iamina-d18-web-progressive-profile-20261031
+    paths:
+      - tools/d18_sqlite3mc_release_probe.sh
+      - tools/d18_sqlite_cipher_preflight.js
+      - .github/workflows/d18-sqlite3mc-release-probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d18-sqlite3mc-probe-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  release-integrity-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify upstream archive SHA256 and inspect WASM
+        run: bash tools/d18_sqlite3mc_release_probe.sh
