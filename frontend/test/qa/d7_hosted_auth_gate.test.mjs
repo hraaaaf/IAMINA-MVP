@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runHostedAuthGate} from '../../../scripts/d7_qa_hosted_auth_gate.mjs';
 
-const origin = 'https://iamina-review-ggdtqis0g-achraf-benmoussa-s-projects.vercel.app';
+const origin = 'https://iamina-review-3boz2bqz6-achraf-benmoussa-s-projects.vercel.app';
 const creds = Object.freeze({
   aEmail: 'local-a@example.invalid', aPassword: 'fake-secret-a',
   bEmail: 'local-b@example.invalid', bPassword: 'fake-secret-b',
@@ -54,6 +54,7 @@ test('scoped share-cookie bootstrap and real Django A-B-A shape; secrets absent 
   const {fetcher, seen} = makeFetcher();
   const result = await runHostedAuthGate({fetcher, origin, creds});
   assert.equal(result.verdict, 'AUTH_ONLY_PASS');
+  assert.equal(result.preview_sha_pinned, '55fa500f56d86d7fa014b5b1849d7e7cdad3ea59');
   assert.equal(result.negative_login, 'DJANGO_401_JSON');
   assert.equal(result.distinct_owners, true);
   assert.equal(result.browser_profile_and_treatment_fue, 'NOT_RUN');
@@ -87,6 +88,13 @@ test('same identity and missing secret fail closed without network', async () =>
   await assert.rejects(runHostedAuthGate({fetcher, origin, creds: {...creds, aPassword: ''}}),
     /D7_QA_REQUIRED_SECRET_MISSING/);
   assert.equal(calls, 0);
+});
+test('non-synthetic email fails closed before any request', async () => {
+  let calls=0;
+  const fetcher=async()=>{calls++; throw Error('unexpected');};
+  await assert.rejects(runHostedAuthGate({fetcher,origin,
+    creds:{...creds,aEmail:'real@company.example'}}), /D7_QA_NON_SYNTHETIC_IDENTITY/);
+  assert.equal(calls,0);
 });
 test('B returning same owner as A fails closed', async () => {
   const {fetcher} = makeFetcher({sameOwner: true});
