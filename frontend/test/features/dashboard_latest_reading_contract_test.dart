@@ -59,8 +59,10 @@ void main() {
 
     expect(source, isNot(contains('targetRangeLow ?? 70.0')));
     expect(source, isNot(contains('targetRangeHigh ?? 180.0')));
-    expect(source, contains('final low = profile?.targetRangeLow;'));
-    expect(source, contains('final high = profile?.targetRangeHigh;'));
+    // The legacy profile has no trustworthy target authority: numeric
+    // bounds must not become a configured/prescribed personal range.
+    expect(source, contains('const double? low = null;'));
+    expect(source, contains('const double? high = null;'));
     expect(source, contains('final hasTarget = low != null && high != null'));
     expect(source, contains(': !hasTarget'));
     expect(source, contains('dashboardTargetNotConfigured'));
@@ -83,7 +85,7 @@ void main() {
     expect(source, contains('final locale = _dashboardDateLocale(context);'));
   });
 
-  test('Dashboard keeps configured target comparison deterministic', () {
+  test('Dashboard keeps future comparison behind unverified-target gate', () {
     final source = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
