@@ -169,8 +169,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow ?? 70.0;
-        final high = profile?.targetRangeHigh ?? 180.0;
+        // D22: existing profile bounds lack proven source unit/authority.
+        // No personal target or manual-reading TIR is available yet.
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchLogsInRange(start, now),
@@ -260,54 +260,27 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 ),
                               ),
                               const SizedBox(height: 14),
+
                               _staggered(
                                 1,
-                                _HeroContextual(
-                                  logs: logs,
-                                  unit: unit,
-                                  low: low,
-                                  high: high,
-                                  range: _range,
+                                ClinicalCard(
+                                  padding: const EdgeInsets.all(18),
+                                  child: Text(
+                                    switch (Localizations.localeOf(context).languageCode) {
+                                      'ar' => 'الأهداف غير مؤكدة. لا يمكن حساب الوقت ضمن النطاق من قياسات متفرقة.',
+                                      'en' => 'Targets unverified. Time in range cannot be calculated from individual readings.',
+                                      _ => 'Objectifs non vérifiés. Impossible de calculer le temps dans la cible à partir de relevés ponctuels.',
+                                    },
+                                    key: const Key('d22-manual-tir-unavailable'),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 18),
                               _staggered(
                                 2,
-                                _MetricRow(
-                                  logs: logs,
-                                  prevLogs: prevLogs,
-                                  low: low,
-                                  high: high,
-                                  range: _range,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              _staggered(
-                                3,
-                                _ChartSection(
-                                  logs: logs,
-                                  low: low,
-                                  high: high,
-                                  unit: unit,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              _staggered(
-                                4,
-                                _InsightsSection(
-                                  logs: logs,
-                                  summary: _aiSummary,
-                                  isLoading: _isLoadingSummary,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              _staggered(
-                                5,
                                 _RecentEntries(
                                   logs: logs,
                                   unit: unit,
-                                  low: low,
-                                  high: high,
                                   isDesktop: screenW >= 900,
                                 ),
                               ),

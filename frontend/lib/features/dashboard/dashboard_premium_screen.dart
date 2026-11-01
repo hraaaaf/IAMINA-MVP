@@ -89,8 +89,11 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow;
-        final high = profile?.targetRangeHigh;
+        // D22: existing profile bounds cannot prove source unit/authority.
+        // Do not present a personal target until the reviewed G1/G2/G7
+        // schema makes that evidence available.
+        const double? low = null;
+        const double? high = null;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),
