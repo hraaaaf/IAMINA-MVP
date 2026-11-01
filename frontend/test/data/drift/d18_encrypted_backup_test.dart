@@ -84,6 +84,45 @@ void main() {
     );
   });
 
+  test('rejected encrypted envelope leaves existing destination untouched',
+      () async {
+    final source = _vault(734), destination = _vault(734);
+    addTearDown(source.close);
+    addTearDown(destination.close);
+    await PatientProgressiveDemographicsStore(source).update(
+      updateBirthYear: true, birthYear: 1985,
+    );
+    await PatientProgressiveDemographicsStore(destination).update(
+      updateBirthYear: true, birthYear: 1992,
+    );
+    await PatientWeightHistoryStore(destination).append(
+      clientUuid: _uuid3, value: '81.25', unit: 'kg',
+      measuredAtUtc: DateTime.utc(2026, 10, 16),
+    );
+    final encrypted = await D18EncryptedBackup.exportEncrypted(
+      source, passphrase: _secret,
+    );
+    await expectLater(
+      D18EncryptedBackup.open(encrypted, passphrase: 'incorrect-passphrase'),
+      throwsA(anything),
+    );
+    final altered = jsonDecode(encrypted) as Map<String, dynamic>;
+    final sealed = altered['sealed'] as String;
+    altered['sealed'] = '${sealed.substring(0, sealed.length - 1)}'
+        '${sealed.endsWith('A') ? 'B' : 'A'}';
+    await expectLater(
+      D18EncryptedBackup.open(jsonEncode(altered), passphrase: _secret),
+      throwsA(anything),
+    );
+    expect(
+      (await PatientProgressiveDemographicsStore(destination).read())?.birthYear,
+      1992,
+    );
+    final retained = await PatientWeightHistoryStore(destination).recent();
+    expect(retained.single.clientUuid, _uuid3);
+    expect(retained.single.valueHundredths, 8125);
+  });
+
   test('cannot restore a different Django patient; no clinical records deleted',
       () async {
     final source = _vault(734), other = _vault(812);
