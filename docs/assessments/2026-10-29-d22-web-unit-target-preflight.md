@@ -259,3 +259,15 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 **Important :** la migration n'a PAS été appliquée à une base réelle, `schemaVersion=12` et les defaults SQL legacy 70/180 demeurent ; aucun runtime ne consomme le sidecar. Le modèle ne prétend pas authentifier une cible prescrite. Tests nouveaux = **NOT_RUN jusqu'au verdict CI sur SHA exact**. FUE Web D22 spécifique F01–F07 = NOT_RUN. Merge et Vercel sans autorisation = interdits.
 
 **Next exact :** CI Flutter synthétique sur nouveau HEAD, corrections si échec, puis revue spécialisée DB/privacy G7 et clinique G1/G4 avant toute migration versionnée de patients.
+
+## 01/11/2026 — D22-B : FUE Web réelle partielle introduite (sans réinterprétation clinique)
+
+**Goal :** vérifier à travers le navigateur Chrome et le build Flutter release l'ouverture réelle de la section médicale, le changement de **préférence d'affichage** mg/dL → mmol/L → mg/dL avec reload, et l'absence d'édition d'une cible non vérifiée. FUE synthétique locale exclusivement, aucune valeur patient réelle.
+
+**Source ajoutée :** `scripts/d22_web_fail_closed_fue.py`, CI `.github/workflows/d22-web-fail-closed-chrome.yml`, [contrat FUE partielle](2026-11-01-d22-web-partial-chrome-fue.md). 3 tailles Chrome anglais 390×844, 768×1024, 1280×900, PNG + SHA256. La recette reprend le vrai login WebAuthn local, le profil Flutter release et l'absence d'appels réseau externes. CI d'exécution et preuves **NOT_RUN avant le verdict du workflow**. Les captures AFTER ne sont pas une comparaison BEFORE/AFTER car la référence BEFORE manque.
+
+**Diagnostic D7 commun au profil :** dans `scripts/d7_web_actual_profile_e2e.py` l'heuristique de hauteur du volet médical pouvait prétendre le volet ouvert alors que `aria-description="Collapsed"`. Nouveau comportement du script basé d'abord sur le vrai `aria-description` Flutter ; le choix médical doit ensuite réellement apparaître, aucun skip ni fausse réussite. Ce correctif n'est pas une validation de D7 avant run Chrome vert.
+
+**D22 F01/F03/F07 :** seuls sous-oracles *EN* avec un unique compte synthétique sont testables ici. **F02, F04, F05, F06, F07 complet FR/AR/RTL/zoom/clavier : NOT_RUN.** Signatures G1/G4 endocrino, G6 et G7 sécurité/DB/privacy PENDING. `schemaVersion=12`, SQL defaults cibles 70/180 toujours présents ; les métriques de cibles restent fail-closed. Pas de merge ni déploiement Vercel.
+
+**Next exact :** déclencher CI sur HEAD final, vérifier logs Chrome et captures PNG ; corriger et retester jusqu'à preuve bornée. Puis restaurer base D22-A, poursuivre FUE restantes sous contrats cliniques et data signés, préparer la vraie migration après gate humain.
