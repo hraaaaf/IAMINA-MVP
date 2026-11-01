@@ -1,3 +1,9 @@
+## 01/11/2026 — WASM encrypted SQLite candidate preflight
+
+Added `tools/d18_sqlite_cipher_preflight.js` (`eb1cb8c4`). Local Node checks: missing binary exits 2; invalid binary exits 1. The probe only checks WASM structure and prints a SHA-256 for provenance; it explicitly does not certify encryption. No sqlite3mc WASM binary was available in the execution environment and direct GitHub fetch failed DNS resolution, so keyed database persistence/reopen tests are **blocked**, not passed. Next: obtain a pinned, auditable candidate WASM + matching Drift worker, then implement and run real browser keyed open/restart/wrong-key tests. No merge/deploy.
+
+---
+
 ## 01/11/2026 — POC chiffrement au repos : cadrage exécutable, gate ouvert
 
 Nouveau document `docs/architecture/d18-web-at-rest-encryption-poc.md` (commit `7f93671e`) : threat model, preuves exigées sur vrais octets persistés, restart mauvaise/bonne clé, rotation, migration et rollback, couverture toutes tables cliniques, compatibilité Drift worker/OPFS/IndexedDB. **Aucun moteur chiffré intégré ni POC exécuté** à ce stade. Un simple scan sans chaîne en clair ne constitue pas une certification. Décision humaine requise sur clé/récupération avant migration. Dernier D18 CI vert : #41262090166 sur HEAD antérieur `be3f967e`; CI du nouveau HEAD non encore prouvée. Aucun merge/deploy.
