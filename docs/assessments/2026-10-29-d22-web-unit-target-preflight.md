@@ -216,3 +216,24 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 **Limites non corrigées :** SQL defaults 70/180, `onboarding_chat_screen.dart` écrit 70/180 pour mmol/L, `profile_screen.dart` sauvegarde les valeurs brutes sans source, `glucose_formatter.dart` possède encore un fallback implicite vers mg/dL. Tous les consommateurs, migrations G7, validations G1/G4 et clinicien G2–G5, G6 FR/AR RTL, FUE D22 Chrome F01–F07 **restent à faire**. Aucun patient réel ni Vercel nouveau. Les tests D22-B ne doivent être déclarés réussis **qu'après vérification du run exact-HEAD** ; toute preuve de l'ancien HEAD D22-A est distincte.
 
 **Next exact :** vérifier CI Flutter PR #1214 sur son commit final, diagnostiquer/corriger en cas d'échec ; si vert, documenter la seule préparation non clinique, puis obtenir revue clinique/privacy/DB avant de brancher le runtime et d'exécuter les FUE réelles.
+
+## 01/11/2026 — D22-B P0 runtime shielding: autorité clinique non disponible
+
+**Goal :** bloquer immédiatement deux sorties trompeuses du produit Flutter Web : (1) cible « 70–180 » implicitement prescrite, (2) TIR calculé sur relevés ponctuels. Le garde-fou est un **mode dégradé** — pas une réforme clinique ou DB approuvée.
+
+**BEFORE (source HEAD 2c802231)** : Onboarding écrivait 70/180 même sous mmol/L ; le profil éditait/resauvegardait des nombres sans unité source, la requête Drift laissait des valeurs par défaut 70/180 ; dashboard classique utilisait 70/180 et ClinicalEngine.calcTIR comptait les mesures dans la plage au lieu du temps CGM ; Premium et Journal classaient sous/sur/dans cible avec legacy.
+
+**AFTER — correction proposée (NON vérifiée au navigateur)** :
+- Onboarding ne passe plus de bornes 70/180 explicites lors du choix d'unité (les **defaults SQL existants demeurent**, non interprétés).
+- Le profil masque les éditeurs d'objectif non validés et laisse les anciennes valeurs identiques lors de la sauvegarde et du changement d'unité ; l'upsert d'un profil existant devient un UPDATE limité aux champs explicitement validés. Le schéma G7, avant migration/nullable, reste à signer.
+- Le dashboard classique remplace la présentation des KPIs/TIR et des graphiques cliniquement colorés par un message FR/EN/AR « objectifs non vérifiés / TIR impossible à partir de relevés ponctuels » et conserve uniquement le journal descriptif de mesures non colorées par objectif.
+- Le Premium ne dispose d'aucune cible validée dans ce contrat et affiche donc l'état « objectif non configuré », sans « dans/hors cible » ; ses tendances reçoivent des limites nulles.
+- Le Journal retire ses fallbacks 70/180 et toute coloration fondée sur la plage non vérifiée ; les mesures restent consultables.
+- ClinicalEngine.calcTIR conserve la signature de l'ancienne API mais refuse tout appel : aucune mesure ponctuelle ne peut être convertie en TIR CGM. La future métrique CGM exige provenance vérifiée et véritable dimension temporelle avant toute activation.
+- Ajout de tests négatifs source et fonctionnels, CI GitHub exacte à joindre au verdict.
+
+**Contrat provisoire** : aucune classification cible n'est permise, même si le profil possède des nombres. Une valeur historique ne doit être ni effacée ni convertie, et un texte de provenance arbitraire n'est pas une validation soignante.
+
+**LIMITES explicites :** la base Drift conserve temporairement les defaults SQL 70/180 (la suppression et la migration de legacy nécessitent revue G7, sauvegarde et rollback). Le formateur général, les facteurs historiques 18.0/18.018 et les consommateurs externes restent à auditer/réconcilier avec G1/G4. L'interface perd provisoirement ses cartes d'objectifs — dégradation volontaire de sécurité. FUE réelle Chrome D22 F01–F07, comparaison visuelle BEFORE/AFTER 390/768/1280 et revue linguistique native **NOT_RUN**. Aucun déploiement Vercel ou merge ne résulte de ce changement.
+
+**Next :** CI Flutter tests + PWA sur SHA exact → correction des échecs → preuves widgets et FUE Chrome (environnement de test autorisé) → G1/G4 clinique et G7 privacy/DB → migration versionnée et restitution de fonctionnalités avec provenance authentifiée.
