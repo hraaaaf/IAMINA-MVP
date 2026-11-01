@@ -74,7 +74,7 @@ const path=require('node:path');
     const w=await p('exec',{dbId:id,sql:"CREATE TABLE IF NOT EXISTS synthetic(v TEXT); INSERT INTO synthetic VALUES('D18_TEST_ONLY')"});
     if(w.type==='error')throw Error(JSON.stringify({type:w.type,result:w.result,message:w.result?.message,operation:'write'}));
     out.wrote=true;
-   }catch(e){out.error=String(e);out.errorMessage=e?.message||null;out.errorDetails=JSON.stringify(e, Object.getOwnPropertyNames(e||{}));out.errorKeys=Object.keys(e||{});out.errorType=typeof e}
+   }catch(e){out.error=String(e);out.errorMessage=e?.message||null;out.errorDetails=JSON.stringify(e, Object.getOwnPropertyNames(e||{}));out.errorKeys=Object.keys(e||{});out.errorType=typeof e;out.workerResultProps=Object.getOwnPropertyNames(e?.result||{});out.workerResultDetails=JSON.stringify(e?.result,Object.getOwnPropertyNames(e?.result||{}));out.workerResultString=String(e?.result)}
    finally{if(id)await p('close',{dbId:id})}
    return out;
   });
