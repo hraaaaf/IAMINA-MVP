@@ -97,3 +97,14 @@ Le workflow `.github/workflows/d7-fue-returning-patient-web.yml` est **sans secr
 **État binaire honnête** : `F04_SYNTHETIC_LOCAL_CHROME=PASS` (reconstruction code + job/logs) ; `F04_HOSTED_USER_IPHONE_AFTER_RELOAD=EVIDENCE_PENDING` ; `F04_HOSTED_AUTH_A_B=NOT_VERIFIED` ; `D7_GLOBAL_CERTIFIED=NO`. La déclaration manuelle des 7 scénarios reste « exécutés selon utilisateur, verdicts non communiqués » et ne peut pas être convertie en 7 PASS. Aucun changement Flutter/API, déploiement Vercel, migration ou fusion.
 
 **Next exact** : confronter le résultat manuel iPhone après hard reload et garder une capture anonymisée de « Profil > Suivi médical » Type 1 + traitements ; ensuite exécuter les scénarios hébergés A/B, C01–C05, FR/AR et la revue indépendante clinique/privacy. Ne pas rouvrir le correctif F04 sans défaut démontré.
+
+
+## 01/11/2026 — D7 F04 : validation manuelle explicite propriétaire
+
+**Validation utilisateur explicite :** à la question « après avoir rechargé complètement la page, as-tu retrouvé Type 1 avec Médicaments oraux et Insuline toujours sélectionnés ? », le propriétaire répond « Oui ils le sont ! Je valide ». Il confirme donc **la persistance observée sur son iPhone après rechargement** des trois sélections, sur la Preview utilisée lors de sa recette manuelle D7.
+
+**Verdict borné :** `F04_USER_IPHONE_RELOAD=PASS_MANUAL_OWNER_ATTESTED` (validation humaine déclarative et explicite) et `F04_SYNTHETIC_LOCAL_CHROME=PASS` (run CI #41210398830 déjà vérifié). **Ce n'est ni une capture de l'état post-reload, ni une preuve API/BDD de synchronisation distante ni une preuve cryptographique de l'identité A/B.** La capture antérieure confirme seulement le message « Pilote local · enregistré sur cet appareil, non synchronisé ». Ne pas extrapoler à tous les cas F01–F08/C01–C05.
+
+**Décision :** clore uniquement le **sous-test manuel F04 changement type 2→type 1 / traitements conservés après rechargement** avec cette preuve de validation propriétaire. `D7_GLOBAL_CERTIFIED=NO` ; `HOSTED_AUTHENTICATED_A_B=NOT_VERIFIED` ; retrait/consentement/récupération réseau/FR-AR RTL et revue indépendante clinique/privacy toujours à certifier.
+
+**Next exact :** recouper les résultats des six autres scénarios manuels et la preuve A→B→A authentifiée ; obtenir captures anonymisées en FR/AR aux viewports 390/768/1280, essais C01–C05 refus/retrait/retry et revue clinique/privacy indépendante. Aucun nouveau déploiement, merge ni modification de production demandé par cette validation.
