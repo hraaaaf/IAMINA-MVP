@@ -1,3 +1,9 @@
+## 01/11/2026 — Probe sqlite3mc : correction du déclenchement PR
+
+HEAD précédent `3fc3e7ac` : D18 #41266682333 SUCCESS, CI #41266682462 SUCCESS. Aucun run du nouveau probe dans la liste des runs PR ; l'API GitHub utilisée filtre uniquement les runs `pull_request` (ce qui peut masquer des runs `push`). Commit `bdd8a0b9` : ajout du déclencheur `pull_request` sur chemins pertinents à `.github/workflows/d18-sqlite3mc-release-probe.yml`, sans modifier l'application. Nouveau run non encore observé. Archive v2.6.1 et SHA256 vérifiés sur page release amont, mais **pas encore téléchargés et validés en CI**. Aucune preuve d'intégration Drift ni de chiffrement au repos.
+
+---
+
 ## 01/11/2026 — Source WASM chiffrée officielle trouvée ; acquisition CI en vérification
 
 Sources primaires : `utelle/SQLite3MultipleCiphers` publie v2.6.1 / SQLite 3.54.0, archive `sqlite3mc-2.6.1-sqlite-3.54.0-wasm.zip`, SHA256 annoncé `aba121490fd6123bcbef8404ee26df9b26c0301063781e2aa31f05aed6f48384` ; documentation officielle Drift Web impose un WASM/worker compatible. Commits `66fe46c8` et `20788682` ajoutent un probe CI isolé qui télécharge l'archive, vérifie SHA256 et inspecte WASM. **Non exécuté/validé à la rédaction ; aucune preuve de clé, persistance, worker Drift ni chiffrement au repos.** Attention : le préflight actuel exige des exports `sqlite3_*` qui peuvent ne pas être directement exposés par le WASM officiel ; si le probe échoue, inspecter la JS API fournie et ne pas supprimer les vérifications sans remplacement par un test effectif. Aucun déploiement/merge.
