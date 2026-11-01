@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : premier smoke Chrome réel, validation en attente
+
+`frontend/test/data/drift/d18_real_web_vault_smoke_test.dart` commit `0abeb0ea` ouvre `AppDatabase.forPatientVault` avec le vrai `driftDatabase` Web, crée une table dynamique, contrôle inventaire, fermeture/réouverture et absence de table dans un second coffre. Workflow expérimental `.github/workflows/d18-real-drift-web-smoke.yml` commit `65f855d6`, Flutter 3.41, Chrome, analyse + test. **Pas encore de run vérifié** ; les assets `sqlite3.wasm`/`drift_worker.js` doivent être accessibles au navigateur : un échec de chargement est un échec réel de ce harness, pas une preuve de fonctionnement. Le test ne couvre pas un redémarrage indépendant du navigateur, ni le chiffrement, ni la migration. Next : diagnostiquer run/logs, améliorer l'hébergement des assets et refaire test si besoin. Pas de merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 : CI inventaire SQLite VERTE
 
 Commit `94a1296080ebd68206a702bf4581704103f7f32c` : [GitHub run #41339274939](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41339274939) **SUCCESS**. Job `inventory-tests` : `dart analyze` success ; `flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart` success. CI générale [#41339275017](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41339275017) **queued** lors du contrôle. **Portée :** inventaire sur SQLite natif en mémoire ; ne prouve ni stockage réel navigateur Drift Web, ni migration chiffrée, ni restauration complète. Next : intégration navigateur réelle (DriftWebOptions/worker, persistance, inventaire, isolation) ; pas de merge/deploy.
