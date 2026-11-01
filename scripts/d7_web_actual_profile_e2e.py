@@ -136,45 +136,45 @@ def main():
                               wait_until="domcontentloaded", timeout=60000)
                     page.wait_for_selector("flutter-view, flt-glass-pane", timeout=60000)
                     activate_semantics()
-                    page.get_by_role("button", name=re.compile("Medical tracking", re.I)).first.wait_for(
-                        state="visible", timeout=25000
-                    )
                     assert app_route() == "/profile", "Profile route redirected"
                     section = page.get_by_role(
                         "button", name=re.compile(r"^Medical tracking", re.I)
                     ).first
-                    # D22 shared Profile regression: geometry alone is not
-                    # evidence that Flutter's ExpansionTile is expanded. The
-                    # old >160px spacing heuristic returned a false positive
-                    # on the 1180px desktop after a physical reload, leaving
-                    # an aria-description="Collapsed" medical section closed.
-                    # Read the actual Flutter semantics state before clicking;
-                    # never click an already expanded tile (would collapse it).
+                    section.wait_for(state="visible", timeout=25000)
                     state = section.get_attribute("aria-description")
                     if state == "Collapsed":
                         section.click(timeout=18000)
-                    elif state == "Expanded":
-                        pass
-                    elif not medical_panel_physically_expanded():
-                        # Compatibility fallback for engines without state.
-                        section.click(timeout=18000)
-                    # Keep the real visible-choice assertion below. No retry
-                    # may invent, force or waive successful expansion.
-                    # Flutter's ExpansionTile uses an animated semantics tree:
-                    # a successful click does not mean its children have
-                    # become accessible at the exact same instant.
-                    for attempt in range(55):
-                        snapshot = page.locator("body").aria_snapshot()
-                        if "Type 2 Diabetes" in snapshot:
-                            break
+                    elif state != "Expanded":
+                        raise AssertionError(
+                            f"D7 medical section has no accessible expansion state: {state!r}"
+                        )
+                    # Flutter's semantics nodes can remain in the tree across
+                    # responsive rebuilds, even if the painted tile is closed.
+                    # Require the EXPANDED state, a visible real choice and
+                    # spatial separation to the next tile after the transition.
+                    # Presence of text in body.aria_snapshot() alone is not proof.
+                    choice = page.get_by_role(
+                        "button", name=re.compile(r"^Type 2 Diabetes$", re.I)
+                    ).first
+                    for _ in range(55):
+                        state = section.get_attribute("aria-description")
+                        ready = (
+                            state == "Expanded" and choice.count() > 0
+                            and choice.is_visible()
+                            and medical_panel_physically_expanded()
+                        )
+                        if ready:
+                            page.wait_for_timeout(300)
+                            if (
+                                section.get_attribute("aria-description") == "Expanded"
+                                and medical_panel_physically_expanded()
+                            ):
+                                return
                         page.wait_for_timeout(200)
-                    else:
-                        print("D7 medical section did not expose choices:", flush=True)
-                        print("D7 medical section ARIA:", snapshot[:3800], flush=True)
-                        print("D7 medical section DOM:", section.evaluate(
-                            "(el) => el.outerHTML.slice(0, 1400)"
-                        ), flush=True)
-                        raise AssertionError("D7 medical section not expanded in Chrome")
+                    print("D7 medical panel state:", state, flush=True)
+                    print("D7 medical panel ARIA:",
+                          page.locator("body").aria_snapshot()[:3800], flush=True)
+                    raise AssertionError("D7 medical section not physically expanded in Chrome")
 
                 def click_choice(label):
                     # Flutter InkWell choices aren't HTML form labels.
