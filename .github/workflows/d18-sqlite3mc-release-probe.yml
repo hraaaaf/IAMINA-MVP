@@ -6,11 +6,13 @@ on:
     paths:
       - tools/d18_sqlite3mc_release_probe.sh
       - tools/d18_sqlite_cipher_preflight.cjs
+      - tools/d18_sqlite3mc_browser_api_probe.cjs
       - .github/workflows/d18-sqlite3mc-release-probe.yml
   pull_request:
     paths:
       - tools/d18_sqlite3mc_release_probe.sh
       - tools/d18_sqlite_cipher_preflight.cjs
+      - tools/d18_sqlite3mc_browser_api_probe.cjs
       - .github/workflows/d18-sqlite3mc-release-probe.yml
   workflow_dispatch:
 permissions:
@@ -26,5 +28,9 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify preflight regression
         run: node tools/d18_sqlite_cipher_preflight_test.cjs
+      - name: Install isolated Chromium probe dependencies
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.58.2
+          npx playwright install --with-deps chromium
       - name: Verify upstream archive SHA256 and inspect WASM
         run: bash tools/d18_sqlite3mc_release_probe.sh
