@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : full-vault export gate BLOQUÉ (preuve code)
+
+`frontend/lib/data/drift/local_backup.dart` exporte les cinq tables Drift déclarées et, pour les coffres scopés, les déclarations de traitement ; il n'exporte pas les tables SQL dynamiques D18 (ex. `patient_progressive_demographics_v1`) ni tous les objets SQLite. `restoreVaultJson()` efface les tables supportées avant restauration transactionnelle. **Ne jamais utiliser cet export JSON pour une migration complète chiffrée**. ADR actualisé commit `aacbced5`. Next : test navigateur réel de l'adaptateur Drift + inventaire `sqlite_master`, copie complète isolée et contrôle d'intégrité/rollback. Aucun merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 : connexion Drift Web et isolation des coffres IDENTIFIÉES
 
 Source vérifiée : `frontend/lib/data/drift/database.dart` : `driftDatabase` + `DriftWebOptions(sqlite3Wasm:'sqlite3.wasm',driftWorker:'drift_worker.js')`, schéma 12. `AppDatabase.defaults()` ouvre la base historique non attribuée `amina` ; `forPatientVault(scope)` ouvre une base physique distincte. `patient_vault_scope.dart` nomme les coffres `amina_vault_v1_native_<Django ID>` / `amina_vault_v1_device_<UUIDv4>` et l'audit séparé. **Interdit d'attribuer automatiquement `amina` au compte connecté.** ADR enrichi commit `8b8e618c`. Prochaine étape : prouver le backend effectif Drift Web et un export/import fidèle sur tous les schémas avant implémentation migration chiffrée. Aucune intégration/merge/deploy.
