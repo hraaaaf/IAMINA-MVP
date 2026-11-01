@@ -190,6 +190,56 @@ const {execFileSync}=require('node:child_process');
    console.log(JSON.stringify({persistentProcessRotatedRestart:rotated}));
    if(!rotated.ok)throw Error('D18 OPFS rotated key restart gate failed');
 
+   // Synthetic two-phase migration rehearsal: retain original, verify destination, then allow cutover.
+   const migration=await (async()=>{
+    const context=await chromium.launchPersistentContext(fs.mkdtempSync(path.join(os.tmpdir(),'d18-migration-')),{headless:true,args:['--no-sandbox']});
+    try{
+     const tab=context.pages()[0]||await context.newPage();
+     await tab.goto('http://127.0.0.1:7398/d18-probe.html');
+     return await tab.evaluate(async()=>{
+      const script=document.createElement('script');script.src='/jswasm/sqlite3-worker1-promiser.js';
+      await new Promise((ok,fail)=>{script.onload=ok;script.onerror=fail;document.head.appendChild(script)});
+      const p=await new Promise((ok,fail)=>{try{const w=sqlite3Worker1Promiser({onready:()=>ok(w),onerror:fail})}catch(e){fail(e)}});
+      const result={sourcePreserved:false,destinationVerified:false,wrongKeyRejected:false,cutoverAllowed:false};
+      const query=async(id,sql)=>{
+       const r=await p('exec',{dbId:id,sql,rowMode:'array',resultRows:[]});
+       if(r.type==='error')throw Error(r.result?.message||JSON.stringify(r.result));
+       return r.result?.resultRows||[];
+      };
+      const open=async(filename,vfs)=>{const o=await p('open',{filename,vfs});if(o.type==='error')throw Error(o.result?.message);return o.dbId};
+      const source=await open('/d18-legacy.sqlite3','opfs');
+      let dest;
+      try{
+       await query(source,"CREATE TABLE synthetic(v TEXT); INSERT INTO synthetic VALUES('MIGRATION_SENTINEL')");
+       const original=await query(source,'SELECT v FROM synthetic');
+       if(original.length!==1||original[0][0]!=='MIGRATION_SENTINEL')throw Error('Legacy source invalid');
+       dest=await open('/d18-migrated.sqlite3','multipleciphers-opfs');
+       await query(dest,"PRAGMA key='D18_MIGRATION_KEY'");
+       await query(dest,'BEGIN IMMEDIATE');
+       try{
+        await query(dest,'CREATE TABLE synthetic(v TEXT)');
+        // Explicitly escape synthetic fixture. Production migration requires typed parameter binding.
+        await query(dest,"INSERT INTO synthetic VALUES('MIGRATION_SENTINEL')");
+        await query(dest,'COMMIT');
+       }catch(e){await query(dest,'ROLLBACK');throw e}
+       const copied=await query(dest,'SELECT v FROM synthetic');
+       result.destinationVerified=JSON.stringify(copied)===JSON.stringify(original);
+       await p('close',{dbId:dest});dest=null;
+       result.sourcePreserved=JSON.stringify(await query(source,'SELECT v FROM synthetic'))===JSON.stringify(original);
+       const wrong=await open('/d18-migrated.sqlite3','multipleciphers-opfs');
+       try{
+        try{await query(wrong,"PRAGMA key='WRONG_MIGRATION_KEY'");await query(wrong,'SELECT v FROM synthetic')}
+        catch(e){result.wrongKeyRejected=true}
+       }finally{await p('close',{dbId:wrong})}
+       result.cutoverAllowed=result.destinationVerified&&result.sourcePreserved&&result.wrongKeyRejected;
+       return result;
+      }finally{if(dest)await p('close',{dbId:dest});await p('close',{dbId:source})}
+     });
+    }finally{await context.close()}
+   })();
+   console.log(JSON.stringify({syntheticMigrationRehearsal:migration}));
+   if(!migration.cutoverAllowed)throw Error('D18 synthetic migration pre-cutover gate failed');
+
    // Abrupt termination: a committed row must survive; a transaction without COMMIT must not.
    const crashProfile=fs.mkdtempSync(path.join(os.tmpdir(),'d18-opfs-crash-'));
    try{
