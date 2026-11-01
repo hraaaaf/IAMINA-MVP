@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 POC Chromium : découverte API réelle du moteur
+
+Après probe acquisition #41308799558 SUCCESS, commits `17c7cced`, `64c05057`, `1876f451`, `4066f850` ajoutent un **test navigateur synthétique isolé** sur la release WASM épinglée : charge `sqlite3.js` dans Chromium, crée une DB en mémoire, effectue un aller-retour SQLite et vérifie si `sqlite3.capi.sqlite3_key` est exposé ; rejette l'absence d'API de clé. Workflow CI installe Playwright/Chromium pour ce probe. **CI à vérifier : test non encore validé, ne démontre pas OPFS/IndexedDB, fermeture/réouverture, ni chiffrement au repos.** Si le moteur encapsule autrement la clé, inspecter la JS API et corriger le probe sans masquer l'absence de clé. Aucun changement production, merge ou déploiement.
+
+---
+
 ## 01/11/2026 — D18 sqlite3mc WASM acquisition probe VERIFIED GREEN
 
 GitHub Actions [#41308799558](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41308799558), job `124854658956`, **SUCCESS**. Logs : `D18 WASM preflight: 4 synthetic checks PASS; encryption NOT tested`, binaire WASM inspecté avec `status: BINARY_VALID_ONLY`, SHA256 binaire `0b5a4bfff35f1ec87bf6f68ea293f425b86cbd661b77628a955cb827c9fbf524`, `encryptedDatabaseVerified: false`, et `D18 release SHA and WASM structure inspected; encrypted persistence NOT verified`. Archive amont vérifiée contre SHA256 épinglé. **Sous-lot acquisition/intégrité clôturé ; intégration Drift, clé, persistance et chiffrement au repos toujours ouverts.** Pas de merge/deploy.
