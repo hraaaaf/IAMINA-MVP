@@ -62,10 +62,10 @@ const path=require('node:path');
   console.log(JSON.stringify({kvvfsExploration:kvvfs}));
   const opfs=await page.evaluate(async()=>{
    const p=globalThis.d18Worker;
-   const out={opened:false,keyAccepted:false,wrote:false,encryptedPersistenceVerified:false};
+   const out={candidateVfs:'multipleciphers-opfs',opened:false,keyAccepted:false,wrote:false,encryptedPersistenceVerified:false};
    let id;
    try{
-    const o=await p('open',{filename:'/d18-test.sqlite3',vfs:'opfs'});
+    const o=await p('open',{filename:'/d18-test-encrypted.sqlite3',vfs:'multipleciphers-opfs'});
     if(o.type==='error')throw Error(JSON.stringify({type:o.type,result:o.result,message:o.result?.message,operation:'open'}));
     id=o.dbId;out.opened=true;
     const k=await p('exec',{dbId:id,sql:"PRAGMA key='D18_TEST_ONLY'"});
