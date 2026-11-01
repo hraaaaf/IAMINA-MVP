@@ -13,7 +13,7 @@ const path=require('node:path');
    const db=new sqlite3.oo1.DB(':memory:');
    try{
     db.exec('CREATE TABLE synthetic (v TEXT); INSERT INTO synthetic VALUES (\'D18_SYNTHETIC_ONLY\')');
-    const rows=db.exec({sql:'SELECT v FROM synthetic',returnValue:'resultRows'});
+    const rows=db.selectObjects('SELECT v FROM synthetic');
     if(rows[0]?.v!=='D18_SYNTHETIC_ONLY')throw Error('SQLite roundtrip failed');
     return {sqliteRoundtrip:true,keyApi:typeof sqlite3.capi.sqlite3_key,opfsApi:typeof sqlite3.oo1.OpfsDb,encryptedPersistenceVerified:false};
    }finally{db.close()}
