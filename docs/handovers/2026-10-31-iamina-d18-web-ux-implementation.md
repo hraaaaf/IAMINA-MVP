@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : CI inventaire SQLite VERTE
+
+Commit `94a1296080ebd68206a702bf4581704103f7f32c` : [GitHub run #41339274939](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41339274939) **SUCCESS**. Job `inventory-tests` : `dart analyze` success ; `flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart` success. CI générale [#41339275017](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41339275017) **queued** lors du contrôle. **Portée :** inventaire sur SQLite natif en mémoire ; ne prouve ni stockage réel navigateur Drift Web, ni migration chiffrée, ni restauration complète. Next : intégration navigateur réelle (DriftWebOptions/worker, persistance, inventaire, isolation) ; pas de merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 : CI ciblée Flutter ajoutée, résultat à vérifier
 
 Workflow `.github/workflows/d18-schema-inventory.yml` commit `c6a563c3` : Flutter 3.41.0, `flutter pub get`, `dart analyze` ciblé et `flutter test --no-pub test/data/drift/d18_schema_inventory_test.dart`. Déclenchement push branche D18 sur chemins préflight/test/workflow et PR. À la première interrogation GitHub, aucun run indexé sur commit ; **ne pas déclarer les tests verts**. Next : lire run et logs, corriger si rouge ; si vert, instrumenter test Web réel de `driftDatabase`/backend. Aucun merge/deploy.
