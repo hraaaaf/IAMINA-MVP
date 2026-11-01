@@ -78,10 +78,15 @@ class AddLogSheet extends StatefulWidget {
   });
 
   @override
-  State<AddLogSheet> createState() => _AddLogSheetState();
+  State<AddLogSheet> createState() => AddLogSheetState();
 }
 
-class _AddLogSheetState extends State<AddLogSheet> {
+class AddLogSheetState extends State<AddLogSheet> {
+  /// Exit gate shared with the page header outside this widget's PopScope.
+  Future<bool> confirmExitRequested() => mounted
+      ? _confirmLeave(AppLocalizations.of(context)!)
+      : Future.value(false);
+
   final TextEditingController _glucoseController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
   AudioRecorder? _mealVoiceRecorder;
@@ -638,6 +643,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Future<bool> _confirmLeave(AppLocalizations l10n) async {
+    // An in-flight patient record must not be treated as a discardable draft.
+    if (_saving) return false;
     if (_mealVoiceBusy) {
       _message(
         _voiceCopy(
@@ -673,7 +680,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
     if (widget.isPage) {
       GoRouter.of(context).go('/dashboard');
     } else {
-      Navigator.maybePop(context);
+      // The user explicitly confirmed discard (or reached the saved receipt).
+      // maybePop is vetoed by our PopScope(canPop: false); pop is intentional.
+      Navigator.of(context).pop();
     }
   }
 }
