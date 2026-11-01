@@ -43,15 +43,11 @@ final class _CandidateRange {
       lowerMgDl! > 0 &&
       upperMgDl! > lowerMgDl!;
 
-  /// null means UNKNOWN — never infer a clinical classification from legacy
-  /// numeric bounds, an unreviewed source or a different patient owner.
-  bool? containsForOwner(int owner, double measurementMgDl) {
-    if (!hasAuthority || owner != ownerId || !measurementMgDl.isFinite) {
-      return null;
-    }
-    return measurementMgDl >= lowerMgDl! &&
-        measurementMgDl <= upperMgDl!;
-  }
+  /// This permits *consideration*, not clinical classification. D19 G5
+  /// must separately authorize any target relation, boundary inclusivity,
+  /// metric or patient-facing label. The oracle never computes in/out target.
+  bool canEvaluateForOwner(int owner, double measurementMgDl) =>
+      hasAuthority && owner == ownerId && measurementMgDl.isFinite;
 
   _CandidateRange withDisplayPreference(String requestedUnit) {
     if (!_supported(requestedUnit)) throw ArgumentError.value(requestedUnit);
@@ -82,14 +78,14 @@ void main() {
 
     test('D22 G3: legacy numeric 70/180 is not proof of any target', () {
       expect(legacy.hasAuthority, isFalse);
-      expect(legacy.containsForOwner(1001, 100), isNull);
-      expect(legacy.containsForOwner(1002, 100), isNull);
+      expect(legacy.canEvaluateForOwner(1001, 100), isFalse);
+      expect(legacy.canEvaluateForOwner(1002, 100), isFalse);
     });
 
     test('D22 G2: no fabricated authority from unit preference alone', () {
       final preference = legacy.withDisplayPreference('mmol/L');
       expect(preference, same(legacy));
-      expect(preference.containsForOwner(1001, 100), isNull);
+      expect(preference.canEvaluateForOwner(1001, 100), isFalse);
     });
 
     test('D22 G1/G4: presentation-only conversion leaves raw values alone', () {
@@ -115,14 +111,14 @@ void main() {
         upperMgDl: 147,
         sourceReference: 'synthetic-test-only-authority',
       );
-      expect(unknownSource.containsForOwner(1001, 100), isNull);
+      expect(unknownSource.canEvaluateForOwner(1001, 100), isFalse);
     });
 
     test('D22 G7: evidence for A must never classify B', () {
-      expect(candidate.containsForOwner(1002, 100), isNull);
-      expect(candidate.containsForOwner(1001, 100), isTrue);
-      expect(candidate.containsForOwner(1001, 200), isFalse);
-      expect(candidate.containsForOwner(1001, double.nan), isNull);
+      expect(candidate.canEvaluateForOwner(1002, 100), isFalse);
+      expect(candidate.canEvaluateForOwner(1001, 100), isTrue);
+      expect(candidate.canEvaluateForOwner(1001, 200), isTrue); // No clinical comparison is performed.
+      expect(candidate.canEvaluateForOwner(1001, double.nan), isFalse);
     });
 
     test('D22 G2/G3: missing provenance or invalid bounds stay unknown', () {
@@ -153,7 +149,7 @@ void main() {
         ),
       ]) {
         expect(bad.hasAuthority, isFalse);
-        expect(bad.containsForOwner(1001, 100), isNull);
+        expect(bad.canEvaluateForOwner(1001, 100), isFalse);
       }
     });
   });
