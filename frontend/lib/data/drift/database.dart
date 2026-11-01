@@ -123,8 +123,12 @@ class AppDatabase extends _$AppDatabase {
         driftDatabase(
           name: 'amina',
           web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
+            sqlite3Wasm: Uri.parse(const String.fromEnvironment(
+              'D18_WEB_WASM_URI', defaultValue: 'sqlite3.wasm',
+            )),
+            driftWorker: Uri.parse(const String.fromEnvironment(
+              'D18_WEB_WORKER_URI', defaultValue: 'drift_worker.js',
+            )),
           ),
         ),
       );
@@ -139,8 +143,12 @@ class AppDatabase extends _$AppDatabase {
         driftDatabase(
           name: scope.databaseName,
           web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
+            sqlite3Wasm: Uri.parse(const String.fromEnvironment(
+              'D18_WEB_WASM_URI', defaultValue: 'sqlite3.wasm',
+            )),
+            driftWorker: Uri.parse(const String.fromEnvironment(
+              'D18_WEB_WORKER_URI', defaultValue: 'drift_worker.js',
+            )),
           ),
         ),
       );
