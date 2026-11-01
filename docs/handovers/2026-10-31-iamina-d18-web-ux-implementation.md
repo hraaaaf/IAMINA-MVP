@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 persistence gate VERIFIED GREEN
+
+Run [#41313544113](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41313544113), job `124868750666`, SUCCESS. Chromium output: `opfsRegistered:false`, `kvvfsRegistered:true`, `persistenceGate:"BLOCKED_NO_OPFS_VFS"`, `encryptedPersistenceVerified:false`. This validates the explicit *negative* persistence gate, **not encryption at rest**. Next: isolated keyed persistence investigation with available `kvvfs` or a compatible OPFS-enabled build; require close/reopen, wrong-key rejection and raw bytes inspection. No merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 Chromium worker/OPFS discovery VERIFIED GREEN
 
 Run [#41312403276](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41312403276), job `124865343681`, SUCCESS. Browser evidence: `sqliteRoundtrip:true`, `keyApi:"function"`, `opfsApi:"undefined"`, `opfsStorageApi:"function"`, `workerApi:"function"`, `encryptedPersistenceVerified:false`; worker `workerReady:true`, `configType:"config-get"`, `configKeys:["bigIntEnabled","version","vfsList"]`. Browser OPFS API and upstream SQLite worker work, but `oo1.OpfsDb` absent in main-thread context. **No keyed persistent database or wrong-key proof yet.** Next: inspect worker VFS list, prove persisted encrypted keyed SQLite across browser restart and wrong-key rejection. No merge/deploy.
