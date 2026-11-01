@@ -6,7 +6,7 @@ const path=require('node:path');
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
   const page=await browser.newPage();
-  await page.goto('http://127.0.0.1:7398/');
+  await page.goto('http://127.0.0.1:7398/d18-probe.html');
   const result=await page.evaluate(async()=>{
    if(typeof sqlite3InitModule!=='function')throw Error('sqlite3InitModule missing');
    const sqlite3=await sqlite3InitModule({locateFile:name=>'/jswasm/'+name});
