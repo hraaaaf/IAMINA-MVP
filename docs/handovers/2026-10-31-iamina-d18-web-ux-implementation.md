@@ -1,3 +1,9 @@
+## 01/11/2026 — D18 : worker/OPFS discovery (test CI pending)
+
+Commit `5054aab4` extends the isolated Chromium probe to load upstream `sqlite3-worker1-promiser.js`, require worker readiness and inspect `config-get`, `navigator.storage.getDirectory` and worker API. This targets the observed `oo1.OpfsDb:undefined` on #41312036909 without modifying the application or claiming persistence. **Not yet CI-verified**. Next: inspect worker result; only then implement keyed persisted database, wrong-key and restart checks. No merge/deploy.
+
+---
+
 ## 01/11/2026 — D18 sqlite3mc Chromium API probe VERIFIED GREEN
 
 GitHub Actions [#41312036909](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41312036909), job `124864238545`, **SUCCESS** on code commit `613e2405`. Browser evidence: `sqliteRoundtrip:true`, `keyApi:"function"`, `opfsApi:"undefined"`, `encryptedPersistenceVerified:false`. **Implication:** in-memory SQLite and `sqlite3_key` API proven in Chromium; `oo1.OpfsDb` absent in this context, so persistence adapter/worker must be investigated before attempting keyed OPFS/restart. Do not conflate API presence with keyed encryption. No merge/deploy. Next: isolated persistent backend proof (OPFS/alternative) + keyed reopen/wrong-key.
