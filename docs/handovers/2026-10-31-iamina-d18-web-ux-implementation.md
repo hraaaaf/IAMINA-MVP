@@ -1,3 +1,8 @@
+## 01/11/2026 — D18-A : vraie sonde WebCrypto de politique des clés préparée (ci non validée)
+
+Nouvelle entrypoint **CI-only** `frontend/lib/d18_vault_key_policy_web_probe_main.dart` et harness `tools/d18_vault_key_policy_web_probe.js`. Exécute en réel Flutter Web/Chromium la même politique de clés que le module isolé (8 jalons : création, unlock, mauvais secret, refus cross-vault, recovery, reset, ancien code rejeté sur nouvelle enveloppe, nouveau code correct), sans base clinique ni stockage du secret. Workflow `.github/workflows/d18-schema-inventory.yml` enrichi, artefact `d18-a-webcrypto-key-proof/report.json`. **Nouveau HEAD à vérifier en CI**, aucune preuve navigateur avant succès du job. Zéro modification du stockage produit, zéro migration, zéro merge/deploy.
+---
+
 ## 01/11/2026 — Decision D18-A OPTION A explicitly APPROVED / key policy implementation staged
 
 User approved **A**: local patient passphrase + **independent offline encrypted recovery**; not a deployment or merge approval. New security spec `docs/security/d18-local-passphrase-recovery-policy.md`: random 256-bit DEK, PBKDF2-HMAC-SHA256 (600k, unique salt) AES-GCM password wrapper, separate random 256-bit offline recovery code AEAD wrapper, patient scope bound as AAD, explicit lock, rotate recovery code on reset, no plaintext secret persistence. Clearly states that lost passphrase+code is irrecoverable, browser eviction not recovered by code alone, and old envelope copies make revocation nontrivial.

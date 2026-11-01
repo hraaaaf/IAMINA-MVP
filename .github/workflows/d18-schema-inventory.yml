@@ -11,6 +11,8 @@ on:
       - tools/d18_real_drift_web_smoke.js
       - frontend/lib/data/drift/d18_vault_key_policy.dart
       - frontend/test/data/drift/d18_vault_key_policy_test.dart
+      - frontend/lib/d18_vault_key_policy_web_probe_main.dart
+      - tools/d18_vault_key_policy_web_probe.js
       - docs/security/d18-local-passphrase-recovery-policy.md
       - .github/workflows/d18-schema-inventory.yml
   pull_request:
@@ -62,6 +64,35 @@ jobs:
         run: dart analyze lib/data/drift/d18_vault_key_policy.dart test/data/drift/d18_vault_key_policy_test.dart
       - name: Test independent offline recovery, cross-vault reject, key rotation and no plaintext in envelope
         run: flutter test --no-pub --timeout 180s test/data/drift/d18_vault_key_policy_test.dart
+
+      - name: Build real Flutter Web key-policy probe
+        run: flutter build web --release --no-web-resources-cdn --no-wasm-dry-run -t lib/d18_vault_key_policy_web_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Chromium
+        working-directory: .
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Check WebCrypto unlock, cross-vault isolation and independent offline recovery
+        working-directory: .
+        env:
+          D18_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7390 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d18-key-web-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 8 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7390/ -o /tmp/d18-key-web-index.html
+          node tools/d18_vault_key_policy_web_probe.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-a-webcrypto-key-proof
+          path: d18-a-webcrypto-key-proof/report.json
+          if-no-files-found: warn
+          retention-days: 10
 
   real-drift-web-chrome:
     runs-on: ubuntu-latest
