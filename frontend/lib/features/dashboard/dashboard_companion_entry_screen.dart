@@ -27,21 +27,51 @@ class DashboardCompanionEntryScreen extends StatelessWidget {
         PositionedDirectional(
           end: 20,
           bottom: 104,
-          child: Semantics(
-            button: true,
-            label: 'Parler avec IAmina',
-            child: FloatingActionButton.small(
-              key: const ValueKey('dashboard-companion-chat-action'),
-              heroTag: 'dashboard-companion-chat-action',
-              tooltip: 'Parler avec IAmina',
-              onPressed: () => context.push('/companion/chat'),
-              backgroundColor: AminaVisualLanguage.forestDeep,
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.auto_awesome_rounded),
-            ),
-          ),
+          child: const DashboardCompanionAvatarAction(),
         ),
       ],
     ),
   );
+}
+
+/// D27: the branded, floating IAmina entrypoint is only instantiated by
+/// DashboardCompanionEntryScreen (the /dashboard shell route). Chat uses its
+/// normal in-page header; there is no floating overlay in /companion/chat.
+class DashboardCompanionAvatarAction extends StatelessWidget {
+  const DashboardCompanionAvatarAction({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (Localizations.localeOf(context).languageCode) {
+      'ar' => 'تحدث مع IAmina',
+      'en' => 'Talk with IAmina',
+      _ => 'Parler avec IAmina',
+    };
+    return Semantics(
+      button: true,
+      label: label,
+      child: FloatingActionButton.small(
+        key: const ValueKey('dashboard-companion-chat-action'),
+        heroTag: 'dashboard-companion-chat-action',
+        tooltip: label,
+        onPressed: () => context.push('/companion/chat'),
+        backgroundColor: AminaVisualLanguage.forestDeep,
+        foregroundColor: Colors.white,
+        child: ClipOval(
+          child: SizedBox.square(
+            dimension: 34,
+            child: ColoredBox(
+              color: Colors.white,
+              child: Image.asset(
+                'assets/images/logo_amina.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                excludeFromSemantics: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
