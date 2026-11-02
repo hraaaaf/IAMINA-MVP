@@ -1,3 +1,12 @@
+## 02/11/2026 — D18-A synthetic full SQLite byte export from actual IndexedDB (STAGED, NO CI YET)
+
+Pinned `drift:2.31.0` supports `WasmDatabase.probe().exportDatabase()` since drift 2.28.0 (primary source: https://pub.dev/packages/drift/changelog). Following source qualification PASS at HEAD bb21f69b ([D18 #41411775462](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41411775462), 6/6 browser), a new CI-only `probe_export` uses this API to export the WHOLE original A IndexedDB SQLite binary (no clinical values/bytes emitted to logs), checks the standard SQLite header and opens an entirely separate synthetic disposable copy through `WasmDatabase.open(initializeDatabase: ...) `. It compares all user schema SQL objects (including indexes/triggers), per-table row counts, `user_version`, integrity, foreign keys, and a synthetic sentinel; additional new Chromium PROCESS `verify_export` checks persistence of copied data and that source A and legacy remain unchanged. Browser harness now requires **8/8** phases.
+
+**CRITICAL:** the exported SQLite image and destination copy are both PLAINTEXT, isolated to the synthetic CI profile. This is a fidelity/copy mechanism rehearsal, not an encrypted backup or migration implementation. Do not copy actual patients to a plaintext destination; do not auto-enable this harness in product `main.dart`. Future destination needs keyed authenticated encrypted OPFS or another proven encrypted file system, wrong-key/recovery/rollback and original copy preserved. There is no clinical cutover or Vercel deployment.
+
+**STATUS of this staged commit:** not yet on branch, not tested in CI. No success claim. Existing CI at bb21f69b should complete before new push to avoid cancellation.
+---
+
 ## 02/11/2026 — IAMINA D18 A: IndexedDB real Chrome 6/6 SUCCESS, source integrity preflight added (CI PENDING)
 
 **Verified on previous HEAD 2718053c**: [D18 #41409014324](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41409014324), [CI #41409020240](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41409020240), [UX #41409020096](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41409020096) SUCCESS. Browser report passed **6/6** with real Drift `chosenImplementation: sharedIndexedDb`; persistent A synthetic data remains after browser restart, B isolated, legacy preserved. This is NOT OPFS and NOT encrypted.

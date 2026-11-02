@@ -87,3 +87,12 @@ Previous exact HEAD `36c95ebb6886514ca4f9bd04926775566b67627a` fully GREEN: [D18
 
 **Next implementation:** `d18_migration_source_preflight.dart` only reads exact-scoped vault, executes `PRAGMA integrity_check` and separately `PRAGMA foreign_key_check` plus SQLite dynamic schema inventory and total row count within one transaction. Tests ensure synthetic orphan FK rejects with data still intact, triggers/dynamic tables discovered, and scope mismatches fail closed. Real Chrome `probe_backend` additionally calls this preflight. CI needs verification on the new HEAD; no real migration, no encryption, no clinical cutover. SQLite documents that integrity_check alone does not check FKs: https://sqlite.org/pragma.html. PR #1207 remains DRAFT; NO MERGE/DEPLOY.
 ---
+
+## 02/11/2026 — D18-A synthetic full SQLite byte export from actual IndexedDB (STAGED, NO CI YET)
+
+Pinned `drift:2.31.0` supports `WasmDatabase.probe().exportDatabase()` since drift 2.28.0 (primary source: https://pub.dev/packages/drift/changelog). Following source qualification PASS at HEAD bb21f69b ([D18 #41411775462](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41411775462), 6/6 browser), a new CI-only `probe_export` uses this API to export the WHOLE original A IndexedDB SQLite binary (no clinical values/bytes emitted to logs), checks the standard SQLite header and opens an entirely separate synthetic disposable copy through `WasmDatabase.open(initializeDatabase: ...) `. It compares all user schema SQL objects (including indexes/triggers), per-table row counts, `user_version`, integrity, foreign keys, and a synthetic sentinel; additional new Chromium PROCESS `verify_export` checks persistence of copied data and that source A and legacy remain unchanged. Browser harness now requires **8/8** phases.
+
+**CRITICAL:** the exported SQLite image and destination copy are both PLAINTEXT, isolated to the synthetic CI profile. This is a fidelity/copy mechanism rehearsal, not an encrypted backup or migration implementation. Do not copy actual patients to a plaintext destination; do not auto-enable this harness in product `main.dart`. Future destination needs keyed authenticated encrypted OPFS or another proven encrypted file system, wrong-key/recovery/rollback and original copy preserved. There is no clinical cutover or Vercel deployment.
+
+**STATUS of this staged commit:** not yet on branch, not tested in CI. No success claim. Existing CI at bb21f69b should complete before new push to avoid cancellation.
+---

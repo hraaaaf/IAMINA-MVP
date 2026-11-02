@@ -61,9 +61,14 @@ async function processPhase(context, phase){
     // Chromium is a NEW process but has the SAME isolated temporary user profile.
     context=await chromium.launchPersistentContext(root,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
-    for(const phase of ['verify_a','probe_backend','verify_b','verify_legacy']){
+    for(const phase of ['verify_a','probe_backend','probe_export','verify_b','verify_legacy']){
       await processPhase(context,phase);
     }
+    await context.close();context=null;
+    // One more independent Chromium process validates the complete copy.
+    context=await chromium.launchPersistentContext(root,
+      {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
+    await processPhase(context,'verify_export');
   } catch(e) {
     steps.push({phase:'harness',pass:false,error:String(e).slice(0,500)});
   } finally {
@@ -72,9 +77,9 @@ async function processPhase(context, phase){
   }
   const proof={kind:'real IAMINA driftDatabase Web, synthetic Chrome separate-process restart',
     head:process.env.D18_CANDIDATE_SHA||'unknown',
-    expected:['seed_legacy','seed_a','verify_a','probe_backend','verify_b','verify_legacy'],
+    expected:['seed_legacy','seed_a','verify_a','probe_backend','probe_export','verify_b','verify_legacy','verify_export'],
     steps,passed:steps.filter(s=>s.pass).length};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(proof,null,2));
   console.log(JSON.stringify(proof));
-  if(proof.passed!==6 || steps.length!==6 || steps.some(s=>!s.pass))process.exitCode=1;
+  if(proof.passed!==8 || steps.length!==8 || steps.some(s=>!s.pass))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
