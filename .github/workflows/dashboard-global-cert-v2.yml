@@ -2,6 +2,9 @@ name: Dashboard global certification v2
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/dashboard-global-cert-v2.yml'
   push:
     branches: [main]
     paths:
@@ -104,24 +107,48 @@ jobs:
           cat /tmp/iamina-dashboard-backend.log >&2 || true
           exit 1
 
-      - name: Register and seed synthetic identity
+      - name: Register synthetic identity and assert clinical demo seeding is denied
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY' >/tmp/register.json
+          # Credentials and the returned bearer token stay in runner-local /tmp,
+          # never in dashboard-global-cert/* uploaded as certification evidence.
+          python3 - <<'PY' >/tmp/iamina-dashboard-register-request.json
           import json, os
-          print(json.dumps({'email':os.environ['CERT_EMAIL'],'password':os.environ['CERT_PASSWORD'],'first_name':'Dashboard','last_name':'Certification'}))
+          print(json.dumps({'email': os.environ['CERT_EMAIL'], 'password': os.environ['CERT_PASSWORD'], 'first_name': 'Dashboard', 'last_name': 'Certification'}))
           PY
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register -H 'Content-Type: application/json' --data-binary @/tmp/register.json > dashboard-global-cert/auth-register.json
+          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register -H 'Content-Type: application/json' --data-binary @/tmp/iamina-dashboard-register-request.json > /tmp/iamina-dashboard-register-response.json
           python3 - <<'PY'
           import json
-          p=json.load(open('dashboard-global-cert/auth-register.json'))
-          token=p.get('access_token','')
-          assert token.startswith('iamina.'), p
-          open('/tmp/iamina-dashboard-token','w').write(token)
+          with open('/tmp/iamina-dashboard-register-response.json') as receipt:
+              registered = json.load(receipt)
+          token = registered.get('access_token', '')
+          assert isinstance(token, str) and token.startswith('iamina.'), 'registration did not return a native bearer token'
+          with open('/tmp/iamina-dashboard-token', 'w') as output:
+              output.write(token)
           PY
           TOKEN="$(cat /tmp/iamina-dashboard-token)"
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' > dashboard-global-cert/backend-demo-seed.json
+          curl -fsS http://127.0.0.1:8000/api/v1/logs -H "Authorization: Bearer $TOKEN" > dashboard-global-cert/clinical-logs-before.json
+
+          # D11 safety contract: an authenticated identity CANNOT inject fake
+          # patient history through /demo/seed. A 403 is the expected SUCCESS.
+          seed_status="$(curl -sS -o dashboard-global-cert/demo-seed-denied.json -w '%{http_code}' -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}')"
+          printf 'demo/seed HTTP %s (expected 403)\n' "$seed_status"
+          test "$seed_status" = '403'
+
+          curl -fsS http://127.0.0.1:8000/api/v1/logs -H "Authorization: Bearer $TOKEN" > dashboard-global-cert/clinical-logs-after.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('dashboard-global-cert')
+          before = json.loads((root / 'clinical-logs-before.json').read_text())
+          after = json.loads((root / 'clinical-logs-after.json').read_text())
+          denied = json.loads((root / 'demo-seed-denied.json').read_text())
+          assert before.get('total') == 0 and before.get('items') == [], 'new account must start with zero clinical logs'
+          assert after == before, 'denied demo seed must not mutate the patient clinical history'
+          assert isinstance(denied, dict), 'denial must return structured JSON'
+          print('D11 verified: HTTP 403; before=after; zero synthetic clinical records.')
+          PY
 
       - name: Probe Dashboard backend contracts independently
         shell: bash
@@ -236,9 +263,21 @@ jobs:
               page.on('pageerror',e=>{errors.push({message:String(e),stack:e.stack||null}); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);});
               page.on('console',m=>{if(m.type()==='error'){consoleErrors.push(m.text()); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);}});
               page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})});
-              const dashboardReady=page.waitForResponse(r=>r.url().includes('/api/v1/companion/overview') && r.status()>=200 && r.status()<300,{timeout:45000});
+              // A newly registered patient has no clinical history (D11).
+              // The truthful empty Dashboard does not mount DashboardTodaySection
+              // and therefore never requests /api/v1/companion/overview.
+              // Certify the actual Flutter semantics instead of a non-existent API call.
               await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000});
-              await dashboardReady; await page.waitForTimeout(2000);
+              try {
+                await page.getByRole('button',{name:'Ajouter ma première mesure'}).waitFor({state:'visible',timeout:45000});
+                // Primary CTA is a stable, observable empty-Dashboard readiness signal.
+                // Flutter canvas heading semantics can be merged and lack a standalone exact label.
+              } catch (readyError) {
+                report[name]={url:page.url(),errors,consoleErrors,api,readyError:String(readyError)}; persist(report);
+                await page.screenshot({path:path.join('dashboard-global-cert',`${name}-not-ready-${width}x${height}.png`)}).catch(()=>{});
+                throw new Error(`${name}: truthful empty Dashboard did not render: ${readyError}`);
+              }
+              await page.waitForTimeout(500);
               const topPath=path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`); const top=await page.screenshot({path:topPath});
               await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});
               await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});
