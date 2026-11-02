@@ -17,11 +17,15 @@ const _patientB = 'e2dbe28f-3eea-4410-86a7-274150b00018';
 const _table = 'd18_ci_real_keyed_worker';
 const _marker = 'D18_CI_DYNAMIC_REAL_SQLITE_WORKER_20261102';
 
+void stage(String value) =>
+    html.document.documentElement?.dataset['d18DynamicStage'] = value;
+
 void verify(bool ok, String code) {
   if (!ok) throw StateError(code);
 }
 
 Future<void> runPhase(String name) async {
+  stage('resolve_scope');
   final scope = PatientVaultScope.deviceLocal(
     name == 'isolate_b' ? _patientB : _patientA,
   );
@@ -58,6 +62,7 @@ Future<void> runPhase(String name) async {
     return;
   }
 
+  stage('create_worker');
   final worker = web.Worker('d18_dynamic_cipher_sqlite_worker.js'.toJS);
   final control = web.MessageChannel();
   final sql = web.MessageChannel();
@@ -68,9 +73,11 @@ Future<void> runPhase(String name) async {
       ..setProperty('type'.toJS, 'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
       ..setProperty('name'.toJS, dbName.toJS)
       ..setProperty('key'.toJS, keyArrayBuffer);
+    stage('send_worker_open');
     worker.postMessage(message,
         <JSObject>[control.port2, sql.port2, keyArrayBuffer].toJS);
     ephemeral.fillRange(0, ephemeral.length, 0);
+    stage('await_worker_ready');
     final statusEvent = await web.EventStreamProviders.messageEvent
         .forTarget(control.port1)
         .first.timeout(const Duration(seconds: 25));
@@ -80,10 +87,12 @@ Future<void> runPhase(String name) async {
       verify(status == 'KEY_REJECTED', 'D18_DYNAMIC_BAD_KEY_ACCEPTED');
       return;
     }
+    stage('worker_ack_' + status);
     verify(status == 'READY', 'D18_DYNAMIC_OPEN_REJECTED');
     final connection = await connectToRemoteAndInitialize(
       sql.port1.channel(explicitClose: true),
     );
+    stage('remote_connected');
     database = AppDatabase.testPatientVault(connection, scope);
     await database.customSelect('SELECT count(*) FROM sqlite_master').getSingle();
     if (name == 'create') {
@@ -111,11 +120,13 @@ Future<void> runPhase(String name) async {
 }
 
 Future<void> main() async {
+  stage('main_entered');
   WidgetsFlutterBinding.ensureInitialized();
   final name = Uri.base.queryParameters['phase'] ?? '';
   try {
     verify(const {'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes'}
         .contains(name), 'D18_DYNAMIC_INVALID_PHASE');
+    stage('run_phase');
     await runPhase(name);
     html.document.title = 'D18_DYNAMIC_SQL_PASS:$name';
   } catch (e) {
