@@ -252,9 +252,19 @@ Future<void> verifyCrashRecovery() async {
     await integrity(source);
     final after=await snapshot(source);
     check(after.schema.any((s)=>s['name']=='d18_child_trigger') &&
+      after.version==12 &&
       after.data['d18_parent']?.length==1 &&
-      after.data['d18_child']?.length==1,
-      'CRASH_SOURCE_MODIFIED');
+      after.data['d18_child']?.length==1 &&
+      after.seq.any((s)=>s['name']=='d18_parent' && s['seq']==100),
+      'CRASH_SOURCE_SCHEMA_OR_SEQUENCE_MODIFIED');
+    final row=after.data['d18_parent']!.single;
+    final child=after.data['d18_child']!.single;
+    check(row['id']==3 && row['label']==marker &&
+      canonicalValue(row['payload'])==
+        canonicalValue(Uint8List.fromList([0,1,255,42])) &&
+      row['optional']==null && child['parent_id']==3 &&
+      child['id']==5 && child['note']=='CI_FK_CHILD',
+      'CRASH_SOURCE_CONTENT_MODIFIED');
   } finally {await source.close();}
 }
 Future<void> migrate() async {
