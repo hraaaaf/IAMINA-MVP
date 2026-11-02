@@ -22,11 +22,25 @@ def run(browser, lang, size, out):
         proof["stages"].append("empty")
         page.get_by_role("button",name="D13_OPEN").click(timeout=10000)
         glucose=page.get_by_role("textbox").first
+        edit_input=page.locator("input.flt-text-editing, textarea.flt-text-editing")
         glucose.click(timeout=10000)
-        page.keyboard.type("126",delay=70)
+        # Flutter Web may drop the first synthetic key while its native editable
+        # gains focus. Select-all and retry only if the native input is not
+        # exactly 126: never drive clinical logic with an unverified number.
+        page.wait_for_timeout(200)
+        for attempt in range(3):
+            page.keyboard.press("ControlOrMeta+A")
+            page.keyboard.type("126",delay=110)
+            page.wait_for_timeout(130)
+            if edit_input.count()==1 and edit_input.input_value()=="126":
+                break
+            if edit_input.count()!=1:
+                raise AssertionError("D13_INPUT_NOT_OBSERVABLE: expected one native Flutter editing input")
+        else:
+            raise AssertionError("D13_GLUCOSE_INPUT_MISMATCH: native value="+repr(edit_input.input_value()))
         save=page.get_by_role("button",name=re.compile("Enregistrer|حفظ|Save",re.I))
         expect(save).to_be_enabled(timeout=6000)
-        proof["stages"].append("glucose_input_confirmed")
+        proof["stages"].append("glucose_126_native_input_confirmed")
         page.screenshot(path=str(out/("before-"+case+".png")))
         save.click(timeout=10000)
         page.wait_for_function("document.documentElement.dataset.d13Stage === 'held'",timeout=15000)
