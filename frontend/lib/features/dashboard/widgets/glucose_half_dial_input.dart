@@ -260,6 +260,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
                             fraction: d22DialFractionForMgdl(displayed),
                             hasValue: selected != null,
                             outline: colors.outlineVariant,
+                            accent: d22GlucoseDialAmbientColor(valueMgdl),
                             dark: theme.brightness == Brightness.dark,
                           ),
                         ),
@@ -407,12 +408,14 @@ class _PremiumGlucoseArcPainter extends CustomPainter {
     required this.fraction,
     required this.hasValue,
     required this.outline,
+    required this.accent,
     required this.dark,
   });
 
   final double fraction;
   final bool hasValue;
   final Color outline;
+  final Color accent;
   final bool dark;
 
   @override
@@ -486,7 +489,9 @@ class _PremiumGlucoseArcPainter extends CustomPainter {
       center.dx + radius * math.cos(theta),
       center.dy + radius * math.sin(theta),
     );
-    final haloColor = dark ? const Color(0xFF142C2A) : const Color(0xFF164F47);
+    final haloColor = Color.lerp(
+      accent, Colors.black, dark ? 0.23 : 0.30,
+    )!;
     canvas.drawCircle(cursor, 23, Paint()
       ..color = haloColor.withValues(alpha: .17)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
@@ -498,5 +503,5 @@ class _PremiumGlucoseArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PremiumGlucoseArcPainter old) =>
       fraction != old.fraction || hasValue != old.hasValue ||
-      outline != old.outline || dark != old.dark;
+      outline != old.outline || accent != old.accent || dark != old.dark;
 }
