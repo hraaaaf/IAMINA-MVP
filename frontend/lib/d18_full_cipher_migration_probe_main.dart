@@ -270,50 +270,66 @@ Future<void> verifyCrashRecovery() async {
 // Synthetic source write gate: SQLite BEGIN IMMEDIATE is held during the
 // entire source snapshot -> keyed copy -> parity verification. This POC does
 // not yet implement the actual clinical runtime's cutover / account gate.
+// CI-only cross-tab cooperative gate. The real application must enforce the
+// SAME gate for every writer before a clinical migration can be considered safe.
+// An ordinary SQLite transaction alone does not isolate clients multiplexed
+// through one shared worker / SQLite connection.
+Future<JSObject> acquireSourceGate() async {
+  final fn=globalContext.getProperty('__D18AcquireSourceWriteLock'.toJS);
+  check(fn is JSFunction, 'SOURCE_GATE_NOT_INSTALLED');
+  final lease=await globalContext.callMethod<JSPromise<JSObject>>(
+    '__D18AcquireSourceWriteLock'.toJS,srcName.toJS).toDart;
+  check((lease.getProperty('ok'.toJS) as JSBoolean).toDart,
+    'SOURCE_GATE_UNAVAILABLE');
+  return lease;
+}
+Future<void> releaseSourceGate(JSObject lease) async {
+  await lease.callMethod<JSPromise<JSAny?>>('release'.toJS).toDart;
+}
 Future<void> holdSourceWriteLock() async {
-  stage('source_lock_begin');
-  final q=await openSource();
-  var locked=false;
-  try{
-    await q.runCustom('BEGIN IMMEDIATE',[]);
-    locked=true;
-    stage('source_write_gate_held');
-    await html.window.onMessage
-      .firstWhere((event)=>event.data=='D18_CI_RELEASE_SOURCE')
-      .timeout(const Duration(seconds:25));
-  }finally{
-    try{if(locked)await q.runCustom('ROLLBACK',[]);}
-    finally{await q.close();}
-  }
+  stage('source_gate_owner_acquire');
+  final gate=await acquireSourceGate();
+  try {
+    stage('source_lock_begin');
+    final q=await openSource();
+    var locked=false;
+    try {
+      await q.runCustom('BEGIN IMMEDIATE',[]);
+      locked=true;
+      stage('source_write_gate_held');
+      await html.window.onMessage
+        .firstWhere((event)=>event.data=='D18_CI_RELEASE_SOURCE')
+        .timeout(const Duration(seconds:25));
+    } finally {
+      try {if(locked) await q.runCustom('ROLLBACK',[]);}
+      finally {await q.close();}
+    }
+  } finally {await releaseSourceGate(gate);}
 }
 Future<void> competeSourceWriteLock() async {
-  stage('writer_opens_source');
-  final q=await openSource();
-  try{
-    await q.runCustom('PRAGMA busy_timeout=700',[]);
-    stage('writer_attempts_immediate_transaction');
-    try{
+  // Never open the physical source before acquiring this same-origin gate.
+  // The test exercises a genuine second tab following the writer protocol.
+  stage('writer_waits_source_gate');
+  final gate=await acquireSourceGate();
+  try {
+    stage('writer_gate_acquired');
+    final q=await openSource();
+    try {
+      stage('writer_attempts_immediate_transaction');
       await q.runCustom('BEGIN IMMEDIATE',[]);
       stage('writer_immediate_granted');
-      // Never create clinical or even synthetic rows from a competing writer.
-      // The harness rejects a grant while the owner still holds its lock.
       await q.runCustom('ROLLBACK',[]);
-    }catch(e){
-      final error=e.toString();
-      if(error.contains('cannot start a transaction within a transaction')){
-        // Shared-worker multiplexing can route tabs to ONE SQLite connection.
-        // BEGIN IMMEDIATE is NOT proof of cross-tab write exclusion in this case.
-        stage('writer_shared_connection_nested_transaction');
-        throw StateError('WRITER_SHARED_CONNECTION_IS_NOT_ISOLATED');
-      }
-      check(error.contains('SQLITE_BUSY') ||
-        error.contains('sqlite3 result code 5') ||
-        error.contains('database is locked'), 'WRITER_UNEXPECTED_ERROR');
-      stage('writer_denied_sqlite_busy');
-    }
-  }finally{await q.close();}
+    } finally {await q.close();}
+  } finally {await releaseSourceGate(gate);}
 }
 Future<void> migrate() async {
+  stage('preflight_acquire_source_origin_gate');
+  final gate=await acquireSourceGate();
+  try {
+    await migrateWithSourceGateHeld();
+  } finally {await releaseSourceGate(gate);}
+}
+Future<void> migrateWithSourceGateHeld() async {
   stage('preflight_lock_source_before_snapshot');
   final src=await openSource();
   var locked=false;
