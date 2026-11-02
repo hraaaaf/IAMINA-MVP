@@ -3,7 +3,9 @@
 const {chromium} = require('playwright');
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
 const userData = fs.mkdtempSync(path.join(os.tmpdir(),'d18-mc-'));
-const required=['stock_reject','write','wrong_key','read','isolation_b','raw_bytes'];
+const required=['stock_reject','write','wrong_key','read','isolation_b',
+  'raw_bytes','rotate','old_key_reject','read_rotated',
+  'raw_bytes_after_rotate'];
 const steps=[];
 async function phase(ctx,name){
   const p=await ctx.newPage();
@@ -31,7 +33,11 @@ async function phase(ctx,name){
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(userData,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
-    for(const p of required.slice(2))await phase(ctx,p);
+    for(const p of required.slice(2,7))await phase(ctx,p);
+    await ctx.close();ctx=null;
+    ctx=await chromium.launchPersistentContext(userData,
+      {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
+    for(const p of required.slice(7))await phase(ctx,p);
   }catch(e){steps.push({phase:'harness',pass:false,error:String(e).slice(0,350)})}
   finally{if(ctx)await ctx.close();fs.rmSync(userData,{recursive:true,force:true})}
   fs.mkdirSync('d18-cipher-poc-proof',{recursive:true});
