@@ -22,7 +22,14 @@ const results = [];
 async function verify(ctx,name,key) {
   const page = await ctx.newPage();
   const pageErrors = [];
-  page.on('pageerror', e => pageErrors.push(e.name || 'PageError'));
+  // This is a disposable synthetic-only runner, never clinical data.
+  // Capture bounded JS startup diagnostics, redacting long hex secrets and URLs.
+  const safeError = e => {
+    const message = String(e.message || '').replace(/[a-f0-9]{32,}/gi, '[redacted]')
+      .replace(/https?:\\/\\/[^\\s]+/g, '[url]').slice(0, 320);
+    return {name: e.name || 'PageError', message};
+  };
+  page.on('pageerror', e => pageErrors.push(safeError(e)));
   try {
     await page.addInitScript(keyBytes => {
       Object.defineProperty(window, '__D18_DYNAMIC_CI_KEY',
@@ -40,9 +47,12 @@ async function verify(ctx,name,key) {
         title:document.title,
         stage:document.documentElement.dataset.d18DynamicStage||'no_stage',
         ready:document.readyState,
+        flutterLoader:typeof window._flutter,
+        mainScript:[...document.scripts].map(x => x.src && x.src.split('/').at(-1)).filter(Boolean),
       })).catch(()=>({title:'unknown',stage:'evaluation_failed',ready:'unknown'}));
       results.push({phase:name,pass:false,stage:state.stage,
-        title:state.title,ready:state.ready,pageErrorNames:pageErrors});
+        title:state.title,ready:state.ready,flutterLoader:state.flutterLoader,
+        mainScript:state.mainScript,pageErrors});
       throw Error('D18_DYNAMIC_SQL_NO_VERDICT');
     }
     const out = await page.evaluate(() => ({
@@ -52,7 +62,7 @@ async function verify(ctx,name,key) {
     }));
     const ok = out.title === 'D18_DYNAMIC_SQL_PASS:'+name;
     results.push({phase:name,pass:ok,
-      ...(!ok?{error:out.error,stage:out.stage,pageErrorNames:pageErrors}: {})});
+      ...(!ok?{error:out.error,stage:out.stage,pageErrors}: {})});
     if(!ok) throw new Error('D18 dynamic SQLite '+name+' rejected ('+out.error+')');
   } finally {
     await page.close();
