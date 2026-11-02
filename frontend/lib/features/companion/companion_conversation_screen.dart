@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -464,7 +465,7 @@ class _CompanionConversationScreenState
                   },
                 ),
                 Expanded(
-                  child: _messages.isEmpty
+                  child: _messages.isEmpty && !waitingForReply
                       ? _EmptyConversation(
                           onSuggestionSelected: (suggestion) {
                             _controller.text = suggestion;
@@ -488,7 +489,9 @@ class _CompanionConversationScreenState
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             if (waitingForReply && index == _messages.length) {
-                              return const _TypingBubble();
+                              return _TypingBubble(
+                                voiceProcessing: _voiceState == _VoiceState.processing,
+                              );
                             }
                             return _MessageBubble(message: _messages[index]);
                           },
@@ -525,11 +528,32 @@ class _CompanionConversationScreenState
               ],
             );
 
+            final animatedConversation = TweenAnimationBuilder<double>(
+              key: const Key('companion-chat-entry-motion'),
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              child: conversation,
+              builder: (context, progress, child) {
+                if (MediaQuery.disableAnimationsOf(context)) return child!;
+                return Opacity(
+                  opacity: progress,
+                  child: Transform.translate(
+                    offset: Offset(0, 16 * (1 - progress)),
+                    child: Transform.scale(
+                      scale: 0.985 + 0.015 * progress,
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+            );
+
             if (!desktop) {
               return Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 960),
-                  child: conversation,
+                  child: animatedConversation,
                 ),
               );
             }
@@ -553,7 +577,7 @@ class _CompanionConversationScreenState
                           ),
                           boxShadow: AminaVisualLanguage.cardShadowLight,
                         ),
-                        child: conversation,
+                        child: animatedConversation,
                       ),
                     ),
                   ),
@@ -586,18 +610,24 @@ class _ConversationHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .9),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: AminaVisualLanguage.cardShadowLight,
-            ),
-            child: Image.asset(
-              'assets/images/logo_amina.png',
-              fit: BoxFit.contain,
+          Hero(
+            tag: 'dashboard-companion-chat-action',
+            child: Material(
+              type: MaterialType.transparency,
+              child: Container(
+                width: 46,
+                height: 46,
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .9),
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: AminaVisualLanguage.cardShadowLight,
+                ),
+                child: Image.asset(
+                  'assets/images/logo_amina.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 11),
@@ -1145,24 +1175,134 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _TypingBubble extends StatelessWidget {
-  const _TypingBubble();
+class _TypingBubble extends StatefulWidget {
+  final bool voiceProcessing;
+
+  const _TypingBubble({this.voiceProcessing = false});
+
+  @override
+  State<_TypingBubble> createState() => _TypingBubbleState();
+}
+
+class _TypingBubbleState extends State<_TypingBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _motion;
+
+  @override
+  void initState() {
+    super.initState();
+    _motion = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 960),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _motion.stop();
+    } else if (!_motion.isAnimating) {
+      _motion.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _motion.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final status = widget.voiceProcessing
+        ? _chatText(
+            context,
+            'IAmina traite le message vocal…',
+            'IAmina is processing your voice message…',
+            'تعالج IAmina الرسالة الصوتية…',
+          )
+        : _chatText(
+            context,
+            'IAmina prépare sa réponse…',
+            'IAmina is preparing a reply…',
+            'تُحضّر IAmina ردّها…',
+          );
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Container(
-        key: const Key('companion-typing-bubble'),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          color: AminaVisualLanguage.controlSurface(context),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
-        ),
-        child: const SizedBox(
-          width: 42,
-          child: LinearProgressIndicator(minHeight: 3),
+      child: Semantics(
+        liveRegion: true,
+        label: status,
+        child: ExcludeSemantics(
+          child: Container(
+            key: const Key('companion-typing-bubble'),
+            padding: const EdgeInsetsDirectional.fromSTEB(12, 11, 18, 11),
+            decoration: BoxDecoration(
+              color: AminaVisualLanguage.controlSurface(context),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AminaVisualLanguage.controlBorder(context),
+              ),
+              boxShadow: AminaVisualLanguage.cardShadowLight,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipOval(
+                  child: SizedBox.square(
+                    dimension: 28,
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: Image.asset(
+                        'assets/images/logo_amina.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AminaVisualLanguage.primaryText(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                AnimatedBuilder(
+                  animation: _motion,
+                  builder: (_, __) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(3, (index) {
+                      final phase = (_motion.value - index * .18) * 2 * math.pi;
+                      final lift = reducedMotion
+                          ? 0.0
+                          : 2.6 * (1 + math.sin(phase)) / 2;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Transform.translate(
+                          offset: Offset(0, -lift),
+                          child: Container(
+                            width: 5,
+                            height: 5,
+                            decoration: const BoxDecoration(
+                              color: AminaVisualLanguage.actionGreen,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
