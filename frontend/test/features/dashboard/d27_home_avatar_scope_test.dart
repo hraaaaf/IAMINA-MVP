@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amina/features/dashboard/dashboard_companion_entry_screen.dart';
+import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +40,8 @@ void main() {
         addTearDown(router.dispose);
         await tester.pumpWidget(MaterialApp.router(
           locale: locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           routerConfig: router,
         ));
         await tester.pumpAndSettle();
