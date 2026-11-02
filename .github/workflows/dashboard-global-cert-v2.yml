@@ -270,7 +270,7 @@ jobs:
               await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000});
               try {
                 await page.getByRole('button',{name:'Ajouter ma première mesure'}).waitFor({state:'visible',timeout:45000});
-                await page.getByText('Commencez par une première mesure',{exact:true}).waitFor({state:'visible',timeout:10000});
+                await page.getByLabel('Commencez par une première mesure',{exact:true}).waitFor({state:'visible',timeout:10000});
               } catch (readyError) {
                 report[name]={url:page.url(),errors,consoleErrors,api,readyError:String(readyError)}; persist(report);
                 await page.screenshot({path:path.join('dashboard-global-cert',`${name}-not-ready-${width}x${height}.png`)}).catch(()=>{});
