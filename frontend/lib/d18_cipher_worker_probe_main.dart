@@ -51,7 +51,10 @@ Future<void> migrationPhase(String phase) async {
     for (var i = 0; i <= file.length - needle.length; i++) {
       var equal = true;
       for (var j = 0; j < needle.length; j++) {
-        if (file[i + j] != needle[j]) { equal = false; break; }
+        if (file[i + j] != needle[j]) {
+          equal = false;
+          break;
+        }
       }
       verify(!equal, 'D18_MIG_PLAINTEXT_MARKER');
     }
@@ -117,10 +120,10 @@ Future<void> migrationPhase(String phase) async {
           .contains(cipher.chosenImplementation.name), 'D18_MIG_UNSAFE_TARGET');
       db = AppDatabase.testPatientVault(cipher.resolvedExecutor, scope);
       await db.transaction(() async {
-        await db!.customStatement(
+        await db.customStatement(
           'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
         );
-        await db!.customStatement(
+        await db.customStatement(
           'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
           [1, migrationMarker],
         );
