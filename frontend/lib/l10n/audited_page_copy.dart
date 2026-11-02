@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'app_localizations.dart';
+export 'app_localizations.dart' show AppLocalizations;
 
 /// Transitional API used by the five audited pages.
 ///
