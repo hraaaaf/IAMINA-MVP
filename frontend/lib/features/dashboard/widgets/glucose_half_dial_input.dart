@@ -27,7 +27,10 @@ class GlucoseHalfDialInput extends StatelessWidget {
 
   void _select(Offset p, Size size) {
     final rel = p - Offset(size.width / 2, size.height - 11);
-    if (rel.dy > 18) return;
+    // Only drag on the colored ARC. Tapping the central numeric TextField
+    // must not silently overwrite the reading being edited.
+    final radius = math.min(size.width / 2 - 21, size.height - 25);
+    if (rel.dy > 18 || (rel.distance - radius).abs() > 30) return;
     var a = math.atan2(rel.dy, rel.dx);
     if (a < 0) a += math.pi * 2;
     final t = ((a - math.pi) / math.pi).clamp(0.0, 1.0);
