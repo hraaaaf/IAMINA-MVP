@@ -2,6 +2,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Pure color mapping for a non-personalized visual illustration.
+/// 40–69 red, 70–89 amber, 90–160 green, 161–180 amber, >180 red.
+Color d22IllustrativeGlucoseArcColor(double mg) {
+  if (mg < 70 || mg > 180) return const Color(0xFFD84752);
+  if (mg < 90 || mg > 160) return const Color(0xFFF1A34B);
+  return const Color(0xFF27A87D);
+}
+
 /// Measurement entry. Colors are illustrative 70-180 mg/dL reference markers,
 /// NOT personalized targets. Save continues through the existing journal flow.
 class GlucoseHalfDialInput extends StatelessWidget {
@@ -159,11 +167,7 @@ class _GlucoseArcPainter extends CustomPainter {
   final double position;
   final bool hasValue;
   final Color outline;
-  static Color colorAt(double mg) {
-    if (mg < 70 || mg > 180) return const Color(0xFFD84752);
-    if (mg < 90 || mg > 160) return const Color(0xFFF1A34B);
-    return const Color(0xFF27A87D);
-  }
+  static Color colorAt(double mg) => d22IllustrativeGlucoseArcColor(mg);
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height - 11);
