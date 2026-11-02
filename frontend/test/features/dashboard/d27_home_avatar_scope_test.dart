@@ -94,6 +94,7 @@ void main() {
     expect(storage, contains('window.localStorage'));
     expect(storage, contains('iamina.d27.fab.position.v1'));
     expect(chat, isNot(contains('DashboardCompanionAvatarAction')));
-    expect(chat, isNot(contains('dashboard-companion-chat-action')));
+    expect(chat, contains("tag: 'dashboard-companion-chat-action'"));
+    expect(chat, isNot(contains('FloatingActionButton.small(')));
   });
 }
