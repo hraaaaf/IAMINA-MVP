@@ -8,6 +8,8 @@ on:
       - 'tools/d18_cipher_worker_probe.js'
       - 'tools/d18_session_handoff_probe.js'
       - 'tools/d18_dynamic_cipher_sqlite_probe.js'
+      - 'tools/d18_full_cipher_migration_probe.js'
+      - 'frontend/lib/d18_full_cipher_migration_probe_main.dart'
       - 'tools/fixtures/d18_dynamic_worker_lock_gate.js'
       - 'tools/d18_web_locks_probe.js'
       - 'tools/fixtures/d18_web_locks_gate.js'
@@ -166,6 +168,26 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/d18_web_locks_test.html > /dev/null
           node tools/d18_web_locks_probe.js
+      - name: Build and analyze synthetic whole-schema keyed migration proof
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/d18_full_cipher_migration_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_full_cipher_migration_probe_main.dart
+      - name: Real Chromium all-schema source-to-keyed destination proof
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_full_cipher_migration_probe.js
+          if test -e frontend/build/web/d18_dynamic_worker_lock_gate.js; then
+            echo 'D18 synthetic Web Locks helper leaked into compiled Flutter build'
+            exit 1
+          fi
+          cp tools/fixtures/d18_dynamic_worker_lock_gate.js frontend/build/web/d18_dynamic_worker_lock_gate.js
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-full-migration-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_full_cipher_migration_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -175,5 +197,6 @@ jobs:
             d18-keyport-proof/
             d18-dynamic-sql-proof/
             d18-web-locks-proof/
+            d18-full-vault-proof/
           if-no-files-found: warn
           retention-days: 14
