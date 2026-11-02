@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:drift/wasm.dart';
 
 import 'data/drift/d18_schema_inventory.dart';
+import 'data/drift/d18_migration_source_preflight.dart';
 import 'data/drift/database.dart';
 import 'data/drift/patient_vault_scope.dart';
 
@@ -118,6 +119,10 @@ Future<void> _probeBackend() async {
     ).getSingle();
     _check(row.read<String>('sentinel') == _sentinel,
         'Probed Drift storage does not contain persisted A sentinel');
+    _stage('probe_source_integrity');
+    final preflight = await inspectD18MigrationSource(db, expectedScope: scope);
+    _check(preflight.tableCount >= 1 && preflight.rowCount >= 1,
+        'Source preflight rejected persisted A vault');
   } finally {
     await db.close();
   }

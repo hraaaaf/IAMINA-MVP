@@ -1,3 +1,10 @@
+## 02/11/2026 — IAMINA D18 A: IndexedDB real Chrome 6/6 SUCCESS, source integrity preflight added (CI PENDING)
+
+**Verified on previous HEAD 2718053c**: [D18 #41409014324](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41409014324), [CI #41409020240](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41409020240), [UX #41409020096](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41409020096) SUCCESS. Browser report passed **6/6** with real Drift `chosenImplementation: sharedIndexedDb`; persistent A synthetic data remains after browser restart, B isolated, legacy preserved. This is NOT OPFS and NOT encrypted.
+
+**Next implementation:** `d18_migration_source_preflight.dart` only reads exact-scoped vault, executes `PRAGMA integrity_check` and separately `PRAGMA foreign_key_check` plus SQLite dynamic schema inventory and total row count within one transaction. Tests ensure synthetic orphan FK rejects with data still intact, triggers/dynamic tables discovered, and scope mismatches fail closed. Real Chrome `probe_backend` additionally calls this preflight. CI needs verification on the new HEAD; no real migration, no encryption, no clinical cutover. SQLite documents that integrity_check alone does not check FKs: https://sqlite.org/pragma.html. PR #1207 remains DRAFT; NO MERGE/DEPLOY.
+---
+
 ## 2026-11-02 — D18 A: real Drift Web storage selection proof (PENDING CI)
 
 Previous exact HEAD `36c95ebb6886514ca4f9bd04926775566b67627a` fully GREEN: [D18 SQLite+key #41362721878](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41362721878) SUCCESS, job `d18-key-policy-tests` logs report 3/3 native key tests PASS and **actual Flutter Web/WebCrypto** `passed:true, stage:complete, error:null, events:[]`. [CI general #41362721919](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41362721919) SUCCESS; [UX #41362721887](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41362721887) SUCCESS.
