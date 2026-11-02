@@ -92,6 +92,10 @@ Future<void> runPhase(String name) async {
       verify(status == 'KEY_REJECTED', 'D18_DYNAMIC_BAD_KEY_ACCEPTED');
       return;
     }
+    if (name == 'lock_denied') {
+      verify(status == 'LOCK_UNAVAILABLE', 'D18_DYNAMIC_SAME_VAULT_LOCK_BYPASS');
+      return;
+    }
     stage('worker_ack_' + status);
     verify(status == 'READY', 'D18_DYNAMIC_OPEN_REJECTED');
     final connection = await connectToRemoteAndInitialize(
@@ -129,8 +133,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final name = Uri.base.queryParameters['phase'] ?? '';
   try {
-    verify(const {'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes'}
-        .contains(name), 'D18_DYNAMIC_INVALID_PHASE');
+    verify(const {
+      'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
+      'lock_denied',
+    }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
     html.document.title = 'D18_DYNAMIC_SQL_PASS:$name';
