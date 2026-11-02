@@ -72,10 +72,13 @@ void main() {
     final glucose = tester.widget<TextField>(
       find.byKey(const Key('glucose-input')),
     );
-    expect(glucose.decoration?.suffixIcon, isNotNull);
-    expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
-    expect(find.text('mg/dL'), findsOneWidget);
-    expect(glucose.style?.fontSize, 44);
+    // D22: direct editing within the semicircle replaces the old numeric
+    // input's suffix icon and standalone unit label.
+    expect(glucose.decoration?.border, InputBorder.none);
+    expect(find.byKey(const Key('glucose-half-dial-unit-toggle')), findsOneWidget);
+    expect(find.byKey(const Key('glucose-half-dial-arc')), findsOneWidget);
+    expect(find.text('mg/dL'), findsWidgets);
+    expect(glucose.style?.fontSize, 39);
 
     final meal = tester.widget<OutlinedButton>(
       find.byKey(const Key('add-meal-button')),
@@ -95,7 +98,7 @@ void main() {
 
     expect(find.text('Nouvelle mesure'), findsNothing);
     expect(find.byKey(const Key('glucose-glass-card')), findsOneWidget);
-    expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
+    expect(find.byKey(const Key('glucose-half-dial-unit-toggle')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -143,7 +146,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('glucose-input')), findsOneWidget);
-    expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
+    expect(find.byKey(const Key('glucose-half-dial-unit-toggle')), findsOneWidget);
     expect(find.byKey(const Key('save-log-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
