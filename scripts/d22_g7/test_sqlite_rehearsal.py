@@ -449,9 +449,11 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
                 "'user_entered', 'nist_glucose_1801559_v1', 'now')",
                 (new_id + 1,),
             )
+        # A failed DML statement can leave an implicit sqlite3 transaction
+        # open. The migration preflight explicitly opens BEGIN IMMEDIATE.
+        self.a.rollback()
         with self.assertRaisesRegex(RuntimeError, "Missing legacy watermark"):
             add_sidecar_synthetic_only(self.a)
-        self.a.rollback()
 
     def test_patient_a_and_b_are_separate_physical_vaults(self) -> None:
         b_path = self.root / "amina_vault_v1_native_202.sqlite3"
