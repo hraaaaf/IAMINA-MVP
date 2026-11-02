@@ -153,21 +153,9 @@ class PostSaveReceipt extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          l10n.journalPostSaveSummaryTitle,
-                          style: TextStyle(
-                            color: AminaTheme.textSecondary(context),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: .45,
-                          ),
-                        ),
-                      ),
-                      _D17ReceiptInfo(notice: l10n.journalPostSaveNotice),
-                    ],
+                  _D17ReceiptSummary(
+                    title: l10n.journalPostSaveSummaryTitle,
+                    notice: l10n.journalPostSaveNotice,
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -375,16 +363,17 @@ class _FactRow extends StatelessWidget {
  
 // D17: the technical explanation is opt-in; the saved state, glucose,
 // measurement context and actions above are never hidden behind this control.
-class _D17ReceiptInfo extends StatefulWidget {
+class _D17ReceiptSummary extends StatefulWidget {
+  final String title;
   final String notice;
 
-  const _D17ReceiptInfo({required this.notice});
+  const _D17ReceiptSummary({required this.title, required this.notice});
 
   @override
-  State<_D17ReceiptInfo> createState() => _D17ReceiptInfoState();
+  State<_D17ReceiptSummary> createState() => _D17ReceiptSummaryState();
 }
 
-class _D17ReceiptInfoState extends State<_D17ReceiptInfo> {
+class _D17ReceiptSummaryState extends State<_D17ReceiptSummary> {
   bool _expanded = false;
 
   String _actionLabel(BuildContext context) {
@@ -404,40 +393,53 @@ class _D17ReceiptInfoState extends State<_D17ReceiptInfo> {
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Tooltip(
-          message: widget.notice,
-          // Hover on desktop reveals the explanation; tap/keyboard expands
-          // the text in the actual receipt. The label stays action-oriented.
-          excludeFromSemantics: true,
-          child: Semantics(
-            toggled: _expanded,
-            child: IconButton(
-              key: const Key('d17-receipt-info'),
-              tooltip: _actionLabel(context),
-              onPressed: () => setState(() => _expanded = !_expanded),
-              icon: Icon(
-                _expanded ? Icons.info_rounded : Icons.info_outline_rounded,
-                size: 20,
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                widget.title,
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .45,
+                ),
               ),
             ),
-          ),
+            Tooltip(
+              message: widget.notice,
+              // Desktop hover or long-press reveals the original explanation.
+              // Tap and keyboard activation reveal it inline below the title.
+              excludeFromSemantics: true,
+              child: Semantics(
+                label: _actionLabel(context),
+                toggled: _expanded,
+                child: IconButton(
+                  key: const Key('d17-receipt-info'),
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(
+                    _expanded
+                        ? Icons.info_rounded
+                        : Icons.info_outline_rounded,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         if (_expanded)
           Padding(
             key: const Key('d17-receipt-help'),
-            padding: const EdgeInsetsDirectional.only(start: 8, top: 4),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 250),
-              child: Text(
-                widget.notice,
-                textAlign: TextAlign.start,
-                style: TextStyle(
-                  color: AminaTheme.textSecondary(context),
-                  fontSize: 11.5,
-                  height: 1.45,
-                ),
+            padding: const EdgeInsetsDirectional.only(top: 4),
+            child: Text(
+              widget.notice,
+              style: TextStyle(
+                color: AminaTheme.textSecondary(context),
+                fontSize: 11.5,
+                height: 1.45,
               ),
             ),
           ),
