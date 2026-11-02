@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:amina/features/dashboard/widgets/glucose_half_dial_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -147,4 +149,65 @@ void main() {
       },
     );
   }
+
+  testWidgets('iPhone vertical swipe on arc edits value WITHOUT scrolling page',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = TextEditingController(text: '140');
+    addTearDown(controller.dispose);
+    double reading = 140;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          key: const Key('d22-scroll-parent'),
+          child: Column(children: [
+            const SizedBox(key: Key('d22-outside-dial'), height: 170),
+            StatefulBuilder(builder: (context, set) => GlucoseHalfDialInput(
+              controller: controller,
+              unit: 'mg/dL',
+              valueMgdl: reading,
+              onTextChanged: (_) {},
+              onValueSelected: (v) => set(() {
+                reading = v;
+                controller.text = v.round().toString();
+              }),
+              onToggleUnit: () {},
+            )),
+            const SizedBox(height: 1200),
+          ]),
+        ),
+      ),
+    ));
+
+    final page = tester.state<ScrollableState>(
+        find.byKey(const Key('d22-scroll-parent')));
+    expect(page.position.pixels, 0);
+    final dial = tester.getRect(
+        find.byKey(const Key('glucose-half-dial-touch-surface')));
+    final center = Offset(dial.center.dx, dial.bottom - 18);
+    final radius = math.min(dial.width / 2 - 30, dial.height - 35);
+    // A predominantly VERTICAL swipe that used to make iOS Safari scroll
+    // the enclosing page instead of tracking the finger along the arc.
+    final start = Offset(center.dx - radius * .88,
+        center.dy - radius * .13);
+    await tester.timedDragFrom(start, const Offset(0, -110),
+        const Duration(milliseconds: 260));
+    await tester.pumpAndSettle();
+    expect(page.position.pixels, closeTo(0, .1),
+        reason: 'The arc must win the parent ScrollView gesture arena');
+    expect(reading, isNot(140));
+    expect(double.parse(controller.text), reading);
+
+    // Scrolling from OUTSIDE the dial must still work normally.
+    await tester.drag(
+        find.byKey(const Key('d22-outside-dial')),
+        const Offset(0, -140));
+    await tester.pumpAndSettle();
+    expect(page.position.pixels, greaterThan(30));
+    expect(tester.takeException(), isNull);
+  });
 }
