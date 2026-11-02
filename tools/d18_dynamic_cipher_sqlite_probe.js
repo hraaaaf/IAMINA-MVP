@@ -41,7 +41,7 @@ async function verify(ctx,name,key) {
       await page.waitForFunction(() =>
         document.title.startsWith('D18_DYNAMIC_SQL_PASS:') ||
         document.title.startsWith('D18_DYNAMIC_SQL_FAIL:'),
-        null,{timeout:45000});
+        null,{timeout:name==='guarded_open'?120000:45000});
     } catch (_) {
       const state = await page.evaluate(() => ({
         title:document.title,
@@ -187,6 +187,9 @@ async function verifyActualWorkerLock(ctx) {
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await verify(ctx,'read',secrets.a);
     await verifyActualWorkerLock(ctx);
+    // Actual D18VaultKeyPolicy + auth scope guard + real Drift v12 schema,
+    // isolated from A/B CI stores. No production code path is modified.
+    await verify(ctx,'guarded_open',secrets.a);
   }catch(e){
     results.push({phase:'harness',pass:false,error:String(e).slice(0,250)});
   }finally{
@@ -204,7 +207,8 @@ async function verifyActualWorkerLock(ctx) {
     'a_second_worker_denied','b_second_worker_denied',
     'a_terminate_releases','owner_a_reopened_b_still_held',
     'b_still_denied','b_terminate_releases',
-    'owner_b_reopened_a_still_held','a_still_denied','read','read_b'];
+    'owner_b_reopened_a_still_held','a_still_denied','read','read_b',
+    'guarded_open'];
   if(results.length!==expected.length||results.some((p,i)=>
     !p.pass||p.phase!==expected[i]))process.exitCode=1;
 })().catch(e=>{
