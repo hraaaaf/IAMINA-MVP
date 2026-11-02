@@ -56,6 +56,7 @@ jobs:
               'd18_cipher_worker_probe_main.dart',
               'd18_dynamic_cipher_sqlite_worker.dart',
               'd18_dynamic_cipher_sqlite_probe_main.dart',
+              'd18_full_cipher_migration_probe_main.dart',
           }
           forbidden = (
               'd18_cipher_worker_setup.dart',
