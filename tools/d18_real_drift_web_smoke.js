@@ -70,6 +70,8 @@ async function processPhase(context, phase, recoveryCode){
     context=await chromium.launchPersistentContext(root,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
     await processPhase(context,'seed_legacy');
+    // Independent tab (same process) must see historical source BEFORE A opens.
+    await processPhase(context,'verify_legacy');
     await processPhase(context,'seed_a');
     await processPhase(context,'assert_legacy_before_shutdown');
     // Strict pre-shutdown barrier: source must already be physically
@@ -102,9 +104,9 @@ async function processPhase(context, phase, recoveryCode){
   }
   const proof={kind:'real IAMINA driftDatabase Web, synthetic Chrome separate-process restart',
     head:process.env.D18_CANDIDATE_SHA||'unknown',
-    expected:['seed_legacy','seed_a','assert_legacy_before_shutdown','assert_source_before_shutdown','verify_legacy','verify_a','probe_backend','probe_export','encrypt_snapshot','verify_b','verify_legacy','verify_export','verify_encrypted_snapshot'],
+    expected:['seed_legacy','verify_legacy','seed_a','assert_legacy_before_shutdown','assert_source_before_shutdown','verify_legacy','verify_a','probe_backend','probe_export','encrypt_snapshot','verify_b','verify_legacy','verify_export','verify_encrypted_snapshot'],
     steps,passed:steps.filter(s=>s.pass).length};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(proof,null,2));
   console.log(JSON.stringify(proof));
-  if(proof.passed!==13 || steps.length!==13 || steps.some(s=>!s.pass))process.exitCode=1;
+  if(proof.passed!==14 || steps.length!==14 || steps.some(s=>!s.pass))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
