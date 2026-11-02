@@ -8,6 +8,10 @@ on:
       - 'tools/d18_cipher_worker_probe.js'
       - 'tools/d18_session_handoff_probe.js'
       - 'tools/d18_dynamic_cipher_sqlite_probe.js'
+      - 'tools/d18_web_locks_probe.js'
+      - 'tools/fixtures/d18_web_locks_gate.js'
+      - 'tools/fixtures/d18_web_locks_worker.js'
+      - 'tools/fixtures/d18_web_locks_test.html'
       - 'frontend/lib/d18_dynamic_cipher_*.dart'
       - 'tools/fixtures/d18_session_handshake_probe_worker.js'
       - 'frontend/lib/data/drift/**'
@@ -132,6 +136,26 @@ jobs:
           fi
           cp tools/fixtures/d18_session_handshake_probe_worker.js frontend/build/web/d18_session_handshake_probe_worker.js
           node tools/d18_session_handoff_probe.js
+      - name: Real Chromium same-vault cross-tab Web Locks arbitration (synthetic)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_web_locks_probe.js
+          node --check tools/fixtures/d18_web_locks_gate.js
+          node --check tools/fixtures/d18_web_locks_worker.js
+          for fixture in d18_web_locks_worker.js d18_web_locks_test.html; do
+            if test -e "frontend/build/web/$fixture"; then
+              echo "D18 lock test fixture leaked into Flutter build: $fixture"
+              exit 1
+            fi
+          done
+          cp tools/fixtures/d18_web_locks_worker.js frontend/build/web/d18_web_locks_worker.js
+          cp tools/fixtures/d18_web_locks_test.html frontend/build/web/d18_web_locks_test.html
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-locks-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/d18_web_locks_test.html > /dev/null
+          node tools/d18_web_locks_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -140,5 +164,6 @@ jobs:
             d18-cipher-poc-proof/
             d18-keyport-proof/
             d18-dynamic-sql-proof/
+            d18-web-locks-proof/
           if-no-files-found: warn
           retention-days: 14
