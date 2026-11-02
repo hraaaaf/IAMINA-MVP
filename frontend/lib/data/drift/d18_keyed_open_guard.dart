@@ -36,8 +36,13 @@ final class D18KeyedOpenGuard {
       throw StateError('D18 authentication changed before open');
     }
 
-    final extracted =
-        await keySession.requireUnlockedKeyForScope(requestedScope).extractBytes();
+    // cryptography.SecretKey.extractBytes() may return unmodifiable
+    // SensitiveBytes. Keep the session key independent and overwrite ONLY
+    // a private, modifiable copy handed to the unpublished executor.
+    final extracted = List<int>.of(
+      await keySession.requireUnlockedKeyForScope(requestedScope).extractBytes(),
+      growable: false,
+    );
     T? candidate;
     var created = false;
     try {
