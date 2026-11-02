@@ -184,7 +184,11 @@ void main() {
     ));
 
     final page = tester.state<ScrollableState>(
-        find.byKey(const Key('d22-scroll-parent')));
+      find.descendant(
+        of: find.byKey(const Key('d22-scroll-parent')),
+        matching: find.byType(Scrollable),
+      ).first,
+    );
     expect(page.position.pixels, 0);
     final dial = tester.getRect(
         find.byKey(const Key('glucose-half-dial-touch-surface')));
