@@ -101,8 +101,17 @@ def main():
                                 "button", name=re.compile(r"^Medical tracking", re.I)
                             ).first
                             header.wait_for(state="visible", timeout=25000)
-                            editors = page.get_by_role(
-                                "textbox", name=re.compile(r"^(?:Min|Max|Minimum|Maximum)(?:\b|$)", re.I)
+                            # Flutter exposes the two legacy inputs as anonymous
+                            # textbox roles. Their preceding visible Min/Max
+                            # labels do NOT become accessible names. Assert
+                            # both the exact target-region sequence in the
+                            # ARIA tree and two actual visible textbox nodes.
+                            editors = page.get_by_role("textbox")
+                            target_region = re.compile(
+                                r"- text: Glucose target \(mg/dL\) Min\s*\n"
+                                r"\s*- textbox\s*\n"
+                                r"\s*- text: Max\s*\n"
+                                r"\s*- textbox"
                             )
                             reopen_count, stable = 0, 0
                             for _ in range(90):
@@ -115,7 +124,13 @@ def main():
                                     continue
                                 if state not in ("Collapsed", "Expanded"):
                                     raise AssertionError(f"BEFORE panel state invalid: {state!r}")
-                                ready = state == "Expanded" and editors.count() == 2
+                                snapshot = page.locator("body").aria_snapshot()
+                                ready = (
+                                    state == "Expanded"
+                                    and editors.count() == 2
+                                    and bool(target_region.search(snapshot))
+                                    and all(editors.nth(k).is_visible() for k in range(2))
+                                )
                                 if ready:
                                     stable += 1
                                     if stable >= 3:
@@ -177,15 +192,22 @@ def main():
                             # Flutter's internal scroll. Do not crop the result.
                             bottom_safe = height - (95 if width < 700 else 12)
                             for _ in range(25):
-                                rect = editors.first.bounding_box()
-                                if rect and rect["y"] >= 75 and rect["y"] + rect["height"] < bottom_safe:
+                                first = editors.first.bounding_box()
+                                last = editors.last.bounding_box()
+                                if (first is not None and last is not None
+                                        and first["y"] >= 75
+                                        and last["y"] >= 75
+                                        and first["y"] + first["height"] < bottom_safe
+                                        and last["y"] + last["height"] < bottom_safe):
                                     break
                                 page.mouse.move(width * 0.5, height * 0.50)
-                                page.mouse.wheel(0, 200)
+                                direction = -160 if first and first["y"] < 75 else 200
+                                page.mouse.wheel(0, direction)
                                 page.wait_for_timeout(180)
                             else:
                                 raise AssertionError(
-                                    f"BEFORE minimum input not in {width}x{height} visible viewport: {rect}"
+                                    f"BEFORE both legacy editors not in {width}x{height}: "
+                                    f"first={first!r}, last={last!r}"
                                 )
                             assert editors.count() == 2
                             assert not page.get_by_text(
