@@ -1,3 +1,13 @@
+// D21 — Web defaults to Ramadan UI OFF. Preserve historical periods and
+// native behavior for a separately reviewed reactivation.
+const bool kWebRamadanUiEnabled = bool.fromEnvironment(
+  'IAMINA_WEB_RAMADAN_UI',
+  defaultValue: false,
+);
+
+bool shouldApplyRamadanProfileContext({required bool isWeb}) =>
+    !isWeb || kWebRamadanUiEnabled;
+
 const List<String> regularMealTypes = <String>[
   'breakfast',
   'lunch',
@@ -33,4 +43,15 @@ List<String> mealTypesForProfileDate(
   DateTime? configuredEnd,
 ) => isRamadanProfileDate(eventDate, configuredStart, configuredEnd)
     ? ramadanMealTypes
+    : regularMealTypes;
+
+// Historical date values remain intact; their meal-label side effects are
+// suppressed on Web while the D21 feature flag is disabled.
+List<String> mealTypesForSurfaceDate(
+  DateTime eventDate,
+  DateTime? configuredStart,
+  DateTime? configuredEnd, {
+  required bool isWeb,
+}) => shouldApplyRamadanProfileContext(isWeb: isWeb)
+    ? mealTypesForProfileDate(eventDate, configuredStart, configuredEnd)
     : regularMealTypes;

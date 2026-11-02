@@ -110,8 +110,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                         ],
                         _buildMedicalSection(l10n),
                         const SizedBox(height: 14),
-                        _buildRamadanSection(l10n),
-                        const SizedBox(height: 14),
+                        if (shouldShowRamadanProfileSection(isWeb: kIsWeb)) ...[
+                          _buildRamadanSection(l10n),
+                          const SizedBox(height: 14),
+                        ],
                         _buildProfileSection(
                           key: const ValueKey('profile-iamina-section'),
                           icon: Icons.auto_awesome_outlined,

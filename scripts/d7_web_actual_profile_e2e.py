@@ -121,11 +121,22 @@ def main():
                     medical = page.get_by_role(
                         "button", name=re.compile(r"^Medical tracking", re.I)
                     ).first
+                    # D21 hides Ramadan on Web. The first following card
+                    # becomes Application, but D7 must still prove that the
+                    # medical ExpansionTile is physically open in both modes.
                     ramadan = page.get_by_role(
                         "button", name=re.compile(r"^Ramadan period", re.I)
                     ).first
+                    application = page.get_by_role(
+                        "button", name=re.compile(r"^Application", re.I)
+                    ).first
+                    following = ramadan if ramadan.count() else application
+                    if not following.count():
+                        raise AssertionError(
+                            "Missing the card following Medical tracking"
+                        )
                     medical_box = medical.bounding_box()
-                    next_box = ramadan.bounding_box()
+                    next_box = following.bounding_box(timeout=5000)
                     return bool(
                         medical_box and next_box
                         and next_box["y"] - medical_box["y"] > 160

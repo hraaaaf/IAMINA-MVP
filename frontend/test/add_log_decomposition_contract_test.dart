@@ -15,7 +15,17 @@ void main() {
     expect(sheet, contains('if (mgdl < 54)'));
     expect(sheet, contains('if (mgdl < 70)'));
     expect(sheet, contains('value * 18.0'));
-    expect(sheet, contains('mealTypesForProfileDate'));
+    // D21 can guard Ramadan out of Web while retaining the legacy domain
+    // helper for native/historical records. Both implementations keep meal
+    // selection rules in the controller, never the presentation-only view.
+    if (sheet.contains('mealTypesForSurfaceDate')) {
+      expect(sheet, contains('shouldApplyRamadanProfileContext'));
+      final context = File('lib/core/data/ramadan_context.dart').readAsStringSync();
+      expect(context, contains('mealTypesForProfileDate'));
+      expect(context, contains('isRamadanProfileDate'));
+    } else {
+      expect(sheet, contains('mealTypesForProfileDate'));
+    }
     expect(sheet, contains('isRamadanProfileDate'));
     expect(sheet, contains('LogEntriesCompanion.insert'));
     expect(sheet, contains('bloodSugar: mgdl'));

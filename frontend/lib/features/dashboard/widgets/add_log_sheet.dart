@@ -408,15 +408,18 @@ class _AddLogSheetState extends State<AddLogSheet> {
       );
     }
 
-    final ramadanActive = isRamadanProfileDate(
+    final ramadanActive =
+        shouldApplyRamadanProfileContext(isWeb: kIsWeb) &&
+        isRamadanProfileDate(
       _selectedTime,
       profile?.ramadanStartDate,
       profile?.ramadanEndDate,
     );
-    final mealTypes = mealTypesForProfileDate(
+    final mealTypes = mealTypesForSurfaceDate(
       _selectedTime,
       profile?.ramadanStartDate,
       profile?.ramadanEndDate,
+      isWeb: kIsWeb,
     );
 
     final primaryEvent = Column(
@@ -536,10 +539,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
         time.hour,
         time.minute,
       );
-      final allowed = mealTypesForProfileDate(
+      final allowed = mealTypesForSurfaceDate(
         _selectedTime,
         profile?.ramadanStartDate,
         profile?.ramadanEndDate,
+        isWeb: kIsWeb,
       );
       if (_mealType != null && !allowed.contains(_mealType)) {
         _mealType = null;
