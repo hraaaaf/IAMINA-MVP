@@ -119,6 +119,27 @@ Future<void> _assertAStorageBeforeRestart() async {
   await _verifyA();
 }
 
+/// Strict historical legacy source barrier. This is SYNTHETIC disposable CI
+/// data, never a method to export or reassign a real patient's old storage.
+/// A missing row is a hard failure; neither re-seeding nor fallback is allowed.
+Future<void> _assertLegacyStorageBeforeRestart() async {
+  _stage('legacy_pre_shutdown_export');
+  final probe = await WasmDatabase.probe(
+    sqlite3Uri: Uri.parse('sqlite3.wasm'),
+    driftWorkerUri: Uri.parse('drift_worker.js'),
+    databaseName: 'amina',
+  );
+  final sources = probe.existingDatabases.where((entry) =>
+      entry.$1 == WebStorageApi.indexedDb && entry.$2 == 'amina').toList();
+  _check(sources.length == 1, 'Legacy IndexedDB missing before restart');
+  final bytes = await probe.exportDatabase(sources.single);
+  _check(bytes != null && bytes.length >= 100 &&
+      String.fromCharCodes(bytes.take(15)) == 'SQLite format 3' &&
+      bytes[15] == 0, 'Legacy SQLite bytes missing before restart');
+  _stage('legacy_pre_shutdown_reopen');
+  await _verifyLegacy();
+}
+
 Future<void> _verifyA() async {
   final db = AppDatabase.forPatientVault(PatientVaultScope.deviceLocal(_a));
   try {
@@ -463,10 +484,12 @@ Future<void> _verifyLegacy() async {
   // Opening the legacy database must NOT reassign its contents to A or B.
   final legacy = AppDatabase.defaults();
   try {
+    _stage('legacy_query_record');
     final historical = await legacy.customSelect(
       'SELECT sentinel FROM "$_legacyTable" WHERE id = 1',
-    ).getSingle();
-    _check(historical.read<String>('sentinel') == _legacySentinel,
+    ).getSingleOrNull();
+    _check(historical != null, 'Original legacy sentinel row missing');
+    _check(historical!.read<String>('sentinel') == _legacySentinel,
         'Original historical data was modified, dropped or migrated');
     final rows = await legacy.customSelect(
       "SELECT COUNT(*) AS n FROM sqlite_master WHERE name = '$_table'",
@@ -494,6 +517,9 @@ Future<void> main() async {
         break;
       case 'verify_a':
         await _verifyA();
+        break;
+      case 'assert_legacy_before_shutdown':
+        await _assertLegacyStorageBeforeRestart();
         break;
       case 'assert_source_before_shutdown':
         await _assertAStorageBeforeRestart();
