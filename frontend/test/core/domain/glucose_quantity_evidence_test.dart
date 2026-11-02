@@ -54,7 +54,7 @@ void main() {
         closeTo(7.83 * 18.01559, .000000001),
       );
       expect(source.displayValue(GlucoseSourceUnit.mgDl),
-          closeTo(141.0590697, .0001));
+          closeTo(141.0620697, .0001));
       expect(source.originalRawValue, 7.83);
     });
 
