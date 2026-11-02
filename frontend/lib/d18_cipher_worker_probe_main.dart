@@ -110,8 +110,12 @@ Future<void> executePhase(String phase) async {
     if (db != null) { await db.close(); db = null; }
     final error = e.toString();
     if (stock && error.contains('D18_POC_CIPHER_UNAVAILABLE')) return;
-    if (wrong && !error.contains('D18_POC_UNSAFE_OPEN_ACCEPTED') &&
-        !error.contains('D18_POC_UNSAFE_STORAGE')) return;
+    // Do not treat arbitrary worker, network, or SQL failures as wrong-key proof.
+    // Only an actual SQLite encrypted-page read rejection is acceptable.
+    final isSqliteNotADatabase = error.contains('SQLITE_NOTADB') ||
+        error.contains('sqlite3 result code 26') ||
+        error.contains('file is not a database');
+    if (wrong && isSqliteNotADatabase) return;
     rethrow;
   } finally {
     if (db != null) await db.close();
