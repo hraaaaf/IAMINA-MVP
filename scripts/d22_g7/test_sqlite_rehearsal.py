@@ -121,11 +121,16 @@ def add_sidecar_synthetic_only(
         raise
 
 
-def write_new_synthetic_evidence(
+def append_new_synthetic_measure(
     conn: sqlite3.Connection, *,
-    log_id: int, raw_value: float, declared_unit: str
-) -> None:
-    """Only new, explicitly declared synthetic entries, no legacy backfill."""
+    raw_value: float, declared_unit: str, client_uuid: str
+) -> int:
+    """Atomically append a NEW synthetic log and evidence; no legacy id API.
+
+    Neither caller nor code can supply an existing log ID. A failed evidence
+    insert cannot leave a newly created reading without its source record.
+    This is NOT authentication or permission for real patient writes.
+    """
     if declared_unit not in ("mg/dL", "mmol/L"):
         raise ValueError("Source unit must be explicit UCUM mg/dL or mmol/L")
     if not math.isfinite(raw_value) or raw_value <= 0:
@@ -135,15 +140,31 @@ def write_new_synthetic_evidence(
     )
     if not math.isfinite(canonical) or canonical <= 0:
         raise ValueError("Overflow or underflow in canonical projection")
-    conn.execute(
-        "INSERT INTO glucose_measurement_evidence_v1 "
-        "(log_entry_id, original_source_value, original_source_unit_ucum, "
-        "unit_system, provenance, conversion_contract, recorded_at_utc) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (log_id, raw_value, declared_unit, "http://unitsofmeasure.org",
-         "user_entered", "nist_glucose_1801559_v1",
-         "2026-11-02T00:00:00Z"),
-    )
+    if not client_uuid.startswith("synthetic-new-"):
+        raise ValueError("Synthetic-only client UUID prefix required")
+
+    conn.execute("SAVEPOINT d22_new_source")
+    try:
+        cursor = conn.execute(
+            "INSERT INTO log_entries(blood_sugar, client_uuid) VALUES (?, ?)",
+            (canonical, client_uuid),
+        )
+        new_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO glucose_measurement_evidence_v1 "
+            "(log_entry_id, original_source_value, original_source_unit_ucum, "
+            "unit_system, provenance, conversion_contract, recorded_at_utc) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (new_id, raw_value, declared_unit, "http://unitsofmeasure.org",
+             "user_entered", "nist_glucose_1801559_v1",
+             "2026-11-02T00:00:00Z"),
+        )
+        conn.execute("RELEASE SAVEPOINT d22_new_source")
+        return new_id
+    except BaseException:
+        conn.execute("ROLLBACK TO SAVEPOINT d22_new_source")
+        conn.execute("RELEASE SAVEPOINT d22_new_source")
+        raise
 
 
 def backup_snapshot(conn: sqlite3.Connection, path: Path) -> str:
@@ -214,15 +235,9 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
 
     def test_explicit_new_manual_metadata_preserves_original(self) -> None:
         add_sidecar_synthetic_only(self.a)
-        self.a.execute(
-            "INSERT INTO log_entries(blood_sugar, client_uuid) VALUES (?, ?)",
-            (7.83 * PHYSICAL_CONVERSION_CANDIDATE, "synthetic-new-101"),
-        )
-        new_id = self.a.execute(
-            "SELECT id FROM log_entries WHERE client_uuid='synthetic-new-101'"
-        ).fetchone()[0]
-        write_new_synthetic_evidence(
-            self.a, log_id=new_id, raw_value=7.83, declared_unit="mmol/L"
+        new_id = append_new_synthetic_measure(
+            self.a, raw_value=7.83, declared_unit="mmol/L",
+            client_uuid="synthetic-new-101-1",
         )
         self.a.commit()
         row = self.a.execute(
@@ -233,6 +248,12 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
         self.assertEqual(
             row, (7.83, "mmol/L", "http://unitsofmeasure.org", "user_entered")
         )
+        self.assertEqual(
+            self.a.execute(
+                "SELECT blood_sugar FROM log_entries WHERE id=?", (new_id,)
+            ).fetchone()[0],
+            7.83 * PHYSICAL_CONVERSION_CANDIDATE,
+        )
         self.assertEqual(self.a.execute(
             "SELECT COUNT(*) FROM glucose_measurement_evidence_v1 "
             "WHERE log_entry_id IN (1,2)"
@@ -240,36 +261,75 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
 
     def test_invalid_units_values_duplicates_and_foreign_keys_fail(self) -> None:
         add_sidecar_synthetic_only(self.a)
+        before = snapshot_legacy(self.a)
         for code in ("mgdl", "MMOL/L", "", "g/L"):
             with self.assertRaises(ValueError):
-                write_new_synthetic_evidence(
-                    self.a, log_id=1, raw_value=7.8, declared_unit=code
+                append_new_synthetic_measure(
+                    self.a, raw_value=7.8, declared_unit=code,
+                    client_uuid="synthetic-new-101-invalid",
                 )
         for raw in (0, -7, float("inf"), float("nan"), 1e308):
             with self.assertRaises(ValueError):
-                write_new_synthetic_evidence(
-                    self.a, log_id=1, raw_value=raw, declared_unit="mmol/L"
+                append_new_synthetic_measure(
+                    self.a, raw_value=raw, declared_unit="mmol/L",
+                    client_uuid="synthetic-new-101-invalid",
                 )
-        with self.assertRaises(sqlite3.IntegrityError):
-            write_new_synthetic_evidence(
-                self.a, log_id=9999, raw_value=7.8, declared_unit="mmol/L"
+        with self.assertRaises(ValueError):
+            append_new_synthetic_measure(
+                self.a, raw_value=7.8, declared_unit="mmol/L",
+                client_uuid="legacy-existing-row",
             )
-        write_new_synthetic_evidence(
-            self.a, log_id=1, raw_value=7.8, declared_unit="mmol/L"
+        self.assertEqual(snapshot_legacy(self.a), before)
+        new_id = append_new_synthetic_measure(
+            self.a, raw_value=7.8, declared_unit="mmol/L",
+            client_uuid="synthetic-new-101-valid",
         )
+        count_before_duplicate = self.a.execute(
+            "SELECT COUNT(*) FROM log_entries"
+        ).fetchone()[0]
         with self.assertRaises(sqlite3.IntegrityError):
-            write_new_synthetic_evidence(
-                self.a, log_id=1, raw_value=8.0, declared_unit="mmol/L"
+            append_new_synthetic_measure(
+                self.a, raw_value=8.0, declared_unit="mmol/L",
+                client_uuid="synthetic-new-101-valid",
             )
+        self.assertEqual(self.a.execute(
+            "SELECT COUNT(*) FROM log_entries"
+        ).fetchone()[0], count_before_duplicate)
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.a.execute(
+                "INSERT INTO glucose_measurement_evidence_v1 "
+                "(log_entry_id, original_source_value, "
+                "original_source_unit_ucum, unit_system, provenance, "
+                "conversion_contract, recorded_at_utc) "
+                "VALUES (?, 7.8, 'mmol/L', 'http://unitsofmeasure.org', "
+                "'user_entered', 'nist_glucose_1801559_v1', 'now')",
+                (9999,),
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.a.execute(
+                "INSERT INTO glucose_measurement_evidence_v1 "
+                "(log_entry_id, original_source_value, "
+                "original_source_unit_ucum, unit_system, provenance, "
+                "conversion_contract, recorded_at_utc) "
+                "VALUES (?, 8, 'mmol/L', 'http://unitsofmeasure.org', "
+                "'user_entered', 'nist_glucose_1801559_v1', 'now')",
+                (new_id,),
+            )
+        self.assertEqual(self.a.execute(
+            "SELECT COUNT(*) FROM glucose_measurement_evidence_v1 "
+            "WHERE log_entry_id IN (1,2)"
+        ).fetchone()[0], 0)
         self.a.rollback()
 
     def test_patient_a_and_b_are_separate_physical_vaults(self) -> None:
         b_path = self.root / "amina_vault_v1_native_202.sqlite3"
-        with connect_fixture(b_path, patient_id=202) as b:
+        b = connect_fixture(b_path, patient_id=202)
+        try:
             original_b = snapshot_legacy(b)
             add_sidecar_synthetic_only(self.a)
-            write_new_synthetic_evidence(
-                self.a, log_id=1, raw_value=140, declared_unit="mg/dL"
+            append_new_synthetic_measure(
+                self.a, raw_value=140, declared_unit="mg/dL",
+                client_uuid="synthetic-new-101-vault",
             )
             self.a.commit()
             self.assertEqual(snapshot_legacy(b), original_b)
@@ -277,7 +337,13 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
             self.assertEqual(self.a.execute(
                 "SELECT COUNT(*) FROM glucose_measurement_evidence_v1"
             ).fetchone()[0], 1)
-        # This only demonstrates separate files: NOT auth/logout/consent FUE.
+            self.assertEqual(self.a.execute(
+                "SELECT COUNT(*) FROM glucose_measurement_evidence_v1 "
+                "WHERE log_entry_id IN (1,2)"
+            ).fetchone()[0], 0)
+        finally:
+            b.close()
+        # Separate files are NOT auth/logout/consent FUE.
 
     def test_backup_sha256_restore_exact_legacy_and_rollback(self) -> None:
         before = snapshot_legacy(self.a)
