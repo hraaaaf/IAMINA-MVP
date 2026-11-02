@@ -84,7 +84,7 @@ void main() {
         expect(after.dx, greaterThanOrEqualTo(12));
         expect(after.dy, greaterThanOrEqualTo(12));
         expect(tester.getBottomRight(avatar).dy,
-            lessThanOrEqualTo(size.height - 104 + 0.1));
+            lessThanOrEqualTo(size.height - 12 + 0.1));
         expect(find.text('IAMINA_CHAT_ROUTE'), findsNothing,
             reason: 'Dragging must not accidentally send a chat navigation');
         expect(tester.takeException(), isNull);
@@ -137,6 +137,46 @@ void main() {
     }
   }
 
+  testWidgets(
+    'D27 mobile shell: avatar reaches 12px above the real bottom nav',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // MainShell owns the bottomNavigationBar; the avatar is inside body.
+      // A second 104px clearance would leave an artificial dead zone.
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+          body: DashboardCompanionAvatarAction(),
+          bottomNavigationBar: SizedBox(
+            height: 104,
+            child: ColoredBox(
+              key: Key('d27-shell-bottom-nav'),
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final avatar =
+          find.byKey(const ValueKey('dashboard-companion-chat-action'));
+      final dock = find.byKey(const Key('d27-shell-bottom-nav'));
+      final dockTop = tester.getTopLeft(dock).dy;
+      expect(tester.getBottomRight(avatar).dy, lessThan(dockTop - 12));
+
+      await tester.drag(avatar, const Offset(0, 500));
+      await tester.pumpAndSettle();
+
+      // No invisible 104px dead zone, and no overlap with the navigation.
+      expect(tester.getBottomRight(avatar).dy, closeTo(dockTop - 12, 1));
+      expect(tester.getTopLeft(avatar).dy, greaterThan(12));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test('D27 launcher is on Home only; local browser persistence is UI-only', () {
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
     final home = File('lib/features/dashboard/dashboard_companion_entry_screen.dart')
@@ -157,7 +197,8 @@ void main() {
     expect(home, contains('LogicalKeyboardKey.arrowLeft'));
     expect(home, contains('onLongPress: _showPositionPicker'));
     expect(home, contains('customSemanticsActions:'));
-    expect(home, contains('104'));
+    expect(home, contains('_bottomEdge = 12'));
+    expect(home, isNot(contains('_dockClearance = 104')));
     expect(storage, contains('window.localStorage'));
     expect(storage, contains('iamina.d27.fab.position.v1'));
     expect(chat, isNot(contains('DashboardCompanionAvatarAction')));
