@@ -21,6 +21,42 @@ void main() {
     expect(d22IllustrativeGlucoseArcColor(250), red);
   });
 
+  test('ambient accent is continuous and mirrors BOTH red ends', () {
+    const red = Color(0xFFE36462);
+    const orange = Color(0xFFE9A348);
+    const green = Color(0xFF23A881);
+    expect(d22GlucoseDialAmbientColor(null), const Color(0xFF198C78));
+    expect(d22GlucoseDialAmbientColor(40), red);
+    expect(d22GlucoseDialAmbientColor(60), red);
+    expect(d22GlucoseDialAmbientColor(82), orange);
+    expect(d22GlucoseDialAmbientColor(105), green);
+    expect(d22GlucoseDialAmbientColor(125), green);
+    expect(d22GlucoseDialAmbientColor(168), orange);
+    expect(d22GlucoseDialAmbientColor(187), red);
+    expect(d22GlucoseDialAmbientColor(250), red);
+    expect(d22GlucoseDialAmbientColor(75), isNot(red));
+    expect(d22GlucoseDialAmbientColor(75), isNot(orange));
+    expect(d22GlucoseDialAmbientColor(175), isNot(orange));
+    expect(d22GlucoseDialAmbientColor(175), isNot(red));
+    expect(d22GlucoseDialAmbientColor(69),
+        isNot(d22GlucoseDialAmbientColor(72)));
+    expect(d22GlucoseDialAmbientColor(179),
+        isNot(d22GlucoseDialAmbientColor(184)));
+  });
+
+  test('visual zone labels cover both ends without defining targets', () {
+    expect(d22GlucoseDialVisualZone(null), isNull);
+    expect(d22GlucoseDialVisualZone(55), D22GlucoseDialVisualZone.lowRed);
+    expect(d22GlucoseDialVisualZone(80), D22GlucoseDialVisualZone.lowAmber);
+    expect(d22GlucoseDialVisualZone(140),
+        D22GlucoseDialVisualZone.centerGreen);
+    expect(d22GlucoseDialVisualZone(170),
+        D22GlucoseDialVisualZone.highAmber);
+    expect(d22GlucoseDialVisualZone(200),
+        D22GlucoseDialVisualZone.highRed);
+    expect(d22GlucoseDialVisualZone(double.nan), isNull);
+  });
+
   test('direct touch map is monotonic, bounded and reversible at references', () {
     final points = <double>[40, 60, 70, 80, 90, 120, 160, 170, 180, 200, 320];
     var last = -1.0;
