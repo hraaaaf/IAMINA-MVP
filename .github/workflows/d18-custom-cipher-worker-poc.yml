@@ -6,6 +6,8 @@ on:
       - '.github/workflows/d18-custom-cipher-worker-poc.yml'
       - 'frontend/lib/d18_cipher_worker_*.dart'
       - 'tools/d18_cipher_worker_probe.js'
+      - 'tools/d18_session_handoff_probe.js'
+      - 'frontend/web/d18_session_handshake_probe_worker.js'
       - 'frontend/lib/data/drift/**'
       - 'frontend/lib/main.dart'
   workflow_dispatch:
@@ -52,6 +54,7 @@ jobs:
               'd18_cipher_worker_wrong.js',
               'd18_sqlite3mc.wasm',
               'D18-CI-ONLY-MC-',
+              'd18_session_handshake_probe_worker.js',
           )
           leaks = []
           for file in root.rglob('*.dart'):
@@ -103,10 +106,13 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
           node tools/d18_cipher_worker_probe.js
+          node tools/d18_session_handoff_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: d18-worker-poc-${{ github.event.pull_request.head.sha || github.sha }}
-          path: d18-cipher-poc-proof/
+          path: |
+            d18-cipher-poc-proof/
+            d18-keyport-proof/
           if-no-files-found: warn
           retention-days: 14
