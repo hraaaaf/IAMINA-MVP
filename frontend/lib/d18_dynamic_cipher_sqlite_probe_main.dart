@@ -102,39 +102,59 @@ Future<void> verifyGuardedWebOpen() async {
             sql.port1.channel(explicitClose:true));
           final database=AppDatabase.testPatientVault(conn,scope);
           try {
-            // The CI worker is deliberately pre-opened with a no-migration
-            // v1 handshake. A remote connection cannot rerun Drift's automatic
-            // onCreate after the worker already opened it. For this disposable
-            // v12 POC, invoke the REAL AppDatabase generated schema migration
-            // atomically, and only when the keyed store is provably empty.
-            stage('guarded_initialize_real_v12_schema');
+            // Drift may have already bootstrapped the real v12 schema when
+            // AppDatabase opened the remote connection. Never re-run onCreate
+            // or overwrite an existing encrypted database in that case.
+            // If the pre-opened CI worker instead left an EMPTY v1 store,
+            // create the real schema inside a transaction and verify it.
             stage('guarded_v12_read_initial_version');
-            final initial=await database.customSelect('PRAGMA user_version')
-                .getSingle();
-            verify(initial.read<int>('user_version')==1,
+            final initialRows=await database.customSelect('PRAGMA user_version').get();
+            if (initialRows.length!=1) {
+              stage('guarded_v12_initial_version_no_row');
+              throw StateError('D18_GUARDED_INITIAL_VERSION_UNAVAILABLE');
+            }
+            final rawVersion=initialRows.single.data['user_version'];
+            if (rawVersion is! int) {
+              stage('guarded_v12_initial_version_invalid_type');
+              throw StateError('D18_GUARDED_INITIAL_VERSION_INVALID');
+            }
+            stage(rawVersion==12 ? 'guarded_v12_auto_initialized' :
+              rawVersion==1 ? 'guarded_v12_worker_version_one' :
+              'guarded_v12_unexpected_initial_version');
+            verify(rawVersion==1||rawVersion==12,
                 'D18_GUARDED_UNEXPECTED_INITIAL_VERSION');
-            stage('guarded_v12_check_empty');
             final existing=await database.customSelect(
                 "SELECT name FROM sqlite_master WHERE type='table' "
                 "AND name NOT LIKE 'sqlite_%'").get();
-            verify(existing.isEmpty,'D18_GUARDED_NONEMPTY_CIPHER_DB');
-            stage('guarded_v12_begin_transaction');
-            await database.transaction(() async {
-              stage('guarded_v12_create_all');
-              await database.migration.onCreate(Migrator(database));
-              stage('guarded_v12_set_user_version');
-              await database.customStatement('PRAGMA user_version=12');
-              stage('guarded_v12_integrity_check');
-              final check=await database.customSelect(
-                  'PRAGMA integrity_check').getSingle();
-              verify(check.data.values.single=='ok',
-                  'D18_GUARDED_MIGRATION_INTEGRITY_FAILED');
-              stage('guarded_v12_foreign_key_check');
-              final fks=await database.customSelect(
-                  'PRAGMA foreign_key_check').get();
-              verify(fks.isEmpty,'D18_GUARDED_MIGRATION_FK_FAILED');
-            });
-            stage('guarded_v12_migration_committed');
+            if (rawVersion==1) {
+              stage('guarded_v12_check_empty');
+              verify(existing.isEmpty,'D18_GUARDED_NONEMPTY_CIPHER_DB');
+              stage('guarded_v12_begin_transaction');
+              await database.transaction(() async {
+                stage('guarded_v12_create_all');
+                await database.migration.onCreate(Migrator(database));
+                stage('guarded_v12_set_user_version');
+                await database.customStatement('PRAGMA user_version=12');
+                stage('guarded_v12_integrity_check');
+                final check=await database.customSelect(
+                    'PRAGMA integrity_check').getSingle();
+                verify(check.data.values.single=='ok',
+                    'D18_GUARDED_MIGRATION_INTEGRITY_FAILED');
+                stage('guarded_v12_foreign_key_check');
+                final fks=await database.customSelect(
+                    'PRAGMA foreign_key_check').get();
+                verify(fks.isEmpty,'D18_GUARDED_MIGRATION_FK_FAILED');
+              });
+              stage('guarded_v12_migration_committed');
+            } else {
+              stage('guarded_v12_verify_existing_schema');
+              final tableNames=existing.map((r)=>r.read<String>('name')).toSet();
+              verify(tableNames.containsAll(const {
+                'patient_profiles','log_entries','chat_messages',
+                'medication_events','reminders',
+                'patient_treatment_declarations_v1',
+              }), 'D18_GUARDED_V12_TABLES_MISSING');
+            }
           } catch(_) {
             await database.close();
             rethrow;
