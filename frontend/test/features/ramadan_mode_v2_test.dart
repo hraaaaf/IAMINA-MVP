@@ -60,7 +60,17 @@ void main() {
       await tester.pumpWidget(sheet(db, profile));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('add-meal-button')));
+      // D22's larger gauge puts the optional meal button beneath the
+      // sticky save bar. Move it into a real, hit-testable viewport.
+      final mealButton = find.byKey(const Key('add-meal-button'));
+      await tester.ensureVisible(mealButton);
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byType(SingleChildScrollView).first,
+        const Offset(0, -165),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(mealButton);
       await tester.pumpAndSettle();
 
       expect(
@@ -91,7 +101,17 @@ void main() {
     final profile = await activeProfile(db);
     await tester.pumpWidget(sheet(db, profile, locale: const Locale('ar')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('add-meal-button')));
+    // D22's larger gauge puts the optional meal button beneath the
+    // sticky save bar. Move it into a real, hit-testable viewport.
+    final mealButton = find.byKey(const Key('add-meal-button'));
+    await tester.ensureVisible(mealButton);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(SingleChildScrollView).first,
+      const Offset(0, -165),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(mealButton);
     await tester.pumpAndSettle();
 
     expect(find.text('السحور'), findsOneWidget);
