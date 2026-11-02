@@ -44,3 +44,13 @@
 
 **État à la création :** implémentation de la répétition en PR DRAFT, **CI et résultats de tests à inscrire après exécution réelle**, aucune certification médicale.  
 **Next exact :** lancer la workflow sur le HEAD du périmètre isolé, corriger tout échec ; conserver les deux PR en DRAFT jusqu'aux revues G1/G4/G7.
+
+## Reprise adversariale — 02/11/2026 — verrou anti-adoption *synthétique*
+
+**Risque démontré par analyse du schéma initial :** l'absence de paramètre `log_id` dans le helper Python ne protège pas une table SQLite contre un autre writer capable d'émettre un `INSERT` SQL direct. Une FK vers `log_entries(id)` n'établit ni l'âge de la mesure, ni l'identité du patient, ni sa provenance. **Le premier banc de neuf tests n'exerçait pas cette voie.**
+
+**Durcissement candidat, non activé :** la fixture gèle dans une table `glucose_evidence_legacy_guard_v1` le plus grand identifiant de log préexistant avant la création du sidecar, en transaction. Un trigger bloque les ajouts de provenance sur ces identifiants et bloque l'écriture si la ligne de garde manque ; un second trigger interdit toute modification d'une preuve déjà enregistrée. Le helper de nouvelles mesures reste une écriture log + preuve atomique. Des tests négatifs supplémentaires font des `INSERT` SQL bruts sur les IDs hérités 1/2, tentent un `UPDATE` de la preuve, et vérifient le comportement en absence du watermark.
+
+**Limites critiques :** cette règle dépend du `AUTOINCREMENT` de la fixture ; elle ne prouve pas la stratégie de séquence, les éventuels resets/exports/imports/identifiants Drift/IndexedDB de l'application, ni l'authentification. Un writer ayant le droit de modifier le schéma ou la table de garde pourrait contourner ce dispositif ; une nouvelle ligne créée après le watermark reste sujette aux contrôles de propriété/consentement. Le champ de provenance n'inclut toujours pas de garantie d'autorité serveur. **Ce n'est pas un garde de production et il ne doit pas être copié tel quel dans Drift.** Avant toute future migration, une revue data/security doit définir l'ownership, une source de vérité d'identité et l'interdiction des rattachements legacy dans les vrais chemins d'écriture.
+
+**État CI du changement :** à consigner uniquement après exécution sur le SHA exact de la PR. La preuve ancienne 9/9 de `36603528` ne valide pas le nouveau banc. Les autorisations G1, G4 et G7 restent `PENDING`, PR Draft, aucune fusion ni déploiement.
