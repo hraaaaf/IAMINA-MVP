@@ -9,9 +9,37 @@ const key=[...crypto.randomBytes(32)];
 const abortKey=[...crypto.randomBytes(32)];
 const crashKey=[...crypto.randomBytes(32)];
 const results=[];
+// CI-only cooperative source lock implementation. Not part of shipped app.
+// The clinical writer protocol must adopt this gate in D18 lot 2/3.
+function installSourceWriteGate() {
+  window.__D18AcquireSourceWriteLock=name=>new Promise(resolve=>{
+    if(!navigator.locks || typeof navigator.locks.request!=='function'){
+      resolve({ok:false});return;
+    }
+    let settled=false;
+    let finished;
+    const done=new Promise(r=>{finished=r;});
+    navigator.locks.request('iamina:d18:ci:source:'+name,
+      {mode:'exclusive'}, async()=>{
+      let unlock;
+      const held=new Promise(r=>{unlock=r;});
+      settled=true;
+      resolve({ok:true,release:()=>{
+        unlock();
+        return done;
+      }});
+      await held;
+      finished();
+    }).catch(()=>{
+      if(!settled)resolve({ok:false});
+      finished();
+    });
+  });
+}
 async function phase(context,step){
   const page=await context.newPage();
   try{
+    await page.addInitScript(installSourceWriteGate);
     await page.addInitScript(keys=>{
       Object.defineProperty(window,'__D18_FULL_KEY',
         {value:new Uint8Array(keys.a),configurable:false,writable:false});
@@ -46,6 +74,8 @@ async function concurrentSourceLock(context) {
   const owner=await context.newPage(), rival=await context.newPage();
   let recorded=false;
   try {
+    await owner.addInitScript(installSourceWriteGate);
+    await rival.addInitScript(installSourceWriteGate);
     await owner.goto('http://127.0.0.1:7396/?phase=hold_source_lock',
       {waitUntil:'domcontentloaded',timeout:45000});
     await owner.waitForFunction(()=>
@@ -59,11 +89,11 @@ async function concurrentSourceLock(context) {
     if(!ownerReady.held)throw Error('D18_SOURCE_OWNER_FAILED_BEFORE_LOCK');
     await rival.goto('http://127.0.0.1:7396/?phase=compete_source_lock',
       {waitUntil:'domcontentloaded',timeout:45000});
-    // The contender MUST reach the actual SQL acquisition attempt first.
-    // Otherwise Flutter boot time could create a false-green race test.
+    // A cooperating writer MUST reach the origin-wide gate while owner holds
+    // it. It may not reach SQLite until the gate is explicitly released.
     await rival.waitForFunction(()=>
-      ['writer_attempts_immediate_transaction',
-       'writer_immediate_granted','writer_denied_sqlite_busy'].includes(
+      ['writer_waits_source_gate','writer_gate_acquired',
+       'writer_attempts_immediate_transaction','writer_immediate_granted'].includes(
         document.documentElement.dataset.d18FullStage) ||
         document.title.startsWith('D18_FULL_FAIL:'),
       null,{timeout:35000});
@@ -77,7 +107,11 @@ async function concurrentSourceLock(context) {
       early=await rival.evaluate(()=>
         document.documentElement.dataset.d18FullStage || document.title);
     }catch(_){}
-    const noOverlappingWriter=early!=='writer_immediate_granted' &&
+    const noOverlappingWriter=
+      early!=='writer_gate_acquired' &&
+      early!=='writer_attempts_immediate_transaction' &&
+      early!=='writer_immediate_granted' &&
+      !early.startsWith('D18_FULL_PASS:') &&
       !early.startsWith('D18_FULL_FAIL:');
     if(!noOverlappingWriter)
       throw Error('D18_COMPETING_SQLITE_WRITER_GRANTED_WHILE_OWNER_HELD');
@@ -93,8 +127,11 @@ async function concurrentSourceLock(context) {
       null,{timeout:25000});
     const ownerPass=(await owner.title())==='D18_FULL_PASS:hold_source_lock';
     const rivalPass=(await rival.title())==='D18_FULL_PASS:compete_source_lock';
+    const after=await rival.evaluate(()=>
+      document.documentElement.dataset.d18FullStage || null);
     results.push({phase:'hold_source_lock',pass:ownerPass},
-      {phase:'compete_source_lock',pass:rivalPass && noOverlappingWriter});
+      {phase:'compete_source_lock',pass:rivalPass && noOverlappingWriter,
+        noOverlappingWriter,stageAfterRelease:after});
     recorded=true;
     if(!ownerPass||!rivalPass)throw Error('D18_SOURCE_LOCK_PROOF_FAILED');
   }catch(e){
