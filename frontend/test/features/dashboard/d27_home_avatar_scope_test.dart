@@ -13,7 +13,7 @@ void main() {
       Size(768, 1024),
       Size(1280, 900),
     ]) {
-      testWidgets('D27 branded avatar routes Home to chat ${locale.languageCode} $size',
+      testWidgets('D27 draggable avatar routes Home to chat ${locale.languageCode} $size',
           (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
@@ -24,11 +24,7 @@ void main() {
             path: '/dashboard',
             builder: (_, __) => const Scaffold(
               body: Stack(children: [
-                PositionedDirectional(
-                  end: 20,
-                  bottom: 104,
-                  child: DashboardCompanionAvatarAction(),
-                ),
+                Positioned.fill(child: DashboardCompanionAvatarAction()),
               ]),
             ),
           ),
@@ -53,7 +49,24 @@ void main() {
         final image = tester.widget<Image>(find.byType(Image));
         expect((image.image as AssetImage).assetName,
             'assets/images/logo_amina.png');
+
+        final before = tester.getTopLeft(avatar);
+        final delta = locale.languageCode == 'ar'
+            ? const Offset(140, -140)
+            : const Offset(-140, -140);
+        await tester.drag(avatar, delta);
+        await tester.pumpAndSettle();
+        final after = tester.getTopLeft(avatar);
+        expect((after.dx - before.dx).abs(), greaterThan(50));
+        expect(after.dy, lessThan(before.dy - 50));
+        expect(after.dx, greaterThanOrEqualTo(12));
+        expect(after.dy, greaterThanOrEqualTo(12));
+        expect(tester.getBottomRight(avatar).dy,
+            lessThanOrEqualTo(size.height - 104 + 0.1));
+        expect(find.text('IAMINA_CHAT_ROUTE'), findsNothing,
+            reason: 'Dragging must not accidentally send a chat navigation');
         expect(tester.takeException(), isNull);
+
         await tester.tap(avatar);
         await tester.pumpAndSettle();
         expect(find.text('IAMINA_CHAT_ROUTE'), findsOneWidget);
@@ -63,15 +76,23 @@ void main() {
     }
   }
 
-  test('D27 only wires the floating avatar into the actual Home shell route', () {
+  test('D27 launcher is on Home only; local browser persistence is UI-only', () {
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
     final home = File('lib/features/dashboard/dashboard_companion_entry_screen.dart')
         .readAsStringSync();
     final chat = File('lib/features/companion/companion_conversation_screen.dart')
         .readAsStringSync();
+    final storage = File(
+      'lib/features/dashboard/companion_fab_position_web.dart',
+    ).readAsStringSync();
     expect(module, contains('builder: () => const DashboardCompanionEntryScreen()'));
     expect(module, contains("path: '/companion/chat'"));
     expect(home.split('DashboardCompanionAvatarAction(').length - 1, 2);
+    expect(home, contains('onPanUpdate:'));
+    expect(home, contains('onPanEnd:'));
+    expect(home, contains('104'));
+    expect(storage, contains('window.localStorage'));
+    expect(storage, contains('iamina.d27.fab.position.v1'));
     expect(chat, isNot(contains('DashboardCompanionAvatarAction')));
     expect(chat, isNot(contains('dashboard-companion-chat-action')));
   });
