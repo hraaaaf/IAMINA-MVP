@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../journal/widgets/meal_capture_panel.dart';
 import '../../journal/widgets/nutrition_portion_editor.dart';
+import 'glucose_half_dial_input.dart';
 
 String addLogContextLabel(AppLocalizations l10n, String value) => switch (value) {
   'fasting' => l10n.journalContextFasting,
@@ -216,6 +216,8 @@ class AddLogGlucoseCard extends StatelessWidget {
   final String unit;
   final double? mgdl;
   final ValueChanged<String> onChanged;
+  final ValueChanged<double>? onValueSelected;
+  final VoidCallback? onToggleUnit;
 
   const AddLogGlucoseCard({
     super.key,
@@ -223,6 +225,8 @@ class AddLogGlucoseCard extends StatelessWidget {
     required this.unit,
     required this.mgdl,
     required this.onChanged,
+    this.onValueSelected,
+    this.onToggleUnit,
   });
 
   @override
@@ -230,6 +234,8 @@ class AddLogGlucoseCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final isLow = mgdl != null && mgdl! < 70;
     final isDark = AminaTheme.isDark(context);
+    final ambientZone = d22GlucoseDialVisualZone(mgdl);
+    final ambientAccent = d22GlucoseDialAmbientColor(mgdl);
     final radius = BorderRadius.circular(22);
     final glassSurface = isDark
         ? AminaTheme.darkCardElevated.withValues(alpha: 0.78)
@@ -237,23 +243,63 @@ class AddLogGlucoseCard extends StatelessWidget {
     final glassBorder = isDark
         ? AminaTheme.dark400.withValues(alpha: 0.22)
         : Colors.white.withValues(alpha: 0.92);
-    final fieldSurface = isDark
-        ? AminaTheme.dark700.withValues(alpha: 0.54)
-        : Colors.white.withValues(alpha: 0.78);
+    // The dial is a continuous visual spectrum. The existing low-glucose
+    // confirmation remains independent from this illustrative ambient tint.
+    final ambientSurface = ambientZone == null
+        ? glassSurface
+        : Color.lerp(
+            glassSurface, ambientAccent, isDark ? 0.19 : 0.105,
+          )!;
+    final ambientBorder = ambientZone == null
+        ? glassBorder
+        : Color.lerp(
+            glassBorder, ambientAccent, isDark ? 0.65 : 0.84,
+          )!;
+
+    String? ambientLabel() {
+      return switch (ambientZone) {
+        D22GlucoseDialVisualZone.lowRed => addLogVoiceCopy(context,
+          'Repère visuel · sous la limite basse',
+          'Visual guide · below lower boundary',
+          'مؤشر بصري · تحت الحد الأدنى',
+        ),
+        D22GlucoseDialVisualZone.lowAmber => addLogVoiceCopy(context,
+          'Repère visuel · proche de la limite basse',
+          'Visual guide · near lower boundary',
+          'مؤشر بصري · قرب الحد الأدنى',
+        ),
+        D22GlucoseDialVisualZone.centerGreen => addLogVoiceCopy(context,
+          'Repère visuel · zone centrale indicative',
+          'Visual guide · illustrative middle zone',
+          'مؤشر بصري · المنطقة الوسطى الإرشادية',
+        ),
+        D22GlucoseDialVisualZone.highAmber => addLogVoiceCopy(context,
+          'Repère visuel · proche de la limite haute',
+          'Visual guide · near upper boundary',
+          'مؤشر بصري · قرب الحد الأعلى',
+        ),
+        D22GlucoseDialVisualZone.highRed => addLogVoiceCopy(context,
+          'Repère visuel · au-dessus de la limite haute',
+          'Visual guide · above upper boundary',
+          'مؤشر بصري · فوق الحد الأعلى',
+        ),
+        null => null,
+      };
+    }
 
     return Semantics(
       container: true,
       label: l10n.journalGlucose,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 130),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           borderRadius: radius,
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: isLow
-                  ? const Color(0xFFF97316).withValues(alpha: 0.12)
-                  : AminaTheme.teal900.withValues(
-                      alpha: isDark ? 0.16 : 0.10,
-                    ),
+              color: ambientAccent.withValues(
+                alpha: ambientZone == null ? 0.08 : (isDark ? 0.19 : 0.12),
+              ),
               blurRadius: 30,
               offset: const Offset(0, 10),
             ),
@@ -263,16 +309,17 @@ class AddLogGlucoseCard extends StatelessWidget {
           borderRadius: radius,
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
+            child: AnimatedContainer(
               key: const Key('glucose-glass-card'),
+              duration: const Duration(milliseconds: 130),
+              curve: Curves.easeOutCubic,
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 15),
               decoration: BoxDecoration(
-                color: isLow
-                    ? const Color(0xFFFFF7ED).withValues(alpha: 0.94)
-                    : glassSurface,
+                color: ambientSurface,
                 borderRadius: radius,
                 border: Border.all(
-                  color: isLow ? const Color(0xFFF97316) : glassBorder,
+                  color: ambientBorder,
+                  width: ambientZone == null ? 1 : 1.3,
                 ),
               ),
               child: Column(
@@ -280,77 +327,53 @@ class AddLogGlucoseCard extends StatelessWidget {
                 children: <Widget>[
                   _sectionLabel(context, l10n.journalGlucose),
                   const SizedBox(height: 10),
-                  TextField(
-                    key: const Key('glucose-input'),
+                  GlucoseHalfDialInput(
                     controller: controller,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-                    ],
-                    style: TextStyle(
-                      color: AminaTheme.textPrimary(context),
-                      fontSize: 44,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '—',
-                      suffixIcon: Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 16),
-                        child: Center(
-                          widthFactor: 1,
+                    unit: unit,
+                    valueMgdl: mgdl,
+                    onTextChanged: onChanged,
+                    onValueSelected: onValueSelected ??
+                        (mg) {
+                          final text = unit == 'mmol/L'
+                              ? (mg / 18.0).toStringAsFixed(1)
+                              : mg.round().toString();
+                          controller.value = TextEditingValue(
+                            text: text,
+                            selection: TextSelection.collapsed(
+                              offset: text.length,
+                            ),
+                          );
+                          onChanged(text);
+                        },
+                    onToggleUnit: onToggleUnit,
+                  ),
+                  if (ambientZone != null) ...<Widget>[
+                    const SizedBox(height: 10),
+                    Row(
+                      key: const Key('glucose-ambient-zone-message'),
+                      children: <Widget>[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: ambientAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: Text(
-                            unit,
-                            key: const Key('glucose-unit'),
+                            ambientLabel()!,
                             style: TextStyle(
-                              color: AminaTheme.textSecondary(context),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              color: AminaTheme.textPrimary(context),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                      ),
-                      suffixIconConstraints: const BoxConstraints(
-                        minWidth: 0,
-                        minHeight: 0,
-                      ),
-                      filled: true,
-                      fillColor: isLow
-                          ? Colors.white.withValues(alpha: 0.82)
-                          : fieldSurface,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 13,
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AminaTheme.divider(context),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: isLow
-                              ? const Color(0xFFF97316).withValues(alpha: 0.48)
-                              : AminaTheme.divider(context),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: isLow
-                              ? const Color(0xFFF97316)
-                              : AminaTheme.accent(context),
-                          width: 1.5,
-                        ),
-                      ),
+                      ],
                     ),
-                    onChanged: onChanged,
-                  ),
+                  ],
                   const SizedBox(height: 9),
                   if (mgdl == null)
                     Text(
