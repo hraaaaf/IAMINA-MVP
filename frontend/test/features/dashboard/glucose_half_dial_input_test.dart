@@ -20,7 +20,7 @@ void main() {
   });
 
   test('direct touch map is monotonic, bounded and reversible at references', () {
-    final points = [40.0, 60, 70, 80, 90, 120, 160, 170, 180, 200, 320];
+    final points = <double>[40, 60, 70, 80, 90, 120, 160, 170, 180, 200, 320];
     var last = -1.0;
     for (final value in points) {
       final position = d22DialFractionForMgdl(value);
