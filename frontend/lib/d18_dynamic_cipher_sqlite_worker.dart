@@ -6,6 +6,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'package:drift/drift.dart';
 import 'package:drift/remote.dart';
 import 'package:drift/wasm.dart';
 import 'package:drift/src/web/channel_new.dart';
@@ -14,6 +15,19 @@ import 'package:web/web.dart' as web;
 
 const _namespace = r'^amina_vault_v1_device_[0-9a-f]{32}_d18_ci_dynamic$';
 bool _used = false;
+
+// Open the raw Drift QueryExecutor before querying it. Never invoke direct
+// runSelect on an unopened executor. This POC intentionally runs no schema
+// migrations and has no clinical tables or automatic patient cutover.
+final class _SyntheticNoMigrations implements QueryExecutorUser {
+  const _SyntheticNoMigrations();
+
+  @override
+  int get schemaVersion => 1;
+
+  @override
+  Future<void> beforeOpen(QueryExecutor executor, OpeningDetails details) async {}
+}
 
 String _hex(List<int> bytes) =>
     bytes.map((value) => value.toRadixString(16).padLeft(2, '0')).join();
@@ -62,6 +76,7 @@ Future<void> _serve(web.MessageEvent event) async {
       sqlite3: sqlite3,
       path: '/database',
       fileSystem: storage,
+      enableMigrations: false,
       setup: (raw) {
         final cipher = raw.select('PRAGMA cipher');
         if (cipher.length != 1 ||
@@ -74,6 +89,8 @@ Future<void> _serve(web.MessageEvent event) async {
       },
     );
     // Must authenticate the keyed database BEFORE exporting SQL port.
+    stage = 'ensure_open';
+    await db.ensureOpen(const _SyntheticNoMigrations());
     stage = 'validate_encrypted_schema';
     await db.runSelect('SELECT count(*) FROM sqlite_master', const []);
     stage = 'create_drift_server';
