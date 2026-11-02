@@ -27,11 +27,14 @@ Future<void> executePhase(String phase) async {
   );
   final stock = phase == 'stock_reject';
   final wrong = phase == 'wrong_key';
+  final oldKeyReject = phase == 'old_key_reject';
+  final rotated = phase == 'read_rotated';
+  final useRotatedKey = wrong || rotated;
   final wasm = Uri.parse(stock ? 'sqlite3.wasm' : 'd18_sqlite3mc.wasm');
   final worker = Uri.parse(
-    wrong ? 'd18_cipher_worker_wrong.js' : 'd18_cipher_worker_correct.js',
+    useRotatedKey ? 'd18_cipher_worker_wrong.js' : 'd18_cipher_worker_correct.js',
   );
-  if (phase == 'raw_bytes') {
+  if (phase == 'raw_bytes' || phase == 'raw_bytes_after_rotate') {
     stage('inspect_physical_encrypted_bytes');
     final probe = await WasmDatabase.probe(
       sqlite3Uri: wasm,
@@ -66,7 +69,8 @@ Future<void> executePhase(String phase) async {
       databaseName: scope.databaseName,
       sqlite3Uri: wasm,
       driftWorkerUri: worker,
-      localSetup: (raw) => d18Configure(raw, wrong ? d18Wrong : d18Right),
+      localSetup: (raw) =>
+          d18Configure(raw, useRotatedKey ? d18Wrong : d18Right),
       moveExistingIndexedDbToOpfs: false,
     );
     final backend = result.chosenImplementation.name;
@@ -91,17 +95,25 @@ Future<void> executePhase(String phase) async {
         'SELECT marker FROM "$table" WHERE id = 1',
       ).getSingle();
       verify(row.read<String>('marker') == marker, 'D18_POC_WRITE_LOST');
-    } else if (phase == 'read') {
+    } else if (phase == 'read' || rotated) {
       final row = await db.customSelect(
         'SELECT marker FROM "$table" WHERE id = 1',
       ).getSingle();
       verify(row.read<String>('marker') == marker, 'D18_POC_RESTART_LOST');
+    } else if (phase == 'rotate') {
+      // Synthetic-only in-place SQLite encryption-key rotation.
+      // The original physical ciphertext must remain unreadable by old key.
+      await db.customStatement("PRAGMA rekey = '$d18Wrong'");
+      final row = await db.customSelect(
+        'SELECT marker FROM "$table" WHERE id = 1',
+      ).getSingle();
+      verify(row.read<String>('marker') == marker, 'D18_POC_REKEY_LOST');
     } else if (phase == 'isolation_b') {
       final rows = await db.customSelect(
         "SELECT name FROM sqlite_master WHERE name = 'd18_mc_synthetic_probe'",
       ).get();
       verify(rows.isEmpty, 'D18_POC_CROSS_PATIENT_LEAK');
-    } else if (stock || wrong) {
+    } else if (stock || wrong || oldKeyReject) {
       throw StateError('D18_POC_UNSAFE_OPEN_ACCEPTED');
     } else {
       throw StateError('D18_POC_UNKNOWN_PHASE');
@@ -115,7 +127,7 @@ Future<void> executePhase(String phase) async {
     final isSqliteNotADatabase = error.contains('SQLITE_NOTADB') ||
         error.contains('sqlite3 result code 26') ||
         error.contains('file is not a database');
-    if (wrong && isSqliteNotADatabase) return;
+    if ((wrong || oldKeyReject) && isSqliteNotADatabase) return;
     rethrow;
   } finally {
     if (db != null) await db.close();
@@ -128,7 +140,8 @@ Future<void> main() async {
   try {
     verify(const {
       'stock_reject', 'write', 'wrong_key',
-      'read', 'isolation_b', 'raw_bytes',
+      'read', 'isolation_b', 'raw_bytes', 'rotate',
+      'old_key_reject', 'read_rotated', 'raw_bytes_after_rotate',
     }.contains(phase), 'D18_POC_BAD_PHASE');
     await executePhase(phase);
     html.document.title = 'D18_CIPHER_PASS:$phase';
