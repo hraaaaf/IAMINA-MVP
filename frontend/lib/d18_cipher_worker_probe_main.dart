@@ -77,6 +77,8 @@ Future<void> executePhase(String phase) async {
     );
     db = AppDatabase.testPatientVault(result.resolvedExecutor, scope);
     stage('query_schema_after_key');
+    // Force a real SQLite schema read. A constructor/open alone can be lazy.
+    await db.customSelect('SELECT count(*) AS n FROM sqlite_master').getSingle();
     if (phase == 'write') {
       await db.customStatement(
         'CREATE TABLE "$table" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
