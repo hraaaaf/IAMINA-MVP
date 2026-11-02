@@ -300,6 +300,12 @@ Future<void> competeSourceWriteLock() async {
       await q.runCustom('ROLLBACK',[]);
     }catch(e){
       final error=e.toString();
+      if(error.contains('cannot start a transaction within a transaction')){
+        // Shared-worker multiplexing can route tabs to ONE SQLite connection.
+        // BEGIN IMMEDIATE is NOT proof of cross-tab write exclusion in this case.
+        stage('writer_shared_connection_nested_transaction');
+        throw StateError('WRITER_SHARED_CONNECTION_IS_NOT_ISOLATED');
+      }
       check(error.contains('SQLITE_BUSY') ||
         error.contains('sqlite3 result code 5') ||
         error.contains('database is locked'), 'WRITER_UNEXPECTED_ERROR');
