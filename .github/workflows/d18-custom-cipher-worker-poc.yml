@@ -125,6 +125,10 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
           node tools/d18_dynamic_cipher_sqlite_probe.js
+          # CI injected the fixture for this browser POC. Remove it from the
+          # build output before compiling the next standalone Web entrypoint;
+          # Flutter may retain unrelated files between successive builds.
+          rm frontend/build/web/d18_dynamic_worker_lock_gate.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend
         run: |
@@ -179,6 +183,10 @@ jobs:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           node --check tools/d18_full_cipher_migration_probe.js
+          if test -e frontend/web/d18_dynamic_worker_lock_gate.js; then
+            echo 'D18 synthetic Web Locks helper leaked into source Web assets'
+            exit 1
+          fi
           if test -e frontend/build/web/d18_dynamic_worker_lock_gate.js; then
             echo 'D18 synthetic Web Locks helper leaked into compiled Flutter build'
             exit 1
