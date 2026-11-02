@@ -267,68 +267,120 @@ Future<void> verifyCrashRecovery() async {
       'CRASH_SOURCE_CONTENT_MODIFIED');
   } finally {await source.close();}
 }
+// Synthetic source write gate: SQLite BEGIN IMMEDIATE is held during the
+// entire source snapshot -> keyed copy -> parity verification. This POC does
+// not yet implement the actual clinical runtime's cutover / account gate.
+Future<void> holdSourceWriteLock() async {
+  stage('source_lock_begin');
+  final q=await openSource();
+  var locked=false;
+  try{
+    await q.runCustom('BEGIN IMMEDIATE',[]);
+    locked=true;
+    stage('source_write_gate_held');
+    await html.window.onMessage
+      .firstWhere((event)=>event.data=='D18_CI_RELEASE_SOURCE')
+      .timeout(const Duration(seconds:25));
+  }finally{
+    try{if(locked)await q.runCustom('ROLLBACK',[]);}
+    finally{await q.close();}
+  }
+}
+Future<void> competeSourceWriteLock() async {
+  stage('writer_opens_source');
+  final q=await openSource();
+  try{
+    await q.runCustom('PRAGMA busy_timeout=700',[]);
+    stage('writer_attempts_immediate_transaction');
+    try{
+      await q.runCustom('BEGIN IMMEDIATE',[]);
+      stage('writer_immediate_granted');
+      // Never create clinical or even synthetic rows from a competing writer.
+      // The harness rejects a grant while the owner still holds its lock.
+      await q.runCustom('ROLLBACK',[]);
+    }catch(e){
+      final error=e.toString();
+      check(error.contains('SQLITE_BUSY') ||
+        error.contains('sqlite3 result code 5') ||
+        error.contains('database is locked'), 'WRITER_UNEXPECTED_ERROR');
+      stage('writer_denied_sqlite_busy');
+    }
+  }finally{await q.close();}
+}
 Future<void> migrate() async {
-  stage('preflight_source');
+  stage('preflight_lock_source_before_snapshot');
   final src=await openSource();
+  var locked=false;
   late final Snap original;
   try{
+    // Acquire source SQLite write reservation BEFORE enumerating any rows.
+    // Any concurrent writer on the same physical SQLite DB must wait/fail.
+    // Fail closed if lock cannot be acquired.
+    await src.runCustom('BEGIN IMMEDIATE',[]);
+    locked=true;
     await integrity(src);
     original=await snapshot(src);
     check(original.schema.any((x)=>x['name']=='d18_child_trigger')&&
       original.schema.any((x)=>x['name']=='d18_parent_view')&&
       original.schema.any((x)=>x['name']=='d18_parent_label_idx'),
       'MISSING_DYNAMIC_SCHEMA');
-  }finally{await src.close();}
-  stage('ensure_new_destination');
-  final probe=await WasmDatabase.probe(
-    sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
-    driftWorkerUri:Uri.parse('d18_cipher_worker_correct.js'),
-    databaseName:dstName);
-  check(!probe.existingDatabases.any((e)=>e.$2==dstName),
-    'DESTINATION_ALREADY_EXISTS');
-  final target=await openDestination();
-  try{
-    final q=target.q;
-    await q.runCustom('PRAGMA foreign_keys=ON',[]);
-    final f=await q.runSelect('PRAGMA foreign_keys',[]);
-    check(f.length==1&&f.single.values.single==1,'FK_NOT_ENABLED');
-    await q.runCustom('BEGIN IMMEDIATE',[]);
+    stage('ensure_new_destination');
+    final probe=await WasmDatabase.probe(
+      sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
+      driftWorkerUri:Uri.parse('d18_cipher_worker_correct.js'),
+      databaseName:dstName);
+    check(!probe.existingDatabases.any((e)=>e.$2==dstName),
+      'DESTINATION_ALREADY_EXISTS');
+    final target=await openDestination();
     try{
-      await q.runCustom('PRAGMA defer_foreign_keys=ON',[]);
-      for(final o in original.schema.where((o)=>o['type']=='table')){
-        await q.runCustom(o['sql'] as String,[]);
-      }
-      for(final table in original.data.entries){
-        for(final row in table.value){
-          final columns=row.keys.toList();
-          final sql='INSERT INTO '+ident(table.key)+' ('+
-            columns.map(ident).join(',')+') VALUES ('+
-            List.filled(columns.length,'?').join(',')+')';
-          await q.runCustom(sql,columns.map((k)=>row[k]).toList());
-        }
-      }
-      // sqlite_sequence has NO UNIQUE constraint on name. INSERT OR REPLACE
-      // would duplicate a sequence row created by AUTOINCREMENT inserts.
-      // Set exact source state inside the same transaction and compare it.
-      await q.runCustom('DELETE FROM sqlite_sequence',[]);
-      for(final seq in original.seq){
-        await q.runCustom(
-          'INSERT INTO sqlite_sequence(name,seq) VALUES(?,?)',
-          [seq['name'],seq['seq']]);
-      }
-      for(final kind in ['index','view','trigger']){
-        for(final o in original.schema.where((o)=>
-          o['type']==kind && o['sql']!=null)){
+      final q=target.q;
+      await q.runCustom('PRAGMA foreign_keys=ON',[]);
+      final f=await q.runSelect('PRAGMA foreign_keys',[]);
+      check(f.length==1&&f.single.values.single==1,'FK_NOT_ENABLED');
+      await q.runCustom('BEGIN IMMEDIATE',[]);
+      try{
+        await q.runCustom('PRAGMA defer_foreign_keys=ON',[]);
+        for(final o in original.schema.where((o)=>o['type']=='table')){
           await q.runCustom(o['sql'] as String,[]);
         }
-      }
-      await q.runCustom('PRAGMA user_version='+original.version.toString(),[]);
-      await integrity(q);
-      compare(original,await snapshot(q));
-      await q.runCustom('COMMIT',[]);
-    }catch(_){await q.runCustom('ROLLBACK',[]);rethrow;}
-  }finally{await target.close();}
-  stage('original_preserved');
+        for(final table in original.data.entries){
+          for(final row in table.value){
+            final columns=row.keys.toList();
+            final sql='INSERT INTO '+ident(table.key)+' ('+
+              columns.map(ident).join(',')+') VALUES ('+
+              List.filled(columns.length,'?').join(',')+')';
+            await q.runCustom(sql,columns.map((k)=>row[k]).toList());
+          }
+        }
+        // sqlite_sequence.name is not UNIQUE: do not use REPLACE.
+        await q.runCustom('DELETE FROM sqlite_sequence',[]);
+        for(final seq in original.seq){
+          await q.runCustom(
+            'INSERT INTO sqlite_sequence(name,seq) VALUES(?,?)',
+            [seq['name'],seq['seq']]);
+        }
+        for(final kind in ['index','view','trigger']){
+          for(final o in original.schema.where((x)=>
+            x['type']==kind && x['sql']!=null)){
+            await q.runCustom(o['sql'] as String,[]);
+          }
+        }
+        await q.runCustom('PRAGMA user_version='+original.version.toString(),[]);
+        await integrity(q);
+        compare(original,await snapshot(q));
+        await q.runCustom('COMMIT',[]);
+      }catch(_){await q.runCustom('ROLLBACK',[]);rethrow;}
+    }finally{await target.close();}
+    // Still under BEGIN IMMEDIATE on source: an uncooperative writer cannot
+    // change data between initial capture and the final compare.
+    stage('source_compare_inside_write_gate');
+    await integrity(src);
+    compare(original,await snapshot(src));
+  }finally{
+    try{if(locked)await src.runCustom('ROLLBACK',[]);}
+    finally{await src.close();}
+  }
+  stage('original_preserved_after_write_gate');
   final unchanged=await openSource();
   try{await integrity(unchanged);compare(original,await snapshot(unchanged));}
   finally{await unchanged.close();}
@@ -375,6 +427,8 @@ Future<void> main() async {
       case 'abort_rollback':await abortRollback();break;
       case 'crash_uncommitted':await crashUncommitted();break;
       case 'crash_recover':await verifyCrashRecovery();break;
+      case 'hold_source_lock':await holdSourceWriteLock();break;
+      case 'compete_source_lock':await competeSourceWriteLock();break;
       case 'migrate':await migrate();break;
       case 'verify':await verify();break;
       case 'physical_bytes':await raw();break;
