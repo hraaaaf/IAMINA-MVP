@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:amina/data/drift/d18_keyed_open_guard.dart';
 import 'package:amina/data/drift/d18_vault_key_policy.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -157,4 +158,73 @@ void main() {
     );
     expect(() => created.session.lock(), returnsNormally);
   });
+
+  test('pre-cutover keyed opener rejects A/B, stale auth and erases key copy',
+      () async {
+    final created = await D18VaultKeyPolicy.createForEmptyVault(
+      scope: _a, passphrase: _first,
+    );
+    addTearDown(created.session.lock);
+    var epoch = 9;
+    PatientVaultScope? verified = _a;
+    var opens = 0;
+    var discards = 0;
+    List<int>? keyCopy;
+    final guard = D18KeyedOpenGuard(
+      resolveAuthenticatedScope: () async => verified,
+      readAuthEpoch: () => epoch,
+    );
+    Future<String> open(List<int> bytes) async {
+      opens++;
+      keyCopy = bytes;
+      expect(bytes.length, 32);
+      return 'synthetic-not-published-executor';
+    }
+    Future<void> discard(String _) async {discards++;}
+
+    await expectLater(guard.openUnpublished<String>(
+      requestedScope: _b, keySession: created.session,
+      createUnpublished: open, discardUnpublished: discard,
+    ), throwsStateError);
+    expect(opens, 0);
+
+    final good = await guard.openUnpublished<String>(
+      requestedScope: _a, keySession: created.session,
+      createUnpublished: open, discardUnpublished: discard,
+    );
+    expect(good, 'synthetic-not-published-executor');
+    expect(keyCopy, everyElement(0));
+    expect(discards, 0);
+
+    await expectLater(guard.openUnpublished<String>(
+      requestedScope: _a, keySession: created.session,
+      createUnpublished: (bytes) async {
+        opens++;
+        keyCopy = bytes;
+        epoch++; // Log out during an asynchronous keyed SQLite open.
+        return 'stale-candidate';
+      },
+      discardUnpublished: discard,
+    ), throwsStateError);
+    expect(discards, 1); // Stale candidate must be closed, never published.
+    expect(keyCopy, everyElement(0));
+
+    verified = _b; // Auth source switched without an epoch change.
+    await expectLater(guard.openUnpublished<String>(
+      requestedScope: _a, keySession: created.session,
+      createUnpublished: open, discardUnpublished: discard,
+    ), throwsStateError);
+    expect(opens, 2);
+
+    verified = _a;
+    created.session.lock();
+    expect(() => created.session.requireUnlockedKeyForScope(_a),
+        throwsStateError);
+    await expectLater(guard.openUnpublished<String>(
+      requestedScope: _a, keySession: created.session,
+      createUnpublished: open, discardUnpublished: discard,
+    ), throwsStateError);
+    expect(opens, 2);
+  });
+
 }
