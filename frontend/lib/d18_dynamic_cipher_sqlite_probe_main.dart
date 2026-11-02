@@ -108,25 +108,33 @@ Future<void> verifyGuardedWebOpen() async {
             // v12 POC, invoke the REAL AppDatabase generated schema migration
             // atomically, and only when the keyed store is provably empty.
             stage('guarded_initialize_real_v12_schema');
+            stage('guarded_v12_read_initial_version');
             final initial=await database.customSelect('PRAGMA user_version')
                 .getSingle();
             verify(initial.read<int>('user_version')==1,
                 'D18_GUARDED_UNEXPECTED_INITIAL_VERSION');
+            stage('guarded_v12_check_empty');
             final existing=await database.customSelect(
                 "SELECT name FROM sqlite_master WHERE type='table' "
                 "AND name NOT LIKE 'sqlite_%'").get();
             verify(existing.isEmpty,'D18_GUARDED_NONEMPTY_CIPHER_DB');
+            stage('guarded_v12_begin_transaction');
             await database.transaction(() async {
+              stage('guarded_v12_create_all');
               await database.migration.onCreate(Migrator(database));
+              stage('guarded_v12_set_user_version');
               await database.customStatement('PRAGMA user_version=12');
+              stage('guarded_v12_integrity_check');
               final check=await database.customSelect(
                   'PRAGMA integrity_check').getSingle();
               verify(check.data.values.single=='ok',
                   'D18_GUARDED_MIGRATION_INTEGRITY_FAILED');
+              stage('guarded_v12_foreign_key_check');
               final fks=await database.customSelect(
                   'PRAGMA foreign_key_check').get();
               verify(fks.isEmpty,'D18_GUARDED_MIGRATION_FK_FAILED');
             });
+            stage('guarded_v12_migration_committed');
           } catch(_) {
             await database.close();
             rethrow;
