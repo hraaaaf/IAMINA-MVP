@@ -44,8 +44,8 @@ double d22DialMgdlForFraction(double fraction) {
 }
 
 /// Actual reading input — keeps the existing journal save pipeline intact.
-/// Tap/drag the half-ring, use +/- or tap the prominent CENTRAL number for
-/// keyboard entry. No redundant second horizontal slider.
+/// Touch/drag the half-ring or tap the number inside it to edit precisely.
+/// No redundant +/- buttons or horizontal slider.
 class GlucoseHalfDialInput extends StatelessWidget {
   const GlucoseHalfDialInput({
     super.key,
@@ -83,18 +83,19 @@ class GlucoseHalfDialInput extends StatelessWidget {
     final center = Offset(size.width / 2, size.height - 18);
     final rel = localPoint - center;
     final radius = math.min(size.width / 2 - 30, size.height - 35);
-    // Ignore gestures on the center input and below the semicircle.
-    // Limit the valid touch annulus to the visible band + 16px tolerance.
-    if (rel.dy > 14 || (rel.distance - radius).abs() > 34) return;
-    var radians = math.atan2(rel.dy, rel.dx);
-    if (radians < 0) radians += math.pi * 2;
-    if (radians < math.pi || radians > 2 * math.pi) return;
-    final fraction = (radians - math.pi) / math.pi;
+    // Larger ~60px touch target around the track. Project a finger placed
+    // slightly inside/outside the ring onto the real semicircle, so fast
+    // drags remain responsive and never jump to the opposite end.
+    if (rel.dy > 25 || rel.distance < radius * 0.38 ||
+        rel.distance > radius + 76) return;
+    final projectedY = math.min(rel.dy, 0.0);
+    var radians = math.atan2(projectedY, rel.dx);
+    if (radians <= 0) radians += math.pi * 2;
+    final fraction = ((radians - math.pi) / math.pi).clamp(0.0, 1.0);
     final mg = d22DialMgdlForFraction(fraction).roundToDouble();
-    if (mg != valueMgdl) {
-      onValueSelected(mg);
-      HapticFeedback.selectionClick();
-    }
+    // Update just the reading. Firing a platform haptic on *every* pixel
+    // move slows iOS Safari down and can break finger tracking.
+    if (mg != valueMgdl) onValueSelected(mg);
   }
 
   @override
@@ -105,12 +106,11 @@ class GlucoseHalfDialInput extends StatelessWidget {
     final displayed = selected ?? 140.0;
     final step = unit == 'mmol/L' ? 1.8 : 1.0;
 
-    void adjust(int direction) {
-      final mg = ((selected ?? 140) + direction * step)
+    void adjustFromAccessibility(int direction) {
+      final mg = (displayed + direction * step)
           .clamp(minScale, maxScale)
           .toDouble();
       onValueSelected(mg);
-      HapticFeedback.selectionClick();
     }
 
     return Column(
@@ -173,7 +173,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (event) =>
                           _selectArc(event.localPosition, size),
-                      onPanStart: (event) =>
+                      onPanDown: (event) =>
                           _selectArc(event.localPosition, size),
                       onPanUpdate: (event) =>
                           _selectArc(event.localPosition, size),
@@ -190,8 +190,8 @@ class GlucoseHalfDialInput extends StatelessWidget {
                             _display((displayed + step).clamp(minScale, maxScale).toDouble()) + ' ' + unit,
                         decreasedValue:
                             _display((displayed - step).clamp(minScale, maxScale).toDouble()) + ' ' + unit,
-                        onIncrease: () => adjust(1),
-                        onDecrease: () => adjust(-1),
+                        onIncrease: () => adjustFromAccessibility(1),
+                        onDecrease: () => adjustFromAccessibility(-1),
                         child: CustomPaint(
                           key: const Key('glucose-half-dial-arc'),
                           painter: _PremiumGlucoseArcPainter(
@@ -204,93 +204,66 @@ class GlucoseHalfDialInput extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Central editing surface does NOT forward taps to the arc.
+                  // The number sits INSIDE the semicircle. Its own
+                  // hit target opens the numeric keyboard without moving
+                  // the dial. No wide blocking plate and no +/- buttons.
                   Positioned(
-                    left: 38,
-                    right: 38,
-                    bottom: 0,
+                    bottom: 9,
                     child: Container(
                       key: const Key('glucose-half-dial-edit-center'),
-                      padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+                      width: 174,
+                      padding: const EdgeInsets.fromLTRB(14, 7, 14, 10),
                       decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(20),
+                        color: colors.surface.withValues(alpha: .92),
+                        borderRadius: BorderRadius.circular(19),
                         border: Border.all(
-                          color: colors.outlineVariant,
-                          width: 1.2,
+                          color: colors.outlineVariant.withValues(alpha: .55),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: .05),
-                            blurRadius: 18,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _stepButton(
-                            key: const Key('glucose-half-dial-minus'),
-                            icon: Icons.remove_rounded,
-                            tooltip: _copy(context, 'Diminuer', 'Decrease', 'إنقاص'),
-                            onPressed: () => adjust(-1),
-                            color: colors,
-                          ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextField(
-                                  key: const Key('glucose-input'),
-                                  controller: controller,
-                                  textAlign: TextAlign.center,
-                                  keyboardType: const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-                                  ],
-                                  style: TextStyle(
-                                    fontSize: 35,
-                                    height: 1.08,
-                                    letterSpacing: -1.2,
-                                    fontWeight: FontWeight.w800,
-                                    color: colors.onSurface,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    hintText: '—',
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    border: InputBorder.none,
-                                  ),
-                                  onChanged: onTextChanged,
-                                ),
-                                const SizedBox(height: 2),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(unit, style: theme.textTheme.labelSmall?.copyWith(
-                                      color: colors.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    )),
-                                    const SizedBox(width: 4),
-                                    Icon(Icons.edit_rounded,
-                                        color: colors.onSurfaceVariant,
-                                        size: 12),
-                                  ],
-                                ),
-                              ],
+                          TextField(
+                            key: const Key('glucose-input'),
+                            controller: controller,
+                            textAlign: TextAlign.center,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
                             ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
+                            ],
+                            style: TextStyle(
+                              fontSize: 39,
+                              height: 1.05,
+                              letterSpacing: -1.5,
+                              fontWeight: FontWeight.w800,
+                              color: colors.onSurface,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '—',
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                              border: InputBorder.none,
+                              hintStyle: TextStyle(color: colors.onSurfaceVariant),
+                            ),
+                            onChanged: onTextChanged,
                           ),
-                          const SizedBox(width: 2),
-                          _stepButton(
-                            key: const Key('glucose-half-dial-plus'),
-                            icon: Icons.add_rounded,
-                            tooltip: _copy(context, 'Augmenter', 'Increase', 'زيادة'),
-                            onPressed: () => adjust(1),
-                            color: colors,
+                          const SizedBox(height: 5),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                unit,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(Icons.edit_rounded,
+                                  color: colors.onSurfaceVariant, size: 13),
+                            ],
                           ),
                         ],
                       ),
@@ -364,26 +337,6 @@ class GlucoseHalfDialInput extends StatelessWidget {
     );
   }
 
-  Widget _stepButton({
-    required Key key, required IconData icon, required String tooltip,
-    required VoidCallback onPressed, required ColorScheme color,
-  }) {
-    return IconButton(
-      key: key,
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 19),
-      color: color.onSurface,
-      style: IconButton.styleFrom(
-        backgroundColor: color.surfaceContainerHighest,
-        minimumSize: const Size(38, 42),
-        padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
 }
 
 class _PremiumGlucoseArcPainter extends CustomPainter {
