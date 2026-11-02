@@ -18,7 +18,7 @@ const _d22MgKnots = <double>[40, 70, 90, 160, 180, 320];
 const _d22ArcKnots = <double>[0, .15, .29, .71, .85, 1];
 
 double d22DialFractionForMgdl(double mg) {
-  final value = mg.clamp(_d22MgKnots.first, _d22MgKnots.last);
+  final value = mg.clamp(_d22MgKnots.first, _d22MgKnots.last).toDouble();
   for (var i = 0; i < _d22MgKnots.length - 1; i++) {
     if (value <= _d22MgKnots[i + 1]) {
       final t = (value - _d22MgKnots[i]) /
@@ -31,7 +31,7 @@ double d22DialFractionForMgdl(double mg) {
 }
 
 double d22DialMgdlForFraction(double fraction) {
-  final value = fraction.clamp(0.0, 1.0);
+  final value = fraction.clamp(0.0, 1.0).toDouble();
   for (var i = 0; i < _d22ArcKnots.length - 1; i++) {
     if (value <= _d22ArcKnots[i + 1]) {
       final t = (value - _d22ArcKnots[i]) /
