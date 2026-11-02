@@ -1,3 +1,16 @@
+## 2026-11-02 — D18 manual Preview QA enabled; CI compile failure corrected (PENDING CHECKS)
+
+User explicitly approved **Vercel Preview testing only** and requested an exact Preview link + human checkbox checklist from now on; production/promotion still require separate explicit authorization. Vercel `iamina-review` preview for old SHA `10b7896a` was created at `https://iamina-review-c071i1giw-achraf-benmoussa-s-projects.vercel.app`, deployment `dpl_BKyHdvcQu14sSB9HCzzAy395QoYp`, target preview, **QUEUED** at last check. SSO Preview enabled. No clinical data may be used: live clinical Drift SQLite at rest is still unencrypted.
+
+CI on `10b7896a` **red**: [D18 #41418517521](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41418517521) `real-drift-web-chrome` fails `dart analyze`: `uri_does_not_exist: dart:js_util` line 6; [general #41418517516](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41418517516) same error; unnecessary non-null `!` warning. `inventory-tests` and `d18-key-policy-tests` PASS. No 10/10 Chrome proof. This is a compilation failure in CI-only probe, not a proof of a clinical data fault.
+
+**Correction staged**: replace unsupported `dart:js_util` with simple synthetic-only Playwright `addInitScript` DOM attribute injection / `dart:html` dataset read; do not alter wrong-key/tamper/scope assertions; remove redundant `!`. Redo CI at exact new SHA. This DOM bridge is a disposable synthetic test backchannel only; forbidden in patient UI. Do not use the old red SHA for acceptance.
+
+QA checklist for human: safe synthetic account login → profile progressive optional fields → birth year, identity, weight and corrections → D18-only backup export/download/restoration empty vault, fail-closed invalid passphrase/occupied vault → cross-account logout/scope → FR/AR layout & widths 390/768/1280 → keyboard. Do not require testing whole-vault encryption: not yet integrated.
+
+**NEXT:** inspect fresh GitHub runs and Vercel deployment for new exact SHA, send user READY Preview URL and checklist, collect annotated failures. PR #1207 remains DRAFT, no prod/merge.
+---
+
 ## 02/11/2026 — D18-A: full SQLite encrypted-snapshot restart test, synthetic-only (CI PENDING)
 
 Previous SHA **592f8d05602dc3dd21de507e713083ed4ef25642** GREEN: [D18 #41413005477](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41413005477) 8/8 PASS real Chromium; [CI #41413005515](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41413005515) and [UX #41413005450](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41413005450) SUCCESS. Real source `sharedIndexedDb`, byte-level SQLite export and isolated unencrypted clone after restart verified. Source preflight (integrity + FK + schema) passed; no live migration.

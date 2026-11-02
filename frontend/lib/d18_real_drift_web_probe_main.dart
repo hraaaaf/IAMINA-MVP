@@ -3,7 +3,6 @@
 // Not a clinical data migration, at-rest encryption test or patient account.
 import 'dart:html' as html;
 import 'dart:convert';
-import 'dart:js_util' as js_util;
 
 import 'package:cryptography/cryptography.dart';
 
@@ -377,9 +376,10 @@ Future<void> _verifyEncryptedSnapshot() async {
   }
 
   _stage('offline_recovery_decrypt');
-  // Injected only into runtime JS global by Playwright, never persisted.
+  // CI-only synthetic code: injected into this page's transient DOM by
+  // Playwright. Never persisted; real patient recovery must use secure UI.
   final recoveryCode =
-    js_util.getProperty<Object?>(html.window, '__d18SyntheticRecoveryCode');
+      html.document.documentElement?.dataset['d18RecoveryInput'];
   _check(recoveryCode is String && recoveryCode.startsWith('IAMINA-R1-'),
     'Independent offline recovery code was not provided');
   final byRecovery = await D18VaultKeyPolicy.unlockWithOfflineRecovery(
@@ -407,7 +407,7 @@ Future<void> _verifyEncryptedSnapshot() async {
     .toList();
   _check(match.length == 1, 'Original A source missing after recovery');
   final original = await probe.exportDatabase(match.single);
-  _check(original != null && _sameBytes(recovered, original!),
+  _check(original != null && _sameBytes(recovered, original),
     'Decrypted whole SQLite bytes differ from original on restart');
 }
 
