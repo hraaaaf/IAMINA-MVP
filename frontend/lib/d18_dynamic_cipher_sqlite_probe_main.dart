@@ -1,5 +1,5 @@
 // D18 synthetic only: dynamic per-vault secret and SQLite in a dedicated worker.
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, experimental_member_use
 import 'dart:html' as html;
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
@@ -8,7 +8,6 @@ import 'package:drift/remote.dart';
 import 'package:drift/wasm.dart';
 import 'package:drift/src/web/channel_new.dart';
 import 'package:flutter/widgets.dart';
-import 'package:sqlite3/wasm.dart';
 import 'package:web/web.dart' as web;
 import 'data/drift/database.dart';
 import 'data/drift/patient_vault_scope.dart';
@@ -64,7 +63,7 @@ Future<void> runPhase(String name) async {
   final sql = web.MessageChannel();
   AppDatabase? database;
   try {
-    final keyArrayBuffer = ephemeral.toJS.buffer;
+    final keyArrayBuffer = ephemeral.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
     final message = JSObject()
       ..setProperty('type'.toJS, 'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
       ..setProperty('name'.toJS, dbName.toJS)
@@ -75,7 +74,7 @@ Future<void> runPhase(String name) async {
     final statusEvent = await web.EventStreamProviders.messageEvent
         .forTarget(control.port1)
         .first.timeout(const Duration(seconds: 25));
-    final status = ((statusEvent as web.MessageEvent).data as JSString).toDart;
+    final status = (statusEvent.data as JSString).toDart;
     control.port1.close();
     if (name == 'wrong_key') {
       verify(status == 'KEY_REJECTED', 'D18_DYNAMIC_BAD_KEY_ACCEPTED');
