@@ -102,7 +102,7 @@ def main():
                             ).first
                             header.wait_for(state="visible", timeout=25000)
                             editors = page.get_by_role(
-                                "textbox", name=re.compile(r"\b(minimum|maximum)\b", re.I)
+                                "textbox", name=re.compile(r"^(?:Min|Max|Minimum|Maximum)(?:\b|$)", re.I)
                             )
                             reopen_count, stable = 0, 0
                             for _ in range(90):
