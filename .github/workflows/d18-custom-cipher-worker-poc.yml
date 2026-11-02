@@ -7,6 +7,8 @@ on:
       - 'frontend/lib/d18_cipher_worker_*.dart'
       - 'tools/d18_cipher_worker_probe.js'
       - 'tools/d18_session_handoff_probe.js'
+      - 'tools/d18_dynamic_cipher_sqlite_probe.js'
+      - 'frontend/lib/d18_dynamic_cipher_*.dart'
       - 'tools/fixtures/d18_session_handshake_probe_worker.js'
       - 'frontend/lib/data/drift/**'
       - 'frontend/lib/main.dart'
@@ -45,6 +47,8 @@ jobs:
               'd18_cipher_worker_correct.dart',
               'd18_cipher_worker_wrong.dart',
               'd18_cipher_worker_probe_main.dart',
+              'd18_dynamic_cipher_sqlite_worker.dart',
+              'd18_dynamic_cipher_sqlite_probe_main.dart',
           }
           forbidden = (
               'd18_cipher_worker_setup.dart',
@@ -55,6 +59,7 @@ jobs:
               'd18_sqlite3mc.wasm',
               'D18-CI-ONLY-MC-',
               'd18_session_handshake_probe_worker.js',
+              'd18_dynamic_cipher_sqlite_worker.js',
           )
           leaks = []
           for file in root.rglob('*.dart'):
@@ -112,6 +117,21 @@ jobs:
           fi
           cp tools/fixtures/d18_session_handshake_probe_worker.js frontend/build/web/d18_session_handshake_probe_worker.js
           node tools/d18_session_handoff_probe.js
+      - name: Compile and analyze real dynamic sqlite3mc worker (test only)
+        working-directory: frontend
+        run: |
+          dart compile js -O4 -o web/d18_dynamic_cipher_sqlite_worker.js lib/d18_dynamic_cipher_sqlite_worker.dart
+          flutter analyze --no-fatal-infos             lib/d18_dynamic_cipher_sqlite_worker.dart             lib/d18_dynamic_cipher_sqlite_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dynamic_cipher_sqlite_probe_main.dart
+      - name: Real Chromium per-vault dynamic sqlite3mc key test
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dynamic-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_dynamic_cipher_sqlite_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -119,5 +139,6 @@ jobs:
           path: |
             d18-cipher-poc-proof/
             d18-keyport-proof/
+            d18-dynamic-sql-proof/
           if-no-files-found: warn
           retention-days: 14
