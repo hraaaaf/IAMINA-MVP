@@ -241,9 +241,6 @@ class AddLogGlucoseCard extends StatelessWidget {
     final glassBorder = isDark
         ? AminaTheme.dark400.withValues(alpha: 0.22)
         : Colors.white.withValues(alpha: 0.92);
-    final fieldSurface = isDark
-        ? AminaTheme.dark700.withValues(alpha: 0.54)
-        : Colors.white.withValues(alpha: 0.78);
 
     return Semantics(
       container: true,
