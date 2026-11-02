@@ -117,11 +117,12 @@ Future<void> _serve(web.MessageEvent event) async {
     stage = 'validate_encrypted_schema';
     await db.runSelect('SELECT count(*) FROM sqlite_master', const []);
     stage = 'create_drift_server';
-    final server = DriftServer(db, closeConnectionAfterShutdown: true);
+    final liveServer = DriftServer(db, closeConnectionAfterShutdown: true);
+    server = liveServer;
     control.postMessage('READY'.toJS);
     acknowledged = true;
     control.close();
-    await server.serve(databasePort.channel(explicitClose: true));
+    await liveServer.serve(databasePort.channel(explicitClose: true));
   } catch (error) {
     // Only a SQLite encrypted-page rejection can count as wrong key.
     // All other failures must remain generic; no secrets in responses.
