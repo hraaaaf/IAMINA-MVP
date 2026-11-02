@@ -31,6 +31,7 @@ Future<void> _serve(web.MessageEvent event) async {
   _used = true;
 
   IndexedDbFileSystem? storage;
+  var stage = 'validate_input';
   try {
     final payload = event.data as JSObject;
     final kind = (payload.getProperty('type'.toJS) as JSString).toDart;
@@ -48,11 +49,15 @@ Future<void> _serve(web.MessageEvent event) async {
     final secret = _hex(bytes);
     bytes.fillRange(0, bytes.length, 0);
 
+    stage = 'open_indexeddb';
     storage = await IndexedDbFileSystem.open(dbName: name);
+    stage = 'load_sqlite3mc';
     final sqlite3 = await WasmSqlite3.loadFromUrl(
       Uri.parse('d18_sqlite3mc.wasm'),
     );
+    stage = 'register_vfs';
     sqlite3.registerVirtualFileSystem(storage, makeDefault: true);
+    stage = 'construct_wasm_database';
     final db = WasmDatabase(
       sqlite3: sqlite3,
       path: '/database',
@@ -69,7 +74,9 @@ Future<void> _serve(web.MessageEvent event) async {
       },
     );
     // Must authenticate the keyed database BEFORE exporting SQL port.
+    stage = 'validate_encrypted_schema';
     await db.runSelect('SELECT count(*) FROM sqlite_master', const []);
+    stage = 'create_drift_server';
     final server = DriftServer(db, closeConnectionAfterShutdown: true);
     control.postMessage('READY'.toJS);
     control.close();
@@ -81,7 +88,11 @@ Future<void> _serve(web.MessageEvent event) async {
     final notADatabase = reason.contains('SQLITE_NOTADB') ||
         reason.contains('sqlite3 result code 26') ||
         reason.contains('file is not a database');
-    control.postMessage((notADatabase ? 'KEY_REJECTED' : 'REJECTED').toJS);
+    // A finite test-only stage and exception type, never error.toString or keys.
+    final response = notADatabase
+        ? 'KEY_REJECTED'
+        : 'REJECTED_${stage}_${error.runtimeType}';
+    control.postMessage(response.toJS);
     control.close();
     databasePort.close();
     await storage?.close();
