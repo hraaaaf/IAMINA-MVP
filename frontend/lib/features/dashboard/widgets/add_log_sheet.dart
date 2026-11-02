@@ -83,6 +83,12 @@ class AddLogSheet extends StatefulWidget {
 
 class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _glucoseController = TextEditingController();
+  // The entry unit changes only this draft; changing it must not mutate the
+  // patient's profile preference, legacy target bounds, or recorded readings.
+  String? _entryUnit;
+  double? _canonicalUnitSwitchMgdl;
+  String? _canonicalUnitSwitchText;
+
   final TextEditingController _mealNoteController = TextEditingController();
   AudioRecorder? _mealVoiceRecorder;
   final List<Uint8List> _mealVoiceChunks = <Uint8List>[];
@@ -128,7 +134,46 @@ class _AddLogSheetState extends State<AddLogSheet> {
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
     if (value == null) return null;
+    // A unit switch is a presentation change. Preserve the pre-switch
+    // source measurement exactly rather than repeatedly re-rounding it.
+    if (_canonicalUnitSwitchMgdl != null &&
+        _canonicalUnitSwitchText == _glucoseController.text) {
+      return _canonicalUnitSwitchMgdl;
+    }
     return unit == 'mmol/L' ? value * 18.0 : value;
+  }
+
+  void _setGlucoseFromDial(double mgdl, String unit) {
+    final text = unit == 'mmol/L'
+        ? (mgdl / 18.0).toStringAsFixed(1)
+        : mgdl.round().toString();
+    setState(() {
+      _glucoseController.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+      _canonicalUnitSwitchMgdl = mgdl;
+      _canonicalUnitSwitchText = text;
+    });
+  }
+
+  void _changeEntryUnit(String oldUnit) {
+    final next = oldUnit == 'mg/dL' ? 'mmol/L' : 'mg/dL';
+    final sourceMgdl = _mgdlGlucose(oldUnit);
+    setState(() {
+      _entryUnit = next;
+      if (sourceMgdl != null && sourceMgdl > 0 && sourceMgdl.isFinite) {
+        final display = next == 'mmol/L'
+            ? (sourceMgdl / 18.0).toStringAsFixed(1)
+            : sourceMgdl.round().toString();
+        _glucoseController.value = TextEditingValue(
+          text: display,
+          selection: TextSelection.collapsed(offset: display.length),
+        );
+        _canonicalUnitSwitchMgdl = sourceMgdl;
+        _canonicalUnitSwitchText = display;
+      }
+    });
   }
 
   bool get _hasValidGlucose {
@@ -349,7 +394,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
+    final unit = _entryUnit ?? profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
 
     final savedReceipt = _savedReceipt;
@@ -381,7 +426,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
           controller: _glucoseController,
           unit: unit,
           mgdl: _mgdlGlucose(unit),
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) => setState(() {
+            _canonicalUnitSwitchMgdl = null;
+            _canonicalUnitSwitchText = null;
+          }),
+          onValueSelected: (mgdl) => _setGlucoseFromDial(mgdl, unit),
+          onToggleUnit: () => _changeEntryUnit(unit),
         ),
         const SizedBox(height: 18),
         AddLogMeasurementContext(
@@ -610,6 +660,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   void _clearDraftForNextEntry() {
     _glucoseController.clear();
+    _canonicalUnitSwitchMgdl = null;
+    _canonicalUnitSwitchText = null;
     _mealNoteController.clear();
     _selectedMealItemIds.clear();
     _mealPortionSelections.clear();
