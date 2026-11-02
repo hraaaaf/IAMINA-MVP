@@ -146,7 +146,7 @@ Future<void> _assertLegacyStorageBeforeRestart() async {
   _stage('legacy_check_physical_schema');
   // The legacy DB is intentionally plaintext in this disposable CI proof.
   // Strict evidence of persisted SQLite content, not merely a file header.
-  final rawText = String.fromCharCodes(bytes);
+  final rawText = String.fromCharCodes(bytes!);
   _check(rawText.contains(_legacyTable),
       'Legacy IndexedDB physical SQLite file missing table schema');
   _check(rawText.contains(_legacySentinel),
