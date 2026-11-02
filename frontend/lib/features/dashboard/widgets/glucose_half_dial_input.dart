@@ -12,6 +12,54 @@ Color d22IllustrativeGlucoseArcColor(double mg) {
   return const Color(0xFF18A781);
 }
 
+/// Smooth ambient accent for the surrounding entry card, distinct from
+/// medical safety classification. The five zones are illustrative only.
+///
+/// Use paired symmetric anchors so the background smoothly transitions
+/// RED -> AMBER -> GREEN -> AMBER -> RED as the finger moves.
+Color d22GlucoseDialAmbientColor(double? mgdl) {
+  if (mgdl == null || !mgdl.isFinite) return const Color(0xFF198C78);
+  const stops = <double>[40, 67, 82, 105, 145, 168, 187, 230];
+  const accents = <Color>[
+    Color(0xFFE36462),
+    Color(0xFFE36462),
+    Color(0xFFE9A348),
+    Color(0xFF23A881),
+    Color(0xFF23A881),
+    Color(0xFFE9A348),
+    Color(0xFFE36462),
+    Color(0xFFE36462),
+  ];
+  final value = mgdl.clamp(stops.first, stops.last).toDouble();
+  for (var i = 0; i < stops.length - 1; i++) {
+    if (value <= stops[i + 1]) {
+      final fraction =
+          (value - stops[i]) / (stops[i + 1] - stops[i]);
+      return Color.lerp(accents[i], accents[i + 1], fraction)!;
+    }
+  }
+  return accents.last;
+}
+
+/// A visually descriptive zone; it NEVER substitutes for the separate
+/// low-glucose safety warning or patient-specific glycemic targets.
+enum D22GlucoseDialVisualZone {
+  lowRed,
+  lowAmber,
+  centerGreen,
+  highAmber,
+  highRed,
+}
+
+D22GlucoseDialVisualZone? d22GlucoseDialVisualZone(double? mgdl) {
+  if (mgdl == null || !mgdl.isFinite) return null;
+  if (mgdl < 70) return D22GlucoseDialVisualZone.lowRed;
+  if (mgdl < 90) return D22GlucoseDialVisualZone.lowAmber;
+  if (mgdl <= 160) return D22GlucoseDialVisualZone.centerGreen;
+  if (mgdl <= 180) return D22GlucoseDialVisualZone.highAmber;
+  return D22GlucoseDialVisualZone.highRed;
+}
+
 /// A segmented dial deliberately gives more touch space to the central band.
 /// Values remain physically expressed in mg/dL; this is presentation only.
 /// Inverse and forward functions share the same breakpoints to avoid drift.
