@@ -71,48 +71,102 @@ async function verify(ctx,name,key) {
 // Keep a genuine sqlite3mc DriftServer Worker open in one tab, then verify a
 // second tab's dynamic worker cannot enter the SAME database. This checks the
 // real worker's lock rather than the standalone synthetic Web Locks helper.
-async function verifyActualWorkerLock(ctx) {
-  const name = 'amina_vault_v1_device_e2dbe28f3eea441086a7274150a00018_d18_ci_dynamic';
-  const owner = await ctx.newPage();
-  try {
-    await owner.route('**/d18_ci_owner.html', route => route.fulfill({
-      status:200,contentType:'text/html',
-      body:'<!doctype html><html><head><title>D18 Lock Owner</title></head><body></body></html>',
-    }));
-    await owner.goto('http://127.0.0.1:7396/d18_ci_owner.html');
-    const code = await owner.evaluate(async ({name,key}) => {
-      const w = new Worker('/d18_dynamic_cipher_sqlite_worker.js');
-      const control = new MessageChannel(), sql = new MessageChannel();
-      const raw = new Uint8Array(key);
-      const response = new Promise((resolve,reject) => {
-        const timeout=setTimeout(()=>reject(Error('OWNER_WORKER_TIMEOUT')),12000);
-        control.port1.onmessage=event=>{
-          clearTimeout(timeout);
-          resolve(event.data);
-        };
+const ciVaultA = 'amina_vault_v1_device_e2dbe28f3eea441086a7274150a00018_d18_ci_dynamic';
+const ciVaultB = 'amina_vault_v1_device_e2dbe28f3eea441086a7274150b00018_d18_ci_dynamic';
+async function openSyntheticOwnerPage(ctx) {
+  const page=await ctx.newPage();
+  await page.route('**/d18_ci_owner.html',route=>route.fulfill({
+    status:200, contentType:'text/html',
+    body:'<!doctype html><html><head><title>D18 Lock Owner</title></head><body></body></html>',
+  }));
+  await page.goto('http://127.0.0.1:7396/d18_ci_owner.html');
+  return page;
+}
+async function workerOpenOnPage(page,name,key,retain) {
+  return page.evaluate(async ({name,key,retain}) => {
+    const w=new Worker('/d18_dynamic_cipher_sqlite_worker.js');
+    const control=new MessageChannel(),sql=new MessageChannel();
+    const raw=new Uint8Array(key);
+    try {
+      const answer=new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(Error('D18_OWNER_WORKER_TIMEOUT')),15000);
+        control.port1.onmessage=ev=>{clearTimeout(timer);resolve(ev.data);};
       });
       w.postMessage({type:'D18_CI_DYNAMIC_SQL_OPEN',name,key:raw.buffer},
         [control.port2,sql.port2,raw.buffer]);
-      window.__d18SqlOwner = {w,control:control.port1,sql:sql.port1};
-      return response;
-    },{name,key:secrets.a});
-    const passed = code==='READY';
-    results.push({phase:'owner_holds_lock',pass:passed});
-    if(!passed) throw Error('D18_REAL_OWNER_NOT_READY');
-    await verify(ctx,'lock_denied',secrets.a);
-    await owner.evaluate(()=>{
-      window.__d18SqlOwner.w.terminate();
-      window.__d18SqlOwner.control.close();
-      window.__d18SqlOwner.sql.close();
-    });
-    await owner.waitForFunction(async name => {
-      const state=await navigator.locks.query();
-      return !state.held.some(lock=>lock.name==='iamina:d18:ci:v1:'+name);
-    },name,{timeout:12000});
-  } finally {
-    await owner.close();
+      const status=await answer;
+      if(retain&&status==='READY') {
+        window.__d18SqlOwner={w,control:control.port1,sql:sql.port1};
+      } else {
+        w.terminate();control.port1.close();sql.port1.close();
+      }
+      return status;
+    }catch(e){
+      w.terminate();control.port1.close();sql.port1.close();
+      return 'WORKER_OPEN_TIMEOUT';
+    }
+  },{name,key,retain});
+}
+async function startOwner(ctx,phase,name,key) {
+  const page=await openSyntheticOwnerPage(ctx);
+  try {
+    const code=await workerOpenOnPage(page,name,key,true);
+    const pass=code==='READY';
+    results.push({phase,pass});
+    if(!pass)throw Error('D18_SQL_LOCK_'+phase+'_REJECTED_'+code);
+    return page;
+  }catch(e){await page.close();throw e;}
+}
+async function probeDenied(ctx,phase,name,key) {
+  const page=await openSyntheticOwnerPage(ctx);
+  try{
+    const code=await workerOpenOnPage(page,name,key,false);
+    const pass=code==='LOCK_UNAVAILABLE';
+    results.push({phase,pass});
+    if(!pass)throw Error('D18_SQL_LOCK_'+phase+'_NOT_DENIED_'+code);
+  }finally{await page.close();}
+}
+async function terminateAndVerifyRelease(owner,observer,name,phase) {
+  await owner.evaluate(()=>{
+    const session=window.__d18SqlOwner;
+    session.w.terminate();
+    session.control.close();session.sql.close();
+    delete window.__d18SqlOwner;
+  });
+  const released=await observer.waitForFunction(async name=>{
+    const held=(await navigator.locks.query()).held;
+    return !held.some(x=>x.name==='iamina:d18:ci:v1:'+name);
+  },name,{timeout:15000}).then(()=>true).catch(()=>false);
+  results.push({phase,pass:released});
+  if(!released)throw Error('D18_SQL_LOCK_'+phase+'_NOT_RELEASED');
+}
+async function verifyActualWorkerLock(ctx) {
+  let ownerA,ownerB,ownerA2,ownerB2;
+  try {
+    ownerA=await startOwner(ctx,'owner_a_ready',ciVaultA,secrets.a);
+    // B stays writable while A is held open: physical DBs are independent.
+    await verify(ctx,'create_b',secrets.b);
+    ownerB=await startOwner(ctx,'owner_b_ready',ciVaultB,secrets.b);
+    await probeDenied(ctx,'a_second_worker_denied',ciVaultA,secrets.a);
+    await probeDenied(ctx,'b_second_worker_denied',ciVaultB,secrets.b);
+    await terminateAndVerifyRelease(ownerA,ownerB,ciVaultA,
+      'a_terminate_releases');
+    await ownerA.close(); ownerA=null;
+    ownerA2=await startOwner(ctx,'owner_a_reopened_b_still_held',ciVaultA,secrets.a);
+    await probeDenied(ctx,'b_still_denied',ciVaultB,secrets.b);
+    await terminateAndVerifyRelease(ownerB,ownerA2,ciVaultB,
+      'b_terminate_releases');
+    await ownerB.close(); ownerB=null;
+    ownerB2=await startOwner(ctx,'owner_b_reopened_a_still_held',ciVaultB,secrets.b);
+    await probeDenied(ctx,'a_still_denied',ciVaultA,secrets.a);
+  }finally{
+    for(const page of [ownerA,ownerB,ownerA2,ownerB2]){
+      if(page)await page.close();
+    }
   }
+  // These are genuine separate IndexedDB/sqlite3mc stores across tab crashes.
   await verify(ctx,'read',secrets.a);
+  await verify(ctx,'read_b',secrets.b);
 }
 
 (async () => {
@@ -146,7 +200,11 @@ async function verifyActualWorkerLock(ctx) {
   },null,2));
   console.log(JSON.stringify(results));
   const expected=[...phases.map(p=>p[0]),
-    'owner_holds_lock','lock_denied','read'];
+    'owner_a_ready','create_b','owner_b_ready',
+    'a_second_worker_denied','b_second_worker_denied',
+    'a_terminate_releases','owner_a_reopened_b_still_held',
+    'b_still_denied','b_terminate_releases',
+    'owner_b_reopened_a_still_held','a_still_denied','read','read_b'];
   if(results.length!==expected.length||results.some((p,i)=>
     !p.pass||p.phase!==expected[i]))process.exitCode=1;
 })().catch(e=>{
