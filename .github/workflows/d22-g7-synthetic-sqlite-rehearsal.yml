@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: d22-g7-rehearsal-\${{ github.event.pull_request.number || github.ref }}
+  group: d22-g7-rehearsal-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
