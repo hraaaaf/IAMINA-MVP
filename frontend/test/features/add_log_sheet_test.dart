@@ -46,6 +46,20 @@ void _wide(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
 }
 
+/// Ensure the meal action sits above the fixed Save footer after D22.
+Future<void> _tapOptionalMeal(WidgetTester tester) async {
+  final mealButton = find.byKey(const Key('add-meal-button'));
+  await tester.ensureVisible(mealButton);
+  await tester.pumpAndSettle();
+  await tester.drag(
+    find.byType(SingleChildScrollView).first,
+    const Offset(0, -175),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(mealButton);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late AppDatabase db;
 
@@ -151,8 +165,7 @@ void main() {
       expect(find.byKey(const Key('add-meal-button')), findsOneWidget);
       expect(find.byKey(const Key('meal-section')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
 
       expect(find.byKey(const Key('meal-section')), findsOneWidget);
       expect(find.byKey(const Key('meal-type-breakfast')), findsOneWidget);
@@ -190,8 +203,7 @@ void main() {
         await tester.pumpWidget(_sheet(db, sheet: sheet));
         await tester.pumpAndSettle();
         await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-        await tester.tap(find.byKey(const Key('add-meal-button')));
-        await tester.pumpAndSettle();
+        await _tapOptionalMeal(tester);
 
         final voiceButton = find.byKey(
           const Key('meal-note-voice-button'),
@@ -312,8 +324,7 @@ void main() {
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
       await tester.tap(find.byKey(const Key('glycemic-context-pre_meal')));
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
       await tester.tap(find.byKey(const Key('meal-type-lunch')));
       await tester.enterText(
         find.byKey(const Key('meal-note-input')),
@@ -359,8 +370,7 @@ void main() {
       expect(find.text('سياق القياس'), findsOneWidget);
       expect(find.text('إضافة وجبة · اختياري'), findsOneWidget);
       expect(find.text('Nouvelle mesure'), findsNothing);
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
       expect(find.byTooltip('إملاء ملاحظة الوجبة'), findsOneWidget);
       expect(
         Directionality.of(tester.element(find.text('قياس جديد'))),
@@ -393,8 +403,7 @@ void main() {
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
       await tester.tap(find.byKey(const Key('glycemic-context-post_meal')));
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
       await tester.tap(find.byKey(const Key('meal-type-lunch')));
       await tester.tap(find.byKey(const Key('save-log-button')));
       await tester.pumpAndSettle();
