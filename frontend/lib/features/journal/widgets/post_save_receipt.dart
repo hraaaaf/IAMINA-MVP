@@ -153,14 +153,9 @@ class PostSaveReceipt extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    l10n.journalPostSaveSummaryTitle,
-                    style: TextStyle(
-                      color: AminaTheme.textSecondary(context),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: .45,
-                    ),
+                  _D17ReceiptInfoDisclosure(
+                    title: l10n.journalPostSaveSummaryTitle,
+                    details: l10n.journalPostSaveNotice,
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -260,35 +255,7 @@ class PostSaveReceipt extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AminaTheme.teal600.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 18,
-                    color: AminaTheme.teal600,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.journalPostSaveNotice,
-                      style: TextStyle(
-                        color: AminaTheme.textSecondary(context),
-                        fontSize: 11.5,
-                        height: 1.45,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+
           ],
         ),
       ),
@@ -344,6 +311,104 @@ class PostSaveReceipt extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// D17 — Only the descriptive receipt explanation is disclosed on demand.
+// Saved status, glucose/unit, timestamp, context and all actions remain
+// visible even when this widget is collapsed.
+class _D17ReceiptInfoDisclosure extends StatefulWidget {
+  final String title;
+  final String details;
+
+  const _D17ReceiptInfoDisclosure({
+    required this.title,
+    required this.details,
+  });
+
+  @override
+  State<_D17ReceiptInfoDisclosure> createState() =>
+      _D17ReceiptInfoDisclosureState();
+}
+
+class _D17ReceiptInfoDisclosureState extends State<_D17ReceiptInfoDisclosure> {
+  bool _expanded = false;
+
+  String _buttonLabel(BuildContext context) {
+    final language = Localizations.localeOf(context).languageCode;
+    if (language == 'ar') {
+      return _expanded ? 'إخفاء معلومات الملخص' : 'عرض معلومات الملخص';
+    }
+    if (language == 'en') {
+      return _expanded ? 'Hide summary information' : 'Show summary information';
+    }
+    return _expanded
+        ? 'Masquer les informations du résumé'
+        : 'Afficher les informations du résumé';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                widget.title,
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .45,
+                ),
+              ),
+            ),
+            Semantics(
+              toggled: _expanded,
+              label: _buttonLabel(context),
+              child: Tooltip(
+                // Desktop hover and long press show the existing localized
+                // explanation; click/tap/keyboard toggle persistent content.
+                message: widget.details,
+                child: IconButton(
+                  key: const Key('d17-entry-summary-info'),
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(
+                    _expanded
+                        ? Icons.info_rounded
+                        : Icons.info_outline_rounded,
+                    size: 20,
+                    color: AminaTheme.teal600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: 4),
+            child: Container(
+              key: const Key('d17-entry-summary-details'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AminaTheme.teal600.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                widget.details,
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 11.5,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
