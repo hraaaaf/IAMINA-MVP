@@ -1,3 +1,17 @@
+## 2026-11-02 — D18 exact-head CI green, worker-key security boundary audited (no clinical cutover)
+
+**Observed exact-HEAD green at `9832e8f196cd0d4fc1e4c87531170df008b6f0ec`**: [custom encrypted Drift worker POC #41461576426](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41461576426), [SQLite #41461576546](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41461576546), [D18 browser UX/encrypted backup #41461576424](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41461576424), [general CI #41461576541](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41461576541) ALL **SUCCESS**. The same SHA has [transverse D7 #41461576489](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41461576489) **FAILURE**; do not claim all repo workflows green, and do not divert to D7 in D18 work. Owner said 'All green'—correct for D18 scope.
+
+**Next risk confirmed in pinned Drift 2.31 sources:** `WasmDatabaseSetup = void Function(CommonDatabase)` receives no per-session principal/key, `WasmDatabase.open` cannot send a key to the worker, and shared worker cache uses databaseName. An unmodified compiled custom worker needs hardcoded fixture secrets; **never use it for clinical data**. Verified upstream links, transport constraints, fail-closed protocol design and tests documented in `docs/architecture/d18-web-at-rest-encryption-poc.md` section `D18-KEY-HANDOFF`.
+
+**Preventive change submitted:** `.github/workflows/d18-custom-cipher-worker-poc.yml` now scans all application `frontend/lib/**/*.dart` except the four exact synthetic POC source files and rejects any reference to fixed synthetic key fixture prefix, fixture worker JS/Dart, or test WASM URI. It also triggers on the patient Drift library paths. This *guard only* blocks an accidental clinical import; it does not encrypt real SQLite, provide key handshake, or validate an actual migration.
+
+**Run and commit status:** fixture leak guard commit [`6bb916ae`](https://github.com/hraaaaf/IAMINA-MVP/commit/6bb916ae1f452b9b9093df9b8ce3d5a22c727f2d), pinned-source architecture update [`01e744d3`](https://github.com/hraaaaf/IAMINA-MVP/commit/01e744d3e39d01c540019d6acd24bef2932b5c0f). Recheck exact PR HEAD and CI. No Vercel deployment, no patient or real data, no merge; PR #1207 stays DRAFT and full D18 remains OPEN.
+
+**Next exact:** inspect CI guard result on exact SHA and repair if red. Then prototype only *synthetic* per-vault DEK handshake using reviewed extension to Drift worker protocol, no URL or global key, with strict wrong-key, multi-tab, lock/logout and crash tests; only after success plan migration from plaintext source to separate already-encrypted destination with rollback, Safari matrix and security/clinical review.
+
+---
+
 ## 2026-11-02 — D18 Web encrypted Drift worker: 10/10 cross-process key-rotation proof (SYNTHETIC ONLY)
 
 **Decision / Goal:** D18 progressive profile + local clinical vault privacy. Establish an actual *persistent encrypted SQLite* worker compatible with Drift's selected Web backend, and a safe key rotation, before any opt-in patient vault cutover.
