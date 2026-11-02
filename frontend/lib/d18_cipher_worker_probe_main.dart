@@ -98,7 +98,7 @@ Future<void> executePhase(String phase) async {
       verify(row.read<String>('marker') == marker, 'D18_POC_RESTART_LOST');
     } else if (phase == 'isolation_b') {
       final rows = await db.customSelect(
-        'SELECT name FROM sqlite_master WHERE name = ?', [table],
+        "SELECT name FROM sqlite_master WHERE name = 'd18_mc_synthetic_probe'",
       ).get();
       verify(rows.isEmpty, 'D18_POC_CROSS_PATIENT_LEAK');
     } else if (stock || wrong) {
