@@ -175,6 +175,9 @@ async function verifyActualWorkerLock(ctx) {
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
       locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
+    // Test the newest risk first: report schema failures without running the
+    // entire historical A/B suite before reaching the new keyed-open gate.
+    await verify(ctx,'guarded_open',secrets.a);
     await verify(ctx,...phases[0].map((x,i)=>i===1?secrets[x]:x));
     await ctx.close(); ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
@@ -187,9 +190,7 @@ async function verifyActualWorkerLock(ctx) {
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await verify(ctx,'read',secrets.a);
     await verifyActualWorkerLock(ctx);
-    // Actual D18VaultKeyPolicy + auth scope guard + real Drift v12 schema,
-    // isolated from A/B CI stores. No production code path is modified.
-    await verify(ctx,'guarded_open',secrets.a);
+
   }catch(e){
     results.push({phase:'harness',pass:false,error:String(e).slice(0,250)});
   }finally{
@@ -202,7 +203,7 @@ async function verifyActualWorkerLock(ctx) {
     head:process.env.GITHUB_SHA||null,results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=[...phases.map(p=>p[0]),
+  const expected=['guarded_open',...phases.map(p=>p[0]),
     'owner_a_ready','create_b','owner_b_ready',
     'a_second_worker_denied','b_second_worker_denied',
     'a_terminate_releases','owner_a_reopened_b_still_held',
