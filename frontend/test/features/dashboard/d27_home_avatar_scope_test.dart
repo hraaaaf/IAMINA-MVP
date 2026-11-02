@@ -43,6 +43,8 @@ void main() {
         await tester.pumpAndSettle();
         final avatar = find.byKey(const ValueKey('dashboard-companion-chat-action'));
         expect(avatar, findsOneWidget);
+        // D27 finger ergonomics: full 56px target, not a 40px mini FAB.
+        expect(tester.getSize(avatar), const Size(56, 56));
         final fab = tester.widget<FloatingActionButton>(avatar);
         // FAB.tooltip installs a competing long-press recognizer and would
         // block the accessible position picker; use explicit Semantics instead.
@@ -61,6 +63,14 @@ void main() {
         expect((image.image as AssetImage).assetName,
             'assets/images/logo_amina.png');
 
+        // Before any upward movement there must be room to move DOWN too.
+        final initial = tester.getTopLeft(avatar);
+        await tester.drag(avatar, const Offset(0, 48));
+        await tester.pumpAndSettle();
+        final lowered = tester.getTopLeft(avatar);
+        expect(lowered.dy - initial.dy, closeTo(48, 2));
+        expect(find.text('IAMINA_CHAT_ROUTE'), findsNothing);
+
         final before = tester.getTopLeft(avatar);
         final delta = locale.languageCode == 'ar'
             ? const Offset(140, -140)
@@ -68,8 +78,9 @@ void main() {
         await tester.drag(avatar, delta);
         await tester.pumpAndSettle();
         final after = tester.getTopLeft(avatar);
-        expect((after.dx - before.dx).abs(), greaterThan(50));
-        expect(after.dy, lessThan(before.dy - 50));
+        // A 140px finger movement must produce 140px of button travel.
+        expect(after.dx - before.dx, closeTo(delta.dx, 2));
+        expect(after.dy - before.dy, closeTo(delta.dy, 2));
         expect(after.dx, greaterThanOrEqualTo(12));
         expect(after.dy, greaterThanOrEqualTo(12));
         expect(tester.getBottomRight(avatar).dy,
@@ -77,6 +88,29 @@ void main() {
         expect(find.text('IAMINA_CHAT_ROUTE'), findsNothing,
             reason: 'Dragging must not accidentally send a chat navigation');
         expect(tester.takeException(), isNull);
+
+        // One continuous finger gesture must follow all four circular segments
+        // without losing movement when the floating widget rebuilds.
+        final finger = await tester.startGesture(tester.getCenter(avatar));
+        var expected = after;
+        for (final step in const <Offset>[
+          Offset(42, -34),
+          Offset(38, 34),
+          Offset(-38, 34),
+          Offset(-42, -34),
+        ]) {
+          await finger.moveBy(step);
+          await tester.pump();
+          expected += step;
+          final actual = tester.getTopLeft(avatar);
+          expect(actual.dx, closeTo(expected.dx, 3));
+          expect(actual.dy, closeTo(expected.dy, 3));
+        }
+        await finger.up();
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(avatar).dx, closeTo(after.dx, 3));
+        expect(tester.getTopLeft(avatar).dy, closeTo(after.dy, 3));
+        expect(find.text('IAMINA_CHAT_ROUTE'), findsNothing);
 
         // WCAG 2.2 2.5.7: move by taps, not only by dragging.
         await tester.longPress(avatar);
@@ -116,6 +150,8 @@ void main() {
     expect(module, contains("path: '/companion/chat'"));
     expect(home.split('DashboardCompanionAvatarAction(').length - 1, 2);
     expect(home, contains('onPanUpdate:'));
+    expect(home, contains('followFinger(details.globalPosition)'));
+    expect(home, contains('_diameter = 56'));
     expect(home, contains('onPanEnd:'));
     expect(home, contains('CallbackShortcuts('));
     expect(home, contains('LogicalKeyboardKey.arrowLeft'));
