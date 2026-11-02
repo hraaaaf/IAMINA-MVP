@@ -74,9 +74,16 @@ Future<void> _serve(web.MessageEvent event) async {
     control.postMessage('READY'.toJS);
     control.close();
     await server.serve(databasePort.channel(explicitClose: true));
-  } catch (_) {
-    // Never include patient identifiers, keys, data or stacktraces in output.
-    reject();
+  } catch (error) {
+    // Only a SQLite encrypted-page rejection can count as wrong key.
+    // All other failures must remain generic; no secrets in responses.
+    final reason = error.toString();
+    final notADatabase = reason.contains('SQLITE_NOTADB') ||
+        reason.contains('sqlite3 result code 26') ||
+        reason.contains('file is not a database');
+    control.postMessage((notADatabase ? 'KEY_REJECTED' : 'REJECTED').toJS);
+    control.close();
+    databasePort.close();
     await storage?.close();
   }
 }
