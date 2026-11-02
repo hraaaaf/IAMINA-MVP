@@ -84,6 +84,41 @@ Future<void> _seedA() async {
   }
 }
 
+/// Read-only barrier immediately BEFORE closing the first Chromium process.
+///
+/// A PASS on AppDatabase.close() alone is not proof the source was committed
+/// to the browser's physical IndexedDB. Probe/export the real backing store
+/// and reopen the same patient A before the first browser shutdown. If the
+/// independent restart then fails, the failure is specifically cross-process
+/// durability, not an already-missing source before shutdown.
+///
+/// All browser data here is synthetic disposable CI material; never run this
+/// direct file-export diagnostic against actual clinical user profiles.
+Future<void> _assertAStorageBeforeRestart() async {
+  _stage('pre_shutdown_source_probe');
+  final scope = PatientVaultScope.deviceLocal(_a);
+  final probe = await WasmDatabase.probe(
+    sqlite3Uri: Uri.parse('sqlite3.wasm'),
+    driftWorkerUri: Uri.parse('drift_worker.js'),
+    databaseName: scope.databaseName,
+  );
+  final sources = probe.existingDatabases.where((entry) =>
+      entry.$1 == WebStorageApi.indexedDb && entry.$2 == scope.databaseName)
+      .toList();
+  _check(sources.length == 1,
+      'Source missing from IndexedDB BEFORE Chromium shutdown');
+
+  _stage('pre_shutdown_export_sqlite_bytes');
+  final bytes = await probe.exportDatabase(sources.single);
+  _check(bytes != null && bytes.length >= 100 &&
+      String.fromCharCodes(bytes.take(15)) == 'SQLite format 3' &&
+      bytes[15] == 0,
+      'Physical IndexedDB source has no valid SQLite export before shutdown');
+
+  _stage('pre_shutdown_reopen_and_verify_sentinel');
+  await _verifyA();
+}
+
 Future<void> _verifyA() async {
   final db = AppDatabase.forPatientVault(PatientVaultScope.deviceLocal(_a));
   try {
@@ -459,6 +494,9 @@ Future<void> main() async {
         break;
       case 'verify_a':
         await _verifyA();
+        break;
+      case 'assert_source_before_shutdown':
+        await _assertAStorageBeforeRestart();
         break;
       case 'probe_backend':
         await _probeBackend();

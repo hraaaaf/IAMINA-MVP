@@ -71,6 +71,9 @@ async function processPhase(context, phase, recoveryCode){
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
     await processPhase(context,'seed_legacy');
     await processPhase(context,'seed_a');
+    // Strict pre-shutdown barrier: source must already be physically
+    // exportable in IndexedDB. Never retry/seed after a missing source.
+    await processPhase(context,'assert_source_before_shutdown');
     await context.close();context=null;
     // Chromium is a NEW process but has the SAME isolated temporary user profile.
     context=await chromium.launchPersistentContext(root,
@@ -98,9 +101,9 @@ async function processPhase(context, phase, recoveryCode){
   }
   const proof={kind:'real IAMINA driftDatabase Web, synthetic Chrome separate-process restart',
     head:process.env.D18_CANDIDATE_SHA||'unknown',
-    expected:['seed_legacy','seed_a','verify_a','probe_backend','probe_export','encrypt_snapshot','verify_b','verify_legacy','verify_export','verify_encrypted_snapshot'],
+    expected:['seed_legacy','seed_a','assert_source_before_shutdown','verify_a','probe_backend','probe_export','encrypt_snapshot','verify_b','verify_legacy','verify_export','verify_encrypted_snapshot'],
     steps,passed:steps.filter(s=>s.pass).length};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(proof,null,2));
   console.log(JSON.stringify(proof));
-  if(proof.passed!==10 || steps.length!==10 || steps.some(s=>!s.pass))process.exitCode=1;
+  if(proof.passed!==11 || steps.length!==11 || steps.some(s=>!s.pass))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
