@@ -348,8 +348,8 @@ async function keyboardJourney(browser,locale,size){
     // Flutter Web may replace a semantics element during focus traversal.
     // Re-resolve the live control after physical keys; never use JS focus()
     // or pointer clicks to manufacture a passing keyboard journey.
-    const languageFocused=async()=>{
-      const current=await find(page,l.language);
+    const optionFocused=async(label)=>{
+      const current=await find(page,label);
       return !!current && await current.evaluate(el=>
         el===document.activeElement || el.contains(document.activeElement)
       ).catch(()=>false);
@@ -359,26 +359,33 @@ async function keyboardJourney(browser,locale,size){
       name:document.activeElement?.getAttribute('aria-label')||'',
       role:document.activeElement?.getAttribute('role')||'',
     }));
+    // Test the strict Shift+Tab -> Tab roundtrip on the INTERIOR chip.
+    // On RTL mobile, the localized chip may be at an edge of the tab order:
+    // reverse navigation can leave the document, making "same chip"
+    // an invalid re-entry oracle. This still uses real physical key presses.
+    const middleLabel='English';
+    const middle=await waitFor(page,middleLabel);
+    await reachByTab(middle,'middle-language');
+    await page.evaluate(()=>new Promise(resolve=>
+      requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const beforeBackward=await activeSnapshot();
+    if(!await optionFocused(middleLabel))
+      throw Error('Middle language chip lost keyboard focus before reverse navigation');
     await page.keyboard.press('Shift+Tab');
     const afterBackward=await activeSnapshot();
     await page.keyboard.press('Tab');
-    let returned=await languageFocused();
-    const afterForward=await activeSnapshot();
-    // On a phone-width page the first chip can be the first tabbable item.
-    // Reverse Tab leaves the document; the first forward Tab then re-enters
-    // the Flutter semantics host rather than the first actual chip.
-    // Permit ONE additional physical Tab only when focus is on that host,
-    // not when it has moved to a different interactive control.
-    if(!returned && ['BODY','HTML','FLT-GLASS-PANE','FLT-SEMANTICS-PLACEHOLDER']
-      .includes(afterForward.tag)){
-      await page.keyboard.press('Tab');
-      returned=await languageFocused();
-    }
     const afterReturn=await activeSnapshot();
-    item.focusReturn={afterBackward,afterForward,afterReturn,returned};
-    if(!returned)
-      throw Error('Keyboard could not return to language choice: '+
+    const returned=await optionFocused(middleLabel);
+    item.focusReturn={beforeBackward,afterBackward,afterForward:afterReturn,
+      afterReturn,returned};
+    // Require an actual reverse transition and an exact return. Do not
+    // auto-focus, click, or waive a failed interactive-control return.
+    if(!returned || afterBackward.name===middleLabel)
+      throw Error('Keyboard could not roundtrip interior language choice: '+
         JSON.stringify(item.focusReturn));
+    // Separately prove the localized FR/AR choice is reached and activated
+    // by Tab and Enter; the middle-chip test is not a substitute.
+    await reachByTab(language,'language');
     item.images.push(await capture(page,locale,size,'keyboard','language-focused'));
     await page.keyboard.press('Enter');
     const confirm=await waitFor(page,l.confirm);
