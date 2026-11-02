@@ -59,6 +59,14 @@ async function concurrentSourceLock(context) {
     if(!ownerReady.held)throw Error('D18_SOURCE_OWNER_FAILED_BEFORE_LOCK');
     await rival.goto('http://127.0.0.1:7396/?phase=compete_source_lock',
       {waitUntil:'domcontentloaded',timeout:45000});
+    // The contender MUST reach the actual SQL acquisition attempt first.
+    // Otherwise Flutter boot time could create a false-green race test.
+    await rival.waitForFunction(()=>
+      ['writer_attempts_immediate_transaction',
+       'writer_immediate_granted','writer_denied_sqlite_busy'].includes(
+        document.documentElement.dataset.d18FullStage) ||
+        document.title.startsWith('D18_FULL_FAIL:'),
+      null,{timeout:35000});
     let early='pending';
     try {
       await rival.waitForFunction(()=>
