@@ -11,8 +11,9 @@ import 'patient_vault_scope.dart';
 /// the live database connection. Never auto-enrol an existing clinical vault.
 final class D18VaultKeySession {
   SecretKeyData? _dataKey;
+  final String _vaultName;
 
-  D18VaultKeySession._(this._dataKey);
+  D18VaultKeySession._(this._dataKey, this._vaultName);
 
   bool get isLocked => _dataKey == null;
 
@@ -22,6 +23,15 @@ final class D18VaultKeySession {
     final key = _dataKey;
     if (key == null) throw StateError('D18 vault session is locked');
     return key;
+  }
+
+  /// Enforce exact vault identity again when handing the key to SQLite.
+  SecretKey requireUnlockedKeyForScope(PatientVaultScope scope) {
+    if (_dataKey == null || scope.databaseName != _vaultName ||
+        scope.databaseName == PatientVaultScope.auditOnly().databaseName) {
+      throw StateError('D18 key session locked or scope mismatched');
+    }
+    return _dataKey!;
   }
 
   /// Best-effort in-process overwrite, not a browser memory-erasure guarantee.
@@ -232,7 +242,7 @@ abstract final class D18VaultKeyPolicy {
           recoveryWrappedKey: recoveryWrapped,
         ),
         recoveryCode,
-        D18VaultKeySession._(dataKey),
+        D18VaultKeySession._(dataKey, scope.databaseName),
       );
     } catch (_) {
       dataKey.destroy();
@@ -255,7 +265,7 @@ abstract final class D18VaultKeyPolicy {
       return D18VaultKeySession._(await _open(
         envelope['passwordWrappedKey'] as String,
         passKey, scope, 'password',
-      ));
+      ), scope.databaseName);
     } finally {
       passKey.destroy();
     }
@@ -273,7 +283,7 @@ abstract final class D18VaultKeyPolicy {
       return D18VaultKeySession._(await _open(
         envelope['recoveryWrappedKey'] as String,
         recoveryKey, scope, 'recovery',
-      ));
+      ), scope.databaseName);
     } finally {
       recoveryKey.destroy();
     }
@@ -331,7 +341,7 @@ abstract final class D18VaultKeyPolicy {
             recoveryWrappedKey: recoveryWrapped,
           ),
           code,
-          D18VaultKeySession._(dataKey),
+          D18VaultKeySession._(dataKey, scope.databaseName),
         );
       } catch (_) {
         dataKey.destroy();
