@@ -67,6 +67,22 @@ void main() {
             reason: 'Dragging must not accidentally send a chat navigation');
         expect(tester.takeException(), isNull);
 
+        // WCAG 2.2 2.5.7: move by taps, not only by dragging.
+        await tester.longPress(avatar);
+        await tester.pumpAndSettle();
+        final grid =
+            find.byKey(const Key('dashboard-companion-position-grid'));
+        expect(grid, findsOneWidget);
+        await tester.tapAt(tester.getTopLeft(grid) + const Offset(28, 30));
+        await tester.pumpAndSettle();
+        expect(grid, findsNothing);
+        expect(find.text('IAMINA_CHAT_ROUTE'), findsNothing);
+        final selected = tester.getTopLeft(avatar);
+        expect((selected.dx - after.dx).abs(), greaterThan(10));
+        expect(selected.dx, greaterThanOrEqualTo(12));
+        expect(selected.dy, greaterThanOrEqualTo(12));
+        expect(tester.takeException(), isNull);
+
         await tester.tap(avatar);
         await tester.pumpAndSettle();
         expect(find.text('IAMINA_CHAT_ROUTE'), findsOneWidget);
@@ -90,6 +106,10 @@ void main() {
     expect(home.split('DashboardCompanionAvatarAction(').length - 1, 2);
     expect(home, contains('onPanUpdate:'));
     expect(home, contains('onPanEnd:'));
+    expect(home, contains('CallbackShortcuts('));
+    expect(home, contains('LogicalKeyboardKey.arrowLeft'));
+    expect(home, contains('onLongPress: _showPositionPicker'));
+    expect(home, contains('customSemanticsActions:'));
     expect(home, contains('104'));
     expect(storage, contains('window.localStorage'));
     expect(storage, contains('iamina.d27.fab.position.v1'));
