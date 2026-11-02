@@ -18,6 +18,8 @@ import '../../services/sync_service.dart';
 import 'clinical_engine.dart';
 import 'widgets/glucose_chart_with_events.dart';
 import '../journal/widgets/amina_chat_view.dart';
+// Imported for part-of dashboard insights widgets; not an eager network call.
+import '../../data/models/ai_models.dart';
 
 part 'widgets/top_bar.dart';
 part 'widgets/hero_section.dart';
