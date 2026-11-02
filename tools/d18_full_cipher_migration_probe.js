@@ -39,6 +39,62 @@ async function phase(context,step){
     if(!pass)throw Error('D18_FULL_'+step+'_FAILED');
   }finally{await page.close();}
 }
+// Two real tabs of the same origin open the SAME stock SQLite source.
+// An independent BEGIN IMMEDIATE must not be granted before owner releases.
+// Accept SQLITE_BUSY or queued-until-release; NEVER accept overlapping grants.
+async function concurrentSourceLock(context) {
+  const owner=await context.newPage(), rival=await context.newPage();
+  let recorded=false;
+  try {
+    await owner.goto('http://127.0.0.1:7396/?phase=hold_source_lock',
+      {waitUntil:'domcontentloaded',timeout:45000});
+    await owner.waitForFunction(()=>
+      document.documentElement.dataset.d18FullStage==='source_write_gate_held' ||
+      document.title.startsWith('D18_FULL_FAIL:'),
+      null,{timeout:40000});
+    const ownerReady=await owner.evaluate(()=>({
+      held:document.documentElement.dataset.d18FullStage==='source_write_gate_held',
+      title:document.title,
+    }));
+    if(!ownerReady.held)throw Error('D18_SOURCE_OWNER_FAILED_BEFORE_LOCK');
+    await rival.goto('http://127.0.0.1:7396/?phase=compete_source_lock',
+      {waitUntil:'domcontentloaded',timeout:45000});
+    let early='pending';
+    try {
+      await rival.waitForFunction(()=>
+        document.title.startsWith('D18_FULL_PASS:') ||
+        document.title.startsWith('D18_FULL_FAIL:') ||
+        document.documentElement.dataset.d18FullStage==='writer_immediate_granted',
+        null,{timeout:1500});
+      early=await rival.evaluate(()=>
+        document.documentElement.dataset.d18FullStage || document.title);
+    }catch(_){}
+    const noOverlappingWriter=early!=='writer_immediate_granted' &&
+      !early.startsWith('D18_FULL_FAIL:');
+    if(!noOverlappingWriter)
+      throw Error('D18_COMPETING_SQLITE_WRITER_GRANTED_WHILE_OWNER_HELD');
+    await owner.evaluate(()=>window.postMessage(
+      'D18_CI_RELEASE_SOURCE',window.location.origin));
+    await owner.waitForFunction(()=>
+      document.title.startsWith('D18_FULL_PASS:') ||
+      document.title.startsWith('D18_FULL_FAIL:'),
+      null,{timeout:25000});
+    await rival.waitForFunction(()=>
+      document.title.startsWith('D18_FULL_PASS:') ||
+      document.title.startsWith('D18_FULL_FAIL:'),
+      null,{timeout:25000});
+    const ownerPass=(await owner.title())==='D18_FULL_PASS:hold_source_lock';
+    const rivalPass=(await rival.title())==='D18_FULL_PASS:compete_source_lock';
+    results.push({phase:'hold_source_lock',pass:ownerPass},
+      {phase:'compete_source_lock',pass:rivalPass && noOverlappingWriter});
+    recorded=true;
+    if(!ownerPass||!rivalPass)throw Error('D18_SOURCE_LOCK_PROOF_FAILED');
+  }catch(e){
+    if(!recorded)results.push({phase:'hold_source_lock',pass:false},
+      {phase:'compete_source_lock',pass:false,errorName:e.name||'Error'});
+    throw e;
+  }finally{await rival.close();await owner.close();}
+}
 (async()=>{
   let ctx;
   try{
@@ -47,6 +103,7 @@ async function phase(context,step){
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'seed');
     await phase(ctx,'abort_rollback');
+    await concurrentSourceLock(ctx);
     await phase(ctx,'crash_uncommitted');
     // Fault is the actual Worker.terminate() with open SQL transaction.
     // Close entire Chromium process before asking a fresh process to recover.
@@ -77,9 +134,10 @@ async function phase(context,step){
     results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['seed','abort_rollback','crash_uncommitted',
+  const expected=['seed','abort_rollback','hold_source_lock',
+    'compete_source_lock','crash_uncommitted',
     'crash_recover','migrate','verify','physical_bytes'];
-  if(results.length!==7||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
+  if(results.length!==9||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
     process.exitCode=1;
 })().catch(e=>{
   console.error('D18_FULL_VAULT_HARNESS_FATAL',e.name);
