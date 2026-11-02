@@ -263,7 +263,8 @@ class _DashboardCompanionAvatarActionState
                 child: FloatingActionButton.small(
                   key: const ValueKey('dashboard-companion-chat-action'),
                   heroTag: 'dashboard-companion-chat-action',
-                  tooltip: label,
+                  // The built-in FAB Tooltip consumes long presses before the
+                  // outer reposition gesture. Semantics supplies the label.
                   onPressed: () => context.push('/companion/chat'),
                   elevation: _dragging ? 9 : 5,
                   backgroundColor: AminaVisualLanguage.forestDeep,
