@@ -21,6 +21,137 @@ void verify(bool ok, String reason) {
   if (!ok) throw StateError(reason);
 }
 
+
+// Disposable synthetic logical migration only: NOT a full clinical schema copy.
+const migrationSource = 'd18_ci_plain_source_20261102';
+const migrationDestination = 'd18_ci_cipher_destination_20261102';
+const migrationTable = 'd18_ci_migration_marker';
+const migrationMarker = 'D18_SYNTHETIC_MIGRATION_NEVER_CLINICAL_20261102';
+
+Future<void> migrationPhase(String phase) async {
+  final scope = PatientVaultScope.deviceLocal(patientA);
+  final sourcePhase = phase == 'migration_seed_plain' ||
+      phase == 'migration_check_source' || phase == 'migration_copy_cipher';
+  if (phase == 'migration_raw_cipher') {
+    final probe = await WasmDatabase.probe(
+      sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
+      driftWorkerUri: Uri.parse('d18_cipher_worker_correct.js'),
+      databaseName: migrationDestination,
+    );
+    final found = probe.existingDatabases.where(
+      (v) => v.$2 == migrationDestination,
+    ).toList();
+    verify(found.length == 1, 'D18_MIG_TARGET_NOT_UNIQUE');
+    final bytes = await probe.exportDatabase(found.single);
+    verify(bytes != null && bytes.length >= 100, 'D18_MIG_NO_CIPHER_BYTES');
+    final file = bytes!;
+    verify(String.fromCharCodes(file.take(16)) != 'SQLite format 3\u0000',
+        'D18_MIG_PLAINTEXT_HEADER');
+    final needle = migrationMarker.codeUnits;
+    for (var i = 0; i <= file.length - needle.length; i++) {
+      var equal = true;
+      for (var j = 0; j < needle.length; j++) {
+        if (file[i + j] != needle[j]) { equal = false; break; }
+      }
+      verify(!equal, 'D18_MIG_PLAINTEXT_MARKER');
+    }
+    return;
+  }
+  final isWrongKey = phase == 'migration_wrong_key';
+  final name = sourcePhase ? migrationSource : migrationDestination;
+  final wasm = Uri.parse(sourcePhase ? 'sqlite3.wasm' : 'd18_sqlite3mc.wasm');
+  final worker = Uri.parse(sourcePhase ? 'drift_worker.js' :
+      (isWrongKey ? 'd18_cipher_worker_wrong.js' :
+                    'd18_cipher_worker_correct.js'));
+  if (phase == 'migration_copy_cipher') {
+    final probe = await WasmDatabase.probe(
+      sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
+      driftWorkerUri: Uri.parse('d18_cipher_worker_correct.js'),
+      databaseName: migrationDestination,
+    );
+    verify(!probe.existingDatabases.any((v) => v.$2 == migrationDestination),
+        'D18_MIG_DEST_ALREADY_EXISTS');
+  }
+  AppDatabase? db;
+  try {
+    final opened = await WasmDatabase.open(
+      databaseName: name, sqlite3Uri: wasm, driftWorkerUri: worker,
+      moveExistingIndexedDbToOpfs: false,
+      localSetup: sourcePhase ? null : (raw) =>
+          d18Configure(raw, isWrongKey ? d18Wrong : d18Right),
+    );
+    verify(const {'sharedIndexedDb', 'opfsShared', 'opfsLocks'}
+        .contains(opened.chosenImplementation.name), 'D18_MIG_UNSAFE_STORAGE');
+    html.document.documentElement?.dataset['d18CipherBackend'] =
+        opened.chosenImplementation.name;
+    db = AppDatabase.testPatientVault(opened.resolvedExecutor, scope);
+    await db.customSelect('SELECT count(*) FROM sqlite_master').getSingle();
+    if (isWrongKey) throw StateError('D18_MIG_BAD_KEY_ACCEPTED');
+    if (phase == 'migration_seed_plain') {
+      await db.customStatement(
+        'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
+      );
+      await db.customStatement(
+        'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
+        [1, migrationMarker],
+      );
+    } else if (phase == 'migration_copy_cipher') {
+      final integrity = await db.customSelect('PRAGMA integrity_check').getSingle();
+      verify(integrity.data.values.single == 'ok', 'D18_MIG_SOURCE_CORRUPT');
+      final fks = await db.customSelect('PRAGMA foreign_key_check').get();
+      verify(fks.isEmpty, 'D18_MIG_SOURCE_FK_ERROR');
+      final source = await db.customSelect(
+        'SELECT marker FROM "$migrationTable" WHERE id = 1',
+      ).getSingle();
+      verify(source.read<String>('marker') == migrationMarker,
+          'D18_MIG_SOURCE_MISSING');
+      await db.close(); db = null;
+      final cipher = await WasmDatabase.open(
+        databaseName: migrationDestination,
+        sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
+        driftWorkerUri: Uri.parse('d18_cipher_worker_correct.js'),
+        moveExistingIndexedDbToOpfs: false,
+        localSetup: (raw) => d18Configure(raw, d18Right),
+      );
+      verify(const {'sharedIndexedDb', 'opfsShared', 'opfsLocks'}
+          .contains(cipher.chosenImplementation.name), 'D18_MIG_UNSAFE_TARGET');
+      db = AppDatabase.testPatientVault(cipher.resolvedExecutor, scope);
+      await db.transaction(() async {
+        await db!.customStatement(
+          'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
+        );
+        await db!.customStatement(
+          'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
+          [1, migrationMarker],
+        );
+      });
+      final copied = await db.customSelect(
+        'SELECT marker FROM "$migrationTable" WHERE id = 1',
+      ).getSingle();
+      verify(copied.read<String>('marker') == migrationMarker,
+          'D18_MIG_TARGET_MISMATCH');
+    } else if (phase == 'migration_verify_cipher' ||
+               phase == 'migration_check_source') {
+      final row = await db.customSelect(
+        'SELECT marker FROM "$migrationTable" WHERE id = 1',
+      ).getSingle();
+      verify(row.read<String>('marker') == migrationMarker,
+          'D18_MIG_RESTART_LOST');
+    } else {
+      throw StateError('D18_MIG_UNKNOWN_PHASE');
+    }
+  } catch (e) {
+    if (db != null) { await db.close(); db = null; }
+    final error = e.toString();
+    if (isWrongKey && (error.contains('SQLITE_NOTADB') ||
+        error.contains('sqlite3 result code 26') ||
+        error.contains('file is not a database'))) return;
+    rethrow;
+  } finally {
+    if (db != null) await db.close();
+  }
+}
+
 Future<void> executePhase(String phase) async {
   final scope = PatientVaultScope.deviceLocal(
     phase == 'isolation_b' ? patientB : patientA,
@@ -142,8 +273,15 @@ Future<void> main() async {
       'stock_reject', 'write', 'wrong_key',
       'read', 'isolation_b', 'raw_bytes', 'rotate',
       'old_key_reject', 'read_rotated', 'raw_bytes_after_rotate',
+      'migration_seed_plain', 'migration_copy_cipher',
+      'migration_wrong_key', 'migration_verify_cipher',
+      'migration_check_source', 'migration_raw_cipher',
     }.contains(phase), 'D18_POC_BAD_PHASE');
-    await executePhase(phase);
+    if (phase.startsWith('migration_')) {
+      await migrationPhase(phase);
+    } else {
+      await executePhase(phase);
+    }
     html.document.title = 'D18_CIPHER_PASS:$phase';
   } catch (e) {
     // Never expose keys, patient content, decrypted bytes or stack traces.
