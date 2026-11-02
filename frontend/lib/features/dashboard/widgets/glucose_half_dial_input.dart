@@ -340,14 +340,25 @@ class GlucoseHalfDialInput extends StatelessWidget {
         }),
         const SizedBox(height: 10),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _boundaryLabel(context, colors,
+            Expanded(
+              child: _boundaryLabel(
+                context, colors,
                 _copy(context, 'Repère bas', 'Lower guide', 'الحد المرجعي الأدنى'),
-                _display(70)),
-            _boundaryLabel(context, colors,
-                _copy(context, 'Repère haut', 'Upper guide', 'الحد المرجعي الأعلى'),
-                _display(180)),
+                _display(70),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: _boundaryLabel(
+                  context, colors,
+                  _copy(context, 'Repère haut', 'Upper guide', 'الحد المرجعي الأعلى'),
+                  _display(180),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 13),
