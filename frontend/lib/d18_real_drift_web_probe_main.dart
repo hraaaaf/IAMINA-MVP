@@ -48,6 +48,13 @@ Future<void> _seedLegacy() async {
       'INSERT INTO "$_legacyTable" (id, sentinel) VALUES (?, ?)',
       [1, _legacySentinel],
     );
+    _stage('legacy_verify_seed_same_connection');
+    final inserted = await legacy.customSelect(
+      'SELECT sentinel FROM "$_legacyTable" WHERE id=1',
+    ).getSingleOrNull();
+    _check(inserted != null &&
+        inserted.read<String>('sentinel') == _legacySentinel,
+        'Legacy seed not visible within its original SQLite connection');
   } finally {
     await legacy.close();
   }
@@ -136,6 +143,14 @@ Future<void> _assertLegacyStorageBeforeRestart() async {
   _check(bytes != null && bytes.length >= 100 &&
       String.fromCharCodes(bytes.take(15)) == 'SQLite format 3' &&
       bytes[15] == 0, 'Legacy SQLite bytes missing before restart');
+  _stage('legacy_check_physical_schema');
+  // The legacy DB is intentionally plaintext in this disposable CI proof.
+  // Strict evidence of persisted SQLite content, not merely a file header.
+  final rawText = String.fromCharCodes(bytes);
+  _check(rawText.contains(_legacyTable),
+      'Legacy IndexedDB physical SQLite file missing table schema');
+  _check(rawText.contains(_legacySentinel),
+      'Legacy IndexedDB physical SQLite file missing sentinel row');
   _stage('legacy_pre_shutdown_reopen');
   await _verifyLegacy();
 }
