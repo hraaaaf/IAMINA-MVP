@@ -15,7 +15,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
   final double? valueMgdl;
   final ValueChanged<String> onTextChanged;
   final ValueChanged<double> onValueSelected;
-  final VoidCallback onToggleUnit;
+  final VoidCallback? onToggleUnit;
   static const double minScale = 40;
   static const double maxScale = 320;
   String _local(BuildContext c, String fr, String en, String ar) =>
