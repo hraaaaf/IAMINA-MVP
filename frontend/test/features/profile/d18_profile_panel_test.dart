@@ -98,12 +98,52 @@ void main() {
     addTearDown(db.close);
     await _mount(tester, db);
     await tester.enterText(find.byKey(const Key('d18-birth-year')), '1899');
+    await tester.pumpAndSettle();
+    final field = tester.widget<TextField>(
+        find.byKey(const Key('d18-birth-year')));
+    expect(field.decoration?.errorText, contains('1900'));
+    expect(field.decoration?.errorText, contains('4 digits'));
     await _tapVisible(tester, 'd18-save-demographics');
     expect(await PatientProgressiveDemographicsStore(db).read(), isNull);
     await tester.enterText(find.byKey(const Key('d18-weight-value')), 'abc');
     await _confirmMeasuredAt(tester);
     await _tapVisible(tester, 'd18-save-weight');
     expect(await PatientWeightHistoryStore(db).recent(), isEmpty);
+  });
+
+  testWidgets('D18 year feedback is inline and clears after correction',
+      (tester) async {
+    final db = await _patientDb(845);
+    addTearDown(db.close);
+    await _mount(tester, db);
+    final field = find.byKey(const Key('d18-birth-year'));
+    TextField input() => tester.widget<TextField>(field);
+
+    await tester.enterText(field, '20xx');
+    await tester.pumpAndSettle();
+    expect(input().decoration?.errorText, contains('4 digits'));
+
+    await tester.enterText(
+        field, (DateTime.now().toUtc().year + 1).toString());
+    await tester.pumpAndSettle();
+    expect(input().decoration?.errorText, contains('1900'));
+    await _tapVisible(tester, 'd18-save-demographics');
+    expect(await PatientProgressiveDemographicsStore(db).read(), isNull);
+
+    await tester.enterText(field, '1994');
+    await tester.pumpAndSettle();
+    expect(input().decoration?.errorText, isNull);
+    await _tapVisible(tester, 'd18-save-demographics');
+    expect((await PatientProgressiveDemographicsStore(db).read())?.birthYear,
+        1994);
+
+    await tester.enterText(field, '');
+    await tester.pumpAndSettle();
+    expect(input().decoration?.errorText, isNull);
+    await _tapVisible(tester, 'd18-save-demographics');
+    expect((await PatientProgressiveDemographicsStore(db).read())?.birthYear,
+        isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('D18 year edit preserves newer gender declaration',

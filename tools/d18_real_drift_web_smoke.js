@@ -15,8 +15,10 @@ async function verify(page,phase,recoveryCode){
     if(!recoveryCode || !recoveryCode.startsWith('IAMINA-R1-'))
       throw Error('Missing runner-held synthetic offline recovery code');
     await page.addInitScript(code=>{
-      // CI synthetic-only DOM bridge; no URL, storage or logs.
-      document.documentElement.dataset.d18RecoveryInput = code;
+      // Injection runs before documentElement exists: defer to parsed DOM.
+      document.addEventListener('DOMContentLoaded',()=>{
+        document.documentElement.dataset.d18RecoveryInput = code;
+      },{once:true});
     }, recoveryCode);
   }
   const events=[];
