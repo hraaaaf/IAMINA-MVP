@@ -22,6 +22,7 @@ import '../../services/locale_preference_service.dart';
 import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
+import 'd22_target_dial_preview.dart';
 
 part 'profile_screen_presentation.dart';
 
