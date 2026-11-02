@@ -9,6 +9,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
+import 'widgets/dashboard_reminders_summary_card.dart';
 import 'widgets/dashboard_responsive_sections.dart';
 import 'widgets/dashboard_today_section.dart';
 
@@ -273,6 +274,10 @@ class _DashboardBody extends StatelessWidget {
                             high: high,
                             companionService: companionService,
                           ),
+                          const SizedBox(height: 18),
+                          // D3: local reminders follow the established clinical trends.
+                          // Private reminder titles never appear on Home.
+                          const DashboardRemindersSummaryCard(),
                           const SizedBox(height: 22),
                           const _DataTools(),
                         ]),
