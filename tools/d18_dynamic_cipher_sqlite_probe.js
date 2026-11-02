@@ -72,14 +72,17 @@ async function verify(ctx,name,key) {
   let ctx;
   try {
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
+      locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await verify(ctx,...phases[0].map((x,i)=>i===1?secrets[x]:x));
     await ctx.close(); ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
+      locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     for(const [name,k] of phases.slice(1,5))await verify(ctx,name,secrets[k]);
     await ctx.close(); ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
+      locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await verify(ctx,'read',secrets.a);
   }catch(e){
