@@ -118,15 +118,20 @@ Future<void> verifyGuardedWebOpen() async {
               stage('guarded_v12_initial_version_invalid_type');
               throw StateError('D18_GUARDED_INITIAL_VERSION_INVALID');
             }
+            // enableMigrations:false on the CI worker leaves a brand-new
+            // sqlite3mc database at PRAGMA user_version=0, not necessarily 1.
+            // Both 0 and 1 are allowed ONLY with no user tables; v12 must
+            // already have the complete real Drift schema. Never overwrite.
             stage(rawVersion==12 ? 'guarded_v12_auto_initialized' :
+              rawVersion==0 ? 'guarded_v12_fresh_version_zero' :
               rawVersion==1 ? 'guarded_v12_worker_version_one' :
               'guarded_v12_unexpected_initial_version');
-            verify(rawVersion==1||rawVersion==12,
+            verify(rawVersion==0||rawVersion==1||rawVersion==12,
                 'D18_GUARDED_UNEXPECTED_INITIAL_VERSION');
             final existing=await database.customSelect(
                 "SELECT name FROM sqlite_master WHERE type='table' "
                 "AND name NOT LIKE 'sqlite_%'").get();
-            if (rawVersion==1) {
+            if (rawVersion==0||rawVersion==1) {
               stage('guarded_v12_check_empty');
               verify(existing.isEmpty,'D18_GUARDED_NONEMPTY_CIPHER_DB');
               stage('guarded_v12_begin_transaction');
