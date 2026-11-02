@@ -107,10 +107,15 @@ def main():
                             # both the exact target-region sequence in the
                             # ARIA tree and two actual visible textbox nodes.
                             editors = page.get_by_role("textbox")
+                            # Flutter may collapse adjacent Min/Max labels
+                            # into ONE text semantics node or emit two nodes.
+                            # In both layouts insist on the target heading,
+                            # BOTH labels in order, and two actual textboxes.
                             target_region = re.compile(
-                                r"- text: Glucose target \(mg/dL\) Min\s*\n"
+                                r"- text: Glucose target \(mg/dL\) Min"
+                                r"(?:\s+Max)?\s*\n"
                                 r"\s*- textbox\s*\n"
-                                r"\s*- text: Max\s*\n"
+                                r"(?:\s*- text: Max\s*\n)?"
                                 r"\s*- textbox"
                             )
                             reopen_count, stable = 0, 0
