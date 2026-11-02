@@ -6,14 +6,17 @@ const crypto=require('node:crypto');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'d18-full-copy-'));
 const key=[...crypto.randomBytes(32)];
+const abortKey=[...crypto.randomBytes(32)];
 const results=[];
 async function phase(context,step){
   const page=await context.newPage();
   try{
-    await page.addInitScript(bytes=>{
+    await page.addInitScript(keys=>{
       Object.defineProperty(window,'__D18_FULL_KEY',
-        {value:new Uint8Array(bytes),configurable:false,writable:false});
-    },key);
+        {value:new Uint8Array(keys.a),configurable:false,writable:false});
+      Object.defineProperty(window,'__D18_FULL_ABORT_KEY',
+        {value:new Uint8Array(keys.b),configurable:false,writable:false});
+    },{a:key,b:abortKey});
     const errors=[];
     page.on('pageerror',e=>errors.push(e.name));
     await page.goto('http://127.0.0.1:7396/?phase='+step,
@@ -40,6 +43,7 @@ async function phase(context,step){
       headless:true,locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'seed');
+    await phase(ctx,'abort_rollback');
     await phase(ctx,'migrate');
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{
@@ -53,6 +57,7 @@ async function phase(context,step){
     if(ctx)await ctx.close();
     fs.rmSync(profile,{recursive:true,force:true});
     key.fill(0);
+    abortKey.fill(0);
   }
   fs.mkdirSync('d18-full-vault-proof',{recursive:true});
   fs.writeFileSync('d18-full-vault-proof/report.json',JSON.stringify({
@@ -60,8 +65,8 @@ async function phase(context,step){
     results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['seed','migrate','verify','physical_bytes'];
-  if(results.length!==4||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
+  const expected=['seed','abort_rollback','migrate','verify','physical_bytes'];
+  if(results.length!==5||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
     process.exitCode=1;
 })().catch(e=>{
   console.error('D18_FULL_VAULT_HARNESS_FATAL',e.name);
