@@ -359,38 +359,62 @@ class _PremiumGlucoseArcPainter extends CustomPainter {
     final rect = Rect.fromCircle(center: center, radius: radius);
     const segments = 210;
 
-    // Recessed track, then 5 contiguous colored bands.
+    // A subtle shadow + continuous arc. Round only the TWO outside ends;
+    // overlapping rounded caps on every segment would create color bumps.
     canvas.drawArc(rect, math.pi, math.pi, false, Paint()
-      ..color = outline.withValues(alpha: .38)
+      ..color = Colors.black.withValues(alpha: dark ? .15 : .07)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 32);
+      ..strokeWidth = 31
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7));
 
+    final band = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 26
+      ..strokeCap = StrokeCap.butt;
     for (var i = 0; i < segments; i++) {
       final f = (i + .5) / segments;
-      final color = d22IllustrativeGlucoseArcColor(
-          d22DialMgdlForFraction(f));
+      band.color = d22IllustrativeGlucoseArcColor(
+        d22DialMgdlForFraction(f),
+      );
       canvas.drawArc(
         rect,
         math.pi + i * math.pi / segments,
-        math.pi / segments + .005,
+        math.pi / segments + .004,
         false,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 25,
+        band,
       );
     }
 
-    // Visual separators indicate the exact 70, 90, 160, 180 boundaries.
-    for (final mg in [70.0, 90.0, 160.0, 180.0]) {
-      final a = math.pi + d22DialFractionForMgdl(mg) * math.pi;
+    for (final endValue in [40.0, 320.0]) {
+      final theta = math.pi + d22DialFractionForMgdl(endValue) * math.pi;
       final pos = Offset(
-        center.dx + radius * math.cos(a),
-        center.dy + radius * math.sin(a),
+        center.dx + radius * math.cos(theta),
+        center.dy + radius * math.sin(theta),
       );
-      canvas.drawCircle(pos, 2.0,
-          Paint()..color = Colors.white.withValues(alpha: .9));
+      canvas.drawCircle(
+        pos, 13, Paint()..color = d22IllustrativeGlucoseArcColor(endValue),
+      );
+    }
+
+    // Fine radial separators, aligned to real reference boundaries.
+    final separator = Paint()
+      ..color = Colors.white.withValues(alpha: .75)
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round;
+    for (final mg in [70.0, 90.0, 160.0, 180.0]) {
+      final angle = math.pi + d22DialFractionForMgdl(mg) * math.pi;
+      canvas.drawLine(
+        Offset(
+          center.dx + (radius - 11) * math.cos(angle),
+          center.dy + (radius - 11) * math.sin(angle),
+        ),
+        Offset(
+          center.dx + (radius + 11) * math.cos(angle),
+          center.dy + (radius + 11) * math.sin(angle),
+        ),
+        separator,
+      );
     }
 
     if (!hasValue) return;
@@ -400,12 +424,12 @@ class _PremiumGlucoseArcPainter extends CustomPainter {
       center.dy + radius * math.sin(theta),
     );
     final haloColor = dark ? const Color(0xFF142C2A) : const Color(0xFF164F47);
-    canvas.drawCircle(cursor, 22, Paint()
-      ..color = haloColor.withValues(alpha: .16)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7));
-    canvas.drawCircle(cursor, 16, Paint()..color = Colors.white);
-    canvas.drawCircle(cursor, 12, Paint()..color = haloColor);
-    canvas.drawCircle(cursor, 4, Paint()..color = Colors.white);
+    canvas.drawCircle(cursor, 23, Paint()
+      ..color = haloColor.withValues(alpha: .17)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawCircle(cursor, 17, Paint()..color = Colors.white);
+    canvas.drawCircle(cursor, 13, Paint()..color = haloColor);
+    canvas.drawCircle(cursor, 4.4, Paint()..color = Colors.white);
   }
 
   @override
