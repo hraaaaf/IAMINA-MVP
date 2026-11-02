@@ -29,6 +29,7 @@ const migrationTable = 'd18_ci_migration_marker';
 const migrationMarker = 'D18_SYNTHETIC_MIGRATION_NEVER_CLINICAL_20261102';
 
 Future<void> migrationPhase(String phase) async {
+  stage('migration_start');
   final scope = PatientVaultScope.deviceLocal(patientA);
   final sourcePhase = phase == 'migration_seed_plain' ||
       phase == 'migration_check_source' || phase == 'migration_copy_cipher';
@@ -67,6 +68,7 @@ Future<void> migrationPhase(String phase) async {
       (isWrongKey ? 'd18_cipher_worker_wrong.js' :
                     'd18_cipher_worker_correct.js'));
   if (phase == 'migration_copy_cipher') {
+    stage('migration_probe_existing_destination');
     final probe = await WasmDatabase.probe(
       sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
       driftWorkerUri: Uri.parse('d18_cipher_worker_correct.js'),
@@ -77,6 +79,7 @@ Future<void> migrationPhase(String phase) async {
   }
   AppDatabase? db;
   try {
+    stage('migration_open_initial_database');
     final opened = await WasmDatabase.open(
       databaseName: name, sqlite3Uri: wasm, driftWorkerUri: worker,
       moveExistingIndexedDbToOpfs: false,
@@ -99,6 +102,7 @@ Future<void> migrationPhase(String phase) async {
         [1, migrationMarker],
       );
     } else if (phase == 'migration_copy_cipher') {
+      stage('migration_verify_source_integrity');
       final integrity = await db.customSelect('PRAGMA integrity_check').getSingle();
       verify(integrity.data.values.single == 'ok', 'D18_MIG_SOURCE_CORRUPT');
       final fks = await db.customSelect('PRAGMA foreign_key_check').get();
@@ -109,6 +113,7 @@ Future<void> migrationPhase(String phase) async {
       verify(source.read<String>('marker') == migrationMarker,
           'D18_MIG_SOURCE_MISSING');
       await db.close(); db = null;
+      stage('migration_open_cipher_destination');
       final cipher = await WasmDatabase.open(
         databaseName: migrationDestination,
         sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
@@ -120,6 +125,7 @@ Future<void> migrationPhase(String phase) async {
           .contains(cipher.chosenImplementation.name), 'D18_MIG_UNSAFE_TARGET');
       final target = AppDatabase.testPatientVault(cipher.resolvedExecutor, scope);
       db = target;
+      stage('migration_write_cipher_destination');
       await target.transaction(() async {
         await target.customStatement(
           'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
@@ -129,6 +135,7 @@ Future<void> migrationPhase(String phase) async {
           [1, migrationMarker],
         );
       });
+      stage('migration_read_cipher_destination');
       final copied = await db.customSelect(
         'SELECT marker FROM "$migrationTable" WHERE id = 1',
       ).getSingle();
