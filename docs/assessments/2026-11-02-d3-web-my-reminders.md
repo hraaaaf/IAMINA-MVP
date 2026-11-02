@@ -35,6 +35,12 @@ Le schéma `ReminderData` actuel contient `title`, `dueAt`, `enabled`, `createdA
 
 ## Gates / Next
 - Vérifier CI sur le commit exact, diagnostiquer et corriger tout échec sans supprimer une assertion.
-- Capturer BEFORE/AFTER avec une fixture locale synthétique identique (vraie Home, pas seulement test widget), FR/AR et mêmes viewports ; attribuer score seulement après lecture des images.
+- Capturer BEFORE/AFTER avec la vraie **carte** NextAction (baseline) vs la vraie **carte** Mes rappels (candidate) dans un harnais navigateur isolé, FR/AR et mêmes viewports ; **ne pas présenter ces images comme une comparaison de Home complet**. La présence/position dans Home est vérifiée séparément par les tests Dashboard/P7. Attribuer score seulement après lecture réelle des 12 images.
 - Exiger autorisation explicite **Preview** avant tout Vercel et recette utilisateur ; aucune production par défaut.
 - Traiter les PR D3 antérieures #1085 et #1137 comme candidates historiques / supplantées seulement après validation du nouveau candidat.
+
+## Suivi CI et preuve Chrome — 02/11/2026 23:44 UTC
+- Premier run Chrome [#41546944191](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41546944191) sur `744c037130d577b64558a77085d51d8cecfc90f4` : **FAILURE** après compilation Web BEFORE+AFTER réussie. 11 captures ont passé les contrôles de taille, la 12e (`after-ar-1280x900.png`) mesure 1280×900 mais seulement **5 289 octets**, sous le seuil strict de 10 000 ; la capture est donc **refusée**, sans score ni certification. Les 12 fichiers ont été archivés par `if: always()` (artifact `13189263384`), mais ils doivent encore être réellement examinés avant toute conclusion visuelle.
+- Correction ciblée du harnais dans `549abcb68f5a0796a6065ac99b602ef2b19d8a7f` : quatre tentatives bornées par viewport avec rechargement Chrome entre captures invalides ; **maintien** de l'exigence dimensions exactes + PNG ≥10 000 octets, et contrôle supplémentaire de diversité de couleurs (≥24 couleurs distinctes). Aucun relâchement des assertions produit ; si la capture reste blanche ou incomplète, le gate échoue encore. Le diagnostic « rasterisation transitoire » est une hypothèse à vérifier sur le nouveau run, pas une cause démontrée.
+- Sur l'ancien HEAD, P7 [#41546944133](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41546944133) et P5-5 [#41546944119](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41546944119) ont abouti **SUCCESS** après les corrections `ce1aa465` / `d34d14b9`. Les autres workflows et la preuve du HEAD corrigé restent à certifier.
+- Aucune Preview/Production Vercel ni merge. Récurrence et statut accompli absents du schéma `ReminderData`.
