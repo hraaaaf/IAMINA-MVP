@@ -21,6 +21,8 @@ const phases = [
 const results = [];
 async function verify(ctx,name,key) {
   const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', e => pageErrors.push(e.name || 'PageError'));
   try {
     await page.addInitScript(keyBytes => {
       Object.defineProperty(window, '__D18_DYNAMIC_CI_KEY',
@@ -28,15 +30,29 @@ async function verify(ctx,name,key) {
     }, key);
     await page.goto('http://127.0.0.1:7396/?phase='+name,
       {waitUntil:'domcontentloaded',timeout:45000});
-    await page.waitForFunction(() =>
-      document.title.startsWith('D18_DYNAMIC_SQL_PASS:') ||
-      document.title.startsWith('D18_DYNAMIC_SQL_FAIL:'),
-      null,{timeout:65000});
+    try {
+      await page.waitForFunction(() =>
+        document.title.startsWith('D18_DYNAMIC_SQL_PASS:') ||
+        document.title.startsWith('D18_DYNAMIC_SQL_FAIL:'),
+        null,{timeout:45000});
+    } catch (_) {
+      const state = await page.evaluate(() => ({
+        title:document.title,
+        stage:document.documentElement.dataset.d18DynamicStage||'no_stage',
+        ready:document.readyState,
+      })).catch(()=>({title:'unknown',stage:'evaluation_failed',ready:'unknown'}));
+      results.push({phase:name,pass:false,stage:state.stage,
+        title:state.title,ready:state.ready,pageErrorNames:pageErrors});
+      throw Error('D18_DYNAMIC_SQL_NO_VERDICT');
+    }
     const out = await page.evaluate(() => ({
-      title:document.title,error:document.documentElement.dataset.d18DynamicError||null,
+      title:document.title,
+      stage:document.documentElement.dataset.d18DynamicStage||null,
+      error:document.documentElement.dataset.d18DynamicError||null,
     }));
     const ok = out.title === 'D18_DYNAMIC_SQL_PASS:'+name;
-    results.push({phase:name,pass:ok,...(!ok?{error:out.error}: {})});
+    results.push({phase:name,pass:ok,
+      ...(!ok?{error:out.error,stage:out.stage,pageErrorNames:pageErrors}: {})});
     if(!ok) throw new Error('D18 dynamic SQLite '+name+' rejected ('+out.error+')');
   } finally {
     await page.close();
