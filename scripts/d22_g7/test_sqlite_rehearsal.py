@@ -50,6 +50,40 @@ CREATE TABLE glucose_measurement_evidence_v1 (
 )
 """
 
+# Prototype-only provenance watermark. The watermark freezes the highest ID
+# existing when the sidecar is first added; older IDs remain ineligible.
+# AUTOINCREMENT in this disposable fixture prevents normal reuse of old IDs.
+# This is NOT an authorization boundary against writers with arbitrary SQL.
+LEGACY_GUARD_SQL = """
+CREATE TABLE glucose_evidence_legacy_guard_v1 (
+  singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+  legacy_max_log_id INTEGER NOT NULL CHECK (legacy_max_log_id >= 0)
+)
+"""
+
+ANTI_LEGACY_TRIGGER_SQL = """
+CREATE TRIGGER glucose_evidence_no_legacy_insert_v1
+BEFORE INSERT ON glucose_measurement_evidence_v1
+FOR EACH ROW
+WHEN (SELECT COUNT(*) FROM glucose_evidence_legacy_guard_v1
+      WHERE singleton = 1) != 1
+  OR NEW.log_entry_id <= (SELECT legacy_max_log_id
+                           FROM glucose_evidence_legacy_guard_v1
+                           WHERE singleton = 1)
+BEGIN
+  SELECT RAISE(ABORT, 'legacy provenance attribution forbidden');
+END
+"""
+
+IMMUTABLE_EVIDENCE_TRIGGER_SQL = """
+CREATE TRIGGER glucose_evidence_no_update_v1
+BEFORE UPDATE ON glucose_measurement_evidence_v1
+FOR EACH ROW
+BEGIN
+  SELECT RAISE(ABORT, 'source provenance is immutable');
+END
+"""
+
 PHYSICAL_CONVERSION_CANDIDATE = 18.01559
 
 
@@ -107,12 +141,46 @@ def add_sidecar_synthetic_only(
             "SELECT sql FROM sqlite_master WHERE type='table' "
             "AND name='glucose_measurement_evidence_v1'"
         ).fetchone()
+        canonical = lambda sql: "".join(sql.lower().split()).rstrip(";")
+        guard_ddl = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' "
+            "AND name='glucose_evidence_legacy_guard_v1'"
+        ).fetchone()
+        insert_trigger = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='trigger' "
+            "AND name='glucose_evidence_no_legacy_insert_v1'"
+        ).fetchone()
+        immutable_trigger = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='trigger' "
+            "AND name='glucose_evidence_no_update_v1'"
+        ).fetchone()
         if existing:
-            canonical = lambda sql: "".join(sql.lower().split()).rstrip(";")
-            if canonical(existing[0]) != canonical(EVIDENCE_SQL):
+            if (canonical(existing[0]) != canonical(EVIDENCE_SQL)
+                or guard_ddl is None
+                or canonical(guard_ddl[0]) != canonical(LEGACY_GUARD_SQL)
+                or insert_trigger is None
+                or canonical(insert_trigger[0]) != canonical(ANTI_LEGACY_TRIGGER_SQL)
+                or immutable_trigger is None
+                or canonical(immutable_trigger[0]) != canonical(IMMUTABLE_EVIDENCE_TRIGGER_SQL)):
                 raise RuntimeError("Conflicting sidecar schema; fail closed")
+            guard_rows = conn.execute(
+                "SELECT legacy_max_log_id FROM glucose_evidence_legacy_guard_v1 "
+                "WHERE singleton=1"
+            ).fetchall()
+            if len(guard_rows) != 1:
+                raise RuntimeError("Missing legacy watermark; fail closed")
         else:
+            if guard_ddl or insert_trigger or immutable_trigger:
+                raise RuntimeError("Partial legacy guard schema; fail closed")
+            conn.execute(LEGACY_GUARD_SQL)
+            conn.execute(
+                "INSERT INTO glucose_evidence_legacy_guard_v1 "
+                "(singleton, legacy_max_log_id) "
+                "SELECT 1, COALESCE(MAX(id), 0) FROM log_entries"
+            )
             conn.execute(EVIDENCE_SQL)
+            conn.execute(ANTI_LEGACY_TRIGGER_SQL)
+            conn.execute(IMMUTABLE_EVIDENCE_TRIGGER_SQL)
         if inject_failure:
             raise RuntimeError("Synthetic injected migration failure")
         conn.commit()
@@ -319,6 +387,69 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
             "SELECT COUNT(*) FROM glucose_measurement_evidence_v1 "
             "WHERE log_entry_id IN (1,2)"
         ).fetchone()[0], 0)
+        self.a.rollback()
+
+    def test_raw_sql_cannot_attach_source_to_preexisting_legacy_ids(self) -> None:
+        """Negative test beyond the helper: raw sidecar SQL for legacy is denied."""
+        before = snapshot_legacy(self.a)
+        add_sidecar_synthetic_only(self.a)
+        self.assertEqual(
+            self.a.execute(
+                "SELECT legacy_max_log_id FROM glucose_evidence_legacy_guard_v1"
+            ).fetchone(), (2,)
+        )
+        for legacy_id in (1, 2):
+            with self.assertRaisesRegex(
+                sqlite3.IntegrityError, "legacy provenance attribution forbidden"
+            ):
+                self.a.execute(
+                    "INSERT INTO glucose_measurement_evidence_v1 "
+                    "(log_entry_id, original_source_value, original_source_unit_ucum, "
+                    "unit_system, provenance, conversion_contract, recorded_at_utc) "
+                    "VALUES (?, 70, 'mg/dL', 'http://unitsofmeasure.org', "
+                    "'user_entered', 'nist_glucose_1801559_v1', 'now')",
+                    (legacy_id,),
+                )
+        self.assertEqual(snapshot_legacy(self.a), before)
+        self.assertEqual(self.a.execute(
+            "SELECT COUNT(*) FROM glucose_measurement_evidence_v1"
+        ).fetchone()[0], 0)
+
+    def test_source_metadata_update_denied_and_guard_missing_fails_closed(self) -> None:
+        add_sidecar_synthetic_only(self.a)
+        new_id = append_new_synthetic_measure(
+            self.a, raw_value=140, declared_unit="mg/dL",
+            client_uuid="synthetic-new-101-adversarial",
+        )
+        self.a.commit()
+        with self.assertRaisesRegex(
+            sqlite3.IntegrityError, "source provenance is immutable"
+        ):
+            self.a.execute(
+                "UPDATE glucose_measurement_evidence_v1 "
+                "SET log_entry_id=1 WHERE log_entry_id=?", (new_id,)
+            )
+        with self.assertRaisesRegex(
+            sqlite3.IntegrityError, "source provenance is immutable"
+        ):
+            self.a.execute(
+                "UPDATE glucose_measurement_evidence_v1 "
+                "SET original_source_value=10 WHERE log_entry_id=?", (new_id,)
+            )
+        self.a.execute("DELETE FROM glucose_evidence_legacy_guard_v1")
+        with self.assertRaisesRegex(
+            sqlite3.IntegrityError, "legacy provenance attribution forbidden"
+        ):
+            self.a.execute(
+                "INSERT INTO glucose_measurement_evidence_v1 "
+                "(log_entry_id, original_source_value, original_source_unit_ucum, "
+                "unit_system, provenance, conversion_contract, recorded_at_utc) "
+                "VALUES (?, 10, 'mg/dL', 'http://unitsofmeasure.org', "
+                "'user_entered', 'nist_glucose_1801559_v1', 'now')",
+                (new_id + 1,),
+            )
+        with self.assertRaisesRegex(RuntimeError, "Missing legacy watermark"):
+            add_sidecar_synthetic_only(self.a)
         self.a.rollback()
 
     def test_patient_a_and_b_are_separate_physical_vaults(self) -> None:
