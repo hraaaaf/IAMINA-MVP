@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -168,16 +169,29 @@ class GlucoseHalfDialInput extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   Positioned.fill(
-                    child: GestureDetector(
+                    // iOS Safari: the parent SingleChildScrollView previously
+                    // won the vertical-drag gesture arena, so the whole page
+                    // moved instead of the dial. Claim this hit-tested dial
+                    // surface immediately. The number editor is a separate
+                    // Stack sibling ABOVE it and retains keyboard focus.
+                    child: RawGestureDetector(
                       key: const Key('glucose-half-dial-touch-surface'),
                       behavior: HitTestBehavior.opaque,
-                      onTapDown: (event) =>
-                          _selectArc(event.localPosition, size),
-                      onPanDown: (event) =>
-                          _selectArc(event.localPosition, size),
-                      onPanUpdate: (event) =>
-                          _selectArc(event.localPosition, size),
-                      child: Semantics(
+                      gestures: <Type, GestureRecognizerFactory>{
+                        EagerGestureRecognizer:
+                            GestureRecognizerFactoryWithHandlers<
+                                EagerGestureRecognizer>(
+                          () => EagerGestureRecognizer(),
+                          (recognizer) {},
+                        ),
+                      },
+                      child: Listener(
+                        behavior: HitTestBehavior.opaque,
+                        onPointerDown: (event) =>
+                            _selectArc(event.localPosition, size),
+                        onPointerMove: (event) =>
+                            _selectArc(event.localPosition, size),
+                        child: Semantics(
                         label: _copy(context,
                           'Sélecteur de glycémie par demi-cercle',
                           'Semicircle glucose input',
@@ -201,6 +215,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
                             dark: theme.brightness == Brightness.dark,
                           ),
                         ),
+                      ),
                       ),
                     ),
                   ),
