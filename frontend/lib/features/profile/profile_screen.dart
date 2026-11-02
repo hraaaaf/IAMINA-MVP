@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/data/ramadan_context.dart' show shouldApplyRamadanProfileContext;
+export '../../core/data/ramadan_context.dart' show kWebRamadanUiEnabled;
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
 import '../../core/widgets/mobile_page_header.dart';
@@ -24,6 +27,10 @@ import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
 
 part 'profile_screen_presentation.dart';
+
+// D21: hide the Ramadan controls in Web only, retaining persisted intervals.
+bool shouldShowRamadanProfileSection({required bool isWeb}) =>
+    shouldApplyRamadanProfileContext(isWeb: isWeb);
 
 String _profileUiText(
   BuildContext context, {
