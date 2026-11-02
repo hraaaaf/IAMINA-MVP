@@ -283,10 +283,22 @@ void main() {
       expect(find.byKey(const Key('journal-context-button')), findsNothing);
       expect(find.byKey(const Key('context-stress')), findsOneWidget);
       expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
+      // D17: secondary date explanation is hidden until the user opens ⓘ.
+      final info = find.byKey(const Key('d17-details-info'));
+      expect(info, findsOneWidget);
+      expect(
+        find.textContaining('Date et heure préremplies automatiquement'),
+        findsNothing,
+      );
+      await tester.ensureVisible(info);
+      await tester.pumpAndSettle();
+      await tester.tap(info);
+      await tester.pumpAndSettle();
       expect(
         find.textContaining('Date et heure préremplies automatiquement'),
         findsOneWidget,
       );
+      expect(find.byKey(const Key('context-stress')), findsOneWidget);
     });
 
     testWidgets('desktop keeps primary event and optional context side by side', (
