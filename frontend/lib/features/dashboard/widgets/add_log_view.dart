@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../journal/widgets/meal_capture_panel.dart';
 import '../../journal/widgets/nutrition_portion_editor.dart';
+import 'glucose_half_dial_input.dart';
 
 String addLogContextLabel(AppLocalizations l10n, String value) => switch (value) {
   'fasting' => l10n.journalContextFasting,
@@ -216,6 +217,8 @@ class AddLogGlucoseCard extends StatelessWidget {
   final String unit;
   final double? mgdl;
   final ValueChanged<String> onChanged;
+  final ValueChanged<double>? onValueSelected;
+  final VoidCallback? onToggleUnit;
 
   const AddLogGlucoseCard({
     super.key,
@@ -223,6 +226,8 @@ class AddLogGlucoseCard extends StatelessWidget {
     required this.unit,
     required this.mgdl,
     required this.onChanged,
+    this.onValueSelected,
+    this.onToggleUnit,
   });
 
   @override
@@ -280,76 +285,25 @@ class AddLogGlucoseCard extends StatelessWidget {
                 children: <Widget>[
                   _sectionLabel(context, l10n.journalGlucose),
                   const SizedBox(height: 10),
-                  TextField(
-                    key: const Key('glucose-input'),
+                  GlucoseHalfDialInput(
                     controller: controller,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-                    ],
-                    style: TextStyle(
-                      color: AminaTheme.textPrimary(context),
-                      fontSize: 44,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '—',
-                      suffixIcon: Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 16),
-                        child: Center(
-                          widthFactor: 1,
-                          child: Text(
-                            unit,
-                            key: const Key('glucose-unit'),
-                            style: TextStyle(
-                              color: AminaTheme.textSecondary(context),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                    unit: unit,
+                    valueMgdl: mgdl,
+                    onTextChanged: onChanged,
+                    onValueSelected: onValueSelected ??
+                        (mg) {
+                          final text = unit == 'mmol/L'
+                              ? (mg / 18.0).toStringAsFixed(1)
+                              : mg.round().toString();
+                          controller.value = TextEditingValue(
+                            text: text,
+                            selection: TextSelection.collapsed(
+                              offset: text.length,
                             ),
-                          ),
-                        ),
-                      ),
-                      suffixIconConstraints: const BoxConstraints(
-                        minWidth: 0,
-                        minHeight: 0,
-                      ),
-                      filled: true,
-                      fillColor: isLow
-                          ? Colors.white.withValues(alpha: 0.82)
-                          : fieldSurface,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 13,
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AminaTheme.divider(context),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: isLow
-                              ? const Color(0xFFF97316).withValues(alpha: 0.48)
-                              : AminaTheme.divider(context),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: isLow
-                              ? const Color(0xFFF97316)
-                              : AminaTheme.accent(context),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                    onChanged: onChanged,
+                          );
+                          onChanged(text);
+                        },
+                    onToggleUnit: onToggleUnit,
                   ),
                   const SizedBox(height: 9),
                   if (mgdl == null)
