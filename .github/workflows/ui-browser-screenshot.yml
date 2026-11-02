@@ -39,6 +39,12 @@ on:
 permissions:
   contents: read
 
+# CI capacity: replace obsolete runs of this workflow for the same PR only.
+# Keep dispatch and main branch certifications non-cancelable.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   browser-cert:
     name: Real Chrome patient surfaces mobile + desktop
