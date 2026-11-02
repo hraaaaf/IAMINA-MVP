@@ -263,9 +263,20 @@ jobs:
               page.on('pageerror',e=>{errors.push({message:String(e),stack:e.stack||null}); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);});
               page.on('console',m=>{if(m.type()==='error'){consoleErrors.push(m.text()); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);}});
               page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})});
-              const dashboardReady=page.waitForResponse(r=>r.url().includes('/api/v1/companion/overview') && r.status()>=200 && r.status()<300,{timeout:45000});
+              // A newly registered patient has no clinical history (D11).
+              // The truthful empty Dashboard does not mount DashboardTodaySection
+              // and therefore never requests /api/v1/companion/overview.
+              // Certify the actual Flutter semantics instead of a non-existent API call.
               await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000});
-              await dashboardReady; await page.waitForTimeout(2000);
+              try {
+                await page.getByRole('button',{name:'Ajouter ma première mesure'}).waitFor({state:'visible',timeout:45000});
+                await page.getByText('Commencez par une première mesure',{exact:true}).waitFor({state:'visible',timeout:10000});
+              } catch (readyError) {
+                report[name]={url:page.url(),errors,consoleErrors,api,readyError:String(readyError)}; persist(report);
+                await page.screenshot({path:path.join('dashboard-global-cert',`${name}-not-ready-${width}x${height}.png`)}).catch(()=>{});
+                throw new Error(`${name}: truthful empty Dashboard did not render: ${readyError}`);
+              }
+              await page.waitForTimeout(500);
               const topPath=path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`); const top=await page.screenshot({path:topPath});
               await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});
               await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});
