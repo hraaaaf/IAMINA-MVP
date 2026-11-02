@@ -44,8 +44,19 @@ void main() {
         final avatar = find.byKey(const ValueKey('dashboard-companion-chat-action'));
         expect(avatar, findsOneWidget);
         final fab = tester.widget<FloatingActionButton>(avatar);
-        expect(fab.tooltip, locale.languageCode == 'ar'
-            ? 'تحدث مع IAmina' : 'Parler avec IAmina');
+        // FAB.tooltip installs a competing long-press recognizer and would
+        // block the accessible position picker; use explicit Semantics instead.
+        expect(fab.tooltip, isNull);
+        expect(
+          find.byWidgetPredicate(
+            (widget) => widget is Semantics &&
+                widget.properties.label ==
+                    (locale.languageCode == 'ar'
+                        ? 'تحدث مع IAmina'
+                        : 'Parler avec IAmina'),
+          ),
+          findsOneWidget,
+        );
         final image = tester.widget<Image>(find.byType(Image));
         expect((image.image as AssetImage).assetName,
             'assets/images/logo_amina.png');
