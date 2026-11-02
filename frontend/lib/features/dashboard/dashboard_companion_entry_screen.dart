@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/amina_visual_language.dart';
@@ -74,6 +75,91 @@ class _DashboardCompanionAvatarActionState
     }
   }
 
+  // WCAG 2.2 2.5.7: a click/tap on a 2D picker can set any position,
+  // without the precision or sustained movement required by dragging.
+  void _showPositionPicker() {
+    final width =
+        (MediaQuery.sizeOf(context).width - 48).clamp(200.0, 300.0).toDouble();
+    const height = 180.0;
+    final start = _normalized ?? Offset(
+      Directionality.of(context) == TextDirection.rtl ? 0 : 1,
+      1,
+    );
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 10, 22, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                switch (Localizations.localeOf(context).languageCode) {
+                  'ar' => 'اختيار مكان IAmina',
+                  'en' => 'Choose where IAmina sits',
+                  _ => 'Choisir la position d’IAmina',
+                },
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                switch (Localizations.localeOf(context).languageCode) {
+                  'ar' => 'اضغط على أي مكان في المنطقة لنقل الزر',
+                  'en' => 'Tap anywhere in the area to move the button',
+                  _ => 'Touchez un endroit dans la zone pour déplacer le bouton',
+                },
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: width,
+                height: height,
+                child: GestureDetector(
+                  key: const Key('dashboard-companion-position-grid'),
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (details) {
+                    setState(() {
+                      _normalized = Offset(
+                        (details.localPosition.dx / width).clamp(0.0, 1.0),
+                        (details.localPosition.dy / height).clamp(0.0, 1.0),
+                      );
+                    });
+                    _savePosition();
+                    Navigator.of(sheetContext).pop();
+                  },
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AminaVisualLanguage.controlSurface(context),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AminaVisualLanguage.controlBorder(context),
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          left: (width - 28) * start.dx,
+                          top: (height - 28) * start.dy,
+                          child: const CircleAvatar(
+                            radius: 14,
+                            backgroundColor: AminaVisualLanguage.forestDeep,
+                            child: Icon(Icons.chat_bubble_outline_rounded,
+                                size: 16, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final label = switch (Localizations.localeOf(context).languageCode) {
@@ -102,11 +188,35 @@ class _DashboardCompanionAvatarActionState
               _edge + (_normalized!.dx * xSpan),
               _edge + (_normalized!.dy * ySpan),
             );
+      void nudge(double dx, double dy) {
+        final nx = (location.dx + dx).clamp(_edge, maxX).toDouble();
+        final ny = (location.dy + dy).clamp(_edge, maxY).toDouble();
+        setState(() => _normalized = Offset(
+          xSpan == 0 ? 0 : (nx - _edge) / xSpan,
+          ySpan == 0 ? 0 : (ny - _edge) / ySpan,
+        ));
+        _savePosition();
+      }
+
       return Stack(children: [
         Positioned(
           left: location.dx,
           top: location.dy,
-          child: GestureDetector(
+          child: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.arrowLeft):
+                  () => nudge(-24, 0),
+              const SingleActivator(LogicalKeyboardKey.arrowRight):
+                  () => nudge(24, 0),
+              const SingleActivator(LogicalKeyboardKey.arrowUp):
+                  () => nudge(0, -24),
+              const SingleActivator(LogicalKeyboardKey.arrowDown):
+                  () => nudge(0, 24),
+              const SingleActivator(LogicalKeyboardKey.enter, shift: true):
+                  _showPositionPicker,
+            },
+            child: GestureDetector(
+            onLongPress: _showPositionPicker,
             onPanStart: (_) => setState(() => _dragging = true),
             onPanUpdate: (details) {
               final nx = (location.dx + details.delta.dx)
@@ -129,14 +239,25 @@ class _DashboardCompanionAvatarActionState
             child: AnimatedScale(
               duration: const Duration(milliseconds: 160),
               curve: Curves.easeOutCubic,
-              scale: _dragging ? 1.10 : 1,
+              scale: MediaQuery.disableAnimationsOf(context)
+                  ? 1
+                  : (_dragging ? 1.10 : 1),
               child: Semantics(
                 button: true,
                 label: label,
                 hint: switch (Localizations.localeOf(context).languageCode) {
-                  'ar' => 'اسحب الزر لتغيير مكانه',
-                  'en' => 'Drag to reposition',
-                  _ => 'Faire glisser pour déplacer',
+                  'ar' => 'اسحب أو اضغط مطولاً لتغيير المكان',
+                  'en' => 'Drag or hold to reposition',
+                  _ => 'Glisser ou maintenir pour déplacer',
+                },
+                customSemanticsActions: {
+                  CustomSemanticsAction(
+                    label: switch (Localizations.localeOf(context).languageCode) {
+                      'ar' => 'نقل IAmina',
+                      'en' => 'Reposition IAmina',
+                      _ => 'Déplacer IAmina',
+                    },
+                  ): _showPositionPicker,
                 },
                 child: FloatingActionButton.small(
                   key: const ValueKey('dashboard-companion-chat-action'),
@@ -162,6 +283,7 @@ class _DashboardCompanionAvatarActionState
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ),
