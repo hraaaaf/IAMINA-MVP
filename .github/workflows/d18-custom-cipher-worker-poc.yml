@@ -1,0 +1,77 @@
+name: D18 experimental encrypted Drift Web worker POC
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-custom-cipher-worker-poc.yml'
+      - 'frontend/lib/d18_cipher_worker_*.dart'
+      - 'tools/d18_cipher_worker_probe.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d18-cipher-poc-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-drift-cipher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve locked Flutter packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Acquire sqlite3mc WASM pinned to sqlite3 2.9.4
+        working-directory: frontend
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            -o web/d18_sqlite3mc.wasm \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm
+          echo "5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  web/d18_sqlite3mc.wasm" | sha256sum -c -
+      - name: Compile custom Dart workers (test only)
+        working-directory: frontend
+        run: |
+          dart compile js -O4 -o web/d18_cipher_worker_correct.js lib/d18_cipher_worker_correct.dart
+          dart compile js -O4 -o web/d18_cipher_worker_wrong.js lib/d18_cipher_worker_wrong.dart
+      - name: Analyze and build standalone Flutter Web probe
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/d18_cipher_worker_setup.dart \
+            lib/d18_cipher_worker_probe_main.dart \
+            lib/d18_cipher_worker_correct.dart \
+            lib/d18_cipher_worker_wrong.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_cipher_worker_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Real Chromium cross-process cipher test
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-mc-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_cipher_worker_probe.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-worker-poc-${{ github.event.pull_request.head.sha || github.sha }}
+          path: d18-cipher-poc-proof/
+          if-no-files-found: warn
+          retention-days: 14
