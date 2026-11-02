@@ -114,3 +114,22 @@ New source `frontend/lib/d18_real_drift_web_probe_main.dart` + `tools/d18_real_d
 
 **Security:** no code change to actual `driftDatabase` factory; browser data synthetic-only, no user secrets or clinical data touched. True at-rest encryption still NOT implemented. **Next:** strict CI real Chrome 11/11 on exact SHA; if failure, inspect whether it occurs BEFORE shutdown or AFTER; then separately validate encrypted storage engine/wrapper end-to-end before proposing any opt-in clinical migration. **No merge/production deployment**, PR #1207 remains DRAFT. Previous D18-UX year-feedback sub-lot accepted by owner with green CI.
 ---
+
+
+## 2026-11-02 — D18-A GREEN verified, Web adapter choice grounded in upstream API
+
+**All required exact-HEAD CI GREEN** at `ba806c9b5d289630e52a2ab18f972b98288e720d`:
+- [General CI #41426048859](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41426048859) SUCCESS, including Frontend analyze/tests/PWA build.
+- [Scoped SQLite + key policy #41426048509](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41426048509) SUCCESS, synthetic real-Chromium **11/11**, pre-shutdown physical IndexedDB source probe/export + after-restart.
+- [D18 UX + encrypted backup #41426048505](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41426048505) SUCCESS.
+- Owner accepted existing D18 Web UX and explicit inline birth-year correction on a previous exact Preview; do not reopen their completed checklist.
+
+**Technical option selection — proof before integration (NO production change):**
+1. Current `AppDatabase.forPatientVault` uses `driftDatabase` and stock `sqlite3.wasm + drift_worker.js`; chosen actual backend is `sharedIndexedDb`. It is **plaintext SQLite**. Real A→B isolation and encrypted *exports* don't change this. Any proposal must replace the persisted engine boundary, not simply add AES-GCM to file download.
+2. Drift's official [Web documentation](https://drift.simonbinder.eu/platforms/web/) explicitly confirms `WasmDatabase.open` **does not support direct Dart database setup callbacks on all worker paths**; it documents a **custom Dart worker** using `WasmDatabase.workerMainForOpen(setupAllDatabases: ...)` plus matching `localSetup` for non-worker fallback. Therefore a plain `PRAGMA key` after a standard Drift connection is not a proven encryption integration. Upstream Drift [Encryption docs](https://drift.simonbinder.eu/platforms/encryption/) document `NativeDatabase.setup` on native, **not** an automatic Web solution.
+3. Existing synthetic sqlite3mc distribution with `multipleciphers-opfs` already proved keyed write/wrong-key/restart/rekey/crash bounded in isolated Chromium CI (see earlier sections), but it is the **SQLite upstream JS worker1 API**, **not** Drift's `sqlite3.wasm` ABI and not the current `sharedIndexedDb` adapter. Do **not** substitute its `.wasm` into Drift or assume `multipleciphers-opfs` works for current sharedIndexedDb.
+4. **Next exact technical slice:** build a **synthetic-only custom Drift worker/executor compatibility probe** with a *pinned* cipher-capable WASM built for Drift's sqlite3 Dart binding; require a documented cipher-detection + keyed VFS hook **before any schema access**, and reject missing cipher/unsupported VFS/incorrect key with no plaintext fallback. Pair client `localSetup` and worker `setupAllDatabases` so every storage mode either encrypts or refuses. Validate actual browser-selected backend, independent process restart, wrong-key rejection, raw byte evidence, A/B isolation. Only then plan full source→destination atomic migration.
+5. If an encrypted IndexedDB VFS cannot be proven and OPFS is the only supported path, **do not silently exclude Safari/mobile or force unsupported storage**. Obtain an explicit product acceptance decision on the supported-browser matrix, while treating unsupported modes as LOCKED/UNAVAILABLE and preserving the original source. Browser storage eviction and off-device encrypted backup are separate disaster-recovery requirements.
+6. No clinical data, key, or production database migration is allowed in these probes. Never log secrets; require signed-off passphrase/recovery UI and authenticated patient scope; PR #1207 stays DRAFT. No production deployment or misleading claims of completed D18.
+
+**Proof requirement for next slice:** code+compilation+real browser worker path evidence and exact SHA CI; until then **encrypted clinical at-rest status: UNVERIFIED / NOT IMPLEMENTED**. Do not manufacture a progress percentage.
