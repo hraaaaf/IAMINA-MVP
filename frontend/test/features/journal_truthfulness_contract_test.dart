@@ -171,13 +171,17 @@ void main() {
     expect(source, isNot(contains('Icons.cloud_off_outlined')));
   });
 
-  test('Journal reserves red for hypoglycemia and uses target range for highs', () {
+  test('D22 Gate A journal does not classify legacy glucose without verified targets', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
     ).readAsStringSync();
 
-    expect(source, contains('if (val < 70)'));
-    expect(source, contains('else if (val < low || val > high)'));
+    // Neutral readings remain available without claiming hypo/hyper
+    // thresholds or personal target authority from raw legacy values.
+    expect(source, contains('final color = AminaTheme.textPrimary(context);'));
+    expect(source, contains('final val = log.bloodSugar;'));
+    expect(source, isNot(contains('if (val < 70)')));
+    expect(source, isNot(contains('else if (val < low || val > high)')));
     expect(source, isNot(contains('val < 70 || val > 250')));
   });
 }
