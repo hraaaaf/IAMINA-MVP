@@ -17,6 +17,7 @@ import 'data/drift/patient_vault_scope.dart';
 
 const srcName='d18_ci_full_schema_plain_20261102';
 const dstName='amina_vault_v1_device_e2dbe28f3eea441086a7274150a00018_d18_ci_dynamic';
+const abortName='amina_vault_v1_device_e2dbe28f3eea441086a7274150b00018_d18_ci_dynamic';
 const marker='D18_CI_FULL_SCHEMA_SENTINEL_20261102';
 final scope=PatientVaultScope.deviceLocal('e2dbe28f-3eea-4410-86a7-274150a00018');
 void stage(String s)=>html.document.documentElement?.dataset['d18FullStage']=s;
@@ -51,9 +52,10 @@ final class Encrypted {
     finally{control.close();sql.close();worker.terminate();}
   }
 }
-Future<Encrypted> openDestination() async {
+Future<Encrypted> openDestination({String databaseName=dstName}) async {
   stage('keyed_worker_handshake');
-  final k=globalContext.getProperty('__D18_FULL_KEY'.toJS);
+  final keyField=databaseName==abortName ? '__D18_FULL_ABORT_KEY' : '__D18_FULL_KEY';
+  final k=globalContext.getProperty(keyField.toJS);
   check(k is JSUint8Array,'NO_DYNAMIC_TEST_KEY');
   final bytes=Uint8List.fromList((k as JSUint8Array).toDart);
   check(bytes.length==32,'INVALID_KEY_LENGTH');
@@ -63,7 +65,7 @@ Future<Encrypted> openDestination() async {
     final buffer=bytes.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
     final payload=JSObject()
       ..setProperty('type'.toJS,'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
-      ..setProperty('name'.toJS,dstName.toJS)
+      ..setProperty('name'.toJS,databaseName.toJS)
       ..setProperty('key'.toJS,buffer);
     final ready=web.EventStreamProviders.messageEvent.forTarget(control.port1)
       .first.timeout(const Duration(seconds:25));
@@ -156,6 +158,41 @@ Future<void> integrity(QueryExecutor q) async {
   check(v.length==1&&v.single.values.single=='ok','INTEGRITY_FAILURE');
   check((await q.runSelect('PRAGMA foreign_key_check',[])).isEmpty,
     'FOREIGN_KEY_FAILURE');
+}
+Future<void> abortRollback() async {
+  stage('fault_injection_transaction');
+  final original=await openSource();
+  late final Snap before;
+  try{await integrity(original);before=await snapshot(original);}
+  finally{await original.close();}
+  final interrupted=await openDestination(databaseName:abortName);
+  try{
+    await interrupted.q.runCustom('BEGIN IMMEDIATE',[]);
+    try{
+      await interrupted.q.runCustom(
+        'CREATE TABLE "d18_injected_partial" (id INTEGER PRIMARY KEY)',[]);
+      await interrupted.q.runCustom(
+        'INSERT INTO "d18_injected_partial" VALUES(1)',[]);
+      throw StateError('EXPECTED_INJECTED_COPY_FAILURE');
+    }catch(e){
+      check(e is StateError && e.message=='EXPECTED_INJECTED_COPY_FAILURE',
+        'UNEXPECTED_FAULT');
+      await interrupted.q.runCustom('ROLLBACK',[]);
+    }
+  }finally{await interrupted.close();}
+  stage('fault_injection_independent_reopen');
+  final restarted=await openDestination(databaseName:abortName);
+  try{
+    final objects=await restarted.q.runSelect(
+      "SELECT name FROM sqlite_master WHERE name='d18_injected_partial'",[]);
+    check(objects.isEmpty,'PARTIAL_SCHEMA_SURVIVED_ROLLBACK');
+    final v=await restarted.q.runSelect('PRAGMA user_version',[]);
+    check(v.length==1 && v.single.values.single==0,
+      'PARTIAL_SCHEMA_VERSION_SURVIVED_ROLLBACK');
+  }finally{await restarted.close();}
+  final sourceAfter=await openSource();
+  try{compare(before,await snapshot(sourceAfter));await integrity(sourceAfter);}
+  finally{await sourceAfter.close();}
 }
 Future<void> migrate() async {
   stage('preflight_source');
@@ -258,6 +295,7 @@ Future<void> main() async {
   try{
     switch(phase){
       case 'seed':await seed();break;
+      case 'abort_rollback':await abortRollback();break;
       case 'migrate':await migrate();break;
       case 'verify':await verify();break;
       case 'physical_bytes':await raw();break;
