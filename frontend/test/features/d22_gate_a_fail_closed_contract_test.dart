@@ -54,6 +54,18 @@ void main() {
     expect(today, contains('return signals;'));
   });
 
+  test('D22 Gate A closes reusable KPI and trend numeric-target bypasses', () {
+    final trend = source('features/dashboard/widgets/dashboard_trend_section.dart');
+    final kpi = source('features/dashboard/widgets/dashboard_adaptive_kpi_section.dart');
+
+    expect(trend, contains('bool get _d22HasVerifiedTargetAuthority => false;'));
+    expect(kpi, contains('bool get _d22HasVerifiedTargetAuthority => false;'));
+    expect(trend, contains('final hasTarget = _d22HasVerifiedTargetAuthority;'));
+    expect(kpi, contains('final targetConfigured = _d22HasVerifiedTargetAuthority;'));
+    expect(trend, isNot(contains('widget.low != null && widget.high != null')));
+    expect(kpi, isNot(contains('final targetConfigured = low != null')));
+  });
+
   test('D22 Gate A does not label manual rows as CGM time in range', () {
     final engine = source('features/dashboard/clinical_engine.dart');
     expect(engine, contains('CGM TIR requires verified timed CGM source'));

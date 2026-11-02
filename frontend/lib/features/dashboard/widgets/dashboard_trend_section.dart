@@ -55,6 +55,9 @@ class DashboardTrendSection extends StatefulWidget {
 }
 
 class _DashboardTrendSectionState extends State<DashboardTrendSection> {
+  // No unit/provenance/clinician authority is carried by this widget contract.
+  bool get _d22HasVerifiedTargetAuthority => false;
+
   _TrendRange _range = _TrendRange.days7;
   int? _selectedLogId;
 
@@ -65,8 +68,9 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
     final db = context.read<AppDatabase>();
     final now = DateTime.now();
     final start = now.subtract(_range.duration);
-    final hasTarget =
-        widget.low != null && widget.high != null && widget.low! < widget.high!;
+    // D22 Gate A: a numeric range alone cannot prove personal target authority.
+    // Keep trend counts and observations, but never enable range classification.
+    final hasTarget = _d22HasVerifiedTargetAuthority;
 
     return StreamBuilder<List<LogEntryData>>(
       stream: db.watchDashboardTrendLogs(start, now),
