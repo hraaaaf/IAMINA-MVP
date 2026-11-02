@@ -4,6 +4,7 @@
 import 'dart:html' as html;
 
 import 'package:flutter/widgets.dart';
+import 'package:drift/wasm.dart';
 
 import 'data/drift/d18_schema_inventory.dart';
 import 'data/drift/database.dart';
@@ -91,6 +92,37 @@ Future<void> _verifyA() async {
   }
 }
 
+/// Read the selected storage implementation through Drift's own Web opener.
+/// This is a disposable Chromium profile, NOT a production vault migration.
+Future<void> _probeBackend() async {
+  _stage('probe_backend_open');
+  final scope = PatientVaultScope.deviceLocal(_a);
+  // Explicitly DISABLE implicit IndexedDB→OPFS relocation in this audit.
+  final opened = await WasmDatabase.open(
+    databaseName: scope.databaseName,
+    sqlite3Uri: Uri.parse('sqlite3.wasm'),
+    driftWorkerUri: Uri.parse('drift_worker.js'),
+    moveExistingIndexedDbToOpfs: false,
+  );
+  final chosen = opened.chosenImplementation.name;
+  html.document.documentElement?.dataset['d18Backend'] = chosen;
+  _check(const {'sharedIndexedDb', 'opfsShared', 'opfsLocks'}.contains(chosen),
+      'Unsafe/ephemeral Drift Web backend: $chosen');
+  // Verify this is THE SAME physical synthetic A vault as driftDatabase().
+  // An empty probe-only database would fail on the sentinel assertion.
+  final db = AppDatabase.testPatientVault(opened.resolvedExecutor, scope);
+  try {
+    _stage('probe_backend_read_sentinel');
+    final row = await db.customSelect(
+      'SELECT sentinel FROM "$_table" WHERE id = 1',
+    ).getSingle();
+    _check(row.read<String>('sentinel') == _sentinel,
+        'Probed Drift storage does not contain persisted A sentinel');
+  } finally {
+    await db.close();
+  }
+}
+
 Future<void> _verifyB() async {
   final db = AppDatabase.forPatientVault(PatientVaultScope.deviceLocal(_b));
   try {
@@ -139,6 +171,9 @@ Future<void> main() async {
         break;
       case 'verify_a':
         await _verifyA();
+        break;
+      case 'probe_backend':
+        await _probeBackend();
         break;
       case 'verify_b':
         await _verifyB();

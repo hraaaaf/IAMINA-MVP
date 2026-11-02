@@ -38,10 +38,12 @@ async function verify(page,phase){
   const result = await page.evaluate(()=>({
     title: document.title,
     stage: document.documentElement.dataset.d18Stage || null,
+    backend: document.documentElement.dataset.d18Backend || null,
     error: document.documentElement.dataset.d18Error || null,
   }));
   const pass = result.title === 'D18_DRIFT_PASS:' + phase;
-  steps.push({phase,pass,...(!pass?{error:result.error,stage:result.stage,events}: {})});
+  steps.push({phase,pass,...(phase==='probe_backend'?{backend:result.backend}:{}),
+    ...(!pass?{error:result.error,stage:result.stage,events}: {})});
   if(!pass)throw Error(phase + ': ' + JSON.stringify(result));
 }
 async function processPhase(context, phase){
@@ -59,7 +61,7 @@ async function processPhase(context, phase){
     // Chromium is a NEW process but has the SAME isolated temporary user profile.
     context=await chromium.launchPersistentContext(root,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
-    for(const phase of ['verify_a','verify_b','verify_legacy']){
+    for(const phase of ['verify_a','probe_backend','verify_b','verify_legacy']){
       await processPhase(context,phase);
     }
   } catch(e) {
@@ -70,9 +72,9 @@ async function processPhase(context, phase){
   }
   const proof={kind:'real IAMINA driftDatabase Web, synthetic Chrome separate-process restart',
     head:process.env.D18_CANDIDATE_SHA||'unknown',
-    expected:['seed_legacy','seed_a','verify_a','verify_b','verify_legacy'],
+    expected:['seed_legacy','seed_a','verify_a','probe_backend','verify_b','verify_legacy'],
     steps,passed:steps.filter(s=>s.pass).length};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(proof,null,2));
   console.log(JSON.stringify(proof));
-  if(proof.passed!==5 || steps.length!==5 || steps.some(s=>!s.pass))process.exitCode=1;
+  if(proof.passed!==6 || steps.length!==6 || steps.some(s=>!s.pass))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
