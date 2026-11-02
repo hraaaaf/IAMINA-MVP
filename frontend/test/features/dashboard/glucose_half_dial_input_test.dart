@@ -38,7 +38,7 @@ void main() {
 
   for (final width in <double>[390, 768, 1280]) {
     testWidgets(
-      'D22 premium direct semicircle editing, stepper and unit at $width',
+      'D22 clean direct semicircle editing, touch and unit at $width',
       (tester) async {
         tester.view.physicalSize = Size(width, 844);
         tester.view.devicePixelRatio = 1;
@@ -90,14 +90,11 @@ void main() {
         expect(find.byKey(const Key('glucose-half-dial-guide-note')), findsOneWidget);
         expect(tester.takeException(), isNull);
 
-        await tester.tap(find.byKey(const Key('glucose-half-dial-plus')));
-        await tester.pump();
-        expect(mgdl, 141);
-        expect(controller.text, '141');
-
-        await tester.tap(find.byKey(const Key('glucose-half-dial-minus')));
-        await tester.pump();
-        expect(mgdl, 140);
+        // UX3: no plus or minus controls remain. The center input and arc
+        // are the only primary entry surfaces.
+        expect(find.byKey(const Key('glucose-half-dial-plus')), findsNothing);
+        expect(find.byKey(const Key('glucose-half-dial-minus')), findsNothing);
+        expect(find.byKey(const Key('glucose-half-dial-slider')), findsNothing);
 
         await tester.tap(find.byKey(const Key('glucose-half-dial-unit-toggle')));
         await tester.pump();
@@ -126,11 +123,26 @@ void main() {
         final first = Offset(center.dx - radius, center.dy);
         final second = Offset(center.dx, center.dy - radius);
         await tester.timedDragFrom(first, second - first,
-            const Duration(milliseconds: 500));
+            const Duration(milliseconds: 250));
         await tester.pump();
         expect(mgdl, isNot(135));
         expect(mgdl, inInclusiveRange(40, 320));
         expect(double.parse(controller.text), mgdl);
+
+        // UX3 regression: a finger starting ~50px INSIDE the visual ring
+        // must still grab the selection. The previous 34px annulus missed it.
+        final generousStart = Offset(center.dx - radius + 53, center.dy - 16);
+        final generousEnd = Offset(center.dx, center.dy - radius + 35);
+        await tester.timedDragFrom(generousStart,
+            generousEnd - generousStart, const Duration(milliseconds: 170));
+        await tester.pump();
+        expect(mgdl, inInclusiveRange(40, 320));
+        expect(double.parse(controller.text), mgdl);
+        // Numeric input remains active and independent from arc gestures.
+        await tester.enterText(find.byKey(const Key('glucose-input')), '123');
+        await tester.pump();
+        expect(controller.text, '123');
+        expect(mgdl, 123);
         expect(tester.takeException(), isNull);
       },
     );
