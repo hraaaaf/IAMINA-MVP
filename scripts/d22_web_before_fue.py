@@ -122,10 +122,23 @@ def main():
                                         return header, editors
                                 else:
                                     stable = 0
+                                    # Flutter virtualizes offscreen semantics.
+                                    # Unlike the AFTER warning, the old text
+                                    # fields sit lower in the scrollable medical
+                                    # panel, so scan the REAL rendered viewport
+                                    # before judging the editor absent.
+                                    if state == "Expanded":
+                                        vp = page.viewport_size
+                                        page.mouse.move(
+                                            vp["width"] * 0.5, vp["height"] * 0.54
+                                        )
+                                        page.mouse.wheel(0, 190)
                                 page.wait_for_timeout(220)
+                            snapshot = page.locator("body").aria_snapshot()
                             raise AssertionError(
-                                f"BEFORE target editors unavailable: state={state!r}, "
-                                f"reopens={reopen_count}, editors={editors.count()}"
+                                f"BEFORE editors not visible after bounded scroll: "
+                                f"state={state!r}, reopens={reopen_count}, "
+                                f"editors={editors.count()}, aria={snapshot[-2100:]!r}"
                             )
 
                         response = page.goto(origin, wait_until="domcontentloaded", timeout=60000)
