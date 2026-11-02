@@ -11,6 +11,8 @@ import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 import 'data/drift/database.dart';
 import 'data/drift/patient_vault_scope.dart';
+import 'data/drift/d18_keyed_open_guard.dart';
+import 'data/drift/d18_vault_key_policy.dart';
 
 const _patientA = 'e2dbe28f-3eea-4410-86a7-274150a00018';
 const _patientB = 'e2dbe28f-3eea-4410-86a7-274150b00018';
@@ -26,7 +28,115 @@ void verify(bool ok, String code) {
   if (!ok) throw StateError(code);
 }
 
+// LOT 2/3 PRE-CUTOVER: real sqlite3mc worker + real D18VaultKeyPolicy
+// + scope/epoch guard + real AppDatabase v12 schema; disposable C ONLY.
+// This is not a clinical connector, never switch forPatientVault to this POC.
+const _guardedC = 'e2dbe28f-3eea-4410-86a7-274150c00018';
+
+final class _GuardedSqlCandidate {
+  final web.Worker worker;
+  final web.MessagePort control, sql;
+  final AppDatabase database;
+  const _GuardedSqlCandidate(this.worker,this.control,this.sql,this.database);
+  Future<void> close() async {
+    try {await database.close();}
+    finally {
+      control.close();
+      sql.close();
+      worker.terminate();
+    }
+  }
+}
+
+Future<void> verifyGuardedWebOpen() async {
+  stage('guarded_policy_enroll');
+  final scope=PatientVaultScope.deviceLocal(_guardedC);
+  final enrolled=await D18VaultKeyPolicy.createForEmptyVault(
+    scope:scope,passphrase:'D18-CI-only-synthetic-2026-verified-policy');
+  try {
+    final guard=D18KeyedOpenGuard(
+      resolveAuthenticatedScope:() async => scope,
+      readAuthEpoch:()=>1);
+    stage('guarded_cross_patient_reject');
+    final wrong=PatientVaultScope.deviceLocal(_patientB);
+    var invoked=false;
+    try {
+      await guard.openUnpublished<_GuardedSqlCandidate>(
+        requestedScope:wrong,
+        keySession:enrolled.session,
+        createUnpublished:(key) async {
+          invoked=true;
+          throw StateError('MUST_NOT_ENTER_WORKER');
+        },
+        discardUnpublished:(v)=>v.close());
+      throw StateError('D18_GUARD_CROSS_SCOPE_ACCEPTED');
+    } catch(e) {
+      verify(!invoked && e is StateError,
+        'D18_GUARD_OPENED_WRONG_PATIENT');
+    }
+    stage('guarded_real_worker_open');
+    final candidate=await guard.openUnpublished<_GuardedSqlCandidate>(
+      requestedScope:scope,
+      keySession:enrolled.session,
+      createUnpublished:(bytes) async {
+        final worker=web.Worker('d18_dynamic_cipher_sqlite_worker.js'.toJS);
+        final control=web.MessageChannel(),sql=web.MessageChannel();
+        var transferred=false;
+        try {
+          final own=Uint8List.fromList(bytes);
+          final buffer=own.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
+          final packet=JSObject()
+            ..setProperty('type'.toJS,'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
+            ..setProperty('name'.toJS,(scope.databaseName+'_d18_ci_dynamic').toJS)
+            ..setProperty('key'.toJS,buffer);
+          final response=web.EventStreamProviders.messageEvent
+            .forTarget(control.port1).first.timeout(const Duration(seconds:25));
+          control.port1.start();
+          worker.postMessage(packet,<JSObject>[control.port2,sql.port2,buffer].toJS);
+          transferred=true;
+          own.fillRange(0,own.length,0);
+          final status=((await response).data as JSString).toDart;
+          verify(status=='READY','D18_GUARDED_WORKER_NOT_READY');
+          final conn=await connectToRemoteAndInitialize(
+            sql.port1.channel(explicitClose:true));
+          final database=AppDatabase.testPatientVault(conn,scope);
+          try {
+            // Exercise real Drift schema v12 through sqlite3mc, not a toy table.
+            await database.customSelect('SELECT count(*) FROM sqlite_master')
+                .getSingle();
+          } catch(_) {
+            await database.close();
+            rethrow;
+          }
+          return _GuardedSqlCandidate(worker,control.port1,sql.port1,database);
+        } catch(_) {
+          control.port1.close();
+          sql.port1.close();
+          worker.terminate();
+          rethrow;
+        } finally {
+          verify(transferred,'D18_GUARDED_WORKER_KEY_NOT_TRANSFERRED');
+        }
+      },
+      discardUnpublished:(c)=>c.close());
+    try {
+      stage('guarded_schema_version');
+      final version=await candidate.database.customSelect('PRAGMA user_version')
+        .getSingle();
+      verify(version.read<int>('user_version')==12,
+        'D18_GUARDED_REAL_DRIFT_SCHEMA_NOT_V12');
+      final rows=await candidate.database.customSelect(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name='patient_profiles'").get();
+      verify(rows.length==1,'D18_GUARDED_PATIENT_TABLE_MISSING');
+      stage('guarded_session_key_preserved');
+      verify(!enrolled.session.isLocked,'D18_GUARDED_SESSION_KEY_LOST');
+    } finally {await candidate.close();}
+  } finally {enrolled.session.lock();}
+}
+
 Future<void> runPhase(String name) async {
+  if(name=='guarded_open') {await verifyGuardedWebOpen();return;}
   stage('resolve_scope');
   final scope = PatientVaultScope.deviceLocal(
     const {'isolate_b', 'create_b', 'read_b'}.contains(name)
@@ -151,7 +261,7 @@ Future<void> main() async {
   try {
     verify(const {
       'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
-      'lock_denied', 'create_b', 'read_b',
+      'lock_denied', 'create_b', 'read_b', 'guarded_open',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
