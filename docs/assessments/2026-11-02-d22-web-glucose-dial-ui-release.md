@@ -25,21 +25,24 @@ Le composant visuel montre **rouge → orange → vert → orange → rouge** av
 
 **Important :** Cette livraison de l'UI **ne certifie pas l'état clinique préexistant de main**. [PR clinique D22-B #1214](https://github.com/hraaaaf/IAMINA-MVP/pull/1214), [D22-A #1213](https://github.com/hraaaaf/IAMINA-MVP/pull/1213) et [D19 #920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) sont restées OPEN/DRAFT/non fusionnées au dernier contrôle. G1/G4/G7 et FUE complets restent un travail distinct. Ne pas fusionner automatiquement #1214 après la fusion de #1218.
 
-## Limites réelles / recette production restante
+## Recette production — acceptation propriétaire du 02/11/2026
 
-- **Prouvé :** build production READY, association domaine→deployment exact, branche merge et 8 blobs identiques.
-- **Non prouvé :** recette navigateur réelle de l'URL publique sur iPhone **après production** : l'extracteur web renvoie `not accessible/empty_content` pour la SPA Flutter, et le conteneur ne résout pas le domaine (limite d'outil, pas preuve de panne). Ne pas affirmer un vrai smoke end-to-end hébergé.
-- **Cases de recette propriétaire en prod sur mesure fictive uniquement :**
-  - [ ] Ouvrir `Nouvelle mesure` ; un seul demi-camembert visible, sans +/− et sans slider secondaire.
-  - [ ] Glisser sur l'arc : valeur change, **page immobile** ; hors cadran la page défile.
-  - [ ] Éditer le nombre central au clavier ; bascule `140 mg/dL ↔ 7,8 mmol/L ↔ 140 mg/dL`.
-  - [ ] À `40/80/140/170/240 mg/dL`, vérifier rouge/orange/vert/orange/rouge, ambiance et fluidité.
-  - [ ] Enregistrer une mesure **fictive** sur compte de test, puis vérifier le Journal et l'absence de changement des données d'un autre compte.
+**Preuve directe :** le propriétaire a confirmé explicitement **les cinq vérifications sur la production `f78f0fa`, 5/5 validés, 0 non validé, « Observations : aucune »**. Il ne s'agit plus d'une simple Preview. Ces observations correspondent exactement à la checklist qui lui a été présentée, sans test supplémentaire supposé.
+
+- [x] Le demi-camembert apparaît dans **Nouvelle mesure**, sans boutons `−/+`.
+- [x] Le curseur suit le doigt **sans faire défiler la page pendant ce geste**.
+- [x] La saisie centrale et la bascule `140 mg/dL ↔ 7,8 mmol/L` fonctionnent.
+- [x] Les cinq couleurs et leurs transitions sont correctes.
+- [x] Une **mesure fictive** est enregistrée et apparaît dans le **Journal**.
+
+**Niveau de preuve :** `USER_REPORTED_PUBLIC_IPHONE_SMOKE_PASS_5_OF_5`. Le contrôle automatisé d'accès à la SPA publique était auparavant indisponible (extracteur `empty_content`) ; il **n'a pas été exécuté avec succès depuis un navigateur indépendant**. Le retour utilisateur est une preuve fonctionnelle de recette réelle, pas une télémétrie instrumentée, ni un test clinique.
+
+**Non affirmé :** isolation des dossiers entre deux comptes (test A→B), preuve de consentement, capture AFTER indépendante, origine/autorité de chaque cible, précision de conversion clinique globale, homologation sécurité/privacy/CGM. L'app peut conserver des comportements préexistants hors du périmètre de ces cinq vérifications. Si un incident est remonté, reprendre le diagnostic et éventuellement le rollback au déploiement READY identifié.
 
 ## Closeout / suite
 
-**Sous-lot UI :** `MERGED_AND_DEPLOYED_READY_ALIAS_VERIFIED`, **post-prod iPhone smoke = PENDING**.  
-**Next exact :** retour du propriétaire sur les cinq cases en production ; incident si échec → diagnostiquer, rollback au deployment indiqué si nécessaire, puis retester. À défaut, accepter la livraison UI sans déclarer la décision clinique D22 certifiée.  
-**Séquence clinique D22 distincte :** arbitrer provenance G1, contrat conversion/arrondi G4, protection legacy/isolation/backup G7, FUE risques élevés FR/AR et vraies métriques CGM ; revue proportionnée au risque avant un lot clinique.
+**Sous-lot UI :** `MERGED_AND_PRODUCTION_READY_ALIAS_VERIFIED` + `USER_IPHONE_SMOKE_ACCEPTED_5_OF_5` — **CLOS pour ce périmètre produit Web**.  
+**Next exact hors sous-lot UI :** garder l'écran validé et reprendre la décision clinique D22 avec arbitrages documentés G1 provenance, G4 unité/conversion/arrondi, G7 legacy/isolation/backup/rollback, puis FUE FR/AR, validation humaine proportionnée au risque avant activation de tout traitement clinique.  
+**Ne pas confondre :** PR clinique D22-B #1214 toujours DRAFT/non mergée ; aucune certification clinique globale ni 17/17 décisions produit certifiées n'est impliquée.
 
 **Git commit documentaire futur :** ce fichier est un closeout documentaire sur main ; n'est pas le SHA binaire de la production `f78f0fa`. Les auto-déploiements Vercel depuis Git sont désactivés.
