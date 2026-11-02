@@ -345,11 +345,40 @@ async function keyboardJourney(browser,locale,size){
       throw Error('Tab did not reach '+label+'; '+JSON.stringify(item.focusTrail.slice(-8)));
     }
     await reachByTab(language,'language');
+    // Flutter Web may replace a semantics element during focus traversal.
+    // Re-resolve the live control after physical keys; never use JS focus()
+    // or pointer clicks to manufacture a passing keyboard journey.
+    const languageFocused=async()=>{
+      const current=await find(page,l.language);
+      return !!current && await current.evaluate(el=>
+        el===document.activeElement || el.contains(document.activeElement)
+      ).catch(()=>false);
+    };
+    const activeSnapshot=()=>page.evaluate(()=>({
+      tag:document.activeElement?.tagName||'none',
+      name:document.activeElement?.getAttribute('aria-label')||'',
+      role:document.activeElement?.getAttribute('role')||'',
+    }));
     await page.keyboard.press('Shift+Tab');
+    const afterBackward=await activeSnapshot();
     await page.keyboard.press('Tab');
-    if(!await language.evaluate(el=>el===document.activeElement ||
-        el.contains(document.activeElement)).catch(()=>false))
-      throw Error('Shift+Tab then Tab did not return to language choice');
+    let returned=await languageFocused();
+    const afterForward=await activeSnapshot();
+    // On a phone-width page the first chip can be the first tabbable item.
+    // Reverse Tab leaves the document; the first forward Tab then re-enters
+    // the Flutter semantics host rather than the first actual chip.
+    // Permit ONE additional physical Tab only when focus is on that host,
+    // not when it has moved to a different interactive control.
+    if(!returned && ['BODY','HTML','FLT-GLASS-PANE','FLT-SEMANTICS-PLACEHOLDER']
+      .includes(afterForward.tag)){
+      await page.keyboard.press('Tab');
+      returned=await languageFocused();
+    }
+    const afterReturn=await activeSnapshot();
+    item.focusReturn={afterBackward,afterForward,afterReturn,returned};
+    if(!returned)
+      throw Error('Keyboard could not return to language choice: '+
+        JSON.stringify(item.focusReturn));
     item.images.push(await capture(page,locale,size,'keyboard','language-focused'));
     await page.keyboard.press('Enter');
     const confirm=await waitFor(page,l.confirm);
