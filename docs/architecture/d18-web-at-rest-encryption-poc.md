@@ -96,3 +96,12 @@ Pinned `drift:2.31.0` supports `WasmDatabase.probe().exportDatabase()` since dri
 
 **STATUS of this staged commit:** not yet on branch, not tested in CI. No success claim. Existing CI at bb21f69b should complete before new push to avoid cancellation.
 ---
+
+## 02/11/2026 — D18-A: full SQLite encrypted-snapshot restart test, synthetic-only (CI PENDING)
+
+Previous SHA **592f8d05602dc3dd21de507e713083ed4ef25642** GREEN: [D18 #41413005477](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41413005477) 8/8 PASS real Chromium; [CI #41413005515](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41413005515) and [UX #41413005450](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41413005450) SUCCESS. Real source `sharedIndexedDb`, byte-level SQLite export and isolated unencrypted clone after restart verified. Source preflight (integrity + FK + schema) passed; no live migration.
+
+New source `frontend/lib/d18_real_drift_web_probe_main.dart` + `tools/d18_real_drift_web_smoke.js` now mandate 10 Chromium steps. `encrypt_snapshot` uses approved `D18VaultKeyPolicy` to generate a random 256-bit DEK, then AES-256-GCM encrypts the actual exported synthetic IndexedDB SQLite bytes with scope AAD; persists only the ciphertext + public key envelope in disposable localStorage. An independently random offline recovery code is passed **ONLY from temporary DOM to the Node runner in volatile memory**, never logged or stored in browser storage. After independent Chromium-process restart, `verify_encrypted_snapshot` rejects wrong passphrase, foreign patient, tampered GCM data; requires correct passphrase and runner-held offline code to recover **exact identical SQLite bytes**, compared to a fresh original export. No real patient or production storage changes.
+
+**Security boundary:** this proves synthetic snapshot crypto plumbing ONLY; it does NOT make ordinary live Drift SQLite encrypted at rest, and the test's separate original+clone remain plaintext. Real full-vault migration + cutover, crash atomicity and storage-backend compatibility remain open. A static passphrase is CI-only; real patients must create their own. Browser `localStorage` ciphertext is a synthetic test fixture and MUST NOT be reused as patient-vault storage. Key policy A already approved; no further human authorization for synthetic CI checks. CI on new SHA MUST be inspected before success claim. No merge or deploy.
+---

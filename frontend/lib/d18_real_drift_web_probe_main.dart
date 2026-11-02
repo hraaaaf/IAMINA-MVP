@@ -2,12 +2,17 @@
 // D18 CI-only synthetic Web persistence probe through the real Drift factory.
 // Not a clinical data migration, at-rest encryption test or patient account.
 import 'dart:html' as html;
+import 'dart:convert';
+import 'dart:js_util' as js_util;
+
+import 'package:cryptography/cryptography.dart';
 
 import 'package:flutter/widgets.dart';
 import 'package:drift/wasm.dart';
 
 import 'data/drift/d18_schema_inventory.dart';
 import 'data/drift/d18_migration_source_preflight.dart';
+import 'data/drift/d18_vault_key_policy.dart';
 import 'data/drift/database.dart';
 import 'data/drift/patient_vault_scope.dart';
 
@@ -17,6 +22,10 @@ const _table = 'd18_browser_persistence_probe';
 const _legacyTable = 'd18_synthetic_legacy_hold';
 const _legacySentinel = 'D18_LEGACY_STAYS_UNASSIGNED_20261101';
 const _snapshotCopy = 'd18_synthetic_sqlite_snapshot_20261102';
+const _cipherKey = 'd18_ci_synthetic_sqlite_ciphertext_only_20261102';
+const _passphrase = 'D18-CI-SYNTHETIC-ONLY-BROWSER-PASSPHRASE-2026';
+const _aad = 'IAMINA-D18-CI-SYNTHETIC-SQLITE-V1';
+
 const _sentinel = 'D18_SYNTHETIC_A_ONLY_20261101';
 
 void _check(bool ok, String reason) {
@@ -237,6 +246,171 @@ Future<void> _verifySnapshotCopy() async {
   await _verifyLegacy();
 }
 
+
+/// Encrypt the complete original IndexedDB SQLite bytes using Option A's DEK.
+/// The only persisted artifact is synthetic AES-GCM ciphertext + public
+/// wrappers. This is NOT an integrated encrypted Drift backend.
+Future<void> _encryptSnapshot() async {
+  _stage('snapshot_export_for_encryption');
+  final scope = PatientVaultScope.deviceLocal(_a);
+  final probe = await WasmDatabase.probe(
+    sqlite3Uri: Uri.parse('sqlite3.wasm'),
+    driftWorkerUri: Uri.parse('drift_worker.js'),
+    databaseName: scope.databaseName,
+  );
+  final matches = probe.existingDatabases.where((entry) =>
+    entry.$1 == WebStorageApi.indexedDb && entry.$2 == scope.databaseName)
+    .toList();
+  _check(matches.length == 1, 'Missing distinct IndexedDB source');
+  final bytes = await probe.exportDatabase(matches.single);
+  _check(bytes != null && bytes.length >= 100, 'No complete SQLite bytes');
+
+  _stage('enrol_random_dek');
+  final enrollment = await D18VaultKeyPolicy.createForEmptyVault(
+    scope: scope, passphrase: _passphrase,
+  );
+  try {
+    _stage('aes_gcm_encrypt_sqlite_bytes');
+    final cipher = await AesGcm.with256bits().encrypt(
+      bytes!,
+      secretKey: enrollment.session.requireUnlockedKey(),
+      aad: utf8.encode('$_aad|${scope.databaseName}'),
+    );
+    final publicRecord = jsonEncode({
+      'format': 'iamina-d18-ci-synthetic-encrypted-snapshot-v1',
+      'envelope': enrollment.publicEnvelopeJson,
+      'cipher': base64Encode(cipher.concatenation()),
+    });
+    _check(!publicRecord.contains(_sentinel) &&
+      !publicRecord.contains('SQLite format 3') &&
+      !publicRecord.contains(_passphrase) &&
+      !publicRecord.contains(enrollment.offlineRecoveryCode),
+      'Synthetic encrypted snapshot leaked plaintext or secrets');
+    // Strictly ephemeral disposable browser-profile fixture, never real PHI.
+    html.window.localStorage[_cipherKey] = publicRecord;
+    // Hand the RANDOM synthetic offline code to the NODE test runner only.
+    // This transient DOM property is not local/session storage or telemetry.
+    html.document.documentElement?.dataset['d18RecoveryCode'] =
+      enrollment.offlineRecoveryCode;
+  } finally {
+    enrollment.session.lock();
+  }
+}
+
+bool _sameBytes(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// In an independent Chromium PROCESS, recover using the original passphrase
+/// and the separately-held offline code; wrong key or tag tampering must fail.
+/// Never writes a decrypted SQLite copy to browser persistence.
+Future<void> _verifyEncryptedSnapshot() async {
+  _stage('encrypted_snapshot_read');
+  final scope = PatientVaultScope.deviceLocal(_a);
+  final raw = html.window.localStorage[_cipherKey];
+  _check(raw != null && raw.isNotEmpty, 'Ciphertext not persisted on restart');
+  _check(!raw!.contains(_sentinel) && !raw.contains('SQLite format 3'),
+    'Stored synthetic ciphertext contains plaintext');
+  final parsed = jsonDecode(raw);
+  _check(parsed is Map<String, dynamic> &&
+    parsed.length == 3 &&
+    parsed['format'] == 'iamina-d18-ci-synthetic-encrypted-snapshot-v1' &&
+    parsed['envelope'] is String && parsed['cipher'] is String,
+    'Malformed synthetic encrypted snapshot');
+  final envelope = parsed['envelope'] as String;
+  final sealed = base64Decode(parsed['cipher'] as String);
+  final box = SecretBox.fromConcatenation(
+    sealed, nonceLength: 12, macLength: 16,
+  );
+  final aad = utf8.encode('$_aad|${scope.databaseName}');
+
+  _stage('wrong_passphrase_must_fail');
+  var denied = false;
+  try {
+    final wrong = await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope: scope, publicEnvelopeJson: envelope,
+      passphrase: 'D18-SYNTHETIC-DELIBERATELY-WRONG-PASSPHRASE',
+    );
+    wrong.lock();
+  } catch (_) { denied = true; }
+  _check(denied, 'Wrong passphrase accepted');
+  _stage('foreign_patient_must_fail');
+  denied = false;
+  try {
+    final foreign = await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope: PatientVaultScope.deviceLocal(_b),
+      publicEnvelopeJson: envelope, passphrase: _passphrase,
+    );
+    foreign.lock();
+  } catch (_) { denied = true; }
+  _check(denied, 'Foreign patient unlocked synthetic A');
+
+  _stage('passphrase_decrypt');
+  final byPassphrase = await D18VaultKeyPolicy.unlockWithPassphrase(
+    scope: scope, publicEnvelopeJson: envelope, passphrase: _passphrase,
+  );
+  late final List<int> recovered;
+  try {
+    recovered = await AesGcm.with256bits().decrypt(
+      box, secretKey: byPassphrase.requireUnlockedKey(), aad: aad,
+    );
+    _stage('tampered_ciphertext_must_fail');
+    final corrupt = List<int>.of(sealed);
+    corrupt[corrupt.length - 1] ^= 1;
+    denied = false;
+    try {
+      await AesGcm.with256bits().decrypt(
+        SecretBox.fromConcatenation(
+          corrupt, nonceLength: 12, macLength: 16,
+        ),
+        secretKey: byPassphrase.requireUnlockedKey(),
+        aad: aad,
+      );
+    } catch (_) { denied = true; }
+    _check(denied, 'Tampered encrypted SQLite snapshot accepted');
+  } finally {
+    byPassphrase.lock();
+  }
+
+  _stage('offline_recovery_decrypt');
+  // Injected only into runtime JS global by Playwright, never persisted.
+  final recoveryCode =
+    js_util.getProperty<Object?>(html.window, '__d18SyntheticRecoveryCode');
+  _check(recoveryCode is String && recoveryCode.startsWith('IAMINA-R1-'),
+    'Independent offline recovery code was not provided');
+  final byRecovery = await D18VaultKeyPolicy.unlockWithOfflineRecovery(
+    scope: scope, publicEnvelopeJson: envelope,
+    offlineRecoveryCode: recoveryCode as String,
+  );
+  try {
+    final secondary = await AesGcm.with256bits().decrypt(
+      box, secretKey: byRecovery.requireUnlockedKey(), aad: aad,
+    );
+    _check(_sameBytes(recovered, secondary),
+      'Offline recovery did not restore exact SQLite bytes');
+  } finally {
+    byRecovery.lock();
+  }
+
+  _stage('compare_original_full_sqlite_bytes');
+  final probe = await WasmDatabase.probe(
+    sqlite3Uri: Uri.parse('sqlite3.wasm'),
+    driftWorkerUri: Uri.parse('drift_worker.js'),
+    databaseName: scope.databaseName,
+  );
+  final match = probe.existingDatabases.where((entry) =>
+    entry.$1 == WebStorageApi.indexedDb && entry.$2 == scope.databaseName)
+    .toList();
+  _check(match.length == 1, 'Original A source missing after recovery');
+  final original = await probe.exportDatabase(match.single);
+  _check(original != null && _sameBytes(recovered, original!),
+    'Decrypted whole SQLite bytes differ from original on restart');
+}
+
 Future<void> _verifyB() async {
   final db = AppDatabase.forPatientVault(PatientVaultScope.deviceLocal(_b));
   try {
@@ -291,6 +465,12 @@ Future<void> main() async {
         break;
       case 'probe_export':
         await _probeSnapshotCopy();
+        break;
+      case 'encrypt_snapshot':
+        await _encryptSnapshot();
+        break;
+      case 'verify_encrypted_snapshot':
+        await _verifyEncryptedSnapshot();
         break;
       case 'verify_export':
         await _verifySnapshotCopy();
