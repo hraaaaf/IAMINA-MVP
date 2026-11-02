@@ -45,6 +45,10 @@ Future<void> _serve(web.MessageEvent event) async {
   _used = true;
 
   IndexedDbFileSystem? storage;
+  WasmDatabase? database;
+  DriftServer? server;
+  JSObject? lockLease;
+  var acknowledged = false;
   var stage = 'validate_input';
   try {
     final payload = event.data as JSObject;
@@ -62,6 +66,24 @@ Future<void> _serve(web.MessageEvent event) async {
     // PRAGMA key's password interface. This is NOT direct raw-DEK mode.
     final secret = _hex(bytes);
     bytes.fillRange(0, bytes.length, 0);
+
+    // Acquire an exclusive origin-wide lease BEFORE opening the physical DB.
+    // Missing Web Locks, an occupied namespace, or missing CI helper fail closed.
+    stage = 'load_lock_gate';
+    globalContext.callMethod('importScripts'.toJS,
+        'd18_dynamic_worker_lock_gate.js'.toJS);
+    stage = 'acquire_lock';
+    final acquired = await globalContext
+        .callMethod<JSPromise<JSObject>>('__d18AcquireWorkerLock'.toJS,
+            name.toJS)
+        .toDart;
+    if (!(acquired.getProperty('ok'.toJS) as JSBoolean).toDart) {
+      control.postMessage('LOCK_UNAVAILABLE'.toJS);
+      control.close();
+      databasePort.close();
+      return;
+    }
+    lockLease = acquired;
 
     stage = 'open_indexeddb';
     storage = await IndexedDbFileSystem.open(dbName: name);
@@ -88,6 +110,7 @@ Future<void> _serve(web.MessageEvent event) async {
         raw.select('SELECT count(*) FROM sqlite_master');
       },
     );
+    database = db;
     // Must authenticate the keyed database BEFORE exporting SQL port.
     stage = 'ensure_open';
     await db.ensureOpen(const _SyntheticNoMigrations());
@@ -96,6 +119,7 @@ Future<void> _serve(web.MessageEvent event) async {
     stage = 'create_drift_server';
     final server = DriftServer(db, closeConnectionAfterShutdown: true);
     control.postMessage('READY'.toJS);
+    acknowledged = true;
     control.close();
     await server.serve(databasePort.channel(explicitClose: true));
   } catch (error) {
@@ -109,10 +133,31 @@ Future<void> _serve(web.MessageEvent event) async {
     final response = notADatabase
         ? 'KEY_REJECTED'
         : 'REJECTED_${stage}_${error.runtimeType}';
-    control.postMessage(response.toJS);
-    control.close();
-    databasePort.close();
-    await storage?.close();
+    if (!acknowledged) {
+      control.postMessage(response.toJS);
+      control.close();
+      databasePort.close();
+    }
+  } finally {
+    // Keep the exclusive Web Lock until Drift and IndexedDB are fully closed.
+    // Nested finally guarantees lease release even when a close fails.
+    try {
+      if (server != null) {
+        await server.shutdown();
+      } else if (database != null) {
+        await database.close();
+      }
+    } finally {
+      try {
+        await storage?.close();
+      } finally {
+        if (lockLease != null) {
+          await lockLease
+              .callMethod<JSPromise<JSAny?>>('release'.toJS)
+              .toDart;
+        }
+      }
+    }
   }
 }
 
