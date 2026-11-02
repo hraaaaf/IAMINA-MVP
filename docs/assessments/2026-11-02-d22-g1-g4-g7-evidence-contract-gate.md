@@ -46,6 +46,7 @@ Aucun incident clinique réel n'est confirmé par cet inventaire ; les risques s
 - Les facteurs **18.0** (saisie), **18.018** (formateur main) et **18.016** (branche D19 non mergée) restent tels quels dans l'application jusqu'à décision de compatibilité, arrondi et migration approuvée.
 - Proposition de contrat de présentation *pour le modèle futur uniquement* : valeur originale toujours immuable ; affichage mg/dL entier et mmol/L à 1 décimale (à valider selon l'appareil et le contexte), **aucune écriture d'une projection arrondie comme nouvelle valeur source**. Édition réelle = nouvelle valeur avec unité d'édition et traçabilité.
 - Oracles synthétiques : 10 mmol/L → 180.1559 mg/dL ; 140 mg/dL → 7.8 mmol/L affiché ; 7.83 mmol/L → 141.0620697 mg/dL numérique, puis retour au brut 7.83 sans écriture. NaN, infini, zéro/négatif refusés pour les nouvelles valeurs.
+- Revue négative après premiers 3/3 workflows verts sur `b9ffc6f` : des **entrées pourtant finies** telles que `1e308 mmol/L` débordent en `Infinity` après multiplication ; des valeurs positives extrêmement petites peuvent **sous-déborder à zéro** après division. Le module **non branché au runtime** rejette désormais le résultat converti non fini/non positif, et vérifie la conversion lors de la création de `userEntry` (tests dédiés). Ne pas annoncer PASS avant CI du nouveau SHA.
 - Ne pas reclasser rétroactivement les mesures ni les cibles à proximité des seuils sur la base d'un changement de facteur.
 
 **Autorités attendues :** responsable moteur de calcul + clinicien, puis équipe migration.
