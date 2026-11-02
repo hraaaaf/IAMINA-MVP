@@ -486,7 +486,8 @@ class _LatestReadingCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              Flexible(
+                child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
@@ -512,6 +513,7 @@ class _LatestReadingCard extends StatelessWidget {
                     color: statusForeground,
                   ),
                 ),
+              ),
               ),
             ],
           ),

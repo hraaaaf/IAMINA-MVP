@@ -32,6 +32,9 @@ void main() {
     expect(dashboard, isNot(contains('_fetchAiSummary()')));
     expect(dashboard, isNot(contains('api.getAiSummary(')));
     expect(premium, contains('const double? low = null;'));
+    expect(premium, contains('child: Container('));
+    final hero = source('features/dashboard/widgets/hero_section.dart');
+    expect(hero, contains('Optional Firebase auth must not crash'));
     expect(journal, contains('final color = AminaTheme.textPrimary(context);'));
     expect(recent, isNot(contains('_valueColor(')));
     expect(reports, contains('const double? low = null;'));

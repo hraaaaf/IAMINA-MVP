@@ -1,13 +1,17 @@
 part of '../dashboard_screen.dart';
 
 String _dashboardFirstName() {
+  try {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null || user.isAnonymous) return '';
   final name = user.displayName ?? user.email ?? '';
   if (name.isEmpty) return '';
   return name
       .split(RegExp(r'[\s@.]'))
-      .firstWhere((part) => part.isNotEmpty, orElse: () => '');
+      .firstWhere((part) => part.isNotEmpty, orElse: () => '');  } catch (_) {
+    // Optional Firebase auth must not crash local-first dashboards.
+    return '';
+  }
 }
 
 // ── Page Head ─────────────────────────────────────────────────────────────────
