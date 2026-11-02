@@ -18,6 +18,7 @@ import 'data/drift/patient_vault_scope.dart';
 const srcName='d18_ci_full_schema_plain_20261102';
 const dstName='amina_vault_v1_device_e2dbe28f3eea441086a7274150a00018_d18_ci_dynamic';
 const abortName='amina_vault_v1_device_e2dbe28f3eea441086a7274150b00018_d18_ci_dynamic';
+const crashName='amina_vault_v1_device_e2dbe28f3eea441086a7274150c00018_d18_ci_dynamic';
 const marker='D18_CI_FULL_SCHEMA_SENTINEL_20261102';
 final scope=PatientVaultScope.deviceLocal('e2dbe28f-3eea-4410-86a7-274150a00018');
 void stage(String s)=>html.document.documentElement?.dataset['d18FullStage']=s;
@@ -54,7 +55,8 @@ final class Encrypted {
 }
 Future<Encrypted> openDestination({String databaseName=dstName}) async {
   stage('keyed_worker_handshake');
-  final keyField=databaseName==abortName ? '__D18_FULL_ABORT_KEY' : '__D18_FULL_KEY';
+  final keyField=databaseName==abortName ? '__D18_FULL_ABORT_KEY' :
+    databaseName==crashName ? '__D18_FULL_CRASH_KEY' : '__D18_FULL_KEY';
   final k=globalContext.getProperty(keyField.toJS);
   check(k is JSUint8Array,'NO_DYNAMIC_TEST_KEY');
   final bytes=Uint8List.fromList((k as JSUint8Array).toDart);
@@ -201,6 +203,60 @@ Future<void> abortRollback() async {
   try{compare(before,await snapshot(sourceAfter));await integrity(sourceAfter);}
   finally{await sourceAfter.close();}
 }
+// A genuine unclean worker termination with an OPEN, uncommitted transaction.
+// Never perform this against real patients. Do not invoke ROLLBACK/close on
+// the crashed worker: only the restarted storage engine can recover the journal.
+Future<void> crashUncommitted() async {
+  stage('crash_source_preflight');
+  final source=await openSource();
+  try {
+    await integrity(source);
+    final before=await snapshot(source);
+    check(before.schema.any((s)=>s['name']=='d18_child_trigger'),
+      'CRASH_SOURCE_UNSEEDED');
+  } finally { await source.close(); }
+  final doomed=await openDestination(databaseName:crashName);
+  stage('crash_transaction_open');
+  await doomed.q.runCustom('BEGIN IMMEDIATE',[]);
+  await doomed.q.runCustom(
+    'CREATE TABLE "d18_crash_partial" (id INTEGER PRIMARY KEY, marker TEXT)',[]);
+  await doomed.q.runCustom(
+    'INSERT INTO "d18_crash_partial" VALUES (?, ?)',[1,marker]);
+  final visible=await doomed.q.runSelect(
+    'SELECT marker FROM "d18_crash_partial" WHERE id=1',[]);
+  check(visible.length==1 && visible.single['marker']==marker,
+    'CRASH_UNCOMMITTED_WRITE_NOT_VISIBLE');
+  // This is the fault injection: no COMMIT, ROLLBACK, executor.close or
+  // DriftServer.shutdown. The next CI phase uses a NEW Chromium process.
+  stage('crash_worker_force_terminate');
+  doomed.worker.terminate();
+  doomed.control.close();
+  doomed.sql.close();
+}
+
+Future<void> verifyCrashRecovery() async {
+  stage('crash_recovery_new_process');
+  final crashed=await openDestination(databaseName:crashName);
+  try {
+    await integrity(crashed.q);
+    final tables=await crashed.q.runSelect(
+      "SELECT name FROM sqlite_master WHERE name='d18_crash_partial'",[]);
+    check(tables.isEmpty,'CRASH_PARTIAL_SCHEMA_SURVIVED');
+    final version=await crashed.q.runSelect('PRAGMA user_version',[]);
+    check(version.length==1 && version.single.values.single==0,
+      'CRASH_PARTIAL_DB_MARKED_READY');
+  } finally {await crashed.close();}
+  stage('crash_source_still_intact');
+  final source=await openSource();
+  try {
+    await integrity(source);
+    final after=await snapshot(source);
+    check(after.schema.any((s)=>s['name']=='d18_child_trigger') &&
+      after.data['d18_parent']?.length==1 &&
+      after.data['d18_child']?.length==1,
+      'CRASH_SOURCE_MODIFIED');
+  } finally {await source.close();}
+}
 Future<void> migrate() async {
   stage('preflight_source');
   final src=await openSource();
@@ -307,6 +363,8 @@ Future<void> main() async {
     switch(phase){
       case 'seed':await seed();break;
       case 'abort_rollback':await abortRollback();break;
+      case 'crash_uncommitted':await crashUncommitted();break;
+      case 'crash_recover':await verifyCrashRecovery();break;
       case 'migrate':await migrate();break;
       case 'verify':await verify();break;
       case 'physical_bytes':await raw();break;
