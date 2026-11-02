@@ -83,7 +83,10 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
       'ar' => 'التحليل الشخصي غير متاح مؤقتًا: لم يتم التحقق من أهداف سكر الدم القديمة.',
       _ => 'Personalized analysis is temporarily unavailable: historical glucose targets are unverified.',
     };
-    return Center(
+    // D22 Gate A: show the safety notice near the header, not in the
+    // middle of a blank mobile/desktop viewport.
+    return Align(
+      alignment: AlignmentDirectional.topCenter,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: ConstrainedBox(

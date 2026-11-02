@@ -50,6 +50,13 @@ void main() {
     expect(summary, isNot(contains('api.getKpis(')));
     expect(summary, isNot(contains('api.getAiSummary(')));
     expect(summary, contains('Personalized analysis is temporarily unavailable'));
+    // Gate A must not offer date ranges that cannot update a blocked analysis.
+    final presentation = source('features/journal/ai_summary_screen_presentation.dart');
+    expect(presentation, contains('this.showPeriodControls = false'));
+    expect(presentation, contains('bottom: showPeriodControls'));
+    expect(presentation, contains('if (showPeriodControls) ...['));
+    expect(summary, contains('alignment: AlignmentDirectional.topCenter,'));
+    expect(summary, isNot(contains('showPeriodControls: true')));
     expect(today, contains('Glucose targets unverified.'));
     expect(today, contains('return signals;'));
   });
