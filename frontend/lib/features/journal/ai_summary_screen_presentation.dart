@@ -406,6 +406,9 @@ class _SummaryTopBar extends StatelessWidget {
     required this.periodDays,
     required this.onPeriodChange,
     required this.onTweaksTap,
+    // This default-off compatibility parameter is intentional. Historical
+    // D19 comparison keeps the same constructor but Gate A never passes true.
+    // ignore: unused_element_parameter
     this.showPeriodControls = false,
   });
 
