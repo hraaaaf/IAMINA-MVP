@@ -26,7 +26,7 @@ async function verify(ctx,name,key) {
   // Capture bounded JS startup diagnostics, redacting long hex secrets and URLs.
   const safeError = e => {
     const message = String(e.message || '').replace(/[a-f0-9]{32,}/gi, '[redacted]')
-      .replace(/https?:\\/\\/[^\\s]+/g, '[url]').slice(0, 320);
+      .replace(/https?:\/\/[^\s]+/g, '[url]').slice(0, 320);
     return {name: e.name || 'PageError', message};
   };
   page.on('pageerror', e => pageErrors.push(safeError(e)));
