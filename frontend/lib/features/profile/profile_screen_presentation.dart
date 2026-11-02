@@ -222,16 +222,16 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.straighten, l10n.measureUnit),
         const SizedBox(height: 12),
-        _buildChoiceGrid(
-          ['mg/dL', 'mmol/L'],
-          ['mg/dL', 'mmol/L'],
-          _unit,
-          (val) => _setPresentationState(() => _unit = val),
-        ),
-        const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
         const SizedBox(height: 12),
-        if (!_d22TargetsEditable)
+        if (!_d22TargetsEditable) ...[
+          D22TargetDialPreview(
+            key: const Key('d22-target-half-gauge'),
+            unit: _unit,
+            onUnitChanged: (next) =>
+                _setPresentationState(() => _unit = next),
+          ),
+          const SizedBox(height: 12),
           Container(
             key: const Key('d22-unverified-target-blocked'),
             width: double.infinity,
@@ -248,33 +248,31 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                 ar: 'الأهداف غير مؤكدة. لا تصنيف طبي قبل التحقق.',
               ),
             ),
-          )
-        else
+          ),
+        ] else
           LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 460;
-            final low = _buildTextField(
-              AuditedPageCopy.of(context).minimum,
-              _targetLowController,
-              l10n,
-            );
-            final high = _buildTextField(
-              AuditedPageCopy.of(context).maximum,
-              _targetHighController,
-              l10n,
-            );
-            if (compact) {
-              return Column(children: [low, const SizedBox(height: 12), high]);
-            }
-            return Row(
-              children: [
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 460;
+              final low = _buildTextField(
+                AuditedPageCopy.of(context).minimum,
+                _targetLowController,
+                l10n,
+              );
+              final high = _buildTextField(
+                AuditedPageCopy.of(context).maximum,
+                _targetHighController,
+                l10n,
+              );
+              if (compact) {
+                return Column(children: [low, const SizedBox(height: 12), high]);
+              }
+              return Row(children: [
                 Expanded(child: low),
                 const SizedBox(width: 16),
                 Expanded(child: high),
-              ],
-            );
-          },
-        ),
+              ]);
+            },
+          ),
         const SizedBox(height: 28),
         SizedBox(
           width: double.infinity,
