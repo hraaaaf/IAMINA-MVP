@@ -2,6 +2,7 @@ import 'package:amina/features/journal/widgets/post_save_receipt.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget receipt(Locale locale, {VoidCallback? onDone}) => MaterialApp(
@@ -45,6 +46,18 @@ void main() {
 
         expect(find.byKey(const Key('d17-receipt-info')), findsOneWidget);
         expect(find.byKey(const Key('d17-receipt-help')), findsNothing);
+        final semanticInfo = find.ancestor(
+          of: find.byKey(const Key('d17-receipt-info')),
+          matching: find.byType(Semantics),
+        ).first;
+        final closedSemantics = tester.widget<Semantics>(semanticInfo);
+        expect(closedSemantics.properties.toggled, isFalse);
+        expect(
+          closedSemantics.properties.label,
+          contains(locale.languageCode == 'fr'
+              ? 'Afficher les informations'
+              : 'عرض المعلومات'),
+        );
         expect(find.text('126 mg/dL'), findsOneWidget);
         expect(find.text('02/11 · 10:30'), findsOneWidget);
         expect(find.byKey(const Key('post-save-view-journal')), findsOneWidget);
@@ -69,6 +82,8 @@ void main() {
         await tester.tap(info);
         await tester.pumpAndSettle();
         expect(find.byKey(const Key('d17-receipt-help')), findsOneWidget);
+        final openedSemantics = tester.widget<Semantics>(semanticInfo);
+        expect(openedSemantics.properties.toggled, isTrue);
         final help = tester.widget<Padding>(
           find.byKey(const Key('d17-receipt-help')),
         );
@@ -90,6 +105,25 @@ void main() {
       });
     }
   }
+
+  testWidgets('D17 keyboard Tab and Enter open the saved receipt explanation',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(receipt(const Locale('fr')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('d17-receipt-help')), findsNothing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('d17-receipt-help')), findsOneWidget);
+    expect(find.text('126 mg/dL'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('D17 desktop hover provides the same technical explanation',
       (tester) async {
