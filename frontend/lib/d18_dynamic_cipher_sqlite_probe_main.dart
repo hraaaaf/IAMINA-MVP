@@ -4,6 +4,7 @@ import 'dart:html' as html;
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
+import 'package:drift/drift.dart' show Migrator;
 import 'package:drift/remote.dart';
 import 'package:drift/wasm.dart';
 import 'package:drift/src/web/channel_new.dart';
@@ -101,9 +102,31 @@ Future<void> verifyGuardedWebOpen() async {
             sql.port1.channel(explicitClose:true));
           final database=AppDatabase.testPatientVault(conn,scope);
           try {
-            // Exercise real Drift schema v12 through sqlite3mc, not a toy table.
-            await database.customSelect('SELECT count(*) FROM sqlite_master')
+            // The CI worker is deliberately pre-opened with a no-migration
+            // v1 handshake. A remote connection cannot rerun Drift's automatic
+            // onCreate after the worker already opened it. For this disposable
+            // v12 POC, invoke the REAL AppDatabase generated schema migration
+            // atomically, and only when the keyed store is provably empty.
+            stage('guarded_initialize_real_v12_schema');
+            final initial=await database.customSelect('PRAGMA user_version')
                 .getSingle();
+            verify(initial.read<int>('user_version')==1,
+                'D18_GUARDED_UNEXPECTED_INITIAL_VERSION');
+            final existing=await database.customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name NOT LIKE 'sqlite_%'").get();
+            verify(existing.isEmpty,'D18_GUARDED_NONEMPTY_CIPHER_DB');
+            await database.transaction(() async {
+              await database.migration.onCreate(Migrator(database));
+              await database.customStatement('PRAGMA user_version=12');
+              final check=await database.customSelect(
+                  'PRAGMA integrity_check').getSingle();
+              verify(check.data.values.single=='ok',
+                  'D18_GUARDED_MIGRATION_INTEGRITY_FAILED');
+              final fks=await database.customSelect(
+                  'PRAGMA foreign_key_check').get();
+              verify(fks.isEmpty,'D18_GUARDED_MIGRATION_FK_FAILED');
+            });
           } catch(_) {
             await database.close();
             rethrow;
@@ -129,6 +152,10 @@ Future<void> verifyGuardedWebOpen() async {
         "SELECT name FROM sqlite_master WHERE type='table' "
         "AND name='patient_profiles'").get();
       verify(rows.length==1,'D18_GUARDED_PATIENT_TABLE_MISSING');
+      final declaration=await candidate.database.customSelect(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name='patient_treatment_declarations_v1'").get();
+      verify(declaration.length==1,'D18_GUARDED_DECLARATION_TABLE_MISSING');
       stage('guarded_session_key_preserved');
       verify(!enrolled.session.isLocked,'D18_GUARDED_SESSION_KEY_LOST');
     } finally {await candidate.close();}
