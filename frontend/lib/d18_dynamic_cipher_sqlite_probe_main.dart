@@ -16,6 +16,8 @@ const _patientA = 'e2dbe28f-3eea-4410-86a7-274150a00018';
 const _patientB = 'e2dbe28f-3eea-4410-86a7-274150b00018';
 const _table = 'd18_ci_real_keyed_worker';
 const _marker = 'D18_CI_DYNAMIC_REAL_SQLITE_WORKER_20261102';
+const _tableB = 'd18_ci_second_vault';
+const _markerB = 'D18_CI_SYNTHETIC_SECOND_VAULT_20261102';
 
 void stage(String value) =>
     html.document.documentElement?.dataset['d18DynamicStage'] = value;
@@ -27,7 +29,8 @@ void verify(bool ok, String code) {
 Future<void> runPhase(String name) async {
   stage('resolve_scope');
   final scope = PatientVaultScope.deviceLocal(
-    name == 'isolate_b' ? _patientB : _patientA,
+    const {'isolate_b', 'create_b', 'read_b'}.contains(name)
+        ? _patientB : _patientA,
   );
   final dbName = scope.databaseName + '_d18_ci_dynamic';
   final jsKey = globalContext.getProperty('__D18_DYNAMIC_CI_KEY'.toJS);
@@ -113,6 +116,19 @@ Future<void> runPhase(String name) async {
       final row = await database.customSelect(
           'SELECT marker FROM "$_table" WHERE id = 1').getSingle();
       verify(row.read<String>('marker') == _marker, 'D18_DYNAMIC_RESTART_LOST');
+    } else if (name == 'create_b') {
+      await database.customStatement(
+          'CREATE TABLE "$_tableB" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)');
+      await database.customStatement(
+          'INSERT INTO "$_tableB" (id, marker) VALUES (?, ?)', [1, _markerB]);
+    } else if (name == 'read_b') {
+      final row = await database.customSelect(
+          'SELECT marker FROM "$_tableB" WHERE id = 1').getSingle();
+      verify(row.read<String>('marker') == _markerB,
+          'D18_DYNAMIC_B_RESTART_LOST');
+      final rows = await database.customSelect(
+          "SELECT name FROM sqlite_master WHERE name = '$_table'").get();
+      verify(rows.isEmpty, 'D18_DYNAMIC_B_SAW_A');
     } else if (name == 'isolate_b') {
       final rows = await database.customSelect(
           "SELECT name FROM sqlite_master WHERE name = '$_table'").get();
@@ -135,7 +151,7 @@ Future<void> main() async {
   try {
     verify(const {
       'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
-      'lock_denied',
+      'lock_denied', 'create_b', 'read_b',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
