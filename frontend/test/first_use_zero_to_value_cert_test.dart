@@ -124,6 +124,14 @@ void main() {
       expect(find.textContaining('126 mg/dL'), findsOneWidget);
       expect(
         find.textContaining('n’interprète pas la mesure'),
+        findsNothing,
+      );
+      final d17Info = find.byKey(const Key('d17-receipt-info'));
+      await tester.ensureVisible(d17Info);
+      await tester.tap(d17Info);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('n’interprète pas la mesure'),
         findsOneWidget,
       );
 
