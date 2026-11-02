@@ -1,11 +1,11 @@
 // D18 CI-ONLY: per-opening dynamic sqlite3mc password through a dedicated worker.
 // No patient runtime use, no production namespace, no release artifacts.
+// ignore_for_file: experimental_member_use
 // Requires pinned Drift and sqlite3mc WASM; custom transport uses pinned Drift
 // implementation adapter and MUST be reviewed before clinical integration.
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
-import 'package:drift/drift.dart';
 import 'package:drift/remote.dart';
 import 'package:drift/wasm.dart';
 import 'package:drift/src/web/channel_new.dart';
@@ -91,6 +91,6 @@ Future<void> _serve(web.MessageEvent event) async {
 void main() {
   final self = globalContext as web.DedicatedWorkerGlobalScope;
   web.EventStreamProviders.messageEvent.forTarget(self).listen((event) {
-    unawaited(_serve(event as web.MessageEvent));
+    unawaited(_serve(event));
   });
 }
