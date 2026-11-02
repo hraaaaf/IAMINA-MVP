@@ -118,12 +118,13 @@ Future<void> migrationPhase(String phase) async {
       );
       verify(const {'sharedIndexedDb', 'opfsShared', 'opfsLocks'}
           .contains(cipher.chosenImplementation.name), 'D18_MIG_UNSAFE_TARGET');
-      db = AppDatabase.testPatientVault(cipher.resolvedExecutor, scope);
-      await db.transaction(() async {
-        await db.customStatement(
+      final target = AppDatabase.testPatientVault(cipher.resolvedExecutor, scope);
+      db = target;
+      await target.transaction(() async {
+        await target.customStatement(
           'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
         );
-        await db.customStatement(
+        await target.customStatement(
           'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
           [1, migrationMarker],
         );
@@ -189,7 +190,10 @@ Future<void> executePhase(String phase) async {
     for (var i = 0; i <= file.length - needle.length; i++) {
       var found = true;
       for (var j = 0; j < needle.length; j++) {
-        if (file[i + j] != needle[j]) { found = false; break; }
+        if (file[i + j] != needle[j]) {
+          found = false;
+          break;
+        }
       }
       verify(!found, 'D18_POC_PLAINTEXT_MARKER');
     }
