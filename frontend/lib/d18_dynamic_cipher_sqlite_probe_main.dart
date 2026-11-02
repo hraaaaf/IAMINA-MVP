@@ -73,14 +73,19 @@ Future<void> runPhase(String name) async {
       ..setProperty('type'.toJS, 'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
       ..setProperty('name'.toJS, dbName.toJS)
       ..setProperty('key'.toJS, keyArrayBuffer);
+    // The control port uses addEventListener via EventStreamProviders.
+    // It will NOT dispatch messages until MessagePort.start() is called.
+    // Subscribe before posting to avoid losing an immediate worker response.
+    final readyEvent = web.EventStreamProviders.messageEvent
+        .forTarget(control.port1)
+        .first.timeout(const Duration(seconds: 25));
+    control.port1.start();
     stage('send_worker_open');
     worker.postMessage(message,
         <JSObject>[control.port2, sql.port2, keyArrayBuffer].toJS);
     ephemeral.fillRange(0, ephemeral.length, 0);
     stage('await_worker_ready');
-    final statusEvent = await web.EventStreamProviders.messageEvent
-        .forTarget(control.port1)
-        .first.timeout(const Duration(seconds: 25));
+    final statusEvent = await readyEvent;
     final status = (statusEvent.data as JSString).toDart;
     control.port1.close();
     if (name == 'wrong_key') {
