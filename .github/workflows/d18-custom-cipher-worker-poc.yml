@@ -86,6 +86,28 @@ jobs:
         run: |
           dart compile js -O4 -o web/d18_cipher_worker_correct.js lib/d18_cipher_worker_correct.dart
           dart compile js -O4 -o web/d18_cipher_worker_wrong.js lib/d18_cipher_worker_wrong.dart
+      - name: Compile and analyze real dynamic sqlite3mc worker (test only)
+        working-directory: frontend
+        run: |
+          dart compile js -O4 -o web/d18_dynamic_cipher_sqlite_worker.js lib/d18_dynamic_cipher_sqlite_worker.dart
+          flutter analyze --no-fatal-infos             lib/d18_dynamic_cipher_sqlite_worker.dart             lib/d18_dynamic_cipher_sqlite_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dynamic_cipher_sqlite_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Real Chromium per-vault dynamic sqlite3mc key test
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dynamic-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_dynamic_cipher_sqlite_probe.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend
         run: |
@@ -95,13 +117,6 @@ jobs:
             lib/d18_cipher_worker_correct.dart \
             lib/d18_cipher_worker_wrong.dart
           flutter build web --release --no-web-resources-cdn -t lib/d18_cipher_worker_probe_main.dart
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Install Playwright browser
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
       - name: Real Chromium cross-process cipher test
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -117,21 +132,6 @@ jobs:
           fi
           cp tools/fixtures/d18_session_handshake_probe_worker.js frontend/build/web/d18_session_handshake_probe_worker.js
           node tools/d18_session_handoff_probe.js
-      - name: Compile and analyze real dynamic sqlite3mc worker (test only)
-        working-directory: frontend
-        run: |
-          dart compile js -O4 -o web/d18_dynamic_cipher_sqlite_worker.js lib/d18_dynamic_cipher_sqlite_worker.dart
-          flutter analyze --no-fatal-infos             lib/d18_dynamic_cipher_sqlite_worker.dart             lib/d18_dynamic_cipher_sqlite_probe_main.dart
-          flutter build web --release --no-web-resources-cdn -t lib/d18_dynamic_cipher_sqlite_probe_main.dart
-      - name: Real Chromium per-vault dynamic sqlite3mc key test
-        env:
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dynamic-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
-          node tools/d18_dynamic_cipher_sqlite_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
