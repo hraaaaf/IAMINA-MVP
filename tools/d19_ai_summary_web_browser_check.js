@@ -8,6 +8,8 @@ const path = require('path');
 const crypto = require('crypto');
 const out = path.resolve(process.env.D19_AI_WEB_OUT || 'd19-ai-summary-browser');
 const origin = process.env.D19_AI_WEB_ORIGIN || 'http://127.0.0.1:7358';
+// D22 Gate A: personalized AI and KPI requests are prohibited pending authority.
+const gateA = process.env.D19_D22_GATE_A === '1' && process.env.D19_AI_WEB_BASELINE !== '1';
 fs.mkdirSync(out, { recursive: true });
 const viewports = [
   {name:'mobile',width:390,height:844},
@@ -49,7 +51,7 @@ const tests=[];
           const bytes=await page.screenshot({path:path.join(out,file),fullPage:false});
           const hash=crypto.createHash('sha256').update(bytes).digest('hex');
           const dims=await page.evaluate(()=>({w:window.innerWidth,h:window.innerHeight,scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth}));
-          const observation={locale:loc,viewport:v.name,scenario,status:response.status(),filename:file,bytes:bytes.length,sha256:hash,errors,outbound,overflow:dims.scrollWidth>dims.w||dims.bodyWidth>dims.w};
+          const observation={locale:loc,viewport:v.name,scenario,status:response.status(),filename:file,bytes:bytes.length,sha256:hash,errors,outbound,overflow:dims.scrollWidth>dims.w||dims.bodyWidth>dims.w,requestedDays:[],recoveryDays:[],guardState:gateA?(scenario==='manual'?'first-use':'targets-unverified'):null};
           // FUE: genuinely use the physical keyboard on real Flutter Web (not a
           // synthetic JavaScript click). Assert an observable 7-day API request.
           if (v.name==='mobile' && scenario==='verified') {
@@ -79,6 +81,8 @@ const tests=[];
             observation.afterRecoveryScreenshot=loc+'-'+v.name+'-after-recovery.png';
             await page.screenshot({path:path.join(out,observation.afterRecoveryScreenshot)});
           }
+          observation.requestedDays=requestedDays.slice();
+          observation.recoveryDays=recoveryDays.slice();
           tests.push(observation);
           await context.close();
         }
@@ -92,7 +96,13 @@ const tests=[];
       const items=tests.filter(t=>t.locale===loc&&t.viewport===v.name);
       if(new Set(items.map(t=>t.sha256)).size<2)failed.push({locale:loc,viewport:v.name,reason:'no distinct clinical state render'});
     }
-    if(process.env.D19_AI_WEB_BASELINE!=='1') {
+    if(gateA) {
+      // D22 safety oracle is negative: no personalized API request, even
+      // after genuine physical keyboard interaction on the Flutter surface.
+      const requests=tests.filter(t=>t.requestedDays.length||t.recoveryDays.length);
+      if(requests.length)failed.push({reason:'D22 unauthorized personalized AI requests',cases:requests.map(t=>({locale:t.locale,viewport:t.viewport,scenario:t.scenario,days:t.requestedDays}))});
+      if(tests.filter(t=>t.guardState==='targets-unverified').length!==18)failed.push({reason:'D22 nonempty synthetic journal scenario missing'});
+    } else if(process.env.D19_AI_WEB_BASELINE!=='1') {
       const recovered=tests.filter(t=>t.scenario==='recover');
       if(recovered.length!==6||recovered.some(t=>!t.recoveryPass)) {
         failed.push({reason:'Real Flutter retry failed to recover the same 21-day analysis',cases:recovered.map(t=>({locale:t.locale,viewport:t.viewport,days:t.recoveryRequestedDays,recovered:t.recoveryDays}))});
@@ -103,7 +113,7 @@ const tests=[];
       }
     }
     // Save the complete result, including keyboard outcome, after all assertions.
-    fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
+    fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({codeTarget:'actual AISummaryScreen',network:'strict localhost-only',gateA,gateAContract:gateA?'no unauthorized AI/KPI requests; no unverified target classification':'D19 legacy presentation',fixtures:['manual CGM unavailable','verified CGM TIR/CV','summary API unavailable'],tests,failed},null,2));
     console.log(JSON.stringify({tested:tests.length,failures:failed.length,recovery:tests.filter(t=>t.scenario==='recover').map(t=>({locale:t.locale,viewport:t.viewport,pass:t.recoveryPass,days:t.recoveryRequestedDays})),keyboard:tests.filter(t=>t.keyboardPeriod7!==undefined).map(t=>({locale:t.locale,pass:t.keyboardPeriod7,days:t.keyboardRequests})),details:failed.map(f=>({locale:f.locale,viewport:f.viewport,scenario:f.scenario,reason:f.reason}))},null,2));
     if(process.env.D19_AI_WEB_BASELINE!=='1' && failed.length)process.exitCode=1;
   }finally{await browser.close();}

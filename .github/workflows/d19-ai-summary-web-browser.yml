@@ -14,6 +14,12 @@ on:
 permissions:
   contents: read
 
+# CI capacity: replace obsolete runs of this workflow for the same PR only.
+# Keep dispatch and main branch certifications non-cancelable.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   d19-ai-summary-web:
     runs-on: ubuntu-latest
@@ -62,7 +68,11 @@ jobs:
           set -euo pipefail
           git restore --source=HEAD -- frontend/lib/features/journal/ai_summary_screen_presentation.dart
           cd frontend
-          flutter build web --release --no-web-resources-cdn -t lib/ui_d19_ai_summary_browser_main.dart
+          if grep -Fq 'd22-ai-summary-target-unverified' lib/features/journal/ai_summary_screen.dart; then
+            flutter build web --release --no-web-resources-cdn --dart-define=D19_D22_GATE_A=true -t lib/ui_d19_ai_summary_browser_main.dart
+          else
+            flutter build web --release --no-web-resources-cdn -t lib/ui_d19_ai_summary_browser_main.dart
+          fi
       - name: Exercise AFTER real Flutter screen in Chrome at 3 viewports FR AR
         run: |
           set -euo pipefail
@@ -70,7 +80,11 @@ jobs:
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:7358/ >/dev/null
-          D19_AI_WEB_OUT=d19-after-browser node tools/d19_ai_summary_web_browser_check.js
+          if grep -Fq 'd22-ai-summary-target-unverified' frontend/lib/features/journal/ai_summary_screen.dart; then
+            D19_D22_GATE_A=1 D19_AI_WEB_OUT=d19-after-browser node tools/d19_ai_summary_web_browser_check.js
+          else
+            D19_AI_WEB_OUT=d19-after-browser node tools/d19_ai_summary_web_browser_check.js
+          fi
       - name: Compare BEFORE and AFTER screenshots at exact matching viewports and scenarios
         run: node tools/d19_ai_summary_visual_compare.js
       - name: Upload synthetic clinic UI screenshots
