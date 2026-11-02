@@ -42,9 +42,13 @@ final class GlucoseConversionContract {
 
   static double toMgDl(double value, GlucoseSourceUnit sourceUnit) {
     _checkReading(value);
-    return sourceUnit == GlucoseSourceUnit.mgDl
+    final mgDl = sourceUnit == GlucoseSourceUnit.mgDl
         ? value
         : value * mgDlPerMmolL;
+    // A finite input may overflow to Infinity during multiplication.
+    // Fail before a non-finite canonical value can reach any consumer.
+    _checkReading(mgDl);
+    return mgDl;
   }
 
   static double convert(
@@ -52,9 +56,12 @@ final class GlucoseConversionContract {
     GlucoseSourceUnit displayUnit,
   ) {
     _checkReading(mgDl);
-    return displayUnit == GlucoseSourceUnit.mgDl
+    final displayValue = displayUnit == GlucoseSourceUnit.mgDl
         ? mgDl
         : mgDl / mgDlPerMmolL;
+    // Also reject a zero produced by floating-point underflow.
+    _checkReading(displayValue);
+    return displayValue;
   }
 
   static void _checkReading(double value) {
@@ -81,7 +88,9 @@ final class GlucoseQuantityEvidence {
     required double originalValue,
     required GlucoseSourceUnit declaredUnit,
   }) {
-    GlucoseConversionContract._checkReading(originalValue);
+    // Reject an input whose derived mg/dL cannot be represented as a
+    // positive finite double, while keeping the source unit and raw value.
+    GlucoseConversionContract.toMgDl(originalValue, declaredUnit);
     return GlucoseQuantityEvidence._(
       originalRawValue: originalValue,
       originalUnit: declaredUnit,
