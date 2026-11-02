@@ -17,6 +17,7 @@ import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
 import '../../journal/widgets/post_save_receipt.dart';
+import '../../journal/glucose_save_navigation_guard.dart';
 import 'add_log_view.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
@@ -536,6 +537,7 @@ class AddLogSheetState extends State<AddLogSheet> {
     String unit,
     AppLocalizations l10n,
   ) async {
+    if (_saving) return;
     if (_mealVoiceBusy) {
       _message(
         _voiceCopy(
@@ -556,6 +558,7 @@ class AddLogSheetState extends State<AddLogSheet> {
 
     if (!await _confirmLowGlucose(mgdl, l10n) || !mounted) return;
 
+    if (widget.isPage) GlucoseSaveNavigationGuard.beginPageSave();
     setState(() => _saving = true);
     try {
       final note = _mealNoteController.text.trim();
@@ -609,6 +612,7 @@ class AddLogSheetState extends State<AddLogSheet> {
       _clearDraftForNextEntry();
       setState(() => _savedReceipt = receipt);
     } finally {
+      if (widget.isPage) GlucoseSaveNavigationGuard.endPageSave();
       if (mounted) setState(() => _saving = false);
     }
   }

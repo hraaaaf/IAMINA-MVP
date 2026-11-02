@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:amina/features/journal/add_log_screen.dart';
+import 'package:amina/features/journal/glucose_save_navigation_guard.dart';
 
 /// Delay the actual Drift INSERT statement, not the onSave callback or a fake
 /// widget state. The same in-memory SQLite row is written when released.
@@ -64,9 +65,10 @@ Widget _routeHarness(AppDatabase db, Locale locale) => MaterialApp(
 
 Widget _realPageHarness(AppDatabase db, Locale locale) {
   final router = GoRouter(
-    initialLocation: '/add',
+    initialLocation: '/ajouter',
+    redirect: (_, state) => GlucoseSaveNavigationGuard.redirectWhilePending(state.uri.path),
     routes: [
-      GoRoute(path: '/add', builder: (_, __) => const AddLogScreen()),
+      GoRoute(path: '/ajouter', builder: (_, __) => const AddLogScreen()),
       GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('D13_EXIT_OK'))),
     ],
   );
@@ -230,6 +232,13 @@ void main() {
         await tester.pump();
         expect(find.byKey(const Key('glucose-input')), findsOneWidget);
         expect(find.byType(AlertDialog), findsNothing);
+        expect(find.text('D13_EXIT_OK'), findsNothing);
+
+        // Route information from browser back bypasses page-backed PopScope.
+        final routeContext = tester.element(find.byKey(const Key('glucose-input')));
+        GoRouter.of(routeContext).go('/dashboard');
+        await tester.pump();
+        expect(find.byKey(const Key('glucose-input')), findsOneWidget);
         expect(find.text('D13_EXIT_OK'), findsNothing);
 
         held.release.complete();

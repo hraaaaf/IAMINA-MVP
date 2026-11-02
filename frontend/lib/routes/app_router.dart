@@ -10,6 +10,7 @@ import '../features/auth/onboarding_chat_screen.dart';
 import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/journal/glucose_save_navigation_guard.dart';
 import '../modules/module_registry.dart';
 import '../services/app_lock_service.dart';
 import '../services/auth_service.dart';
@@ -245,7 +246,9 @@ AppRouterHolder createAppRouterHolder({
         }
       }
 
-      return null;
+      // Browser history ignores page-backed PopScope. Preserve the in-flight
+      // measurement, but never override prior auth/lock/consent decisions.
+      return GlucoseSaveNavigationGuard.redirectWhilePending(path);
     },
     routes: [
       GoRoute(

@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'data/drift/database.dart';
 import 'features/journal/add_log_screen.dart';
+import 'features/journal/glucose_save_navigation_guard.dart';
 import 'l10n/app_localizations.dart';
 
 void stage(String v) => html.document.documentElement?.dataset['d13Stage'] = v;
@@ -34,7 +35,7 @@ class Probe extends StatelessWidget {
   @override
   Widget build(BuildContext c) => Scaffold(
     body: Center(child: FilledButton(
-      onPressed: () => GoRouter.of(c).go('/add'),
+      onPressed: () => GoRouter.of(c).go('/ajouter'),
       child: const Text('D13_OPEN'),
     )),
   );
@@ -62,9 +63,11 @@ Future<void> main() async {
     );
     html.document.documentElement?.dataset['d13Count'] = (await db.countLogs()).toString();
     stage('ready');
-    final router = GoRouter(routes: [
+    final router = GoRouter(
+      redirect: (_, state) => GlucoseSaveNavigationGuard.redirectWhilePending(state.uri.path),
+      routes: [
       GoRoute(path: '/', builder: (_, __) => const Probe()),
-      GoRoute(path: '/add', builder: (_, __) => const AddLogScreen()),
+      GoRoute(path: '/ajouter', builder: (_, __) => const AddLogScreen()),
       GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('D13_EXIT_OK'))),
     ]);
     runApp(MultiProvider(
