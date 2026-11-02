@@ -48,11 +48,15 @@ class DashboardCompanionAvatarAction extends StatefulWidget {
 
 class _DashboardCompanionAvatarActionState
     extends State<DashboardCompanionAvatarAction> {
-  static const double _diameter = 40;
+  static const double _diameter = 56;
   static const double _edge = 12;
   static const double _dockClearance = 104;
   Offset? _normalized;
   bool _dragging = false;
+  // Capture the initial pointer and button position once per gesture.
+  // Global pointer displacement avoids dropped deltas during widget rebuilds.
+  Offset? _dragPointerOrigin;
+  Offset? _dragAvatarOrigin;
 
   @override
   void initState() {
@@ -181,7 +185,7 @@ class _DashboardCompanionAvatarActionState
                 : constraints.maxWidth - _diameter - 20)
             .clamp(_edge, maxX)
             .toDouble(),
-        maxY,
+        (maxY - 72).clamp(_edge, maxY).toDouble(),
       );
       final location = _normalized == null
           ? start
@@ -189,6 +193,28 @@ class _DashboardCompanionAvatarActionState
               _edge + (_normalized!.dx * xSpan),
               _edge + (_normalized!.dy * ySpan),
             );
+      // Use the original pointer-to-button offset, not successive local deltas.
+      // This keeps horizontal, vertical and circular finger motions 1:1.
+      void followFinger(Offset globalPosition) {
+        final pointerOrigin = _dragPointerOrigin;
+        final avatarOrigin = _dragAvatarOrigin;
+        if (pointerOrigin == null || avatarOrigin == null) return;
+        final desired = avatarOrigin + (globalPosition - pointerOrigin);
+        final nx = desired.dx.clamp(_edge, maxX).toDouble();
+        final ny = desired.dy.clamp(_edge, maxY).toDouble();
+        setState(() => _normalized = Offset(
+          xSpan == 0 ? 0 : (nx - _edge) / xSpan,
+          ySpan == 0 ? 0 : (ny - _edge) / ySpan,
+        ));
+      }
+
+      void finishDrag() {
+        _dragPointerOrigin = null;
+        _dragAvatarOrigin = null;
+        setState(() => _dragging = false);
+        _savePosition();
+      }
+
       void nudge(double dx, double dy) {
         final nx = (location.dx + dx).clamp(_edge, maxX).toDouble();
         final ny = (location.dy + dy).clamp(_edge, maxY).toDouble();
@@ -218,31 +244,25 @@ class _DashboardCompanionAvatarActionState
             },
             child: GestureDetector(
             onLongPress: _showPositionPicker,
-            onPanStart: (_) => setState(() => _dragging = true),
-            onPanUpdate: (details) {
-              final nx = (location.dx + details.delta.dx)
-                  .clamp(_edge, maxX).toDouble();
-              final ny = (location.dy + details.delta.dy)
-                  .clamp(_edge, maxY).toDouble();
-              setState(() => _normalized = Offset(
-                xSpan == 0 ? 0 : (nx - _edge) / xSpan,
-                ySpan == 0 ? 0 : (ny - _edge) / ySpan,
-              ));
+            onPanDown: (details) {
+              _dragPointerOrigin = details.globalPosition;
+              _dragAvatarOrigin = location;
             },
-            onPanEnd: (_) {
-              setState(() => _dragging = false);
-              _savePosition();
+            onPanStart: (details) {
+              _dragPointerOrigin ??= details.globalPosition;
+              _dragAvatarOrigin ??= location;
+              setState(() => _dragging = true);
+              followFinger(details.globalPosition);
             },
-            onPanCancel: () {
-              setState(() => _dragging = false);
-              _savePosition();
-            },
+            onPanUpdate: (details) => followFinger(details.globalPosition),
+            onPanEnd: (_) => finishDrag(),
+            onPanCancel: finishDrag,
             child: AnimatedScale(
               duration: const Duration(milliseconds: 160),
               curve: Curves.easeOutCubic,
               scale: MediaQuery.disableAnimationsOf(context)
                   ? 1
-                  : (_dragging ? 1.10 : 1),
+                  : (_dragging ? 1.04 : 1),
               child: Semantics(
                 button: true,
                 label: label,
@@ -260,7 +280,7 @@ class _DashboardCompanionAvatarActionState
                     },
                   ): _showPositionPicker,
                 },
-                child: FloatingActionButton.small(
+                child: FloatingActionButton(
                   key: const ValueKey('dashboard-companion-chat-action'),
                   heroTag: 'dashboard-companion-chat-action',
                   // The built-in FAB Tooltip consumes long presses before the
@@ -271,7 +291,7 @@ class _DashboardCompanionAvatarActionState
                   foregroundColor: Colors.white,
                   child: ClipOval(
                     child: SizedBox.square(
-                      dimension: 34,
+                      dimension: 44,
                       child: ColoredBox(
                         color: Colors.white,
                         child: Image.asset(
