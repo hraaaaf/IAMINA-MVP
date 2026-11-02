@@ -37,7 +37,8 @@ class DashboardCompanionEntryScreen extends StatelessWidget {
 
 /// D27: move the Home-only IAmina launcher without moving any clinical content.
 /// The normalized position is a browser-local UI preference (never a patient fact).
-/// Dragging does not activate the chat, and the 104px bottom dock stays uncovered.
+/// Dragging does not activate the chat. The outer MainShell Scaffold already
+/// reserves bottom-navigation height; keep only an in-body edge margin.
 class DashboardCompanionAvatarAction extends StatefulWidget {
   const DashboardCompanionAvatarAction({super.key});
 
@@ -50,7 +51,9 @@ class _DashboardCompanionAvatarActionState
     extends State<DashboardCompanionAvatarAction> {
   static const double _diameter = 56;
   static const double _edge = 12;
-  static const double _dockClearance = 104;
+  // MainShell.bottomNavigationBar sits OUTSIDE this widget's layout bounds.
+  // Reserving its height again stopped the avatar ~100px too high on iPhone.
+  static const double _bottomEdge = 12;
   Offset? _normalized;
   bool _dragging = false;
   // Capture the initial pointer and button position once per gesture.
@@ -175,7 +178,7 @@ class _DashboardCompanionAvatarActionState
     return LayoutBuilder(builder: (context, constraints) {
       final maxX = (constraints.maxWidth - _diameter - _edge)
           .clamp(_edge, double.infinity).toDouble();
-      final maxY = (constraints.maxHeight - _diameter - _dockClearance)
+      final maxY = (constraints.maxHeight - _diameter - _bottomEdge)
           .clamp(_edge, double.infinity).toDouble();
       final xSpan = maxX - _edge;
       final ySpan = maxY - _edge;
