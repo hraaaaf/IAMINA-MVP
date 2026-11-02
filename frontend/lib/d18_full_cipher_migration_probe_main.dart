@@ -1,3 +1,4 @@
+// ignore_for_file: experimental_member_use, avoid_web_libraries_in_flutter, deprecated_member_use
 // D18 CI-ONLY: disposable whole-schema source -> separately KEYED sqlite3mc.
 // NEVER import this file from the application or use it with patient records.
 // No cutover, no source deletion, no plaintext destination or static key.
@@ -5,7 +6,6 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
-import 'dart:typed_data';
 import 'package:drift/drift.dart';
 import 'package:drift/remote.dart';
 import 'package:drift/wasm.dart';
