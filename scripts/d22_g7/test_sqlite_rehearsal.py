@@ -437,6 +437,7 @@ class D22G7SyntheticSQLiteRehearsal(unittest.TestCase):
                 "SET original_source_value=10 WHERE log_entry_id=?", (new_id,)
             )
         self.a.execute("DELETE FROM glucose_evidence_legacy_guard_v1")
+        self.a.commit()  # add_sidecar starts an explicit transaction.
         with self.assertRaisesRegex(
             sqlite3.IntegrityError, "legacy provenance attribution forbidden"
         ):
