@@ -538,12 +538,11 @@ class _CompanionConversationScreenState
                 if (MediaQuery.disableAnimationsOf(context)) return child!;
                 return Opacity(
                   opacity: progress,
+                  // Preserve actual 48px touch targets during the entrance.
+                  // A scale transform shrank them to 47.28px at t=0.
                   child: Transform.translate(
                     offset: Offset(0, 16 * (1 - progress)),
-                    child: Transform.scale(
-                      scale: 0.985 + 0.015 * progress,
-                      child: child,
-                    ),
+                    child: child,
                   ),
                 );
               },
