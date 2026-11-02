@@ -46,19 +46,22 @@ void _wide(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
 }
 
-/// Ensure the meal action sits above the fixed Save footer after D22.
-Future<void> _tapOptionalMeal(WidgetTester tester) async {
-  final mealButton = find.byKey(const Key('add-meal-button'));
-  await tester.ensureVisible(mealButton);
+/// The D22 dial increases entry height: below-fold chips and the meal
+/// action must be scrolled CLEAR of the persistent save bar before tapping.
+Future<void> _tapFormItem(WidgetTester tester, Finder target) async {
+  await tester.ensureVisible(target);
   await tester.pumpAndSettle();
   await tester.drag(
     find.byType(SingleChildScrollView).first,
     const Offset(0, -175),
   );
   await tester.pumpAndSettle();
-  await tester.tap(mealButton);
+  await tester.tap(target);
   await tester.pumpAndSettle();
 }
+
+Future<void> _tapOptionalMeal(WidgetTester tester) =>
+    _tapFormItem(tester, find.byKey(const Key('add-meal-button')));
 
 void main() {
   late AppDatabase db;
@@ -323,7 +326,9 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-      await tester.tap(find.byKey(const Key('glycemic-context-pre_meal')));
+      await _tapFormItem(tester,
+        find.byKey(const Key('glycemic-context-pre_meal')),
+      );
       await _tapOptionalMeal(tester);
       await tester.tap(find.byKey(const Key('meal-type-lunch')));
       await tester.enterText(
@@ -402,7 +407,9 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-      await tester.tap(find.byKey(const Key('glycemic-context-post_meal')));
+      await _tapFormItem(tester,
+        find.byKey(const Key('glycemic-context-post_meal')),
+      );
       await _tapOptionalMeal(tester);
       await tester.tap(find.byKey(const Key('meal-type-lunch')));
       await tester.tap(find.byKey(const Key('save-log-button')));
