@@ -80,6 +80,16 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
               ),
             ),
             const SizedBox(height: 10),
+            if (!widget.targetConfigured)
+              _TodayStateStrip(
+                icon: Icons.info_outline_rounded,
+                text: _todayActionCopy(
+                  context,
+                  fr: 'Objectifs glycémiques non vérifiés.',
+                  en: 'Glucose targets unverified.',
+                  ar: 'أهداف سكر الدم غير مؤكدة.',
+                ),
+              ),
             if (signals.isNotEmpty)
               ...signals.map((signal) => _TodaySignalCard(signal: signal)),
             if (loading)
@@ -120,14 +130,8 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
     final signals = <_TodaySignal>[];
 
     if (!widget.targetConfigured) {
-      signals.add(
-        _TodaySignal(
-          icon: Icons.tune_rounded,
-          title: l10n.dashboardConfigureTargetSignal,
-          actionLabel: l10n.dashboardConfigureTargetAction,
-          onTap: () => context.go('/profile'),
-        ),
-      );
+      // Suppress any target-based suggestions until a trusted goal exists.
+      return signals;
     }
 
     if (overview != null) {

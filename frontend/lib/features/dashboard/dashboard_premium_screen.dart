@@ -89,8 +89,9 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow;
-        final high = profile?.targetRangeHigh;
+        // v12 numeric bounds do not establish patient target authority.
+        const double? low = null;
+        const double? high = null;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),

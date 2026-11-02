@@ -203,8 +203,8 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         diabetesType: drift.Value(_diabetesType),
         treatment: drift.Value(_treatment),
         unitPreference: drift.Value(_unit),
-        targetRangeLow: const drift.Value(70),
-        targetRangeHigh: const drift.Value(180),
+        // D22 Gate A: legacy SQL defaults remain untrusted until
+        // a separate, governed provenance migration is approved.
       );
 
       await db
