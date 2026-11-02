@@ -2,6 +2,8 @@ part of '../dashboard_screen.dart';
 
 // ── Chart Section ─────────────────────────────────────────────────────────────
 
+// D22 Gate A: legacy target-based chart remains unmounted until provenance review.
+// ignore: unused_element
 class _ChartSection extends StatelessWidget {
   final List<LogEntryData> logs;
   final double low, high;

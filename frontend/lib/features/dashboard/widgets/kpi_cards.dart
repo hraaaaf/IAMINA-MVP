@@ -2,6 +2,8 @@ part of '../dashboard_screen.dart';
 
 // ── Metric Row ────────────────────────────────────────────────────────────────
 
+// D22 Gate A: legacy manual-TIR metrics remain unmounted until clinical approval.
+// ignore: unused_element
 class _MetricRow extends StatelessWidget {
   final List<LogEntryData> logs;
   final List<LogEntryData> prevLogs;

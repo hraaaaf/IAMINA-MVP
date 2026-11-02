@@ -67,6 +67,8 @@ class _PageHead extends StatelessWidget {
 
 enum _HeroMode { live, tir, insight }
 
+// D22 Gate A: legacy target-based hero remains unmounted until provenance review.
+// ignore: unused_element
 class _HeroContextual extends StatelessWidget {
   final List<LogEntryData> logs;
   final String unit;
