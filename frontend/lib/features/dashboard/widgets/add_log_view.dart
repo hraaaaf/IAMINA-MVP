@@ -667,24 +667,7 @@ class AddLogDetailsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            l10n.journalDetailsTitle,
-            style: TextStyle(
-              color: AminaTheme.textPrimary(context),
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            addLogVoiceCopy(
-              context,
-              'Date et heure préremplies automatiquement · touchez pour ajuster.',
-              'Date and time are prefilled automatically · tap to adjust.',
-              'يتم ملء التاريخ والوقت تلقائياً · اضغط للتعديل.',
-            ),
-            style: _helperStyle(context),
-          ),
+          _D17DetailsHelpDisclosure(title: l10n.journalDetailsTitle),
           const SizedBox(height: 16),
           InkWell(
             borderRadius: BorderRadius.circular(14),
@@ -849,6 +832,72 @@ class AddLogSaveBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// D17: secondary explanation stays accessible on demand. The editable date
+// and health-context choices remain visible, without changing clinical data.
+class _D17DetailsHelpDisclosure extends StatefulWidget {
+  final String title;
+
+  const _D17DetailsHelpDisclosure({required this.title});
+
+  @override
+  State<_D17DetailsHelpDisclosure> createState() =>
+      _D17DetailsHelpDisclosureState();
+}
+
+class _D17DetailsHelpDisclosureState
+    extends State<_D17DetailsHelpDisclosure> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                widget.title,
+                style: TextStyle(
+                  color: AminaTheme.textPrimary(context),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            Semantics(
+              toggled: _expanded,
+              child: IconButton(
+                key: const Key('d17-details-info'),
+                tooltip: addLogDetailsLabel(context),
+                onPressed: () => setState(() => _expanded = !_expanded),
+                icon: Icon(
+                  _expanded ? Icons.info_rounded : Icons.info_outline_rounded,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              addLogVoiceCopy(
+                context,
+                'Date et heure préremplies automatiquement · touchez pour ajuster.',
+                'Date and time are prefilled automatically · tap to adjust.',
+                'يتم ملء التاريخ والوقت تلقائياً · اضغط للتعديل.',
+              ),
+              key: const Key('d17-details-help'),
+              style: _helperStyle(context),
+            ),
+          ),
+      ],
     );
   }
 }
