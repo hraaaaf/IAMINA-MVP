@@ -67,15 +67,22 @@ Future<Encrypted> openDestination({String databaseName=dstName}) async {
       ..setProperty('type'.toJS,'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
       ..setProperty('name'.toJS,databaseName.toJS)
       ..setProperty('key'.toJS,buffer);
+    stage('keyed_worker_await_ack');
     final ready=web.EventStreamProviders.messageEvent.forTarget(control.port1)
       .first.timeout(const Duration(seconds:25));
     control.port1.start();
     worker.postMessage(payload,<JSObject>[control.port2,sql.port2,buffer].toJS);
     bytes.fillRange(0,bytes.length,0);
     final status=((await ready).data as JSString).toDart;
+    stage(status=='READY' ? 'worker_ready' :
+      status=='LOCK_UNAVAILABLE' ? 'worker_locked' :
+      status=='KEY_REJECTED' ? 'worker_key_rejected' :
+      'worker_declined_open');
     check(status=='READY','DESTINATION_OPEN_REJECTED');
+    stage('remote_protocol_connect');
     final c=await connectToRemoteAndInitialize(
       sql.port1.channel(explicitClose:true));
+    stage('remote_schema_open');
     await c.ensureOpen(const NoMigrations());
     return Encrypted(worker,control.port1,sql.port1,c.executor);
   }catch(_){control.port1.close();sql.port1.close();worker.terminate();rethrow;}
