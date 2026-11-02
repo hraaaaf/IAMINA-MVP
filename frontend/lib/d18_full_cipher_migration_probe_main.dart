@@ -241,9 +241,13 @@ Future<void> migrate() async {
           await q.runCustom(sql,columns.map((k)=>row[k]).toList());
         }
       }
+      // sqlite_sequence has NO UNIQUE constraint on name. INSERT OR REPLACE
+      // would duplicate a sequence row created by AUTOINCREMENT inserts.
+      // Set exact source state inside the same transaction and compare it.
+      await q.runCustom('DELETE FROM sqlite_sequence',[]);
       for(final seq in original.seq){
         await q.runCustom(
-          'INSERT OR REPLACE INTO sqlite_sequence(name,seq) VALUES(?,?)',
+          'INSERT INTO sqlite_sequence(name,seq) VALUES(?,?)',
           [seq['name'],seq['seq']]);
       }
       for(final kind in ['index','view','trigger']){
