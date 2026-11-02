@@ -88,6 +88,35 @@ void main() {
         closeTo(10.0, .0000001),
       );
     });
+    test('finite input cannot overflow into non-finite canonical mg/dL', () {
+      expect(
+        () => GlucoseConversionContract.toMgDl(
+          1e308,
+          GlucoseSourceUnit.mmolL,
+        ),
+        throwsArgumentError,
+      );
+      // The same failure must be caught at manual source declaration,
+      // not deferred until a dashboard consumer reads the value.
+      expect(
+        () => GlucoseQuantityEvidence.userEntry(
+          originalValue: 1e308,
+          declaredUnit: GlucoseSourceUnit.mmolL,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('display conversion cannot silently underflow to zero', () {
+      expect(
+        () => GlucoseConversionContract.convert(
+          double.minPositive,
+          GlucoseSourceUnit.mmolL,
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('conversion is a read-only projection, never a persistence write', () {
       final source = GlucoseQuantityEvidence.userEntry(
         originalValue: 180.1559, declaredUnit: GlucoseSourceUnit.mgDl,
