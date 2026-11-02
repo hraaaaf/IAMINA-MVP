@@ -89,7 +89,11 @@ class _DashboardCompanionAvatarActionState
       final xSpan = maxX - _edge;
       final ySpan = maxY - _edge;
       final start = Offset(
-        (constraints.maxWidth - _diameter - 20).clamp(_edge, maxX).toDouble(),
+        (Directionality.of(context) == TextDirection.rtl
+                ? 20.0
+                : constraints.maxWidth - _diameter - 20)
+            .clamp(_edge, maxX)
+            .toDouble(),
         maxY,
       );
       final location = _normalized == null
