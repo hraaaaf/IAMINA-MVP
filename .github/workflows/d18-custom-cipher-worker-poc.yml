@@ -6,6 +6,8 @@ on:
       - '.github/workflows/d18-custom-cipher-worker-poc.yml'
       - 'frontend/lib/d18_cipher_worker_*.dart'
       - 'tools/d18_cipher_worker_probe.js'
+      - 'frontend/lib/data/drift/**'
+      - 'frontend/lib/main.dart'
   workflow_dispatch:
 
 permissions:
@@ -31,6 +33,39 @@ jobs:
       - name: Resolve locked Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Reject test-only cipher fixtures leaking into application runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('frontend/lib')
+          fixtures = {
+              'd18_cipher_worker_setup.dart',
+              'd18_cipher_worker_correct.dart',
+              'd18_cipher_worker_wrong.dart',
+              'd18_cipher_worker_probe_main.dart',
+          }
+          forbidden = (
+              'd18_cipher_worker_setup.dart',
+              'd18_cipher_worker_correct.dart',
+              'd18_cipher_worker_wrong.dart',
+              'd18_cipher_worker_correct.js',
+              'd18_cipher_worker_wrong.js',
+              'd18_sqlite3mc.wasm',
+              'D18-CI-ONLY-MC-',
+          )
+          leaks = []
+          for file in root.rglob('*.dart'):
+              if file.name in fixtures:
+                  continue
+              data = file.read_text(encoding='utf-8')
+              if any(needle in data for needle in forbidden):
+                  leaks.append(file.as_posix())
+          if leaks:
+              raise SystemExit(
+                  'D18_TEST_FIXTURE_LEAK_IN_APP: ' + ', '.join(leaks)
+              )
+          print('D18 test-only worker fixtures isolated from application Dart code')
+          PY
       - name: Acquire sqlite3mc WASM pinned to sqlite3 2.9.4
         working-directory: frontend
         run: |
