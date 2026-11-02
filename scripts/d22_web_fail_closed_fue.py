@@ -264,13 +264,19 @@ def main():
                             # itself is not proof that legacy target bounds
                             # cannot be edited. Reject accessible min/max
                             # target input controls on the real profile.
-                            target_editors = page.get_by_role(
-                                "textbox", name=re.compile(
-                                    r"^(?:Min|Max|Minimum|Maximum)(?:\b|$)", re.I
-                                )
-                            )
+                            # Flutter did not associate old Min/Max text
+                            # labels with its textbox accessible names. The
+                            # negative oracle must count actual textbox roles
+                            # in the fully expanded profile, NOT match a name
+                            # those legacy widgets never carried.
+                            target_editors = page.get_by_role("textbox")
                             assert target_editors.count() == 0, (
-                                "Unverified glucose target still exposes editable bounds"
+                                "Unverified glucose target still exposes "
+                                f"{target_editors.count()} editable textboxes"
+                            )
+                            assert "- textbox" not in tree, (
+                                "Unverified target exposes a textbox in the "
+                                "expanded Flutter accessibility tree"
                             )
                             # Flutter scrolls its own profile content inside
                             # the canvas. A full_page Playwright screenshot
