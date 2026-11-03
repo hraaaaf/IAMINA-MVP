@@ -68,11 +68,15 @@ jobs:
             cd frontend
             flutter pub get
             rm -rf build/web
-            flutter build web --release -t lib/ui_browser_audit_main.dart
+            # Keep CanvasKit/wasm on the same origin: Chrome explicitly denies CDN egress.
+            flutter build web --release --no-web-resources-cdn -t lib/ui_browser_audit_main.dart
             cp -a build/web/. /tmp/d14-web-after/
           )
           test -s /tmp/d14-web-after/index.html
           test -s /tmp/d14-web-after/flutter_bootstrap.js
+          # A missing local engine must fail before Chrome (never silently use gstatic).
+          test -s /tmp/d14-web-after/canvaskit/canvaskit.js
+          test -s /tmp/d14-web-after/canvaskit/canvaskit.wasm
           test -s /tmp/d14-web-after/sqlite3.wasm
 
       - name: Download immutable main baseline screenshots from previously certified GitHub artifact
