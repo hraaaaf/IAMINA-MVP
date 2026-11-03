@@ -11,6 +11,7 @@ on:
       - 'tools/d18_unpublished_lock_probe.js'
       - 'tools/d18_full_cipher_migration_probe.js'
       - 'tools/d18_candidate_cipher_migration_probe.js'
+      - 'tools/d18_cutover_idb_marker_probe.js'
       - 'frontend/lib/d18_candidate_full_cipher_migration_probe_main.dart'
       - 'frontend/lib/d18_full_cipher_migration_probe_main.dart'
       - 'tools/fixtures/d18_dynamic_worker_lock_gate.js'
@@ -135,6 +136,12 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: D18 synthetic IndexedDB atomic marker CAS — Chromium
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_cutover_idb_marker_probe.js
+          D18_MARKER_BROWSER=chromium node tools/d18_cutover_idb_marker_probe.js
       - name: Stage CI-only exclusive Web Lock gate for dynamic sqlite3mc worker
         run: |
           node --check tools/fixtures/d18_dynamic_worker_lock_gate.js
@@ -274,5 +281,6 @@ jobs:
             d18-web-locks-proof/
             d18-full-vault-proof/
             d18-candidate-migration-proof/
+            d18-idb-marker-proof/report-chromium.json
           if-no-files-found: warn
           retention-days: 14

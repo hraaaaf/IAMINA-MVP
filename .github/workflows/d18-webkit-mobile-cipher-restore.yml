@@ -7,6 +7,7 @@ on:
       - 'frontend/lib/d18_full_cipher_restore_probe_main.dart'
       - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
       - 'tools/d18_physical_cipher_restore_probe.js'
+      - 'tools/d18_cutover_idb_marker_probe.js'
       - 'frontend/lib/data/drift/d18_full_cipher_archive.dart'
       - 'frontend/lib/d18_unpublished_cipher_worker.dart'
       - 'frontend/lib/data/drift/d18_unpublished_cipher_connector_web.dart'
@@ -78,6 +79,12 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps webkit
+      - name: D18 synthetic IndexedDB atomic marker CAS — WebKit Linux
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_cutover_idb_marker_probe.js
+          D18_MARKER_BROWSER=webkit node tools/d18_cutover_idb_marker_probe.js
       - name: WebKit 390px fresh-profile file restore and no-overwrite proof
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -100,6 +107,8 @@ jobs:
         if: always()
         with:
           name: d18-webkit-mobile-restore-${{ github.event.pull_request.head.sha || github.sha }}
-          path: d18-physical-restore-proof/report.json
+          path: |
+            d18-physical-restore-proof/report.json
+            d18-idb-marker-proof/report-webkit.json
           if-no-files-found: warn
           retention-days: 14
