@@ -573,6 +573,9 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
       'fixtureOnly': true,
       'externalProviderCalls': 0,
       'locale': Uri.base.queryParameters['locale'] == 'ar' ? 'ar' : 'fr',
+      'direction': Directionality.of(context) == TextDirection.rtl
+          ? 'rtl'
+          : 'ltr',
     }).toJS;
   }
 
