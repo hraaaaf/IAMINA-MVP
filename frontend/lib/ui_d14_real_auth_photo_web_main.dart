@@ -6,6 +6,8 @@ import 'dart:html' as html;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:amina/core/theme/amina_visual_language.dart';
+import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/journal/widgets/meal_capture_panel.dart';
@@ -283,6 +285,9 @@ class _D14RealAuthAppState extends State<_D14RealAuthApp> {
     final owner = _activeOwner;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: AminaVisualLanguage.harmonize(AminaTheme.light),
+      darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
+      themeMode: ThemeMode.light,
       locale: Uri.base.queryParameters['locale'] == 'ar'
           ? const Locale('ar') : const Locale('fr'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
