@@ -346,7 +346,9 @@ Future<void> runPhase(String name) async {
     final statusEvent = await readyEvent;
     final status = (statusEvent.data as JSString).toDart;
     control.port1.close();
-    if (name == 'wrong_key') {
+    if (name == 'wrong_key' || name == 'intent_wrong_key') {
+      // On an existing physical ciphertext, wrong-key reopen must reject
+      // without constructing a replacement vault or exposing SQL access.
       verify(status == 'KEY_REJECTED', 'D18_DYNAMIC_BAD_KEY_ACCEPTED');
       return;
     }
@@ -429,6 +431,7 @@ Future<void> main() async {
       'lock_denied', 'create_b', 'read_b', 'guarded_open', 'guarded_reopen',
       'guarded_wrong_passphrase', 'intent_reopen_missing',
       'intent_create', 'intent_create_exists', 'intent_reopen',
+      'intent_wrong_key',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
