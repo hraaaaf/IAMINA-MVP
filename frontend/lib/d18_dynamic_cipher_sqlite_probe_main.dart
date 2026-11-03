@@ -276,6 +276,30 @@ const _candidateMarker='D18_REAL_UNPUBLISHED_CIPHERTEXT_MARKER';
 
 Future<void> verifyUnpublishedConnector(String phase) async {
   final scope=PatientVaultScope.deviceLocal(_candidatePatient);
+  if (phase == 'candidate_physical_bytes') {
+    stage('candidate_physical_ciphertext_export');
+    final destination=D18PreCutoverCipherAdapter.destinationFor(scope);
+    final probe=await WasmDatabase.probe(
+      sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
+      driftWorkerUri:Uri.parse('d18_cipher_worker_correct.js'),
+      databaseName:destination);
+    final matches=probe.existingDatabases.where((e)=>e.$2==destination).toList();
+    verify(matches.length==1,'D18_CANDIDATE_CIPHERTEXT_MISSING');
+    final bytes=await probe.exportDatabase(matches.single);
+    verify(bytes!=null && bytes.length>100,'D18_CANDIDATE_BYTES_MISSING');
+    final raw=bytes!;
+    verify(String.fromCharCodes(raw.take(16)) != 'SQLite format 3\u0000',
+      'D18_CANDIDATE_PLAINTEXT_SQLITE_HEADER');
+    final marker=_candidateMarker.codeUnits;
+    for(var i=0;i<=raw.length-marker.length;i++){
+      var found=true;
+      for(var j=0;j<marker.length;j++){
+        if(raw[i+j]!=marker[j]){found=false;break;}
+      }
+      verify(!found,'D18_CANDIDATE_PLAINTEXT_PATIENT_MARKER');
+    }
+    return;
+  }
   final before=html.window.localStorage[_candidateEnvelope];
   final enroll = phase != 'candidate_reopen';
   final registration=enroll
@@ -500,7 +524,7 @@ Future<void> main() async {
       'intent_create', 'intent_create_exists', 'intent_reopen',
       'intent_wrong_key',
       'candidate_missing','candidate_create','candidate_create_exists',
-      'candidate_wrong_key','candidate_reopen',
+      'candidate_wrong_key','candidate_reopen','candidate_physical_bytes',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);

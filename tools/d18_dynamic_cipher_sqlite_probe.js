@@ -201,6 +201,7 @@ async function verifyActualWorkerLock(ctx) {
     await verify(ctx,'intent_reopen',secrets.a);
     await verify(ctx,'candidate_wrong_key',secrets.wrong);
     await verify(ctx,'candidate_reopen',secrets.a);
+    await verify(ctx,'candidate_physical_bytes',secrets.a);
     await verify(ctx,'guarded_wrong_passphrase',secrets.wrong);
     await verify(ctx,'guarded_reopen',secrets.a);
     for(const [name,k] of phases.slice(1,5))await verify(ctx,name,secrets[k]);
@@ -228,6 +229,7 @@ async function verifyActualWorkerLock(ctx) {
     'intent_reopen_missing','intent_create','intent_create_exists',
     'intent_wrong_key', phases[0][0], 'intent_reopen',
     'candidate_wrong_key','candidate_reopen',
+    'candidate_physical_bytes',
     'guarded_wrong_passphrase','guarded_reopen',
     ...phases.slice(1).map(p=>p[0]),
     'owner_a_ready','create_b','owner_b_ready',
