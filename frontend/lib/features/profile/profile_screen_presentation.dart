@@ -231,7 +231,20 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           (val) => _setPresentationState(() => _unit = val),
         ),
         const SizedBox(height: 28),
-        _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
+        // D22 Gate A: a display preference cannot label legacy targets as
+        // verified or imply that their source unit has been certified.
+        // The verified-target branch remains gated pending G1/G2/G4 review.
+        _buildSectionTitle(
+          Icons.show_chart,
+          _d22TargetsEditable
+              ? l10n.glucoseTarget
+              : _profileUiText(
+                  context,
+                  fr: 'Objectifs non vérifiés',
+                  en: 'Glucose targets unverified',
+                  ar: 'أهداف سكر الدم غير مؤكدة',
+                ),
+        ),
         const SizedBox(height: 12),
         if (!_d22TargetsEditable)
           Container(
