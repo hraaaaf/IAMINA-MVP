@@ -71,6 +71,28 @@ class _DashboardMyRemindersCardState extends State<DashboardMyRemindersCard> {
                 ),
               ),
             ),
+            // The create action must remain available AFTER the first
+            // reminder. Previously, creation was reachable directly from
+            // Home only while the list was empty.
+            IconButton(
+              key: const ValueKey('d3-reminders-add-another'),
+              tooltip: _t3(
+                context,
+                'Ajouter un rappel',
+                'Add a reminder',
+                'إضافة تذكير',
+              ),
+              onPressed: () => context.go('/reminders'),
+              icon: const Icon(
+                Icons.add_circle_outline_rounded,
+                color: AminaVisualLanguage.actionGreen,
+                size: 24,
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 44,
+              ),
+            ),
             TextButton(
               key: const ValueKey('d3-reminders-see-all'),
               onPressed: () => context.go('/reminders'),
