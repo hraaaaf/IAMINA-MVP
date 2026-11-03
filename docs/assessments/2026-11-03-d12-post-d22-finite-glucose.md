@@ -68,3 +68,12 @@ Next : [PR DRAFT #1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) ouverte
 - **CI du dernier HEAD documentaire** `05e49bf...` : 6/7 workflows réussis ; échec D3 reminder Chrome #41705062401 avec `RuntimeError: Service did not start: http://127.0.0.1:9343/json/list`. Ce run concerne le démarrage du navigateur, non un test D12 échoué ; il reste rouge et ne doit pas être déclaré vert.
 - **Verdict de revue de code** : **PASS ciblé** pour la garde numérique et la non-régression testée ; **clôture intégrale NON CERTIFIÉE** faute de recette manuelle exhaustive et de revue externe humaine. D32 (bornes cliniques) reste distinct.
 - **Gouvernance** : PR #1251 conservée Draft, non mergée ; aucun nouveau déploiement autorisé ou réalisé pendant cette revue. Prochaine étape : recueillir preuves manuelles résiduelles ou définir explicitement leur report, puis décider de la fusion avec GO distinct.
+
+
+## Recette iPhone — validation utilisateur finale (2026-11-03)
+
+- L'utilisateur confirme explicitement : « C'est validé » en réponse au test **enregistrer une mesure de test, recharger le journal et vérifier qu'elle n'apparaît qu'une seule fois**. **PASS utilisateur** pour l'absence de doublon après rechargement sur Safari iPhone.
+- Le reçu Safari iPhone « Mesure enregistrée » à **400 mg/dL** a été fourni précédemment ; l'utilisateur a clarifié qu'il avait saisi la valeur simple **400**, numériquement finie. Cette valeur est autorisée par le contrat numérique D12 ; aucune conclusion clinique n'est tirée.
+- Les 400 **chiffres** (débordement) sont déjà couverts par les tests Flutter/SQLite automatisés et n'ont pas été demandés à l'utilisateur en saisie manuelle.
+- **Verdict fonctionnel D12 : VALIDÉ** sur la base des tests Flutter/SQLite, revue de code ciblée et recette iPhone utilisateur (reçu + unicité après reload). Le scénario retour pendant insertion est couvert par le FUE Chrome D13 6/6, pas par une nouvelle preuve manuelle iPhone.
+- **Limites de gouvernance** : pas de revue indépendante par un humain externe, et D32 clinique hors périmètre. PR #1251 reste **Draft/non fusionnée** ; fusion requiert un GO distinct. Aucun nouveau déploiement Vercel D12 ni migration DB pendant cette clôture documentaire. Le dernier HEAD doc-only ne doit pas être confondu avec le SHA du code précédemment publié.
