@@ -1,0 +1,79 @@
+name: D22 F05 real Reports Web Chrome fail-closed synthetic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d22-f05-web-reports-chrome.yml'
+      - 'frontend/lib/ui_d22_f05_reports_probe_main.dart'
+      - 'scripts/d22_f05_reports_chrome.py'
+      - 'frontend/lib/features/journal/reports_screen_presentation.dart'
+      - 'frontend/lib/features/journal/reports_screen.dart'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d22-f05-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reports-real-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build local ReportsScreen with real browser SQLite and unapproved targets
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --target lib/ui_d22_f05_reports_probe_main.dart \
+            --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false
+          test -s build/web/main.dart.js
+      - name: Execute real Chrome FR AR 390 1280
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+          python3 -m py_compile scripts/d22_f05_reports_chrome.py
+          python3 scripts/d22_f05_reports_chrome.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib, struct
+          folder = Path("d22-f05-web-proof")
+          proof = json.loads((folder/"proof.json").read_text())
+          assert proof["result"] == "PASS_BOUNDED_REAL_CHROME"
+          assert len(proof["checks"]) == 4
+          assert len(proof["captures"]) == 4
+          for check in proof["checks"]:
+              assert check["result"] == "PASS"
+              assert check["has_classification"] is False
+              assert check["target_legacy_unapproved"] == [70,180]
+          for c in proof["captures"]:
+              data = (folder/c["file"]).read_bytes()
+              assert data[:8] == bytes.fromhex("89504e470d0a1a0a")
+              assert hashlib.sha256(data).hexdigest() == c["sha256"]
+              w,h=struct.unpack(">II",data[16:24])
+              assert f"{w}x{h}" == c["viewport"]
+          PY
+      - name: Preserve browser proof including failed attempts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d22-f05-real-chrome-reports-proof
+          path: |
+            d22-f05-web-proof/proof.json
+            d22-f05-web-proof/*.png
+          retention-days: 14
+          if-no-files-found: warn
