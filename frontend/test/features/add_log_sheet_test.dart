@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:amina/core/data/meal_food_catalog.dart';
+import 'package:amina/core/data/nutrition_catalog.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/add_log_view.dart';
@@ -63,6 +65,25 @@ Future<void> _tapFormItem(WidgetTester tester, Finder target) async {
 Future<void> _tapOptionalMeal(WidgetTester tester) =>
     _tapFormItem(tester, find.byKey(const Key('add-meal-button')));
 
+/// Keep a search result inside the usable viewport, above the fixed Save bar.
+/// The generic form helper's unconditional -175px drag could move a result
+/// that ensureVisible placed near the top completely offscreen.
+Future<void> _tapD15SearchResult(WidgetTester tester, Finder target) async {
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
+  final y = tester.getCenter(target).dy;
+  if (y < 160 || y > 560) {
+    await tester.drag(
+      find.byType(SingleChildScrollView).first,
+      Offset(0, 360 - y),
+    );
+    await tester.pumpAndSettle();
+  }
+  expect(target.hitTestable(), findsOneWidget);
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late AppDatabase db;
 
@@ -70,6 +91,56 @@ void main() {
   tearDown(() async => db.close());
 
   group('Add Log focused glucose journal', () {
+
+    testWidgets(
+      'D15 real Save: manual food, editable note and grams produce exactly one local row',
+      (tester) async {
+        _narrow(tester);
+        await tester.pumpWidget(_sheet(db));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+        await _tapOptionalMeal(tester);
+        await tester.enterText(
+          find.byKey(const Key('meal-note-input')),
+          'Œuf et pain / بيض وخبز (saisie volontaire)',
+        );
+
+        await tester.enterText(
+          find.byKey(const Key('meal-food-search')),
+          'oeuf',
+        );
+        await tester.pumpAndSettle();
+        await _tapD15SearchResult(tester, find.byKey(const Key('meal-search-egg')));
+        expect(find.byKey(const Key('meal-selected-egg')), findsOneWidget);
+
+        final grams = find.byKey(const Key('nutrition-grams-egg'));
+        await tester.ensureVisible(grams);
+        await tester.pumpAndSettle();
+        await tester.enterText(grams, '75');
+        await tester.pumpAndSettle();
+
+        // All modalities stay in one editable draft. No background save.
+        expect(await db.select(db.logEntries).get(), isEmpty);
+        await tester.tap(find.byKey(const Key('save-log-button')));
+        await tester.pumpAndSettle();
+
+        final entries = await db.select(db.logEntries).get();
+        expect(entries, hasLength(1));
+        expect(entries.single.bloodSugar, 126);
+        expect(entries.single.mealDescription,
+            'Œuf et pain / بيض وخبز (saisie volontaire)');
+        expect(decodeMealItemIds(entries.single.mealItemsJson), ['egg']);
+        final savedPortions =
+            decodeMealPortionSelections(entries.single.mealPortionsJson);
+        expect(savedPortions, hasLength(1));
+        expect(savedPortions.single.foodId, 'egg');
+        expect(savedPortions.single.grams, 75);
+        expect(entries.single.insulinUnits, isNull);
+        expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
+      },
+    );
+
     test('keeps hypoglycemia safety boundaries deterministic', () {
       expect(classifyGlucoseEntrySafety(53), GlucoseEntrySafety.level2Low);
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);
