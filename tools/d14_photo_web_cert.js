@@ -13,9 +13,19 @@ const viewports = [
 ];
 const locales = ['fr','ar'];
 const scenarios = ['off','proposal','revoke-pending','revoke-proposal','reconsent'];
+// The historical BEFORE is a verified immutable screenshot, not a live URL.
 const beforeOrigin = process.env.D14_BEFORE_URL || 'http://127.0.0.1:7358';
 const afterOrigin = process.env.D14_AFTER_URL || 'http://127.0.0.1:7359';
-const report = {base:process.env.D14_BASE_SHA||null,head:process.env.D14_HEAD_SHA||null,viewports:{},scenarios:[], errors:[]};
+const baselineDir = process.env.D14_BASELINE_DIR;
+if (!baselineDir) throw new Error('D14_BASELINE_DIR required: use pinned certified main screenshots, not a mutable live historical app');
+const report = {
+  base:process.env.D14_BASE_SHA||null,
+  head:process.env.D14_HEAD_SHA||null,
+  baselineRun:41669280628,
+  baselineArtifactId:13247088428,
+  baselineKind:'certified_static_main_sha_screenshots',
+  viewports:{},scenarios:[],errors:[],
+};
 
 function fail(msg) { throw new Error(msg); }
 function assertScenario(s, label) {
@@ -100,9 +110,21 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
     for(const vp of viewports){
       for(const locale of locales){
         const id=vp.name+'-'+locale+'-'+vp.width+'x'+vp.height;
-        const before=await load(browser,beforeOrigin,null,vp,locale,'before-'+id,false);
+        // Historical screenshots were independently captured and certified on
+        // main@6adf3fbe. Reusing exact pinned bytes prevents Flutter/Google
+        // font/CDN flakiness in the obsolete baseline runtime.
+        const oldFile=path.join(baselineDir,'before-'+id+'.png');
+        if(!fs.existsSync(oldFile)||fs.statSync(oldFile).size<10000)
+          fail(id+': missing or empty certified historical baseline '+oldFile);
+        const beforeTarget=path.join(root,'before-'+id+'.png');
+        fs.copyFileSync(oldFile,beforeTarget);
+        const before={image:beforeTarget,size:fs.statSync(beforeTarget).size,archived:true};
         const after=await load(browser,afterOrigin,null,vp,locale,'after-'+id,false);
-        report.viewports[id]={before:before.image,after:after.image,bytesBefore:before.size,bytesAfter:after.size};
+        report.viewports[id]={
+          before:before.image,after:after.image,
+          bytesBefore:before.size,bytesAfter:after.size,
+          beforeSource:'GitHub Actions artifact 13247088428, main 6adf3fbe',
+        };
         for(const scenario of scenarios){
           const result=await load(browser,afterOrigin,scenario,vp,locale,scenario+'-'+id,true);
           report.scenarios.push({id:scenario+'-'+id,case:scenario,viewport:vp.name,locale,...result});
