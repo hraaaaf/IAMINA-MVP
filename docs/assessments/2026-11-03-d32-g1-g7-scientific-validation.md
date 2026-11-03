@@ -32,7 +32,7 @@
 
 ## Reprises et dépendances exactes
 
-- D22 techniquement acceptée sur scope de confinement Web : [#1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165) / [dossier D22](2026-11-03-d22-web-technical-acceptance.md). Les six PR Web D22 sont **fusionnées dans `main@29a7c0ccb5e4271bb9f2e5e2bce15849d7bf0fef`**, avec #1247 documentaire ; les 86/86 workflows prémerge SUCCESS restent des preuves historiques, la CI postmerge est [#41668434340](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41668434340). **Aucun déploiement Vercel ni validation patient implicites**.
+- D22 techniquement acceptée sur scope de confinement Web : [#1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165) / [dossier D22](2026-11-03-d22-web-technical-acceptance.md). Les six PR Web D22 sont **fusionnées dans `main@29a7c0ccb5e4271bb9f2e5e2bce15849d7bf0fef`**, avec #1247 documentaire ; les 86/86 workflows prémerge SUCCESS restent des preuves historiques, la CI postmerge [#41668434340](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41668434340) est **SUCCESS** sur `main@29a7c0cc`. **Aucun déploiement Vercel ni validation patient implicites**.
 - Points manquants **transférés** : F02 conversion des cibles approuvées, F05 PDF/CSV/API/CGM, F06 auth/API/consentement, F07 zoom natif/lecteur écran/revue arabe, vraie migration Drift et restauration.
 - Modèles expérimentaux G1/G4/G7 [#1221](https://github.com/hraaaaf/IAMINA-MVP/pull/1221) et répétition SQLite G7 [#1222](https://github.com/hraaaaf/IAMINA-MVP/pull/1222) fusionnés sans activation runtime clinique ; leurs tests ne sont pas une certification des consommateurs Web.
 - D19 [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) reste Draft ; conflit de précision/calcul à traiter en D32, sans fusion implicite.
