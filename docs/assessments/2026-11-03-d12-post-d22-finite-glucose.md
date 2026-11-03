@@ -56,3 +56,15 @@
 Branche : `fix/a-d12-web-finite-post-d13-20261103`  
 Parent : `fix/a-d13-web-post-d22-20261103@0b2ad7e...`  
 Next : [PR DRAFT #1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) ouverte, toujours non mergée ; **base D13 rétablie et vérifiée**, delta **3 fichiers**. Ancienne PR #972 CLOSED sans merge. D12 Web **production déployée sur SHA `7697a179` avec GO propriétaire explicite**. Reste : recette authentifiée iPhone/Web avec données de test, revue externe, correction si anomalie puis nouvel accord avant tout autre déploiement/merge. D32 clinique hors périmètre.
+
+
+## Revue indépendante de code et recette iPhone — 2026-11-03
+
+- **Méthode** : deuxième lecture ciblée du diff de PR #1251 (source, test et dossier canonique), confrontation avec les assertions Flutter/SQLite et la capture utilisateur iPhone Safari ; aucune simulation de revue externe humaine.
+- **Vérifié dans le code** : `parsePositiveFiniteGlucoseInput` rejette absent, nul, négatif et non fini ; `normalizeFiniteGlucoseMgdl` vérifie l'unité et le résultat après multiplication par 18 ; `_mgdlGlucose` protège aussi le cache canonique D22 ; le bouton et `_saveLog` vérifient avant écriture. Aucune limite clinique ajoutée, aucune modification DB/backend dans le diff D12.
+- **Preuve automatisée déjà obtenue** : 9/9 cas D12 FR/AR, 984 tests Flutter PASS, 7 skipped, Chromium D13 6/6 sur SHA publié `7697a179...` (voir liens ci-dessus). L'essai de **400 chiffres** est une chaîne de 400 caractères, distincte de la glycémie 400 mg/dL.
+- **Preuve réelle utilisateur** : capture du reçu Safari iPhone sur `iamina-review.vercel.app` indiquant « Mesure enregistrée », **400 mg/dL**, avec déclaration « sinon tout le reste marche » ; l'utilisateur a clarifié avoir saisi **400**, valeur finie positive. Le reçu est donc conforme au contrat numérique D12, sans interprétation clinique de 400 mg/dL.
+- **Limites** : capture seule ne prouve pas une unique ligne après recharge, l'essai manuel de 400 chiffres, le scénario de retour pendant sauvegarde, ni le comportement sur le **SHA D12 isolé** : l'alias production a ensuite été mis à jour par D22.2. Ne pas transformer le retour général de l'utilisateur en 6 tests manuels attestés individuellement.
+- **CI du dernier HEAD documentaire** `05e49bf...` : 6/7 workflows réussis ; échec D3 reminder Chrome #41705062401 avec `RuntimeError: Service did not start: http://127.0.0.1:9343/json/list`. Ce run concerne le démarrage du navigateur, non un test D12 échoué ; il reste rouge et ne doit pas être déclaré vert.
+- **Verdict de revue de code** : **PASS ciblé** pour la garde numérique et la non-régression testée ; **clôture intégrale NON CERTIFIÉE** faute de recette manuelle exhaustive et de revue externe humaine. D32 (bornes cliniques) reste distinct.
+- **Gouvernance** : PR #1251 conservée Draft, non mergée ; aucun nouveau déploiement autorisé ou réalisé pendant cette revue. Prochaine étape : recueillir preuves manuelles résiduelles ou définir explicitement leur report, puis décider de la fusion avec GO distinct.
