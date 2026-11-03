@@ -21,6 +21,8 @@ const report={
   failures:[]
 };
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1280,height:900}];
+const ciLocale = process.env.D14_CI_LOCALE;
+if(!['fr','ar'].includes(ciLocale)) throw new Error('D14_CI_LOCALE must be fr or ar');
 const steps=[
   'A_REAL_LOGIN_AND_PENDING_SYNTHETIC_PHOTO',
   'B_REAL_LOGIN_PHOTO_DENIED',
@@ -31,7 +33,7 @@ const steps=[
 (async()=>{
   const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   try{
-    for(const locale of ['fr','ar']){
+    for(const locale of [ciLocale]){
       for(const viewport of sizes){
         const ctx=await browser.newContext({
           viewport,locale:locale==='ar'?'ar-MA':'fr-FR',
@@ -129,7 +131,7 @@ const steps=[
     attemptedFontFallbacks:report.cases.reduce((n,c)=>n+(c.attemptedFlutterFontFallbacks||0),0),
     providerRequests:report.providerCalls
   }));
-  if(report.cases.length!==6||report.failures.length)process.exitCode=1;
+  if(report.cases.length!==3||report.failures.length)process.exitCode=1;
 })().catch(e=>{
   report.failures.push({error:String(e)});
   fs.writeFileSync(path.join(root,'report.json'),JSON.stringify(report,null,2));
