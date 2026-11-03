@@ -2,7 +2,7 @@
 
 **Date** : 2026-11-03.  
 **Décision** : D22 — UX de saisie de glycémie (issue [#1252](https://github.com/hraaaaf/IAMINA-MVP/issues/1252)).  
-**Statut** : correctif Draft, tests/CI exact HEAD et captures AFTER non validés à l'ouverture.
+**Statut** : **validé techniquement sur code HEAD `a7cc05138dab3c38311fbbe37aff99415368659c`** : 12/12 workflows GitHub SUCCESS, tests Flutter et captures Web FR/AR contrôlés. PR Draft #1253 non fusionnée, non déployée ; la recette iPhone du correctif reste à faire. Cette mise à jour est un commit documentaire post-test, pas une nouvelle version du code testée.
 
 ## Feedback terrain, BEFORE et cause
 - Utilisateur iPhone sur la **vraie production** D12 : « Je peux pas aller précisément, ça vacille entre 126 et 127, c’est pas très intuitif. C’est le seul problème, tout le reste fonctionne. »
@@ -29,11 +29,23 @@ Concept validé comme direction d'implémentation (non comme test visuel) : cons
 - À changement d'unité, pas basé sur la valeur **affichée** arrondie au dixième ou à l'entier ; éviter l'accumulation d'erreurs flottantes. C'est une modification explicite du patient, qui remplace la mesure canonique uniquement après appui sur ±.
 - Aucun nouveau seuil, diagnostic, couleur, calcul de traitement, API, DB ou backend.
 
-## Réalisation / contrôle en cours
+## Réalisation et contrôle validé sur le code
 - Nouvelle branche `fix/d22-web-glucose-fine-step-20261103` depuis **HEAD D12 après closeout documentaire** `05e49bf90bf019063fa7b0a5c8b92532ce924de5` ; le SHA Web réellement en production reste **`7697a179caec0b094e589fbb8775b967754853c4`** (même code applicatif, diff documentaire uniquement).
 - `frontend/lib/features/dashboard/widgets/glucose_half_dial_input.dart` : helper `d22FineAdjustedMgdl` et deux `IconButton.outlined` accessibles, désactivés si mesure absente/invalides, labels localisés, instruction mise à jour.
 - `frontend/test/features/dashboard/d22_glucose_fine_step_test.dart` : cas helper (absence, NaN/Inf, borne minimale positive, 126↔127, 7.0↔7.1, hors affichage 500) et 6 scénarios widget SQLite sur les trois viewports en FR/AR.
-- **NEXT** : PR DRAFT ciblant branche D12, CI Flutter exacte (nécessite base PR `main`/ `dev` temporaire car CI.yml ne déclenche pas sur autres bases), FUE Chrome captures AFTER, comparer BEFORE/AFTER et corriger si défaut. **Pas de merge ou Vercel sans GO explicite distinct du déploiement D12**, qui a déjà été consommé.
+- **NEXT** : [PR Draft #1253](https://github.com/hraaaaf/IAMINA-MVP/pull/1253) **base D12 restaurée** après CI déclenchée temporairement contre `main` (déclencheur `ci.yml` limité à `main/dev`). Delta exact **3 fichiers** (composant + test + cette note), GitHub `mergeable:true`. Recette utilisateur iPhone sur futur déploiement D22 autorisé, sans nouvelle release ni merge avant GO explicite.
+
+## AFTER : preuves visuelles et tests exact HEAD (03/11/2026)
+
+- **Commit de code contrôlé** : `a7cc05138dab3c38311fbbe37aff99415368659c`.
+- [CI complète #41715347268](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41715347268) **SUCCESS** : `flutter analyze`, **991 tests PASS / 7 skipped**, dont **7/7 nouveaux tests D22** (un test pur + 6 widgets Flutter FR/AR × 390×844, 768×1024, 1280×900 avec `NativeDatabase.memory()`), bundle PWA compilé et sorties vérifiées. Backend / PostgreSQL explicitement SKIPPED, car aucun changement backend.
+- [FUE Chromium D13 #41715347157](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41715347157) **SUCCESS 6/6** : chaque cas FR/AR (390/768/1280) établit une sauvegarde Drift réelle bloquée, refus du retour app/navigateur, reçu et exactement une mesure 126 mg/dL après recharge. FUE confirmé sur ce code (preuve synthétique, non recette réelle iPhone).
+- **12/12 workflows GitHub SUCCESS, zéro échec, zéro run actif** sur `a7cc051...`. PR issue [#1252](https://github.com/hraaaaf/IAMINA-MVP/issues/1252).
+- **Comparaison BEFORE/AFTER vérifiée** à viewport identique grâce aux captures réelles des artifacts GitHub D13 : mobile FR/AR 390×844, tablette FR/AR 768×1024, desktop FR/AR 1280×900. BEFORE : arc à valeur centrale avec seulement clavier direct ; AFTER : commandes `−/+` visibles sous arc, libellés FR/AR, CTA Enregistrer conservé et sans collision/overflow observé. Après une première AFTER, un écart horizontal sur tablette/desktop a été corrigé par `Center(ConstrainedBox(maxWidth: 354))` et couvert par des assertions géométriques dans les six tests.
+- **Score visuel évaluatif** : **8,5/10** (alignement cohérent, boutons 48×48, hiérarchie préservée, pas de chevauchement dans ces captures). Score **non automatisé** et **non certification iPhone Safari réel**, qui reste à tester. On conserve la hauteur additionnelle des commandes : c'est un compromis UX assumé.
+- **Intégrité** : aucun seuil médical nouveau, aucun changement de DB, backend, navigation D13 ou validation D12. Sur champ vide les deux contrôles et l'action de lecteur d'écran sont inactifs, sans générer de mesure fictive. Contrats `126 + →127 −→126`, `7.0 + →7.1 −→7.0`, et une seule sauvegarde SQLite verte.
+- **Gates restants** : QA réelle iPhone après déploiement explicite, revue indépendante, clinique D32 toujours hors portée. **Aucun GO de Vercel ni merge donné pour D22**. Prod actuelle D12 `dpl_AzTqctoykcFwtvSsTT1bomBn5i9h`, SHA `7697a179...`, demeure inchangée.
+- **Traçabilité** : tout commit supplémentaire uniquement .md au-delà de `a7cc051...` doit être distingué du SHA de code validé ; ne pas déclarer tests exact HEAD post-documentaire sans revérification de ses workflows.
 
 ## Reprise
 Source de reprise `docs/assessments/2026-11-03-d22-web-dial-precision.md` ; incident UX #1252. Ne pas confondre la publication antérieure D12 avec une autorisation pour publier D22. La recette réelle iPhone est la validation humaine finale.
