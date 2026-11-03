@@ -8,6 +8,8 @@ import 'dart:convert';
 
 import 'package:amina/core/theme/amina_visual_language.dart';
 import 'package:amina/core/theme/app_theme.dart';
+import 'package:amina/core/theme/amina_visual_language.dart';
+import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/journal/widgets/meal_capture_panel.dart';
@@ -285,6 +287,8 @@ class _D14RealAuthAppState extends State<_D14RealAuthApp> {
     final owner = _activeOwner;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      // Match the patient Web theme and its bundled Inter/Noto font fallbacks.
+      theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
