@@ -146,6 +146,44 @@ def test_revocation_takes_effect_before_next_egress(patient):
             assert_ai_egress_allowed(AUDIO)
 
 
+def test_d24_global_off_denies_existing_scopes_and_provider_calls(patient):
+    """An already-open request scope never freezes a consent grant."""
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+
+    from core.api.v1.account import withdraw_consent
+    from core.llm_gateway import GatewayLLM
+
+    provider = MagicMock()
+    with patch("core.llm_gateway.get_llm", return_value=provider):
+        gateway = GatewayLLM()
+        with ai_egress_scope(patient.id, "companion_chat", TEXT):
+            assert_ai_egress_allowed(TEXT)
+            status = withdraw_consent(SimpleNamespace(user=patient))
+            assert status["ai_consent_given"] is False
+            with pytest.raises(AIConsentRequired, match="AI consent"):
+                gateway.complete("Safe system", "Safe user")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="AI consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+    provider.complete.assert_not_called()
+
+
+def test_d24_reconsent_never_resurrects_revoked_media_grant(patient):
+    """A fresh global consent cannot reuse a prior photo permission."""
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+    from core.api.v1.account import withdraw_consent
+    withdraw_consent(SimpleNamespace(user=patient))
+    _grant_global_consent(patient)
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+
 def test_invalid_grant_pair_is_denied(patient):
     with pytest.raises(AIEgressDenied, match="not authorized"):
         grant_media_consent(patient.id, "companion_chat", IMAGE)
