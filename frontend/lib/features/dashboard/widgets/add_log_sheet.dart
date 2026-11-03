@@ -17,6 +17,7 @@ import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
 import '../../journal/widgets/post_save_receipt.dart';
+import '../../journal/glucose_save_navigation_guard.dart';
 import 'add_log_view.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
@@ -78,10 +79,15 @@ class AddLogSheet extends StatefulWidget {
   });
 
   @override
-  State<AddLogSheet> createState() => _AddLogSheetState();
+  State<AddLogSheet> createState() => AddLogSheetState();
 }
 
-class _AddLogSheetState extends State<AddLogSheet> {
+class AddLogSheetState extends State<AddLogSheet> {
+  /// Shared exit gate for the page header and inline back button.
+  Future<bool> confirmExitRequested() => mounted
+      ? _confirmLeave(AppLocalizations.of(context)!)
+      : Future<bool>.value(false);
+
   final TextEditingController _glucoseController = TextEditingController();
   // The entry unit changes only this draft; changing it must not mutate the
   // patient's profile preference, legacy target bounds, or recorded readings.
@@ -585,6 +591,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     String unit,
     AppLocalizations l10n,
   ) async {
+    if (_saving) return;
     if (_mealVoiceBusy) {
       _message(
         _voiceCopy(
@@ -605,6 +612,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     if (!await _confirmLowGlucose(mgdl, l10n) || !mounted) return;
 
+    if (widget.isPage) GlucoseSaveNavigationGuard.beginPageSave();
     setState(() => _saving = true);
     try {
       final note = _mealNoteController.text.trim();
@@ -658,6 +666,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       _clearDraftForNextEntry();
       setState(() => _savedReceipt = receipt);
     } finally {
+      if (widget.isPage) GlucoseSaveNavigationGuard.endPageSave();
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -694,6 +703,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Future<bool> _confirmLeave(AppLocalizations l10n) async {
+    // An in-flight record is never a discardable draft.
+    if (_saving) return false;
     if (_mealVoiceBusy) {
       _message(
         _voiceCopy(
@@ -729,7 +740,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
     if (widget.isPage) {
       GoRouter.of(context).go('/dashboard');
     } else {
-      Navigator.maybePop(context);
+      // Explicit discard/saved receipt passed the PopScope gate.
+      Navigator.of(context).pop();
     }
   }
 }
