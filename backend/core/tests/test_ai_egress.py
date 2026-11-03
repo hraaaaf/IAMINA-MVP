@@ -230,3 +230,63 @@ def test_endpoint_decorator_only_declares_scope_until_egress(patient):
         return req.user.id
 
     assert endpoint(request) == patient.id
+
+
+def test_d24_photo_provider_cannot_start_without_granular_grant(patient):
+    """A global AI notice is not permission to send a photograph."""
+    from llm.runtime import execute_external_provider_call
+
+    _grant_global_consent(patient)
+    operation = MagicMock(return_value="should never execute")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            execute_external_provider_call(
+                "gemini", IMAGE, "meal_vision", operation
+            )
+
+    operation.assert_not_called()
+
+
+def test_d24_open_photo_scope_checks_revocation_before_provider_start(patient):
+    """Revocation is checked on every dispatch, not on scope creation."""
+    from llm.runtime import execute_external_provider_call
+
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+    operation = MagicMock(return_value="should never execute")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        assert_ai_egress_allowed(IMAGE)
+        assert revoke_media_consent(patient.id, "meal_vision", IMAGE) is True
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            execute_external_provider_call(
+                "gemini", IMAGE, "meal_vision", operation
+            )
+
+    operation.assert_not_called()
+
+
+def test_d24_photo_grants_are_patient_scoped_and_do_not_cross_a_b_a(patient):
+    """A's image grant cannot unlock B, and A's revocation cannot lock B."""
+    other = User.objects.create_user(username="egress-other-patient")
+    BasePatientProfile.objects.create(
+        patient=other, date_of_birth=date(1992, 2, 2)
+    )
+    _grant_global_consent(patient)
+    _grant_global_consent(other)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+
+    with ai_egress_scope(other.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+    grant_media_consent(other.id, "meal_vision", IMAGE)
+    assert revoke_media_consent(patient.id, "meal_vision", IMAGE)
+
+    with ai_egress_scope(other.id, "meal_vision", IMAGE):
+        assert assert_ai_egress_allowed(IMAGE).patient_id == other.id
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
