@@ -15,6 +15,8 @@ final class D18PreCutoverSessionCoordinator<
 
   T? _active;
   PatientVaultScope? _activeScope;
+  int? _activeEpoch;
+  bool Function()? _activeIsKeyLocked;
   int _generation = 0;
   bool _disposed = false;
   Future<void>? _disposeFuture;
@@ -25,9 +27,22 @@ final class D18PreCutoverSessionCoordinator<
     required this.readAuthEpoch,
   });
 
-  T? get activeUnpublished => _disposed ? null : _active;
+  // A missing logout callback must NOT leave an old vault visible.
+  // These getters do not close a worker; the future clinical host MUST
+  // subscribe to auth changes and invoke invalidate() to release the lock.
+  bool get _activeStillAuthenticated {
+    if (_disposed || _active == null) return false;
+    try {
+      return _activeEpoch == readAuthEpoch() &&
+          _activeIsKeyLocked != null && !_activeIsKeyLocked!();
+    } on Object {
+      return false; // Even a failing auth/key reader must hide the vault.
+    }
+  }
+
+  T? get activeUnpublished => _activeStillAuthenticated ? _active : null;
   PatientVaultScope? get activeUnpublishedScope =>
-      _disposed ? null : _activeScope;
+      _activeStillAuthenticated ? _activeScope : null;
 
   /// Detach the prior candidate synchronously before any async work.
   /// Caller supplies a *guarded* D18 opener and a live session-lock check.
@@ -73,6 +88,8 @@ final class D18PreCutoverSessionCoordinator<
     final old = _active;
     _active = null;
     _activeScope = null;
+    _activeEpoch = null;
+    _activeIsKeyLocked = null;
     // The prior physical worker must be closed before a replacement opens.
     if (old != null) await old.close();
     _assertCurrent(generation, epoch, isKeyLocked);
@@ -99,6 +116,8 @@ final class D18PreCutoverSessionCoordinator<
       }
       _active = candidate;
       _activeScope = requestedScope;
+      _activeEpoch = epoch;
+      _activeIsKeyLocked = isKeyLocked;
       candidate = null; // Ownership transferred exactly once.
     } finally {
       // Logout, epoch change, late result or incorrect owner must dispose
@@ -114,6 +133,8 @@ final class D18PreCutoverSessionCoordinator<
     final current = _active;
     _active = null;
     _activeScope = null;
+    _activeEpoch = null;
+    _activeIsKeyLocked = null;
     if (current != null) await current.close();
   }
 

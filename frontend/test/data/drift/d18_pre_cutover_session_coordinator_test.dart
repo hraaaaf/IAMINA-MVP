@@ -200,6 +200,47 @@ void main() {
     ), throwsStateError);
   });
 
+
+  test('epoch bump masks active candidate immediately, before invalidation', () async {
+    var epoch = 10;
+    final candidate = _FakeVault('epoch A');
+    final host = D18PreCutoverSessionCoordinator<_FakeVault>(
+      resolveAuthenticatedScope: () async => a,
+      readAuthEpoch: () => epoch,
+    );
+    await host.stageUnpublished(
+      requestedScope: a, isKeyLocked: () => false,
+      openCandidate: () async => candidate,
+    );
+    expect(host.activeUnpublished, same(candidate));
+    epoch++; // Simulate auth transition BEFORE the observer callback runs.
+    expect(host.activeUnpublished, isNull);
+    expect(host.activeUnpublishedScope, isNull);
+    await host.invalidate();
+    expect(candidate.closed, 1);
+    await host.dispose();
+  });
+
+  test('key locked while active masks candidate without a host event', () async {
+    var locked = false;
+    final candidate = _FakeVault('locked A');
+    final host = D18PreCutoverSessionCoordinator<_FakeVault>(
+      resolveAuthenticatedScope: () async => a,
+      readAuthEpoch: () => 10,
+    );
+    await host.stageUnpublished(
+      requestedScope: a, isKeyLocked: () => locked,
+      openCandidate: () async => candidate,
+    );
+    expect(host.activeUnpublished, same(candidate));
+    locked = true;
+    expect(host.activeUnpublished, isNull);
+    expect(host.activeUnpublishedScope, isNull);
+    await host.invalidate();
+    expect(candidate.closed, 1);
+    await host.dispose();
+  });
+
   test('dispose awaits in-flight closure after an unfinished open', () async {
     final opened = Completer<_FakeVault>();
     final started = Completer<void>();
