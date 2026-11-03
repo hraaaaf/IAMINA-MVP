@@ -1,4 +1,4 @@
-name: D3 Web My reminders BEFORE AFTER Chrome proof
+name: D3 Web add another reminder BEFORE AFTER Chrome proof
 
 on:
   pull_request:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: before
-          ref: 9570e4c695844aa7dd5e79d9da0e80d4b8c7dc5c
+          ref: 578250e21e798c6f1b9ea52a23678f2ed8c03be8
 
       - name: Checkout candidate PR HEAD
         uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
             test -s "$version/frontend/build/web/main.dart.js"
           done
 
-      - name: Capture 12 real Chrome local reminders replacement cards
+      - name: Capture 12 real Chrome before-after cards with three synthetic reminders
         shell: bash
         run: |
           set -euo pipefail
@@ -156,7 +156,7 @@ jobs:
                   wait_for('http://127.0.0.1:7361/')
                   for locale in ('fr', 'ar'):
                       for width, height in ((390, 844), (768, 1024), (1280, 900)):
-                          surface = 'next-action' if version == 'before' else 'd3-reminders'
+                          surface = 'd3-reminders'  # Identical D3 fixture, old vs new header
                           url = f'http://127.0.0.1:7361/?surface={surface}&seed=0&locale={locale}'
                           name = f'{version}-{locale}-{width}x{height}.png'
                           capture(output / name, url, width, height, width == 390)
@@ -183,7 +183,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: d3-web-before-after-6-pairs
+          name: d3-add-another-before-after-6-pairs
           path: d3-visual-proof/*.png
           retention-days: 14
           if-no-files-found: warn
