@@ -390,21 +390,24 @@ async function keyboardJourney(browser,locale,size){
     item.images.push(await capture(page,locale,size,'keyboard','language-focused'));
     await page.keyboard.press('Enter');
     const confirm=await waitFor(page,l.confirm);
-    // A confirmation button is a button, unlike the language checkbox.
+    // Flutter's semantic <flt-semantics role=button> may have an empty raw
+    // aria-label even when its accessible name comes from child text.
+    // Match the ACTUAL button against the live visible confirmation locator;
+    // require role=button AND prove that physical Enter removes the prompt.
     async function reachConfirmByTab(){
       for(let i=0;i<65;i++){
         await page.keyboard.press('Tab');
         await settle();
         const active=await activeSnapshot();
-        const focused=active.role==='button' &&
-          (active.name===l.confirm ||
-           active.name.includes(l.confirm));
-        if(item.focusTrail.length<22)item.focusTrail.push({label:'confirm',focused,...active});
+        const targetFocused=await confirm.evaluate(el=>
+          el===document.activeElement || el.contains(document.activeElement)
+        ).catch(()=>false);
+        const focused=active.role==='button' && targetFocused;
+        if(item.focusTrail.length<22)item.focusTrail.push({label:'confirm',
+          focused,targetFocused,...active});
         if(focused)return;
       }
-      // Do not assert on an unrelated semantics ancestor. A visible label
-      // alone is insufficient to establish focus or keyboard accessibility.
-      throw Error('Physical Tab did not focus country confirmation: '+
+      throw Error('Physical Tab did not focus labelled country confirmation button: '+
         JSON.stringify(item.focusTrail.slice(-12)));
     }
     await reachConfirmByTab();
