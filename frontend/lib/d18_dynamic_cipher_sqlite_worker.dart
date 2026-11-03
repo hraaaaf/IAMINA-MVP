@@ -54,9 +54,23 @@ Future<void> _serve(web.MessageEvent event) async {
     final payload = event.data as JSObject;
     final kind = (payload.getProperty('type'.toJS) as JSString).toDart;
     final name = (payload.getProperty('name'.toJS) as JSString).toDart;
-    if (kind != 'D18_CI_DYNAMIC_SQL_OPEN' ||
+    // CI-only pre-open physical contract. Historically tested phases still
+    // use D18_CI_DYNAMIC_SQL_OPEN without intent (same behavior). The new
+    // INTENT variant is scoped to disposable synthetic namespaces and MUST
+    // inspect the VFS under the Web Lock before sqlite3 opens a DB file.
+    final intentMode = kind == 'D18_CI_DYNAMIC_SQL_OPEN_INTENT';
+    if ((!intentMode && kind != 'D18_CI_DYNAMIC_SQL_OPEN') ||
         !RegExp(_namespace).hasMatch(name)) {
       reject(); return;
+    }
+    String? intent;
+    if (intentMode) {
+      final rawIntent = payload.getProperty('intent'.toJS);
+      if (rawIntent is! JSString) { reject(); return; }
+      intent = rawIntent.toDart;
+      if (intent != 'createFresh' && intent != 'reopenExisting') {
+        reject(); return;
+      }
     }
     final keyBuffer = payload.getProperty('key'.toJS) as JSArrayBuffer;
     final bytes = keyBuffer.toDart.asUint8List();
@@ -87,6 +101,27 @@ Future<void> _serve(web.MessageEvent event) async {
 
     stage = 'open_indexeddb';
     storage = await IndexedDbFileSystem.open(dbName: name);
+    if (intentMode) {
+      // xAccess checks the physical SQLite FILE, not merely the IndexedDB
+      // namespace (which IndexedDbFileSystem.open may create on first use).
+      // 1 means file exists; 0 means absent. Never call sqlite3.open before
+      // rejecting an inconsistent intent, or a missing ciphertext can be
+      // silently replaced with an empty database.
+      stage = 'inspect_ciphertext_before_open';
+      final physicalExists = storage.xAccess('/database', 0) != 0;
+      if (intent == 'reopenExisting' && !physicalExists) {
+        control.postMessage('MISSING_CIPHERTEXT'.toJS);
+        control.close();
+        databasePort.close();
+        return;
+      }
+      if (intent == 'createFresh' && physicalExists) {
+        control.postMessage('CIPHERTEXT_ALREADY_EXISTS'.toJS);
+        control.close();
+        databasePort.close();
+        return;
+      }
+    }
     stage = 'load_sqlite3mc';
     final sqlite3 = await WasmSqlite3.loadFromUrl(
       Uri.parse('d18_sqlite3mc.wasm'),
