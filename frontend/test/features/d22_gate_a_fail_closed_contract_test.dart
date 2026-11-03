@@ -17,6 +17,10 @@ void main() {
     expect(profile, isNot(contains('targetRangeLow: drift.Value(')));
     expect(profile, isNot(contains('targetRangeHigh: drift.Value(')));
     expect(ui, contains('d22-unverified-target-blocked'));
+    expect(ui, contains('_d22TargetsEditable'));
+    expect(ui, contains("fr: 'Objectifs glycémiques non vérifiés'"));
+    expect(ui, contains("en: 'Glucose targets unverified'"));
+    expect(ui, contains("ar: 'أهداف سكر الدم غير مؤكدة'"));
     expect(ui, contains('Objectifs non vérifiés'));
     expect(ui, contains('الأهداف غير مؤكدة'));
   });

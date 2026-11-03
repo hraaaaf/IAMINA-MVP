@@ -26,16 +26,22 @@ assert LOCALE in ("en", "fr", "ar"), "Unsupported Web fixture locale"
 COPIES = {
     "en": dict(medical="Medical tracking", type2="Type 2 Diabetes",
                banner="Targets unverified. No medical classification before review.",
+               target_title="Glucose targets unverified",
+               old_target_title="Glucose target (mg/dL)",
                saved_prefix="Offline pilot", language="English",
                country_search="Search for a country", country="Morocco",
                start="Start", save="Save", unlock="Unlock IAmina"),
     "fr": dict(medical="Suivi médical", type2="Diabète Type 2",
                banner="Objectifs non vérifiés. Aucun classement médical avant validation.",
+               target_title="Objectifs glycémiques non vérifiés",
+               old_target_title="Cible glycémique (mg/dL)",
                saved_prefix="Pilote local", language="Français",
                country_search="Rechercher un pays", country="Maroc",
                start="Commencer", save="Enregistrer", unlock="Déverrouiller IAmina"),
     "ar": dict(medical="المتابعة الطبية", type2="السكري النوع 2",
                banner="الأهداف غير مؤكدة. لا تصنيف طبي قبل التحقق.",
+               target_title="أهداف سكر الدم غير مؤكدة",
+               old_target_title="الهدف الجلوكوزي (mg/dL)",
                saved_prefix="الوضع المحلي", language="العربية",
                country_search="ابحث عن بلد", country="المغرب",
                start="ابدأ", save="حفظ", unlock="فتح IAmina"),
@@ -69,12 +75,15 @@ def main():
         "result": "NOT_RUN",
         "verified_scenarios": [],
         "captures": [],
+        "accessibility": {"status": "NOT_RUN", "checks": [], "captures": []},
+        "unit_heading_checks": [],
+        "unit_label_captures": [],
         "not_run": [
             "F02 approved clinician target conversion",
             "F04 raw measurement/source edit + remote persistence",
             "F05 approved target and CGM PDF/CSV consistency",
             "F06 real A/B account and remote privacy",
-            "F07 200pct browser zoom, keyboard and native RTL layout audit",
+            "F07 native Chrome toolbar zoom 200pct and native RTL language review",
             "D22 BEFORE screenshots from an independently captured reference",
             "clinical approval and production/SSO deployment",
         ],
@@ -226,6 +235,20 @@ def main():
                             assert other_unit not in header, (
                                 f"Profile header unexpectedly contains both units: {header!r}"
                             )
+                            # The title must never retain the implicit old-unit
+                            # claim regardless of this display preference.
+                            title = page.get_by_text(COPY["target_title"], exact=True)
+                            title.first.wait_for(state="visible", timeout=15000)
+                            assert page.get_by_text(
+                                COPY["old_target_title"], exact=True
+                            ).count() == 0, (
+                                f"Hard-coded mg/dL target heading visible with {unit}"
+                            )
+                            evidence["unit_heading_checks"].append({
+                                "selected_unit": unit, "locale": LOCALE,
+                                "title": COPY["target_title"],
+                                "stale_title_absent": True,
+                            })
 
                         # Actual local account, onboarding, local WebAuthn and
                         # IndexedDB; same setup as the already-certified D7 FUE.
@@ -270,6 +293,40 @@ def main():
                             "F01: display preference mmol/L persists after real reload"
                         )
 
+                        # BEFORE/AFTER fixture: render exactly the same three
+                        # viewports with mmol/L selected, showing the newly
+                        # neutral target heading and the fail-closed notice.
+                        for width, height in VIEWPORTS:
+                            page.set_viewport_size({"width": width, "height": height})
+                            profile_open()
+                            title = page.get_by_text(COPY["target_title"], exact=True)
+                            title.first.wait_for(state="visible", timeout=15000)
+                            banner_mmol = page.get_by_text(COPY["banner"]).first
+                            for _ in range(16):
+                                box = banner_mmol.bounding_box()
+                                safe = height - (95 if width < 700 else 12)
+                                if box and box["y"] >= 80 and box["y"] + box["height"] < safe:
+                                    break
+                                page.mouse.move(width * 0.5, height * 0.52)
+                                page.mouse.wheel(0, 260)
+                                page.wait_for_timeout(180)
+                            else:
+                                raise AssertionError(
+                                    f"F01 mmol/L notice not visible at {width}x{height}: {box}"
+                                )
+                            target_mmol = OUT / f"f01-neutral-target-mmol-{width}x{height}.png"
+                            page.screenshot(path=str(target_mmol), full_page=False,
+                                            animations="disabled", timeout=30000)
+                            png = target_mmol.read_bytes()
+                            assert struct.unpack(">II", png[16:24]) == (width, height)
+                            evidence["unit_label_captures"].append({
+                                "viewport": f"{width}x{height}",
+                                "state": "mmol/L",
+                                "file": target_mmol.name,
+                                "sha256": hashlib.sha256(png).hexdigest(),
+                            })
+                        page.set_viewport_size({"width": 1180, "height": 860})
+                        profile_open()
                         page.get_by_role(
                             "button", name="mg/dL", exact=True
                         ).first.click(timeout=15000)
@@ -413,6 +470,131 @@ def main():
                         evidence["verified_scenarios"].append(
                             f"F07 partial: {LOCALE} real-Chrome 390x844, 768x1024, 1280x900"
                         )
+
+                        # F07 Web accessibility evidence: physical keyboard
+                        # Tab/Shift+Tab/Enter on actual Flutter unit controls.
+                        # 640x450 CSS px at DPR 2 models a 200% zoomed
+                        # 1280x900 desktop. It is NOT toolbar zoom certification.
+                        if LOCALE in ("fr", "ar"):
+                            page.set_viewport_size({"width": 768, "height": 1024})
+                            profile_open()
+
+                            def current_unit_summary():
+                                section = page.get_by_role(
+                                    "button",
+                                    name=re.compile(r"^" + re.escape(COPY["medical"]), re.I)
+                                ).first
+                                snap = section.aria_snapshot()
+                                return next(
+                                    (line.strip() for line in snap.splitlines()
+                                     if "button" in line and COPY["medical"] in line), ""
+                                )
+
+                            mg_button = page.get_by_role("button", name="mg/dL", exact=True).first
+                            mg_button.focus()
+                            page.keyboard.press("Tab")
+                            keyboard_forward_focus = page.evaluate("""() => ({
+                                tag: document.activeElement?.tagName || '',
+                                label: document.activeElement?.getAttribute('aria-label') || '',
+                                text: (document.activeElement?.textContent || '').slice(0, 120),
+                            })""")
+                            page.keyboard.press("Enter")
+                            for _ in range(35):
+                                if "mmol/L" in current_unit_summary():
+                                    break
+                                page.wait_for_timeout(180)
+                            else:
+                                raise AssertionError(
+                                    f"F07 Tab+Enter failed mmol/L: "
+                                    f"{keyboard_forward_focus}, {current_unit_summary()}"
+                                )
+                            page.keyboard.press("Shift+Tab")
+                            keyboard_back_focus = page.evaluate("""() => ({
+                                tag: document.activeElement?.tagName || '',
+                                label: document.activeElement?.getAttribute('aria-label') || '',
+                                text: (document.activeElement?.textContent || '').slice(0, 120),
+                            })""")
+                            page.keyboard.press("Enter")
+                            for _ in range(35):
+                                if "mg/dL" in current_unit_summary():
+                                    break
+                                page.wait_for_timeout(180)
+                            else:
+                                raise AssertionError(
+                                    f"F07 Shift+Tab+Enter failed mg/dL: "
+                                    f"{keyboard_back_focus}, {current_unit_summary()}"
+                                )
+                            evidence["accessibility"]["checks"].append({
+                                "name": "real-Tab-Enter-ShiftTab-Enter-unit-control",
+                                "viewport": "768x1024", "locale": LOCALE,
+                                "forward_focus": keyboard_forward_focus,
+                                "back_focus": keyboard_back_focus, "result": "PASS",
+                            })
+
+                            cdp.send("Emulation.setDeviceMetricsOverride", {
+                                "width": 640, "height": 450,
+                                "deviceScaleFactor": 2, "mobile": False,
+                            })
+                            profile_open()
+                            zoom_state = page.evaluate("""() => ({
+                                cssWidth: window.innerWidth,
+                                cssHeight: window.innerHeight,
+                                dpr: window.devicePixelRatio,
+                                rootScrollWidth: document.documentElement.scrollWidth,
+                                flutterViewWidth: Math.round(
+                                  document.querySelector('flutter-view')?.getBoundingClientRect().width || 0
+                                ),
+                            })""")
+                            assert (
+                                zoom_state["cssWidth"] == 640
+                                and zoom_state["cssHeight"] == 450
+                                and zoom_state["dpr"] == 2
+                                and zoom_state["rootScrollWidth"] <= 640
+                                and zoom_state["flutterViewWidth"] == 640
+                            ), f"F07 equivalent zoom overflow/scale: {zoom_state}"
+                            page.get_by_text(
+                                COPY["target_title"], exact=True
+                            ).first.wait_for(state="visible", timeout=15000)
+                            zoom_banner = page.get_by_text(COPY["banner"]).first
+                            for _ in range(20):
+                                bounds = zoom_banner.bounding_box()
+                                if bounds and bounds["y"] >= 0 and bounds["y"] + bounds["height"] < 450 - 75:
+                                    break
+                                page.mouse.move(300, 230)
+                                page.mouse.wheel(0, 230)
+                                page.wait_for_timeout(200)
+                            else:
+                                raise AssertionError(
+                                    f"F07 zoom equivalent notice obscured: {bounds}"
+                                )
+                            assert page.get_by_role("textbox").count() == 0, (
+                                "F07 zoom exposed unapproved target editor"
+                            )
+                            zoom_path = OUT / "f07-zoom200-equivalent-640x450.png"
+                            page.screenshot(path=str(zoom_path), full_page=False,
+                                            animations="disabled", timeout=30000)
+                            zoom_png = zoom_path.read_bytes()
+                            zoom_pixels = struct.unpack(">II", zoom_png[16:24])
+                            assert zoom_pixels[0] in (640, 1280), (
+                                f"F07 equivalent zoom pixel dimensions: {zoom_pixels}"
+                            )
+                            evidence["accessibility"]["captures"].append({
+                                "file": zoom_path.name, "viewport_css": "640x450",
+                                "device_pixel_ratio": 2,
+                                "pixels": list(zoom_pixels),
+                                "sha256": hashlib.sha256(zoom_png).hexdigest(),
+                            })
+                            evidence["accessibility"]["checks"].append({
+                                "name": "desktop-200pct-equivalent-CSS-reflow-DPR2",
+                                "locale": LOCALE, "result": "PASS",
+                                "geometry": zoom_state,
+                                "native_browser_toolbar_zoom": "NOT_RUN",
+                            })
+                            evidence["accessibility"]["status"] = "PASS_PARTIAL"
+                            evidence["verified_scenarios"].append(
+                                "F07 partial: keyboard + 200pct-equivalent reflow"
+                            )
+
                         unexpected = [x for x in blocked if "fonts.gstatic.com" not in x.lower()]
                         assert not unexpected, f"Unexpected network egress: {unexpected[:3]}"
                         assert not errors, f"Uncaught JS errors: {errors[:3]}"

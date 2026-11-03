@@ -82,6 +82,12 @@ jobs:
           result = json.loads((folder/"proof.json").read_text())
           assert result["result"] == "PASS_PARTIAL"
           assert len(result["captures"]) == 3
+          assert len(result["unit_label_captures"]) == 3
+          assert len(result["unit_heading_checks"]) == 2
+          for capture in result["unit_label_captures"]:
+              data = (folder/capture["file"]).read_bytes()
+              assert data[:8] == bytes.fromhex("89504e470d0a1a0a")
+              assert hashlib.sha256(data).hexdigest() == capture["sha256"]
           assert len(result["verified_scenarios"]) == 5
           for item in result["captures"]:
               content = (folder/item["file"]).read_bytes()
@@ -110,7 +116,16 @@ jobs:
               assert result["locale"] == lang
               assert result["result"] == "PASS_PARTIAL"
               assert len(result["captures"]) == 3
-              assert len(result["verified_scenarios"]) == 5
+              assert len(result["unit_label_captures"]) == 3
+              assert len(result["unit_heading_checks"]) == 2
+              assert result["accessibility"]["status"] == "PASS_PARTIAL"
+              assert len(result["accessibility"]["checks"]) == 2
+              assert len(result["accessibility"]["captures"]) == 1
+              assert len(result["verified_scenarios"]) == 6
+              for capture in result["unit_label_captures"] + result["accessibility"]["captures"]:
+                  data = (folder/capture["file"]).read_bytes()
+                  assert data[:8] == bytes.fromhex("89504e470d0a1a0a")
+                  assert hashlib.sha256(data).hexdigest() == capture["sha256"]
               assert any("200pct" in x for x in result["not_run"])
               for item in result["captures"]:
                   data = (folder/item["file"]).read_bytes()
