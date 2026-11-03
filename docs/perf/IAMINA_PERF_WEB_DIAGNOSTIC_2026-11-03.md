@@ -35,3 +35,14 @@ Backend Django, healthcheck séparé : 9177/346/533 ms, DB OK et cache indisponi
 
 ## Next exact
 Instrumenter les étapes de pré-runApp sur un environnement de test entièrement synthétique avec stockage local initialement vierge puis peuplé : initialisation auth, inspection base locale protégée, verrouillage, réconciliation du coffre. Mesurer le temps par phase sur Chromium et WebKit. Ne modifier les chemins runtime sensibles qu'après preuve reproductible sans dégrader l'isolation du patient. Aucun merge ou déploiement Vercel dans ce lot.
+
+
+## Sous-lot suivant — coffres synthétiques IndexedDB (état provisoire, RED)
+
+- **Goal :** chronométrer une partie du démarrage local avec Drift/IndexedDB, coffre synthétique vide puis 300 enregistrements synthétiques, Chromium et WebKit Linux.
+- **Succès observable :** tests navigateurs, persistance et isolation des coffres, artefact chiffré JSON/Markdown, aucune donnée patient. **Non atteint à ce stade.**
+- **Run RED :** [#41733184033](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41733184033), HEAD 2129815efb0603b6c3ab4868cb04467658989349. Compilation Flutter et installation des navigateurs OK. Expiration Playwright 90000 ms pendant l'attente du premier titre d'état, aucune mesure ni artefact. Cause technique non connue.
+- **Action de diagnostic :** commit a7576528551c22c519f6ef3ff560b9df51f98332, dans le banc uniquement : titres des sous-phases Dart, timeout borné à 20 secondes, fichier perf_web_synthetic_vault_debug.json retraçant uniquement les éléments techniques autorisés (étape, langue navigateur, chargements de ressources, premiers frames, compteur des erreurs). Aucune donnée clinique ni contenu d'exception libre.
+- **Run de suivi :** [#41734274519](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734274519), sur HEAD a7576528551c22c519f6ef3ff560b9df51f98332, IN_PROGRESS au dernier contrôle ; résultat non certifié.
+- **Limites :** ne mesure ni AuthService réel ni AppLockService ni un patient connecté ; WebKit Linux n'est pas Safari physique sur iPhone.
+- **Next exact :** lire le diagnostic du nouveau run, identifier la phase exacte du blocage, corriger et retester uniquement PERF-WEB, puis documenter la comparaison vide/rempli si la CI devient GREEN. Aucun merge ni déploiement Vercel.
