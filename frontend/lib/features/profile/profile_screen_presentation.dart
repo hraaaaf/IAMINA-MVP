@@ -238,7 +238,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               ? l10n.glucoseTarget
               : _profileUiText(
                   context,
-                  fr: 'Objectifs glycémiques non vérifiés',
+                  fr: 'Objectifs non vérifiés',
                   en: 'Glucose targets unverified',
                   ar: 'أهداف سكر الدم غير مؤكدة',
                 ),

@@ -33,7 +33,7 @@ COPIES = {
                start="Start", save="Save", unlock="Unlock IAmina"),
     "fr": dict(medical="Suivi médical", type2="Diabète Type 2",
                banner="Objectifs non vérifiés. Aucun classement médical avant validation.",
-               target_title="Objectifs glycémiques non vérifiés",
+               target_title="Objectifs non vérifiés",
                old_target_title="Cible glycémique (mg/dL)",
                saved_prefix="Pilote local", language="Français",
                country_search="Rechercher un pays", country="Maroc",
@@ -531,6 +531,10 @@ def main():
                                 "back_focus": keyboard_back_focus, "result": "PASS",
                             })
 
+                            # Keep Playwright's screenshot viewport in sync
+                            # with the CDP CSS layout viewport; an override
+                            # alone leaves Playwright at prior 768x1024.
+                            page.set_viewport_size({"width": 640, "height": 450})
                             cdp.send("Emulation.setDeviceMetricsOverride", {
                                 "width": 640, "height": 450,
                                 "deviceScaleFactor": 2, "mobile": False,
@@ -575,8 +579,8 @@ def main():
                                             animations="disabled", timeout=30000)
                             zoom_png = zoom_path.read_bytes()
                             zoom_pixels = struct.unpack(">II", zoom_png[16:24])
-                            assert zoom_pixels[0] in (640, 1280), (
-                                f"F07 equivalent zoom pixel dimensions: {zoom_pixels}"
+                            assert zoom_pixels == (640, 450), (
+                                f"F07 equivalent zoom pixels must be exact 640x450: {zoom_pixels}"
                             )
                             evidence["accessibility"]["captures"].append({
                                 "file": zoom_path.name, "viewport_css": "640x450",
