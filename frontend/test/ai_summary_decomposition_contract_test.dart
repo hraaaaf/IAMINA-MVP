@@ -13,7 +13,13 @@ void main() {
 
     expect(screen, contains("part 'ai_summary_screen_presentation.dart';"));
     expect(screen, contains('class _AISummaryScreenState'));
-    expect(screen, contains('context.read<ApiClient>()'));
+    // D22 Gate A: keep local-first DB orchestration in state, but block
+    // personalized KPI/AI requests until target authority is proven.
+    expect(screen, isNot(contains('context.read<ApiClient>()')));
+    expect(screen, isNot(contains('api.getKpis(')));
+    expect(screen, isNot(contains('api.getAiSummary(')));
+    expect(screen, contains('_buildD22SafetyNotice()'));
+    expect(screen, contains('d22-ai-summary-target-unverified'));
     expect(screen, contains('context.read<AppDatabase>()'));
     expect(screen, isNot(contains('Widget _buildNarrowLayout(')));
     expect(screen, isNot(contains('Widget _buildWideLayout(')));

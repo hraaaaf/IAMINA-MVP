@@ -266,9 +266,9 @@ class _Metrics extends StatelessWidget {
                   )
                 : _t(
                     context,
-                    'Cible non configurée',
-                    'Target not configured',
-                    'النطاق غير مضبوط',
+                    'Objectifs non vérifiés',
+                    'Targets unverified',
+                    'الأهداف غير مؤكدة',
                   ),
           ),
         ];
@@ -375,9 +375,9 @@ class _Distribution extends StatelessWidget {
                   )
                 : _t(
                     context,
-                    'Configurez une cible pour afficher la répartition.',
-                    'Configure a target range to display the distribution.',
-                    'اضبط نطاقاً لعرض التوزيع.',
+                    'Objectifs non vérifiés : répartition indisponible.',
+                    'Targets unverified: distribution unavailable.',
+                    'الأهداف غير مؤكدة: لا يمكن عرض التوزيع.',
                   ),
             style: TextStyle(
               fontSize: 12.5,
@@ -812,8 +812,10 @@ class _Stats {
     PatientProfileData? profile,
   ) {
     final unit = profile?.unitPreference ?? 'mg/dL';
-    final low = profile?.targetRangeLow;
-    final high = profile?.targetRangeHigh;
+    // Legacy goals lack documented owner, source unit and clinical
+    // approval. Keep historical values stored; never classify them.
+    const double? low = null;
+    const double? high = null;
     final average = logs.isEmpty
         ? 0.0
         : logs.fold<double>(0.0, (sum, log) => sum + log.bloodSugar) /

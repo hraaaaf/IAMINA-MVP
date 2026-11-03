@@ -398,11 +398,18 @@ class _SummaryTopBar extends StatelessWidget {
   final int periodDays;
   final ValueChanged<int> onPeriodChange;
   final VoidCallback onTweaksTap;
+  // A date selector must not imply that a disabled clinical analysis updates.
+  // Gate A callers default to hidden; enable only with governed data.
+  final bool showPeriodControls;
 
   const _SummaryTopBar({
     required this.periodDays,
     required this.onPeriodChange,
     required this.onTweaksTap,
+    // This default-off compatibility parameter is intentional. Historical
+    // D19 comparison keeps the same constructor but Gate A never passes true.
+    // ignore: unused_element_parameter
+    this.showPeriodControls = false,
   });
 
   @override
@@ -438,10 +445,12 @@ class _SummaryTopBar extends StatelessWidget {
     if (isCompact) {
       return AminaMobilePageHeader(
         title: l10n.navIamina,
-        bottom: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: periods,
-        ),
+        bottom: showPeriodControls
+            ? Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: periods,
+              )
+            : null,
       );
     }
 
@@ -473,8 +482,10 @@ class _SummaryTopBar extends StatelessWidget {
                   ),
                 ),
               ),
-              periods,
-              const SizedBox(width: 4),
+              if (showPeriodControls) ...[
+                periods,
+                const SizedBox(width: 4),
+              ],
             ],
           ),
           const SizedBox(height: 12),

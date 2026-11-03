@@ -7,7 +7,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
-import '../../services/api_client.dart';
 import '../../data/drift/database.dart';
 import '../../data/models/ai_models.dart';
 import '../../l10n/app_localizations.dart';
@@ -66,26 +65,53 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
     );
   }
 
+  /// D22 Gate A: personalized analysis needs a verified target and source.
+  /// No KPI or personalized AI request is made by this UI until Gate B.
   Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    final api = context.read<ApiClient>();
-    final results = await Future.wait([
-      api.getAiSummary(days: _periodDays),
-      api.getKpis(days: _periodDays),
-    ]);
     if (!mounted) return;
-    final summary = results[0] as SummaryResponse?;
-    final kpis = results[1] as KpisResponse?;
     setState(() {
-      _summary = summary;
-      _kpis = kpis;
       _isLoading = false;
-      if (summary == null)
-        _errorMessage = AppLocalizations.of(context)!.analysisLoadError;
+      _errorMessage = null;
+      _summary = null;
+      _kpis = null;
     });
+  }
+
+  Widget _buildD22SafetyNotice() {
+    final copy = switch (Localizations.localeOf(context).languageCode) {
+      'fr' => 'Analyse personnalisée temporairement indisponible : les objectifs glycémiques historiques ne sont pas vérifiés.',
+      'ar' => 'التحليل الشخصي غير متاح مؤقتًا: لم يتم التحقق من أهداف سكر الدم القديمة.',
+      _ => 'Personalized analysis is temporarily unavailable: historical glucose targets are unverified.',
+    };
+    // D22 Gate A: show the safety notice near the header, not in the
+    // middle of a blank mobile/desktop viewport.
+    return Align(
+      alignment: AlignmentDirectional.topCenter,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 26),
+                  const SizedBox(height: 12),
+                  Text(
+                    copy,
+                    key: const Key('d22-ai-summary-target-unverified'),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _setPeriod(int days) {
@@ -129,6 +155,10 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
                       ? (_hasLocalLogs == false
                             ? _buildFirstUse()
                             : _buildError())
+                      : _summary == null && _kpis == null
+                      ? (_hasLocalLogs == false
+                            ? _buildFirstUse()
+                            : _buildD22SafetyNotice())
                       : _buildContent(),
                 ),
               ],

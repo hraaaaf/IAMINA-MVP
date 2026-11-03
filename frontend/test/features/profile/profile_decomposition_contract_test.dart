@@ -23,7 +23,11 @@ void main() {
     expect(state, contains('withdrawD7AiConsent('));
     expect(state, contains('revokeServer: api.withdrawConsent'));
     expect(state, contains('clearPending: evidence.clearWithdrawalPending'));
-    expect(state, contains('insertOnConflictUpdate('));
+    // D22 Gate A: a unit preference save must not overwrite legacy bounds.
+    expect(state, contains('getProfileForLocalUserId(userId)'));
+    expect(state, contains('.write(PatientProfilesCompanion('));
+    expect(state, isNot(contains('targetRangeLow: drift.Value(')));
+    expect(state, isNot(contains('targetRangeHigh: drift.Value(')));
     expect(state, contains('Widget build(BuildContext context) => _buildPresentation(context);'));
     expect(state, isNot(contains('Widget _buildMedicalSection(')));
     expect(state, isNot(contains('Widget _buildAccountSection(')));

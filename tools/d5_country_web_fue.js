@@ -327,33 +327,90 @@ async function keyboardJourney(browser,locale,size){
     pass:false,images:[],focusTrail:[]};
   try{
     await load(page,url('new','ma','a',locale),l.language);
-    const language=await waitFor(page,l.language);
+    await waitFor(page,l.language);
+    const activeSnapshot=()=>page.evaluate(()=>{
+      const a=document.activeElement;
+      return {tag:a?.tagName||'none',name:a?.getAttribute('aria-label')||'',
+        role:a?.getAttribute('role')||'',id:a?.id||''};
+    });
+    const settle=()=>page.evaluate(()=>new Promise(resolve=>
+      requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    // Observe the true ACTIVE semantic control, not a text locator that may
+    // resolve to an ancestor containing a DIFFERENT focused child. The prior
+    // oracle incorrectly marked English focused when active.name=Français.
     async function reachByTab(target,label){
       for(let i=0;i<65;i++){
         await page.keyboard.press('Tab');
-        const focused=await target.evaluate(el=>
-          el===document.activeElement || el.contains(document.activeElement)
-        ).catch(()=>false);
-        const active=await page.evaluate(()=>({
-          tag:document.activeElement?.tagName||'none',
-          name:document.activeElement?.getAttribute('aria-label')||'',
-          role:document.activeElement?.getAttribute('role')||'',
-        }));
-        if(item.focusTrail.length<16)item.focusTrail.push({label,focused,...active});
+        await settle();
+        const active=await activeSnapshot();
+        const focused=active.name===target && active.role==='checkbox';
+        if(item.focusTrail.length<22)item.focusTrail.push({label,focused,...active});
         if(focused)return;
       }
-      throw Error('Tab did not reach '+label+'; '+JSON.stringify(item.focusTrail.slice(-8)));
+      throw Error('Physical Tab did not reach '+label+' ('+target+'): '+
+        JSON.stringify(item.focusTrail.slice(-12)));
     }
-    await reachByTab(language,'language');
+    // The three language choices are real Flutter ChoiceChips. Test a true
+    // backwards step FROM the central one and then a forward return to it.
+    await reachByTab(l.language,'language');
+    const middleLabel='English';
+    await waitFor(page,middleLabel);
+    await reachByTab(middleLabel,'middle-language');
+    const beforeBackward=await activeSnapshot();
+    if(beforeBackward.name!==middleLabel || beforeBackward.role!=='checkbox')
+      throw Error('English was not the actual focused semantic chip: '+
+        JSON.stringify(beforeBackward));
     await page.keyboard.press('Shift+Tab');
+    let afterBackward=await activeSnapshot();
+    for(let i=0;i<14 && (afterBackward.name===middleLabel ||
+      afterBackward.role!=='checkbox');i++){
+      await settle();
+      await snooze(50);
+      afterBackward=await activeSnapshot();
+    }
     await page.keyboard.press('Tab');
-    if(!await language.evaluate(el=>el===document.activeElement ||
-        el.contains(document.activeElement)).catch(()=>false))
-      throw Error('Shift+Tab then Tab did not return to language choice');
+    let afterReturn=await activeSnapshot();
+    for(let i=0;i<14 && (afterReturn.name!==middleLabel ||
+      afterReturn.role!=='checkbox');i++){
+      await settle();
+      await snooze(50);
+      afterReturn=await activeSnapshot();
+    }
+    const movedBack=afterBackward.role==='checkbox' &&
+      ['Français','العربية'].includes(afterBackward.name);
+    const returned=afterReturn.name===middleLabel &&
+      afterReturn.role==='checkbox';
+    item.focusReturn={beforeBackward,afterBackward,afterReturn,movedBack,returned};
+    if(!movedBack || !returned)
+      throw Error('Physical Shift+Tab -> Tab failed the STRICT semantic '+
+        'focus roundtrip: '+JSON.stringify(item.focusReturn));
+    // The locale actually requested by this case still needs a physical
+    // Tab + Enter path and explicit country confirmation, all on real Chrome.
+    await reachByTab(l.language,'language');
     item.images.push(await capture(page,locale,size,'keyboard','language-focused'));
     await page.keyboard.press('Enter');
     const confirm=await waitFor(page,l.confirm);
-    await reachByTab(confirm,'confirm');
+    // Flutter's semantic <flt-semantics role=button> may have an empty raw
+    // aria-label even when its accessible name comes from child text.
+    // Match the ACTUAL button against the live visible confirmation locator;
+    // require role=button AND prove that physical Enter removes the prompt.
+    async function reachConfirmByTab(){
+      for(let i=0;i<65;i++){
+        await page.keyboard.press('Tab');
+        await settle();
+        const active=await activeSnapshot();
+        const targetFocused=await confirm.evaluate(el=>
+          el===document.activeElement || el.contains(document.activeElement)
+        ).catch(()=>false);
+        const focused=active.role==='button' && targetFocused;
+        if(item.focusTrail.length<22)item.focusTrail.push({label:'confirm',
+          focused,targetFocused,...active});
+        if(focused)return;
+      }
+      throw Error('Physical Tab did not focus labelled country confirmation button: '+
+        JSON.stringify(item.focusTrail.slice(-12)));
+    }
+    await reachConfirmByTab();
     item.images.push(await capture(page,locale,size,'keyboard','confirm-focused'));
     await page.keyboard.press('Enter');
     await snooze(300);

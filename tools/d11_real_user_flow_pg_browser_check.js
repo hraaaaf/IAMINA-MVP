@@ -280,7 +280,42 @@ async function proof(page, width) {
     }else{
       await labelClick(page,locale==='fr'?'Profil':'الملف الشخصي');
       await labelClick(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
-      await labelClick(page,locale==='fr'?'Se déconnecter':'تسجيل الخروج');
+      // Flutter's expanded profile scroll can extend > one wheel gesture.
+      // Screenshots at 390x844 FR/AR proved the logout control remained below
+      // the fixed 62px navigation bar after a single 720px wheel event.
+      // Keep sending REAL wheel gestures until its semantics rectangle is
+      // fully within the unobstructed viewport; never force a hidden click.
+      const logoutLabel=locale==='fr'?'Se déconnecter':'تسجيل الخروج';
+      const viewportHeight=page.viewportSize()?.height||844;
+      const semanticNodes=page.locator('flt-semantics');
+      let logoutBox=null;
+      let visibleLogout=false;
+      for(let scroll=0;scroll<8;scroll++){
+        await page.mouse.move(width/2,Math.min(500,viewportHeight-150));
+        await page.mouse.wheel(0,440);
+        await page.waitForTimeout(200);
+        logoutBox=null;
+        for(let i=(await semanticNodes.count())-1;i>=0;i--){
+          const node=semanticNodes.nth(i);
+          const value=(await node.getAttribute('aria-label').catch(()=>null)) ||
+            (await node.textContent().catch(()=>null));
+          if(!labelMatches(value,logoutLabel))continue;
+          const box=await node.boundingBox().catch(()=>null);
+          if(!box)continue;
+          logoutBox=box;
+          if(box.width>0 && box.height>0 && box.y>=0 &&
+              box.y+box.height<=viewportHeight-62){
+            visibleLogout=true;
+            break;
+          }
+        }
+        if(visibleLogout)break;
+      }
+      await screenshot(page,'06b-account-controls-revealed');
+      if(!visibleLogout)
+        throw new Error('Logout still covered after bounded physical scroll: '+
+          JSON.stringify({logoutBox,viewportHeight}));
+      await labelClick(page,logoutLabel);
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
     // The response listener is attached before page navigation and also

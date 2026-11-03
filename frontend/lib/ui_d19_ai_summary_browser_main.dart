@@ -109,7 +109,11 @@ Future<void> main() async {
   final locale = Uri.base.queryParameters['locale'] == 'ar'
       ? const Locale('ar')
       : const Locale('fr');
-  final AppDatabase db = scenario == 'recover'
+  // D22: compare empty journal first use with a nonempty, unverified source.
+  // A synthetic CGM KPI does not certify a personal glucose target.
+  const gateA = bool.fromEnvironment('D19_D22_GATE_A', defaultValue: false);
+  final AppDatabase db = scenario == 'recover' ||
+          (gateA && scenario != 'manual')
       ? _D19LocalLogsPresentDatabase()
       : AppDatabase.defaults();
   final api = _D19SyntheticApi(scenario);

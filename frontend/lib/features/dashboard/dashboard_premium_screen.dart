@@ -90,8 +90,9 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow;
-        final high = profile?.targetRangeHigh;
+        // v12 numeric bounds do not establish patient target authority.
+        const double? low = null;
+        const double? high = null;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),
@@ -486,7 +487,8 @@ class _LatestReadingCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              Flexible(
+                child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
@@ -512,6 +514,7 @@ class _LatestReadingCard extends StatelessWidget {
                     color: statusForeground,
                   ),
                 ),
+              ),
               ),
             ],
           ),
