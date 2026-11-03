@@ -70,7 +70,7 @@ Future<void> verifyGuardedWrongPassphrase() async {
   stage('guarded_wrong_passphrase_unwrap_rejected');
   try {
     unlocked=await D18VaultKeyPolicy.unlockWithPassphrase(
-      scope:scope,publicEnvelopeJson:envelope,
+      scope:scope,publicEnvelopeJson:envelope!,
       passphrase:_guardedPassphrase+'-INCORRECT');
   } catch (_) {
     rejected=true;
