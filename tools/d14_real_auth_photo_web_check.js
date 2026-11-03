@@ -15,6 +15,7 @@ const report={
   photo:'only synthetic in-memory Future, no uploaded image',
   patientData:'disposable CI-only account identities, no clinical records',
   providerCalls:0,
+  fontPrivacyGate:'UNRESOLVED_IF_FALLBACK_ATTEMPTED',
   vercel:'NOT_DEPLOYED',
   cases:[],
   failures:[]
@@ -37,10 +38,12 @@ const steps=[
           deviceScaleFactor:1,serviceWorkers:'block'
         });
         const page=await ctx.newPage();
-        const external=[],photoUploads=[],errors=[],authResponses=[];
+        const external=[],externalResponses=[],photoUploads=[],errors=[],authResponses=[];
         page.on('pageerror',e=>errors.push('pageerror: '+String(e)));
         page.on('response',r=>{
           if(r.url().startsWith(api+'/api/v1/auth/login'))authResponses.push(r.status());
+          if(/^https?:/.test(r.url())&&!r.url().startsWith(origin)&&
+              !r.url().startsWith(api))externalResponses.push(new URL(r.url()).origin);
         });
         await page.addInitScript(()=>{
           window.__d14AuthReports=[];
@@ -55,8 +58,10 @@ const steps=[
         });
         await page.route('**/*',route=>{
           const url=route.request().url();
-          if(url.startsWith(api+'/api/v1/ai/')||/generativelanguage|api\.groq\.com|api\.openai\.com/.test(url))
-            photoUploads.push(url.split('?')[0]);
+          if(url.startsWith(api+'/api/v1/ai/')||/generativelanguage|api\.groq\.com|api\.openai\.com/.test(url)){
+            photoUploads.push(new URL(url).origin);
+            return route.abort(); // No synthetic image may reach the server or vendor.
+          }
           if(url.startsWith(origin)||url.startsWith(api)||
               url.startsWith('data:')||url.startsWith('blob:'))
             return route.continue();
@@ -89,13 +94,18 @@ const steps=[
             item.clinicalTransport==='disabled'&&
             item.realDjangoAuth===true&&item.realPatientVault===true&&
             JSON.stringify(authResponses)===JSON.stringify([200,200,200])&&
-            external.length===0&&photoUploads.length===0&&errors.length===0&&
+            external.every(x=>x==='https://fonts.gstatic.com')&&
+            externalResponses.length===0&&photoUploads.length===0&&errors.length===0&&
             fs.statSync(path.join(root,screenshot)).size>=10000;
           const result={
             locale,viewport,screenshot,passed:valid,steps:item.steps||[],
             nativeLoginStatuses:authResponses,providerRequests:photoUploads.length,
             blockedExternal:external.length,
             blockedExternalOrigins:[...new Set(external)].sort(),
+            attemptedFlutterFontFallbacks:external.filter(
+              x=>x==='https://fonts.gstatic.com').length,
+            remoteResponses:externalResponses.length,
+            fontPrivacyGate:external.length?'OPEN_UNRESOLVED':'PASS',
             pageErrors:errors.length,
             finalTitle:title,reason:item.reason||null
           };
@@ -116,6 +126,7 @@ const steps=[
   console.log('D14_REAL_AUTH_CHROME='+JSON.stringify({
     passed:report.cases.filter(x=>x.passed).length,
     total:report.cases.length,failures:report.failures.length,
+    attemptedFontFallbacks:report.cases.reduce((n,c)=>n+(c.attemptedFlutterFontFallbacks||0),0),
     providerRequests:report.providerCalls
   }));
   if(report.cases.length!==6||report.failures.length)process.exitCode=1;
