@@ -1,0 +1,178 @@
+name: D22 Gate A — F01 F03 FR AR Web synthetic recipes
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d22-gate-a-web-recipes.yml'
+      - 'scripts/d22_gate_a_web_recipes.py'
+      - 'scripts/d22_gate_a_before.py'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/lib/features/auth/onboarding_chat_screen.dart'
+      - 'frontend/lib/features/dashboard/clinical_engine.dart'
+      - 'frontend/lib/features/dashboard/dashboard_screen.dart'
+      - 'frontend/lib/features/dashboard/dashboard_premium_screen.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d22-gate-a-recipes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d22-real-chrome-recipes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Compile actual local Flutter Web patient app — no hosted API
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Checkout exact D22-A BEFORE reference (no main/HEAD confusion)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: hraaaaf/IAMINA-MVP
+          ref: 3e55ff069a4bc9601ea548390f78af48e8e003dd
+          path: d22-before
+          persist-credentials: false
+      - name: Compile independent BEFORE Flutter Web patient app
+        working-directory: d22-before/frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Install pinned disposable Chromium
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+          python3 -m py_compile scripts/d22_gate_a_web_recipes.py
+          python3 -m py_compile scripts/d22_gate_a_before.py
+      - name: Execute D22 actual Web scoped F01 F03 and English viewport checks
+        run: |
+          set -euo pipefail
+          python3 scripts/d22_gate_a_web_recipes.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib, struct, re
+          folder = Path("d22-web-real-chrome")
+          result = json.loads((folder/"proof.json").read_text())
+          assert result["result"] == "PASS_PARTIAL"
+          assert len(result["captures"]) == 3
+          assert len(result["verified_scenarios"]) == 5
+          for item in result["captures"]:
+              content = (folder/item["file"]).read_bytes()
+              assert content[:8] == bytes.fromhex("89504e470d0a1a0a")
+              w, h = struct.unpack(">II", content[16:24])
+              ew, eh = [int(x) for x in item["viewport"].split("x")]
+              assert (w, h) == (ew, eh) or (w == ew and h >= eh)
+              assert re.fullmatch(r"[a-f0-9]{64}", item["sha256"])
+              assert hashlib.sha256(content).hexdigest() == item["sha256"]
+          assert any("F02" in x for x in result["not_run"])
+          assert any("F06" in x for x in result["not_run"])
+          assert any("200pct" in x for x in result["not_run"])
+          PY
+      - name: Execute D22 FR and AR local Web F01 F03 viewport recipes
+        run: |
+          set -euo pipefail
+          for lang in fr ar; do
+            D22_FUE_LOCALE="$lang" python3 scripts/d22_gate_a_web_recipes.py
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib, struct
+          for lang in ("fr", "ar"):
+              folder = Path("d22-web-real-chrome-" + lang)
+              result = json.loads((folder/"proof.json").read_text())
+              assert result["locale"] == lang
+              assert result["result"] == "PASS_PARTIAL"
+              assert len(result["captures"]) == 3
+              assert len(result["verified_scenarios"]) == 5
+              assert any("200pct" in x for x in result["not_run"])
+              for item in result["captures"]:
+                  data = (folder/item["file"]).read_bytes()
+                  assert data[:8] == bytes.fromhex("89504e470d0a1a0a")
+                  w, h = struct.unpack(">II", data[16:24])
+                  vw, vh = map(int, item["viewport"].split("x"))
+                  assert w == vw and h >= vh
+                  assert hashlib.sha256(data).hexdigest() == item["sha256"]
+          PY
+      - name: Verify independent D22-A BEFORE with aligned 390 768 1280 viewports
+        run: |
+          set -euo pipefail
+          python3 scripts/d22_gate_a_before.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, re, struct
+          before = Path("d22-web-before-chrome")
+          after = Path("d22-web-real-chrome")
+          b = json.loads((before / "proof.json").read_text())
+          a = json.loads((after / "proof.json").read_text())
+          assert b["before_sha"] == "3e55ff069a4bc9601ea548390f78af48e8e003dd"
+          assert b["status"] == "PASS_BEFORE_BASELINE"
+          assert a["result"] == "PASS_PARTIAL"
+          assert len(b["capture"]) == len(a["captures"]) == 3
+          assert sorted(i["viewport"] for i in b["capture"]) == sorted(i["viewport"] for i in a["captures"])
+          for group, items in ((before, b["capture"]), (after, a["captures"])):
+              for item in items:
+                  content = (group / item["file"]).read_bytes()
+                  assert content[:8] == bytes.fromhex("89504e470d0a1a0a")
+                  w, h = struct.unpack(">II", content[16:24])
+                  vw, vh = map(int, item["viewport"].split("x"))
+                  assert w == vw and h >= vh
+                  assert re.fullmatch(r"[0-9a-f]{64}", item["sha256"])
+                  assert hashlib.sha256(content).hexdigest() == item["sha256"]
+          PY
+      - name: Keep aligned BEFORE and AFTER Chrome screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d22-web-before-after-chrome-scoped
+          path: |
+            d22-web-before-chrome/proof.json
+            d22-web-before-chrome/*.png
+            d22-web-real-chrome/proof.json
+            d22-web-real-chrome/*.png
+            d22-web-real-chrome-fr/proof.json
+            d22-web-real-chrome-fr/*.png
+            d22-web-real-chrome-ar/proof.json
+            d22-web-real-chrome-ar/*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Keep bounded synthetic real-Chrome evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d22-web-fail-closed-chrome-partial-proof
+          path: |
+            d22-web-real-chrome/proof.json
+            d22-web-real-chrome/*.png
+            d22-web-real-chrome-fr/proof.json
+            d22-web-real-chrome-fr/*.png
+            d22-web-real-chrome-ar/proof.json
+            d22-web-real-chrome-ar/*.png
+          retention-days: 7
+          if-no-files-found: warn
