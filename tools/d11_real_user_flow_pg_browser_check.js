@@ -280,30 +280,40 @@ async function proof(page, width) {
     }else{
       await labelClick(page,locale==='fr'?'Profil':'الملف الشخصي');
       await labelClick(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
-      // On the 390px profile the expanded account action is BELOW the
-      // sticky bottom navigation. Reveal it using a real wheel scroll before
-      // pointer hit testing; never force a click or invoke Flutter handlers.
-      await page.mouse.move(width / 2, 500);
-      await page.mouse.wheel(0, 720);
-      await page.waitForTimeout(350);
-      await screenshot(page,'06b-account-controls-revealed');
+      // Flutter's expanded profile scroll can extend > one wheel gesture.
+      // Screenshots at 390x844 FR/AR proved the logout control remained below
+      // the fixed 62px navigation bar after a single 720px wheel event.
+      // Keep sending REAL wheel gestures until its semantics rectangle is
+      // fully within the unobstructed viewport; never force a hidden click.
       const logoutLabel=locale==='fr'?'Se déconnecter':'تسجيل الخروج';
-      // In Flutter CanvasKit the actual label may belong to a semantics
-      // node rather than a Playwright getByText match. Inspect live geometry
-      // from that node; reject offscreen/overlapped targets.
-      let logoutBox=null;
-      const semanticNodes=page.locator('flt-semantics');
-      for(let i=(await semanticNodes.count())-1;i>=0;i--){
-        const node=semanticNodes.nth(i);
-        const value=(await node.getAttribute('aria-label').catch(()=>null)) ||
-          (await node.textContent().catch(()=>null));
-        if(!labelMatches(value,logoutLabel))continue;
-        logoutBox=await node.boundingBox().catch(()=>null);
-        if(logoutBox)break;
-      }
       const viewportHeight=page.viewportSize()?.height||844;
-      if(!logoutBox || logoutBox.y<0 || logoutBox.y+logoutBox.height>viewportHeight-62)
-        throw new Error('Logout still covered after physical scroll: '+
+      const semanticNodes=page.locator('flt-semantics');
+      let logoutBox=null;
+      let visibleLogout=false;
+      for(let scroll=0;scroll<8;scroll++){
+        await page.mouse.move(width/2,Math.min(500,viewportHeight-150));
+        await page.mouse.wheel(0,440);
+        await page.waitForTimeout(200);
+        logoutBox=null;
+        for(let i=(await semanticNodes.count())-1;i>=0;i--){
+          const node=semanticNodes.nth(i);
+          const value=(await node.getAttribute('aria-label').catch(()=>null)) ||
+            (await node.textContent().catch(()=>null));
+          if(!labelMatches(value,logoutLabel))continue;
+          const box=await node.boundingBox().catch(()=>null);
+          if(!box)continue;
+          logoutBox=box;
+          if(box.width>0 && box.height>0 && box.y>=0 &&
+              box.y+box.height<=viewportHeight-62){
+            visibleLogout=true;
+            break;
+          }
+        }
+        if(visibleLogout)break;
+      }
+      await screenshot(page,'06b-account-controls-revealed');
+      if(!visibleLogout)
+        throw new Error('Logout still covered after bounded physical scroll: '+
           JSON.stringify({logoutBox,viewportHeight}));
       await labelClick(page,logoutLabel);
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
