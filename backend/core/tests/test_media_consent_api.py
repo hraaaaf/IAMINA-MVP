@@ -133,3 +133,41 @@ def test_list_reflects_active_and_revoked_state(patient):
     assert states[("document_ingest", "document")]["granted_at"] is not None
     assert states[("glucometer_ocr", "image")]["active"] is False
     assert states[("glucometer_ocr", "image")]["revoked_at"] is not None
+
+
+def test_d24_media_api_a_b_a_withdraw_and_reconsent(patient):
+    """Real API handlers never transfer one owner's meal-photo grant to another."""
+    from core.api.v1.account import withdraw_consent
+
+    other = User.objects.create_user(username="media-consent-api-second")
+    BasePatientProfile.objects.create(patient=other)
+    _enable_global_ai_consent(patient)
+    _enable_global_ai_consent(other)
+
+    own = grant_ai_media_consent(_request(patient), "meal_vision", "image")
+    assert own["active"] is True
+    options_b = list_ai_media_consents(_request(other))
+    assert next(row for row in options_b if row["purpose"] == "meal_vision")[
+        "active"
+    ] is False
+
+    grant_ai_media_consent(_request(other), "meal_vision", "image")
+    withdraw_consent(SimpleNamespace(user=patient, META={}))
+    options_a = list_ai_media_consents(_request(patient))
+    options_b = list_ai_media_consents(_request(other))
+    assert next(row for row in options_a if row["purpose"] == "meal_vision")[
+        "active"
+    ] is False
+    assert next(row for row in options_b if row["purpose"] == "meal_vision")[
+        "active"
+    ] is True
+
+    _enable_global_ai_consent(patient)
+    assert next(row for row in list_ai_media_consents(_request(patient))
+                if row["purpose"] == "meal_vision")["active"] is False
+
+    grant_ai_media_consent(_request(patient), "meal_vision", "image")
+    assert next(row for row in list_ai_media_consents(_request(patient))
+                if row["purpose"] == "meal_vision")["active"] is True
+    assert next(row for row in list_ai_media_consents(_request(other))
+                if row["purpose"] == "meal_vision")["active"] is True
