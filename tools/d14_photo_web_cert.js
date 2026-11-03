@@ -12,7 +12,7 @@ const viewports = [
   {name:'desktop',width:1280,height:900},
 ];
 const locales = ['fr','ar'];
-const scenarios = ['off','proposal','revoke-pending','revoke-proposal','reconsent'];
+const scenarios = ['off','proposal','revoke-pending','revoke-proposal','reconsent','revoke-media-pending'];
 // The historical BEFORE is a verified immutable screenshot, not a live URL.
 const beforeOrigin = process.env.D14_BEFORE_URL || 'http://127.0.0.1:7358';
 const afterOrigin = process.env.D14_AFTER_URL || 'http://127.0.0.1:7359';
@@ -36,6 +36,7 @@ function assertScenario(s, label) {
   if(s.scenario === 'proposal' && (!s.allowed || s.recognitionCalls !== 1 || !s.proposalVisible)) fail(label+': proposal not confirmed as draft-only');
   if(s.scenario === 'revoke-pending' && (s.allowed || s.recognitionCalls !== 1 || s.proposalVisible)) fail(label+': late response after revoke surfaced');
   if(s.scenario === 'revoke-proposal' && (s.allowed || !s.proposalSeenBeforeRevocation || s.proposalVisible)) fail(label+': existing proposal not cleared');
+  if(s.scenario === 'revoke-media-pending' && (!s.allowed || s.mediaGrantActive !== false || s.recognitionCalls !== 1 || s.proposalVisible)) fail(label+': media-only revoked grant allowed late photo proposal');
   if(s.scenario === 'reconsent' && (!s.allowed || s.recognitionCalls !== 2 || !s.proposalVisible)) fail(label+': reconsent request contaminated by stale result');
   if(s.locale === 'ar' && s.direction !== 'rtl') fail(label+': Arabic layout not RTL');
   if(s.locale === 'fr' && s.direction !== 'ltr') fail(label+': French layout not LTR');
@@ -170,7 +171,7 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
         fs.writeFileSync(path.join(root,'browser-report.json'),JSON.stringify(report,null,2));
       }
     }
-    console.log('D14 real Chrome scenarios PASS: '+report.scenarios.length+' / 30');
+    console.log('D14 real Chrome scenarios PASS: '+report.scenarios.length+' / 36');
     console.log('D14 before/after screenshot pairs: '+Object.keys(report.viewports).length+' / 6');
   }finally{await browser.close();}
 })().catch(err=>{

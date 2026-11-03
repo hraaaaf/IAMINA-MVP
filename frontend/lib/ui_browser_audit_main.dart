@@ -520,6 +520,7 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
   bool _allowed = false;
   int _recognitionCalls = 0;
   bool _proposalSeenBeforeRevocation = false;
+  bool _mediaGrantActive = true;
 
   @override
   void initState() {
@@ -530,7 +531,8 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
 
   Future<MealAnalysisResult?> _recognize() {
     _recognitionCalls++;
-    if (_scenario == 'revoke-pending') return _pending.future;
+    if (_scenario == 'revoke-pending' ||
+        _scenario == 'revoke-media-pending') return _pending.future;
     if (_scenario == 'reconsent') {
       return _recognitionCalls == 1 ? _pending.future : _secondPending.future;
     }
@@ -580,6 +582,7 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
       'recognitionCalls': _recognitionCalls,
       'proposalVisible': _hasWidgetKey(const Key('meal-photo-proposal')),
       'proposalSeenBeforeRevocation': _proposalSeenBeforeRevocation,
+      'mediaGrantActive': _mediaGrantActive,
       'selectedIds': _selectedIds,
       'fixtureOnly': true,
       'externalProviderCalls': 0,
@@ -599,6 +602,14 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
       if (!mounted) return;
       if (_scenario == 'revoke-pending') {
         setState(() => _allowed = false);
+        await _tick();
+        _pending.complete(const MealAnalysisResult(
+            foods: <String>['œuf'], confidence: 'high', fallback: false));
+        await _tick();
+      } else if (_scenario == 'revoke-media-pending') {
+        // Global AI permission remains true. Only the owner-scoped raw-media
+        // grant is revoked while the recognition Future is still unresolved.
+        setState(() => _mediaGrantActive = false);
         await _tick();
         _pending.complete(const MealAnalysisResult(
             foods: <String>['œuf'], confidence: 'high', fallback: false));
@@ -661,6 +672,7 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
                   }),
                   canUsePhotoRecognition: _allowed,
                   photoRecognition: _recognize,
+                  photoMediaConsentProbe: () async => _mediaGrantActive,
                   favoritesRepository: _favorites,
                 ),
               ],

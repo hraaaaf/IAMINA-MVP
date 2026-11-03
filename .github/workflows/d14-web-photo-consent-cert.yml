@@ -123,7 +123,7 @@ jobs:
           npx playwright install chromium
           python3 -m pip install --quiet Pillow
 
-      - name: Capture 6 BEFORE/AFTER pairs and 30 photo scenarios
+      - name: Capture 6 BEFORE/AFTER pairs and 36 photo scenarios
         env:
           D14_BASE_SHA: ${{ github.event.pull_request.base.sha || '6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7' }}
           D14_BASELINE_DIR: /tmp/d14-archived-main
@@ -149,7 +149,7 @@ jobs:
 
           root = Path('d14-web-cert')
           report = json.loads((root/'browser-report.json').read_text())
-          assert len(report['scenarios']) == 30, 'D14 scenario count incomplete'
+          assert len(report['scenarios']) == 36, 'D14 scenario count incomplete'
           assert len(report['viewports']) == 6, 'BEFORE/AFTER pairs missing'
           failures = []
           for viewport, files in report['viewports'].items():
@@ -168,7 +168,7 @@ jobs:
           (root/'browser-report.json').write_text(json.dumps(report,indent=2))
           if failures:
               raise SystemExit('D14 UI delta requires review: ' + '; '.join(failures))
-          print('D14 WEB CHROME PASS: 30 synthetic consent scenarios, six before/after pairs')
+          print('D14 WEB CHROME PASS: 36 synthetic consent scenarios, six before/after pairs')
           PY
 
       - name: Upload target-specific Web proofs
