@@ -20,6 +20,17 @@ Widget _harness(AppDatabase db, Locale locale) => MultiProvider(
   ),
 );
 
+// Timers created inside a Timer callback need several fake-clock turns;
+// one large tester.pump() would only observe one callback per pump.
+Future<void> _pumpInFrames(WidgetTester tester, int milliseconds) async {
+  var remaining = milliseconds;
+  while (remaining > 0) {
+    final chunk = remaining > 50 ? 50 : remaining;
+    await tester.pump(Duration(milliseconds: chunk));
+    remaining -= chunk;
+  }
+}
+
 void main() {
   test('D22.1 repeat intervals accelerate and remain bounded', () {
     expect(d221HoldRepeatDelay(0), const Duration(milliseconds: 270));
@@ -142,11 +153,11 @@ void main() {
       expect(early, greaterThan(126),
           reason: 'Long press must advance before finger release.');
 
-      await tester.pump(const Duration(milliseconds: 720));
+      await _pumpInFrames(tester, 720);
       final medium = int.parse(readingText());
       expect(medium, greaterThan(early));
 
-      await tester.pump(const Duration(milliseconds: 1300));
+      await _pumpInFrames(tester, 1300);
       final late = int.parse(readingText());
       expect(late, greaterThan(medium));
       expect(late - medium, greaterThan(medium - early),
@@ -171,7 +182,7 @@ void main() {
       await tester.enterText(input, '7.0');
       await tester.pump();
       final back = await tester.startGesture(tester.getCenter(minus));
-      await tester.pump(const Duration(milliseconds: 1350));
+      await _pumpInFrames(tester, 1350);
       expect(double.parse(readingText()), lessThan(7.0));
       await back.up();
       await tester.pump();
