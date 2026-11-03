@@ -210,4 +210,47 @@ void main() {
       openVaultLease: (scope) async => syntheticLease(scope),
     ), throwsArgumentError);
   });
+
+  test('reentrant notifier cannot open B before releasing A worker',
+      () async {
+    final auth = _FakeAuth();
+    var owner = a;
+    final events = <String>[];
+    final controller = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: () async => owner,
+      openVaultLease: (scope) async {
+        events.add('open:' + scope.databaseName);
+        return syntheticLease(scope, releaseWorker: () async {
+          events.add('close:' + scope.databaseName);
+        });
+      },
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await controller.physicalShutdownComplete;
+      auth.dispose();
+    });
+    await controller.reconcile();
+    expect(controller.activeDatabase, isNotNull);
+
+    var reenterOnce = true;
+    controller.addListener(() {
+      if (reenterOnce && controller.isResolving) {
+        reenterOnce = false;
+        unawaited(controller.reconcile());
+      }
+    });
+    owner = b;
+    AuthEpoch.advance();
+    auth.changed();
+    await controller.reconcile();
+    expect(controller.activeScope?.databaseName, b.databaseName);
+    expect(events, containsAllInOrder([
+      'open:' + a.databaseName,
+      'close:' + a.databaseName,
+      'open:' + b.databaseName,
+    ]));
+  });
+
 }

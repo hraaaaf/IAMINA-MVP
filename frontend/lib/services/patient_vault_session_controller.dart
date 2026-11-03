@@ -129,14 +129,14 @@ class PatientVaultSessionController extends ChangeNotifier {
     _currentScope = null;
     _currentAuthEpoch = null;
     _loading = true;
-    notifyListeners();
 
-    // Never begin a new physical open before the prior open/close settles.
-    // A late candidate will be discarded by _stillCurrent.
+    // Enqueue the old physical close BEFORE notifying synchronous listeners.
+    // A reentrant reconcile() must never open B before A has been closed.
     final task = _serialized.then(
       (_) => _reconcileSerial(generation, epoch, retired),
     );
     _serialized = task;
+    notifyListeners();
     return task;
   }
 

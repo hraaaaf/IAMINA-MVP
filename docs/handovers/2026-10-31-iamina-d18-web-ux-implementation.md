@@ -1,3 +1,15 @@
+## REPRISE COURANTE — 2026-11-03 — D18 Web : garde contre listener réentrant dans la session réelle, CI CANDIDATE
+
+**Décision D18 / Goal** : permettre ultérieurement une lease chiffrée asynchrone intégrée au vrai `PatientVaultSessionController` avec isolation stricte, sans activation clinique. **Analyse adversariale de `84ed8d92`** : l'appel initial à `notifyListeners()` se produisait avant l'enqueue de la fermeture du lease A dans `_serialized`. Un listener synchrone qui rappelle `reconcile()` aurait donc pu mettre B dans la queue avant A, laissant un open B démarrer alors que le worker de A restait ouvert.
+
+**Correction candidate NON encore validée CI** : enregistrement du `_serialized.then(_reconcileSerial(..., retiredA))` **avant** `notifyListeners()`, garantie de l'ordre de fermeture même en présence d'un listener réentrant. Test adversarial nouveau `reentrant notifier cannot open B before releasing A worker` ; le fichier `frontend/test/services/d18_async_patient_vault_lease_test.dart` contient désormais **8 scénarios**, en plus des tests D7 historiques. Aucun changement de `forAuth()`, `main.dart`, `PatientVaultAppHost` ou `AppDatabase.forPatientVault`. Code d'intégration dormante, **aucune clé ni donnée réelle**, aucune activation chiffrée.
+
+**Critère de succès / preuve requise** : analyse Dart + 8/8 tests ciblés + tests D7 existants, tous 4/4 CI D18 exact SHA. **Avant succès** du nouveau SHA : ne pas déclarer le sous-lot vérifié. Les 6/6 du POC séparé restent acquis sur ancien SHA `67154021` avec 4/4 SUCCESS. La release clinique reste NO-GO sans source writer gate réellement branché, gestion des anciennes versions, intégrité DB/chiffrement physique, recovery volumineux et audit/iPhone.
+
+**Next exact** : analyser les premiers échecs et corriger sans assouplir les tests, tenir Notion à jour. Aucun merge/Vercel/migration patient sans GO explicite.
+
+---
+
 ## REPRISE COURANTE — 2026-11-03 — D18 Web : contrôleur réel avec opt-in async lease, CHIFFREMENT NON ACTIVE, CI ATTENDUE
 
 **Décision D18 / Goal :** préparer l'intégration sans déployer le chiffrement clinique tant que le cutover/backup/ancien writers n'a pas de preuve. **Résultat antérieur confirmée** au SHA `671540210cfd5d6d348955613aba1555aec1b7bb` : PR Draft #1243, **4/4 workflows D18 COMPLETED/SUCCESS** : [worker #41721068978](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41721068978), [WebKit #41721069029](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41721069029), [CSP #41721069008](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41721069008), [restore Chromium #41721068940](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41721068940). Le **POC Web D18 est à 6/6 et terminé**, ce n'est pas l'activation patient.
