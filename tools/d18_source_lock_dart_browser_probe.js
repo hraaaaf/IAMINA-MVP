@@ -19,7 +19,12 @@ async function run() {
   try {
     const ctx = await browser.newContext({viewport:{width:390,height:844}});
     async function tab(phase, disableLocks=false) {
+      console.log('D18_DART_SOURCE_OPEN', engineName, phase);
       const page = await ctx.newPage();
+      const diagnostics = [];
+      page.on('pageerror', err => diagnostics.push('pageerror:' + err.name + ':' + err.message.slice(0, 180)));
+      page.on('console', msg => { if (msg.type() === 'error') diagnostics.push('console:' + msg.text().slice(0, 180)); });
+      page.on('requestfailed', req => diagnostics.push('request:' + req.url().split('/').pop().slice(0, 70)));
       if (disableLocks) {
         await page.addInitScript(() =>
           Object.defineProperty(navigator, 'locks',
@@ -27,10 +32,24 @@ async function run() {
       }
       await page.goto(origin + '?phase=' + phase,
         {waitUntil:'domcontentloaded',timeout:45000});
-      await page.waitForFunction(() =>
-        document.title.startsWith('D18_SOURCE_DART_HELD:') ||
-        document.title.startsWith('D18_SOURCE_DART_FAIL:'),
-        null, {timeout:60000});
+      try {
+        await page.waitForFunction(() =>
+          document.title.startsWith('D18_SOURCE_DART_HELD:') ||
+          document.title.startsWith('D18_SOURCE_DART_FAIL:'),
+          null, {timeout:60000, polling:250});
+      } catch (error) {
+        const snapshot = await page.evaluate(() => ({
+          title: document.title,
+          ready: document.readyState,
+          error: document.documentElement.dataset.d18SourceError || null,
+          bridge: !!globalThis.IAMINA_D18_SOURCE_BARRIER,
+          locks: !!navigator.locks,
+        })).catch(() => ({unavailable: true}));
+        console.error('D18_DART_SOURCE_TAB_TIMEOUT', engineName, phase,
+          JSON.stringify(snapshot), JSON.stringify(diagnostics));
+        throw error;
+      }
+      console.log('D18_DART_SOURCE_TAB_READY', engineName, phase, await page.title());
       return page;
     }
     async function status(page) {
@@ -42,7 +61,7 @@ async function run() {
       await page.waitForFunction(phase =>
         document.title === 'D18_SOURCE_DART_RELEASED:' + phase ||
         document.title === 'D18_SOURCE_DART_FAIL:' + phase,
-        phase, {timeout:20000});
+        phase, {timeout:20000, polling:250});
       return await status(page);
     }
     async function migrate(page, scope) {
@@ -81,10 +100,20 @@ async function run() {
     check('flutter_dart_reacquire_a', await status(crashed),
       'D18_SOURCE_DART_HELD:a');
     await crashed.close();
+    // A lock disappearing from navigator.locks.query() is NOT sufficient.
+    // Require a real exclusive legacy+patient acquisition after the old tab
+    // physically closes. Permit only bounded browser teardown scheduling.
     await observer.waitForFunction(async ({root,a}) => {
       const state = await navigator.locks.query();
-      return !state.held.some(lock => lock.name === root+'patient:'+a);
-    }, {root,a}, {timeout:15000});
+      if (state.held.some(lock =>
+          lock.name === root+'legacy' || lock.name === root+'patient:'+a)) {
+        return false;
+      }
+      return navigator.locks.request(root+'legacy',
+        {mode:'exclusive', ifAvailable:true}, async globalLock =>
+          globalLock ? navigator.locks.request(root+'patient:'+a,
+            {mode:'exclusive', ifAvailable:true}, lock => !!lock) : false);
+    }, {root,a}, {timeout:15000, polling:250});
     check('closed_tab_releases_physical_lock', await migrate(observer,a), true);
   } finally {
     await browser.close().catch(()=>{});
