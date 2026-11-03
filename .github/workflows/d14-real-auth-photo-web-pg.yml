@@ -19,8 +19,12 @@ concurrency:
 
 jobs:
   d14-owner-photo-real-auth:
-    name: Chrome FR/AR 390-768-1280 + real Django PG16 A-B-A
+    name: Chrome ${{ matrix.locale }} 390-768-1280 + real Django PG16 A-B-A
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [fr, ar]
     timeout-minutes: 50
     services:
       postgres:
@@ -35,6 +39,7 @@ jobs:
           --health-cmd "pg_isready -U postgres -d iamina_d14_photo_ci"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      D14_CI_LOCALE: ${{ matrix.locale }}
       DJANGO_SETTINGS_MODULE: amina.settings
       SECRET_KEY: ci-d14-photo-auth-synthetic-only
       DEBUG: "True"
@@ -112,7 +117,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
 
-      - name: Exercise 6 true browser A-B-A journeys; reject all provider calls
+      - name: Exercise 3 true browser A-B-A journeys per isolated locale and database; reject provider calls
         run: |
           set -euo pipefail
           (cd backend && exec python manage.py runserver 127.0.0.1:8000 --noreload > /tmp/d14-auth-api.log 2>&1) &
@@ -128,7 +133,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: d14-real-auth-photo-a-b-a-pg16-web
+          name: d14-real-auth-photo-a-b-a-pg16-web-${{ matrix.locale }}
           path: d14-real-auth-photo-proof/*
           if-no-files-found: warn
           retention-days: 7
