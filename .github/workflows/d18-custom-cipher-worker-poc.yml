@@ -14,6 +14,10 @@ on:
       - 'tools/d18_cutover_idb_marker_probe.js'
       - 'tools/d18_dart_idb_marker_bridge_probe.js'
       - 'tools/d18_source_writer_barrier_probe.js'
+      - 'tools/d18_real_source_interlock_probe.js'
+      - 'frontend/web/d18_source_interlock.js'
+      - 'frontend/web/index.html'
+      - 'frontend/lib/data/drift/d18_source_lock_*.dart'
       - 'tools/fixtures/d18_marker_idb_bridge.js'
       - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
       - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
@@ -65,6 +69,7 @@ jobs:
         run: |
           flutter analyze --no-fatal-infos             lib/services/patient_vault_session_controller.dart             test/services/d18_async_patient_vault_lease_test.dart             test/services/patient_vault_session_controller_test.dart
           flutter test test/services/patient_vault_session_controller_test.dart test/services/d18_async_patient_vault_lease_test.dart
+          flutter analyze --no-fatal-infos lib/main.dart lib/data/drift/d18_source_lock_gate.dart lib/data/drift/d18_source_lock_web.dart
       - name: Verify D18 unpublished async session lifecycle (pre-cutover only)
         working-directory: frontend
         run: |
@@ -149,6 +154,13 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: D18 REAL SOURCE SCRIPT cooperative canary (chromium, NOT CUTOVER)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check frontend/web/d18_source_interlock.js
+          node --check tools/d18_real_source_interlock_probe.js
+          D18_SOURCE_INTERLOCK_BROWSER=chromium node tools/d18_real_source_interlock_probe.js
       - name: D18 synthetic IndexedDB atomic marker CAS — Chromium
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

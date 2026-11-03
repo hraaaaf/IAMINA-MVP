@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../data/drift/database.dart';
+import '../data/drift/d18_source_lock_gate.dart';
 import '../data/drift/patient_vault_scope.dart';
 import 'auth_epoch.dart';
 import 'auth_service.dart';
@@ -97,11 +98,31 @@ class PatientVaultSessionController extends ChangeNotifier {
     unawaited(reconcile());
   }
 
-  factory PatientVaultSessionController.forAuth(AuthService auth) =>
-      PatientVaultSessionController(
-        authChanges: auth,
-        resolveScope: auth.resolvePatientVaultScope,
+  // The opt-in CANARY guards the real plaintext source before opening it.
+  // It cannot stop older cached clients and never authorizes a migration.
+  factory PatientVaultSessionController.forAuth(
+    AuthService auth, {bool d18SourceBarrierCanary = false},
+  ) => PatientVaultSessionController(
+    authChanges: auth,
+    resolveScope: auth.resolvePatientVaultScope,
+    openVaultLease: d18SourceBarrierCanary ? _openCanarySource : null,
+  );
+
+  static Future<PatientVaultDbLease> _openCanarySource(
+    PatientVaultScope scope,
+  ) async {
+    final lock = await D18SourceLockGate.patient(scope);
+    try {
+      return PatientVaultDbLease(
+        scope: scope,
+        database: AppDatabase.forPatientVault(scope),
+        releaseWorker: lock.close,
       );
+    } catch (_) {
+      await lock.close();
+      rethrow;
+    }
+  }
 
   bool get isResolving => _loading;
   bool get hasVault =>

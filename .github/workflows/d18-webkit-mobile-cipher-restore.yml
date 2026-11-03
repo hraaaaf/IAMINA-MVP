@@ -10,6 +10,10 @@ on:
       - 'tools/d18_cutover_idb_marker_probe.js'
       - 'tools/d18_dart_idb_marker_bridge_probe.js'
       - 'tools/d18_source_writer_barrier_probe.js'
+      - 'tools/d18_real_source_interlock_probe.js'
+      - 'frontend/web/d18_source_interlock.js'
+      - 'frontend/web/index.html'
+      - 'frontend/lib/data/drift/d18_source_lock_*.dart'
       - 'tools/fixtures/d18_marker_idb_bridge.js'
       - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
       - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
@@ -84,6 +88,13 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps webkit
+      - name: D18 REAL SOURCE SCRIPT cooperative canary (webkit, NOT CUTOVER)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check frontend/web/d18_source_interlock.js
+          node --check tools/d18_real_source_interlock_probe.js
+          D18_SOURCE_INTERLOCK_BROWSER=webkit node tools/d18_real_source_interlock_probe.js
       - name: D18 synthetic IndexedDB atomic marker CAS — WebKit Linux
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
