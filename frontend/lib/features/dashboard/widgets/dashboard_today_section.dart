@@ -38,14 +38,26 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
   late final CompanionService _service = widget.service ?? CompanionService();
   late Future<CompanionOverview?> _overviewFuture;
 
+  // D22 Gate A: a numeric target or legacy profile is not clinical authority.
+  // Do not even initiate a personalized companion request until Gate B.
+  bool get _d22OverviewAuthorized => false;
+
+  Future<CompanionOverview?> _loadAuthorizedOverview() {
+    if (!_d22OverviewAuthorized || !widget.targetConfigured) {
+      return Future<CompanionOverview?>.value(null);
+    }
+    return _service.fetchOverview();
+  }
+
   @override
   void initState() {
     super.initState();
-    _overviewFuture = _service.fetchOverview();
+    _overviewFuture = _loadAuthorizedOverview();
   }
 
   void _reload() {
-    setState(() => _overviewFuture = _service.fetchOverview());
+    if (!_d22OverviewAuthorized || !widget.targetConfigured) return;
+    setState(() => _overviewFuture = _loadAuthorizedOverview());
   }
 
   @override
@@ -92,19 +104,20 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
               ),
             if (signals.isNotEmpty)
               ...signals.map((signal) => _TodaySignalCard(signal: signal)),
-            if (loading)
+            if (_d22OverviewAuthorized && widget.targetConfigured && loading)
               _TodayStateStrip(
                 loading: true,
                 text: l10n.dashboardTodayLoading,
               )
-            else if (unavailable)
+            else if (_d22OverviewAuthorized && widget.targetConfigured && unavailable)
               _TodayStateStrip(
                 icon: Icons.cloud_off_outlined,
                 text: l10n.dashboardTodayUnavailable,
                 actionLabel: l10n.dashboardRetry,
                 onAction: _reload,
               )
-            else if (signals.isEmpty && snapshot.data != null)
+            else if (_d22OverviewAuthorized && widget.targetConfigured &&
+                signals.isEmpty && snapshot.data != null)
               _TodaySignalCard(
                 signal: _TodaySignal(
                   icon: Icons.check_circle_outline_rounded,
@@ -129,7 +142,7 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
   ) {
     final signals = <_TodaySignal>[];
 
-    if (!widget.targetConfigured) {
+    if (!_d22OverviewAuthorized || !widget.targetConfigured) {
       // Suppress any target-based suggestions until a trusted goal exists.
       return signals;
     }
