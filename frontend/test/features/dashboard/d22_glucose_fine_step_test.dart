@@ -80,6 +80,19 @@ void main() {
           expect(tester.widget<IconButton>(plus).onPressed, isNotNull);
           expect(tester.getSize(plus).width, greaterThanOrEqualTo(48));
           expect(tester.getSize(minus).height, greaterThanOrEqualTo(48));
+          final arcCenterX = tester.getCenter(
+            find.byKey(const Key('glucose-half-dial-gesture')),
+          ).dx;
+          expect(
+            (tester.getCenter(minus).dx - arcCenterX).abs(),
+            lessThanOrEqualTo(180),
+            reason: 'Fine control must stay near dial on tablet/desktop.',
+          );
+          expect(
+            (tester.getCenter(plus).dx - arcCenterX).abs(),
+            lessThanOrEqualTo(180),
+            reason: 'Fine control must stay near dial on tablet/desktop.',
+          );
           expect(
             tester.getTopLeft(plus).dy,
             greaterThan(tester.getTopLeft(
