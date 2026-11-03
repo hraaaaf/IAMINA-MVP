@@ -1,3 +1,17 @@
+## CERTIFICATION CI — 2026-11-03 — D18 source Web Locks, Worker et WebKit VERTS au même SHA
+
+**HEAD de code testé :** [`5114457ac94a76de922146b4eb7b0da667b4d1ba`](https://github.com/hraaaaf/IAMINA-MVP/commit/5114457ac94a76de922146b4eb7b0da667b4d1ba), PR [#1243 Draft](https://github.com/hraaaaf/IAMINA-MVP/pull/1243). **6/6 workflows completed/success au même SHA :** [Worker #41738934798](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738934798), [WebKit #41738934742](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738934742), [CSP #41738934799](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738934799), [Chromium restore #41738934809](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738934809), [UI screenshots #41738934813](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738934813), [UI geometry #41738934808](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738934808). Dans les jobs Worker et WebKit, les étapes `D18 REAL SOURCE SCRIPT cooperative canary` et `Verify isolated Dart source bridge to Web Lock` sont explicitement **success**.
+
+**Incident résolu :** au SHA antérieur `23c97f57`, Worker #41737049849 était rouge avant la première assertion Dart, avec `RangeError: Incorrect locale information provided` dans le démarrage graphique Flutter de Chromium. Le commit `5114457a` isole le test du pont réel `D18SourceLockGate` vers `d18_source_interlock.js` et Web Locks dans une page HTML CI-only, compile le Dart en JS autonome et fixe la locale Chromium `en-US`. Les **15 assertions de la sonde sont conservées**, pas de réduction des gates de verrouillage. Le runtime clinique n'a pas été modifié.
+
+**Portée de cette certification :** CI synthétique, pré-cutover uniquement. Les suites indépendantes WebKit, restauration chiffrée, CSP candidate et UI passent, mais ne prouvent pas la CSP HTTP réellement servie par Vercel ni une migration clinique. Les anciens onglets non coopératifs et tous les écrivains SQLite historiques ne sont pas encore couverts par une barrière physique imposée au runtime. `AppDatabase.forPatientVault` utilise toujours le stockage Web en clair, la factory chiffrée demeure dormante.
+
+**Décision : D18 CLINIQUE = OPEN / NO-GO.** Aucune fusion, aucun déploiement Vercel, aucune migration patient ni activation du chiffrement. **Next exact :** concevoir et prouver le verrouillage fail-closed de tous les chemins réels d'écriture SQLite (incluant onglets legacy non coopératifs), puis migration atomique et rollback sur copies anonymisées, vraie CSP serveur, Safari/iPhone physique, sécurité cryptographique, FUE et validation humaine explicite. Ne pas confondre CI verte et autorisation clinique.
+
+**Note de traçabilité :** le présent ajout documentaire crée un nouveau SHA de commit sans modification fonctionnelle ; les six runs ci-dessus attestent exactement le SHA de code `5114457a`, pas un éventuel SHA documentaire ultérieur.
+
+---
+
 ## CLOSEOUT DE PREUVE — 2026-11-03 — D18 Web : régression D7 résolue, 4/4 CI SUCCÈS au SHA de code 4298beb3
 
 **Décision : D18 — stockage chiffré Web**. **But clinique final** : sqlite3mc réellement utilisé par le coffre patient, migration sans perte avec restauration et contrôle de tous les écrivains. **Ce but n'est PAS atteint.** **Périmètre clos ici** : maintien des garanties D7 dans le véritable `PatientVaultSessionController` malgré l'introduction **dormante** d'une factory optionnelle async de lease physique pour D18. Le POC préalable était déjà **6/6** ; les travaux ci-dessous ne constituent pas une septième étape de ce POC.
