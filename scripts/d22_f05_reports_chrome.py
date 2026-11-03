@@ -140,11 +140,21 @@ def run():
         # already ABORTED by local_only: do not allow network egress here.
         # Fail for ANY unexpected external request; keep the denied
         # Noto font URL count as a diagnostic, not clinical proof.
-        optional_font = "https://fonts.gstatic.com/s/notosanssymbols/"
-        unexpected = [url for url in blocked if not url.startswith(optional_font)]
+        optional_font_prefixes = (
+            "https://fonts.gstatic.com/s/notosanssymbols/",
+            "https://fonts.gstatic.com/s/notosansarabic/",
+        )
+        # These optional Flutter glyph requests were denied by route.abort().
+        # Whitelist only their exact font URL patterns in the audit log,
+        # NEVER the requests themselves. Any other external URL fails.
+        unexpected = [
+            url for url in blocked
+            if not (url.startswith(optional_font_prefixes)
+                    and url.endswith(".woff2"))
+        ]
         assert not unexpected, f"Unexpected external request (blocked): {unexpected[:3]}"
         proof["external_requests_denied"] = len(blocked)
-        proof["optional_noto_symbols_requests_denied"] = (
+        proof["optional_noto_font_requests_denied"] = (
             len(blocked) - len(unexpected)
         )
         proof["network_egress_permitted"] = False
