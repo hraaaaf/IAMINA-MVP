@@ -60,3 +60,11 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - Run [#41734802258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734802258), HEAD de code `4d00b67893e66026e43618714bd4a2c2840c8b58` : **IN_PROGRESS**.
 - Build/analyse Flutter **GREEN** ; installation des navigateurs **IN_PROGRESS** ; mesure des coffres et upload **PENDING**. Aucun JSON de mesure ni médiane ne peut être certifié.
 - **Next exact :** vérifier fin du run, puis contrôler reçu synthétique, frame Flutter, intégrité des coffres et les 24 échantillons attendus. En cas de RED, analyser l'artefact debug avant de modifier le banc. Aucun merge ni déploiement.
+
+
+### Run RED WebKit — cause à isoler
+
+- [Run #41734802258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734802258) : compiler/analyser Flutter et installer les navigateurs = GREEN ; **12/12 échantillons Chromium validés**, 6 coffre vide et 6 coffre rempli de 300 logs synthétiques ; premier échantillon WebKit coffre vide réussi ; premier coffre rempli WebKit = FAIL avec classe d'exception minifiée, sans preuve du mécanisme exact.
+- Le test n'échoue plus sur l'ancien oracle du titre : l'échec est un **reçu FAIL émis par la fixture Dart dans la phase populated**. Il ne faut pas conclure que WebKit ne sait pas stocker les données en l'absence du stage.
+- [Run #41737035938](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41737035938), commit 538854576677fc8236926d54a969e3a3c3126b06 : nouvelle instrumentation de diagnostic, **IN_PROGRESS au contrôle**. Sur FAIL, conserver l'étape réelle (avant écrasement par 'failure'), une catégorie d'assertion allowlistée et les échantillons partiels en artefact, sans données patient ou message libre.
+- **Next exact :** lire le reçu FAIL et identifier si WebKit échoue à l'ouverture, au guard, à la persistance ou à la réconciliation ; ne corriger qu'après attribution technique et tests.
