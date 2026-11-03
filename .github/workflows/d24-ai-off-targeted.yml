@@ -64,5 +64,8 @@ jobs:
           python -m pytest --collect-only -q core/tests/test_ai_egress.py | tee /tmp/d24-collected.txt
           grep -q 'test_d24_global_off_denies_existing_scopes_and_provider_calls' /tmp/d24-collected.txt
           grep -q 'test_d24_reconsent_never_resurrects_revoked_media_grant' /tmp/d24-collected.txt
+          grep -q 'test_d24_photo_provider_cannot_start_without_granular_grant' /tmp/d24-collected.txt
+          grep -q 'test_d24_open_photo_scope_checks_revocation_before_provider_start' /tmp/d24-collected.txt
+          grep -q 'test_d24_photo_grants_are_patient_scoped_and_do_not_cross_a_b_a' /tmp/d24-collected.txt
       - name: Run full AI egress consent test module
         run: python -m pytest --tb=short -q core/tests/test_ai_egress.py
