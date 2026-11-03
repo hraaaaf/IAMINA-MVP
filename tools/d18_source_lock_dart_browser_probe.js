@@ -79,6 +79,11 @@ async function run() {
     check('flutter_dart_patient_a_held', await status(pa), 'D18_SOURCE_DART_HELD:a');
     const pb = await tab('b');
     check('flutter_dart_patient_b_held', await status(pb), 'D18_SOURCE_DART_HELD:b');
+    const guest = await tab('audit_guest');
+    check('flutter_dart_guest_held', await status(guest),
+      'D18_SOURCE_DART_HELD:audit_guest');
+    check('flutter_dart_guest_released', await release(guest,'audit_guest'),
+      'D18_SOURCE_DART_RELEASED:audit_guest');
     const observer = await tab('audit_denied');
     check('flutter_dart_audit_rejected', await status(observer),
       'D18_SOURCE_DART_FAIL:audit_denied');
@@ -143,5 +148,5 @@ async function run() {
   }
   console.log(JSON.stringify({kind:'CI_ONLY_D18_ACTUAL_DART_TO_WEBLOCK_CANARY',
     browser:engineName, sha:process.env.GITHUB_SHA||null, report}));
-  if(report.length!==15 || report.some(x=>!x.pass)) process.exitCode=1;
+  if(report.length!==17 || report.some(x=>!x.pass)) process.exitCode=1;
 })().catch(e=>{console.error('D18_DART_SOURCE_FATAL',e.name);process.exitCode=1;});

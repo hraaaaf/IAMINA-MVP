@@ -14,7 +14,7 @@ EXPECTED = {
     # Definitions of the two constructors, not additional callers.
     # These are counted explicitly so the inventory rejects new constructors.
     "data/drift/database.dart": {"defaults": 1, "forPatientVault": 1},
-    "main.dart": {"defaults": 1, "forPatientVault": 1},
+    "main.dart": {"defaults": 1, "forPatientVault": 2},
     "services/patient_vault_session_controller.dart": {"forPatientVault": 1},
     # Dedicated synthetic audit guest database; no clinical patient authority.
     "services/patient_vault_app_host.dart": {"forPatientVault": 1},

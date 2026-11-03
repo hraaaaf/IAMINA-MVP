@@ -10,6 +10,9 @@ import 'd18_source_lock_stub.dart'
 abstract final class D18SourceLockGate {
   static Future<D18SourceLockLease> legacy() => browser.acquireLegacy();
 
+  static Future<D18SourceLockLease> auditGuest() =>
+      browser.acquireAuditGuest();
+
   static Future<D18SourceLockLease> patient(PatientVaultScope scope) =>
       browser.acquirePatient(scope.databaseName);
 }

@@ -63,12 +63,17 @@ async function run() {
     }
     const legacy = await tab(), pa = await tab(), pb = await tab();
     const migrator = await tab(), unsupported = await tab(true);
+    const guest = await tab();
     phase('audit_scope_rejected', await pa.evaluate(async () => {
       try {
         await IAMINA_D18_SOURCE_BARRIER.acquirePatient('amina_vault_v1_audit');
         return false;
       } catch (_) { return true; }
     }), true);
+    const guestSlot = await guest.evaluate(async () =>
+      IAMINA_D18_SOURCE_BARRIER.acquireAuditGuest());
+    phase('audit_guest_real_script_acquired', typeof guestSlot, 'string');
+    phase('audit_guest_source_released', await close(guest, guestSlot), true);
     phase('missing_lock_api_denied', await unsupported.evaluate(async () => {
       try { await IAMINA_D18_SOURCE_BARRIER.acquireLegacy(); return false; }
       catch (_) { return true; }
@@ -109,5 +114,5 @@ async function run() {
   }
   console.log(JSON.stringify({kind: 'D18_REAL_SCRIPT_COOPERATIVE_CANARY_NOT_CUTOVER',
     browser: engineName, sha: process.env.GITHUB_SHA || null, report}));
-  if (report.length !== 15 || report.some(x => !x.pass)) process.exitCode = 1;
+  if (report.length !== 17 || report.some(x => !x.pass)) process.exitCode = 1;
 })().catch(e => {console.error('D18_CANARY_FATAL', e.name);process.exitCode = 1;});

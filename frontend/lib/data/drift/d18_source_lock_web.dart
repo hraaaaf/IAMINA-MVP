@@ -10,6 +10,7 @@ external _SourceBarrierBridge? get _bridge;
 
 extension type _SourceBarrierBridge(JSObject _) implements JSObject {
   external JSPromise<JSString> acquireLegacy();
+  external JSPromise<JSString> acquireAuditGuest();
   external JSPromise<JSString> acquirePatient(JSString scope);
   external JSPromise<JSBoolean> release(JSString slot);
 }
@@ -32,6 +33,9 @@ Future<D18SourceLockLease> _lease(JSPromise<JSString> request) async {
 }
 
 Future<D18SourceLockLease> acquireLegacy() => _lease(_api().acquireLegacy());
+
+Future<D18SourceLockLease> acquireAuditGuest() =>
+    _lease(_api().acquireAuditGuest());
 
 Future<D18SourceLockLease> acquirePatient(String scope) =>
     _lease(_api().acquirePatient(scope.toJS));

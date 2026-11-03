@@ -50,6 +50,9 @@
 
   globalThis.IAMINA_D18_SOURCE_BARRIER = Object.freeze({
     acquireLegacy: () => acquire([[root + 'legacy', 'shared']]),
+    // Synthetic guest audit namespace is a physical SQLite writer, never a
+    // clinical patient source; it must participate in canary lock discipline.
+    acquireAuditGuest: () => acquire([[root + 'audit-guest', 'shared']]),
     acquirePatient: scope => {
       if (typeof scope !== 'string' || !patientName.test(scope)) {
         throw Error('D18_SOURCE_SCOPE_DENIED');

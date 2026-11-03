@@ -10,6 +10,7 @@ import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'data/drift/d18_source_lock_gate.dart';
 import 'data/drift/d18_source_lock_lease.dart';
+import 'data/drift/patient_vault_scope.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
@@ -138,6 +139,19 @@ Future<void> main() async {
   );
   await vaultController.reconcile();
 
+  // Every persistent SQLite opener is covered in the opt-in CANARY,
+  // including the synthetic guest/audit writer. Acquire before constructing
+  // its Drift DB; never expose an unlocked guest database on failure.
+  final guestSourceLock = d18SourceCanary
+      ? await D18SourceLockGate.auditGuest() : null;
+  late final AppDatabase guestDatabase;
+  try {
+    guestDatabase = AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
+  } catch (_) {
+    await guestSourceLock?.close();
+    rethrow;
+  }
+
   runApp(PatientVaultAppHost(
     auth: authService,
     api: apiClient,
@@ -145,6 +159,9 @@ Future<void> main() async {
     locale: localePreferenceService,
     controller: vaultController,
     auditAllowed: auditAllowed,
+    guestDatabase: guestDatabase,
+    guestSourceLock: guestSourceLock,
+    d18SourceBarrierCanary: d18SourceCanary,
   ));
 }
 

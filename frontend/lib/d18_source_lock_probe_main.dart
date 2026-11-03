@@ -26,6 +26,9 @@ Future<void> main() async {
         lease = await D18SourceLockGate.patient(
           PatientVaultScope.nativeDjango(812));
         break;
+      case 'audit_guest':
+        lease = await D18SourceLockGate.auditGuest();
+        break;
       case 'audit_denied':
         lease = await D18SourceLockGate.patient(PatientVaultScope.auditOnly());
         break;
