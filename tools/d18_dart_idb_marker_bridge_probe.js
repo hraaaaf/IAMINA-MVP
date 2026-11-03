@@ -29,7 +29,7 @@ async function phase(ctx,name){
       document.title.startsWith('D18_DART_MARKER_PASS:')||
       document.title.startsWith('D18_DART_MARKER_FAIL:'),
       null,{timeout:60000});
-    return page.evaluate(()=>({title:document.title,
+    return await page.evaluate(()=>({title:document.title,
       error:document.documentElement.dataset.d18DartMarkerError||null}));
   }finally{await page.close();}
 }

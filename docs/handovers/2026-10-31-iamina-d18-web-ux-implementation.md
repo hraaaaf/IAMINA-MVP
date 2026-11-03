@@ -1,3 +1,14 @@
+## REPRISE COURANTE — 2026-11-03 — D18 Web : correctif await Playwright page.evaluate, CI EN ATTENTE
+
+Décision D18 — Goal : faire valider un vrai appel Flutter Dart D18CutoverMarkerStore vers un CAS IndexedDB avec persistance et deux onglets sur Chromium et WebKit. Premier commit du pont d0eb55c981a55d6b5b37537298ba7596e826de33 : code Dart analyse/compile sous WebKit (step SUCCESS), ancien CAS JS 9/9 WebKit SUCCESS et restauration WebKit SUCCESS, CSP et Chromium restore SUCCESS. MAIS le nouveau test navigateur du pont sous WebKit #41709811216 est FAILED ; il faut le distinguer des anciens tests.
+
+Cause du rouge directement établie dans les logs Playwright : page.evaluate: Target page, context or browser has been closed, à tools/d18_dart_idb_marker_bridge_probe.js:32 ; phase() retournait une Promise page.evaluate sans await depuis un try/finally qui ferme la page. Le finally fermait ainsi la page pendant l'évaluation. Correction MINIMALE : return await page.evaluate(...), afin de terminer la lecture du résultat avant page.close(). Aucun test retiré, aucune assertion affaiblie, aucun code clinique changé. Cette correction doit encore être validée par CI sur nouveau SHA ; aucune prétention de 11/11 ou 4/4 à ce stade.
+
+Next exact : Flutter build et 11/11 phases Dart→IDB sur Chromium ET WebKit en CI du nouveau commit, même validation des anciens 20 profils migration, 2/2 et 3/3 tests négatifs, CSP et restores. Corriger toute nouvelle erreur diagnostiquée. Ne pas confondre un succès d'analyse Flutter avec une réussite du comportement navigateur.
+
+NO-GO CLINIQUE : AppDatabase.forPatientVault reste sqlite3.wasm + drift_worker.js non chiffré, le bridge IndexedDB est exclusivement TEST_ONLY injecté dans Playwright. Pas de migration, merge, publication patient, ou Vercel sans GO explicite. Restent gel writers, attestation physique, vraie recovery, Safari physique, CSP prod, audit externe et FUE clinique.
+
+---
 ## REPRISE COURANTE — 2026-11-03 — D18 Web — Pont Flutter Dart vers CAS IndexedDB, CI requise
 
 Décision D18 : chiffrement intégral du coffre SQLite du patient Web, migration sans perte et activation atomique seulement après vérification. Résultat VALIDÉ au HEAD ba5389a9fe6415bb137f3aee860f1fa38f721ea0 : PR Draft #1243 ; 4/4 CI SUCCESS : worker #41702880263 (14/14 tests contrat, 10/10 tests lifecycle, 9/9 CAS JavaScript Chromium), WebKit #41702880268 (9/9 CAS JavaScript WebKit), CSP #41702880588 et restauration Chromium #41702880653 SUCCESS. Ces preuves restent synthétiques.
