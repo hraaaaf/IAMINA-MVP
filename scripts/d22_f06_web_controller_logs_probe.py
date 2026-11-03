@@ -119,7 +119,7 @@ def run():
 
 
 if __name__ == "__main__":
-    target = Path("d22_f06-web-controller-aba-proof.json")
+    target = Path("d22-f06-web-controller-aba-proof.json")
     try:
         data = run()
         target.write_text(json.dumps(data, indent=2), encoding="utf-8")
