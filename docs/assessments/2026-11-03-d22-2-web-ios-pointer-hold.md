@@ -30,3 +30,9 @@ Date : 2026-11-03. Statut : **correctif proposé, tests fonctionnels CI non enco
 - CI GitHub 6/6 workflows visuels success sur SHA `5ae99ee`, aucun run Flutter fonctionnel/D13 Chrome disponible dans le relevé ; **ne pas certifier la répétition iOS sur cette seule preuve**.
 - **Recette iPhone Safari requise** : (1) valeur 126 mg/dL, maintien + deux fois successivement, chacun doit augmenter plusieurs unités ; (2) maintien − deux fois successivement, chacun doit diminuer ; (3) après chaque relâchement, valeur stable ; (4) tap bref +/− = exactement 1 ; (5) passage mmol/L et répétition 0,1 ; (6) enregistrer seulement sur action Save. Si échec, conserver capture vidéo du geste, iOS/Safari version et valeur observée.
 - **Gate** : retour réel Safari + Flutter widget tests sur SHA exact + revue indépendante ; aucun merge/prod sans preuve et autorisation.
+
+## Recette terrain iPhone — acceptation utilisateur
+
+Le 03/11/2026, retour explicite : **« D22.2 preview : les quatre tests iPhone sont verts. »** Cela confirme par déclaration utilisateur les quatre cas présentés : deux maintiens + successifs avec accélération, deux maintiens − successifs, arrêt au relâchement/sortie, appui bref = une unité. **4/4 PASS terrain**, sur preview staging Vercel `dpl_AJT4M6UAJXoecEf8N3ZdLSLBLqsF` READY, commit déployé `5ae99ee3373a8c4f7b02970161970adf71178d79`.
+
+Ce résultat prouve le comportement des gestes sur l'appareil testé, pas une certification Flutter/Chrome complète. Les 6 workflows GitHub visuels du SHA déployé sont SUCCESS ; aucun run Flutter complet n'a été observé sur ce SHA. **Production D22.1 inchangée.** Next : tests fonctionnels/contrôles de régression, puis autorisation explicite avant tout déploiement production.
