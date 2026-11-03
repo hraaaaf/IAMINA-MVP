@@ -9,12 +9,12 @@ on:
       - 'frontend/lib/features/journal/widgets/meal_capture_panel.dart'
       - 'frontend/test/features/meal_capture_panel_test.dart'
       - 'tools/d14_photo_web_cert.js'
+      - 'tools/fixtures/d14/main-6adf3fbe/**'
       - '.github/workflows/d14-web-photo-consent-cert.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: d14-photo-browser-${{ github.event.pull_request.number || github.ref }}
@@ -79,18 +79,20 @@ jobs:
           test -s /tmp/d14-web-after/canvaskit/canvaskit.wasm
           test -s /tmp/d14-web-after/sqlite3.wasm
 
-      - name: Download immutable main baseline screenshots from previously certified GitHub artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: d14-photo-web-consent-before-after
-          run-id: 41669280628
-          repository: hraaaaf/IAMINA-MVP
-          github-token: ${{ github.token }}
-          path: /tmp/d14-archived-main
+      - name: Restore immutable main baseline screenshots from versioned Git fixture
+        run: |
+          set -euo pipefail
+          baseline=tools/fixtures/d14/main-6adf3fbe
+          test -s "$baseline/baseline-sha256.txt"
+          # Pin the checksum manifest independently; no trust in arbitrary PR edits.
+          echo '8abd98446e69f95d44f08d7d41c44b58b62845dc43abbabb305a075fef151899  '"$baseline"'/baseline-sha256.txt' | sha256sum --check
+          mkdir -p /tmp/d14-archived-main
+          cp "$baseline"/before-*.png /tmp/d14-archived-main/
+          cp "$baseline/baseline-browser-report.json" /tmp/d14-archived-main/browser-report.json
 
       - name: Verify baseline exact base SHA and six PNG digests before comparison
         env:
-          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha || '6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7' }}
         run: |
           set -euo pipefail
           # Baseline artifact was captured from this exact main SHA.
@@ -110,8 +112,9 @@ jobs:
           from pathlib import Path
           r=json.loads(Path('browser-report.json').read_text())
           assert r['base']=='6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7', 'baseline base SHA mismatch'
+          assert r['head']=='dfe2bcb315d84af8fa88280ac45d5badf29e1634', 'baseline original head SHA mismatch'
           assert len(r['viewports'])==6 and len(r['scenarios'])==30, 'original run did not certify 6x30'
-          print('D14 archived main baseline 6/6 SHA256 verified, provenance checked')
+          print('D14 versioned main baseline 6/6 SHA256 verified, provenance checked')
           PY
 
       - name: Install Playwright Chromium and pixel measurement
@@ -122,7 +125,7 @@ jobs:
 
       - name: Capture 6 BEFORE/AFTER pairs and 30 photo scenarios
         env:
-          D14_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          D14_BASE_SHA: ${{ github.event.pull_request.base.sha || '6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7' }}
           D14_BASELINE_DIR: /tmp/d14-archived-main
           D14_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
