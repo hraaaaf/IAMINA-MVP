@@ -169,7 +169,12 @@ jobs:
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
-          node tools/d18_candidate_cipher_migration_probe.js
+          # Three independent fresh Chromium profiles. Any single failure
+          # aborts the job. This is NOT a retry or a weakened assertion.
+          for sample in 1 2 3; do
+            echo "D18 stage3 independent durability sample $sample/3"
+            node tools/d18_candidate_cipher_migration_probe.js
+          done
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend

@@ -1,3 +1,17 @@
+## REPRISE COURANTE — 2026-11-03 — D18 Web 6/6 : CSP VALIDÉE ; source migration CI intermittente NON RÉSOLUE
+
+**Goal :** coffre SQLite clinique Web entièrement chiffré, isolé et récupérable. **Preuve CSP sur PR Draft #1243 SHA `a40a7db493d3d1636c6e5e813f2c7397234efa17`** : [run #41659996561](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996561) **SUCCESS** : Chromium 390px **10/10 restauration + 2/2 canaris**, WebKit 390px **10/10 restauration + 2/2 canaris**. Témoin sans CSP exécute inline et `eval()`; page statique sous CSP refuse les deux (`EvalError`). CSP SERVEUR CI SEULEMENT, aucune politique production appliquée. [Chromium standalone #41659996281](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996281) 10/10 SUCCESS ; [WebKit #41659996321](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996321) 10/10 SUCCESS sur le même SHA.
+
+**Worker régression ROUGE** : [run #41659996331](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996331) FAILURE, malgré 37/37 worker dynamique et 10/10 verrous. Étape migration synthétique complète `seed` PASS, `migrate` FAIL, stage trop large `preflight_lock_source_before_snapshot` et exception Dart minifiée `c_`. Source exacte de l'échec non démontrée, possibilité d'intermittence IndexedDB/Chromium. Précédent rouge source sur #41622220475. **Interdit :** annoncer CI entièrement verte ou masquer le défaut par une relance sans diagnostic.
+
+**Nouveau test de diagnostic :** renforcer les marqueurs source (ouverture WASM/IndexedDB, ensureOpen, `BEGIN IMMEDIATE`, intégrité, snapshot) et exécuter 3 évaluations complètes sur **3 profils Chromium indépendants dans le même job**, sans retry, reseed conditionnel, suppression d'assertion ni changement clinique. Toute erreur d'échantillon stoppe le job. Lire verdict sur SHA exact de ce commit avant conclusion.
+
+**NO-GO clinique :** `AppDatabase.forPatientVault` utilise toujours sqlite3.wasm/drift_worker.js en clair ; aucun cutover ni vraie CSP sur Vercel ; archive 16 Mio JSON/base64 en mémoire ; fichier partiel quarantainé mais restauration non idempotente ; Safari iPhone physique, coordination des writers historiques, revue XSS/crypto indépendante, UX récupération FR/AR non validés. Aucun merge ni déploiement Vercel sans autorisation explicite.
+
+**Next exact :** inspecter la CI diagnostics, caractériser le rouge s'il réapparaît, corriger sans affaiblir ; tenir Notion et le fichier canonique alignés.
+
+---
+
 ## REPRISE COURANTE — 2026-11-03 — D18 Web 4/6 : restauration physique chiffrée et interruption 10/10 VERT (SYNTHÉTIQUE)
 
 **Décision D18 / Goal :** chiffrer l'ensemble du coffre SQLite clinique Web et rendre possible une récupération hors navigateur avec preuve d'intégrité, sans perte ni écrasement d'une base existante. **SUCCÈS EXPÉRIMENTAL, PAS RELEASE** : PR [#1235](https://github.com/hraaaaf/IAMINA-MVP/pull/1235) DRAFT, HEAD de CODE **`baf25129d07747cbf608f64100e24b908759af4f`**, [run restore #41635184362](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41635184362) **SUCCESS** ; logs bruts 10/10 phases **pass=true** : `export`, `bad_archive`, `restore_crash`, `restore_crash_denied`, `restore_crash_unreadable`, `restore`, `restore_again_denied`, `wrong_key`, `reopen`, `source_reopen`. Les 7/7 premiers tests originels étaient aussi verts sur SHA `38d562af94f5933d997627ec1d9cd016bfc499db`, [run #41634153568](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41634153568).

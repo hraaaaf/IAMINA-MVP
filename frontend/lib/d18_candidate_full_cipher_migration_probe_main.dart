@@ -33,14 +33,18 @@ final class NoMigrations implements QueryExecutorUser {
   Future<void> beforeOpen(QueryExecutor e,OpeningDetails d) async {}
 }
 Future<QueryExecutor> openSource() async {
+  stage('source_open_wasm_indexeddb');
   final opened=await WasmDatabase.open(
     databaseName:srcName,sqlite3Uri:Uri.parse('sqlite3.wasm'),
     driftWorkerUri:Uri.parse('drift_worker.js'),
     moveExistingIndexedDbToOpfs:false);
+  stage('source_implementation_preflight');
   check(opened.chosenImplementation.name=='sharedIndexedDb',
     'UNSUPPORTED_SOURCE_STORAGE');
   final q=opened.resolvedExecutor;
+  stage('source_ensure_open_no_migrations');
   await q.ensureOpen(const NoMigrations());
+  stage('source_open_ready');
   return q;
 }
 final class Encrypted {
@@ -345,13 +349,15 @@ Future<void> migrateWithSourceGateHeld() async {
   var locked=false;
   late final Snap original;
   try{
-    // Acquire source SQLite write reservation BEFORE enumerating any rows.
-    // Any concurrent writer on the same physical SQLite DB must wait/fail.
-    // Fail closed if lock cannot be acquired.
+    // Strict preflight: no retries, no re-seed, no skipped assertions.
+    stage('preflight_begin_immediate');
     await src.runCustom('BEGIN IMMEDIATE',[]);
     locked=true;
+    stage('preflight_integrity_under_lock');
     await integrity(src);
+    stage('preflight_snapshot_under_lock');
     original=await snapshot(src);
+    stage('preflight_check_source_schema');
     check(original.schema.any((x)=>x['name']=='d18_child_trigger')&&
       original.schema.any((x)=>x['name']=='d18_parent_view')&&
       original.schema.any((x)=>x['name']=='d18_parent_label_idx'),
