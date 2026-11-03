@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:amina/core/data/meal_food_catalog.dart';
 import 'package:amina/data/drift/database.dart';
@@ -34,6 +35,18 @@ void main() {
     expect(morocco.length, greaterThanOrEqualTo(40)); expect(gulf.length, greaterThanOrEqualTo(60)); expect(universal.length, greaterThanOrEqualTo(180));
     expect(mealFoodById('couscous_7_vegetables'), isNotNull); expect(mealFoodById('rfissa'), isNotNull); expect(mealFoodById('machboos_chicken'), isNotNull); expect(mealFoodById('harees'), isNotNull); expect(mealFoodById('balaleet'), isNotNull); expect(mealFoodById('karak_tea'), isNotNull);
   });
+  test('D14 real photo upload never constructs a disconnected auth client', () {
+    final source =
+        File('lib/features/journal/widgets/meal_capture_panel.dart')
+            .readAsStringSync();
+    expect(source, contains('context.read<ApiClient?>()'));
+    expect(source, contains('apiClient.canSyncClinicalData'));
+    expect(source, contains('return apiClient.analyzeMealImage('));
+    expect(source, isNot(contains('ApiClient().analyzeMealImage(')));
+    expect(source.indexOf('final apiClient = context.read<ApiClient?>();'),
+        lessThan(source.indexOf('ImagePicker().pickImage(')));
+  });
+
   test('regional and multilingual search ranks exact concepts first', () {expect(searchMealFoods('rfissa').first.id,'rfissa');expect(searchMealFoods('machboos').first.id,startsWith('machboos_'));expect(searchMealFoods('بيض').first.id,'egg');expect(searchMealFoods('oeuf').first.id,'egg');expect(searchMealFoods('kabsa').map((item)=>item.id),contains('kabsa_chicken'));expect(searchMealFoods('شاورما').map((item)=>item.id),contains('shawarma_chicken'));});
   test('every food has a non-generic visual cue and keeps a text label', () {for(final item in mealFoodCatalog){expect(item.visual,isNot('🍽️'),reason:'Missing visual for ${item.id}');expect(item.visual.trim(),isNotEmpty,reason:'Empty visual for ${item.id}');expect(item.pictogramKey,item.id);for(final locale in const <Locale>[Locale('fr'),Locale('en'),Locale('ar')]){final plain=item.plainLabelFor(locale);final visual=item.labelFor(locale);expect(plain.trim(),isNotEmpty,reason:'Missing text for ${item.id}');expect(visual,startsWith('${item.visual} '));expect(visual,contains(plain));}}});
   testWidgets('photo proposal never becomes meal data before explicit confirmation',(tester)async{var selected=<String>[];Future<MealAnalysisResult?> recognition()async=>const MealAnalysisResult(foods:<String>['pain complet','œuf'],confidence:'high',fallback:false);await tester.pumpWidget(harness(selected:selected,onChanged:(value)=>selected=value,photoRecognition:recognition,favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));await tester.tap(find.byKey(const Key('meal-photo-button')));await tester.pumpAndSettle();expect(find.byKey(const Key('meal-photo-proposal')),findsOneWidget);expect(selected,isEmpty);await tester.tap(find.byKey(const Key('meal-photo-candidate-whole_grain_bread')));await tester.pump();expect(selected,isEmpty);await tester.tap(find.byKey(const Key('meal-photo-confirm')));await tester.pumpAndSettle();expect(selected,contains('whole_grain_bread'));});
