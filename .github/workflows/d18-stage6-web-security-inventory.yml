@@ -1,0 +1,63 @@
+name: D18 pre-cutover security inventory (normal Web bundle)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-stage6-web-security-inventory.yml'
+      - 'tools/d18_stage6_bundle_inventory.js'
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/d18_unpublished_cipher_worker.dart'
+      - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
+      - 'frontend/lib/data/drift/d18_full_cipher_archive.dart'
+      - 'frontend/web/**'
+      - 'frontend/vercel.json'
+      - 'vercel.json'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d18-stage6-normal-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  normal-patient-app-bundle-audit:
+    name: Ensure CI-only crypto fixtures absent from normal patient Web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve pinned Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Build the REAL NORMAL Flutter Web app without CI fixture workers
+        working-directory: frontend
+        run: |
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect compiled bundle and document unclosed release blockers
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_stage6_bundle_inventory.js
+          node tools/d18_stage6_bundle_inventory.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-stage6-normal-web-preaudit-${{ github.event.pull_request.head.sha || github.sha }}
+          path: d18-stage6-security-proof/report.json
+          if-no-files-found: warn
+          retention-days: 14
