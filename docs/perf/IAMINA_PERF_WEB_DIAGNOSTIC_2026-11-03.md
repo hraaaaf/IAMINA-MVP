@@ -46,3 +46,11 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - **Run de suivi :** [#41734274519](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734274519), sur HEAD a7576528551c22c519f6ef3ff560b9df51f98332, IN_PROGRESS au dernier contrôle ; résultat non certifié.
 - **Limites :** ne mesure ni AuthService réel ni AppLockService ni un patient connecté ; WebKit Linux n'est pas Safari physique sur iPhone.
 - **Next exact :** lire le diagnostic du nouveau run, identifier la phase exacte du blocage, corriger et retester uniquement PERF-WEB, puis documenter la comparaison vide/rempli si la CI devient GREEN. Aucun merge ni déploiement Vercel.
+
+
+### Correction du faux signal du second run (en vérification)
+
+- [Run #41734274519](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734274519) : RED. Le premier rendu Flutter a bien été observé dans la phase seed, sans rejet JavaScript ; cependant, le titre HTML est vide alors que le test attend un suffixe PASS. Le titre n'est pas un oracle fiable pour un écran Flutter utilisant MaterialApp. L'état effectif des données Drift demeure non démontré par ce run.
+- **Changement de stratégie après deux échecs :** le nouvel oracle est un reçu structuré et uniquement synthétique conservé dans localStorage, avec phase et état de réussite ou classe d'échec. Le test doit également observer l'hôte Flutter et le premier frame ; le titre document n'est plus une condition de réussite. L'étape exacte d'exécution est aussi stockée dans une clé technique indépendante.
+- **Nouveau commit test-only :** 4d00b67893e66026e43618714bd4a2c2840c8b58 ; [run #41734802258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734802258), IN_PROGRESS au premier contrôle. Aucune mesure acquise avant sa certification.
+- **Next :** vérifier les reçus locaux et l'intégrité du coffre vide/300 lignes via Chromium et WebKit. Si réussite, consigner médianes et limites ; sinon, corriger la cause attestée par le reçu ou les étapes.
