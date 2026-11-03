@@ -41,10 +41,10 @@ void main() {
             .readAsStringSync();
     expect(source, contains('context.read<ApiClient?>()'));
     expect(source, contains('apiClient.canSyncClinicalData'));
-    expect(source, contains('return apiClient.analyzeMealImage('));
+    expect(source, contains('return await apiClient.analyzeMealImage('));
     expect(source, isNot(contains('ApiClient().analyzeMealImage(')));
     expect(source, contains('hasActiveMealPhotoMediaConsent()'));
-    expect(RegExp('hasActiveMealPhotoMediaConsent\\\\(\\\\)').allMatches(source).length,
+    expect(source.split('hasActiveMealPhotoMediaConsent()').length - 1,
         greaterThanOrEqualTo(2),
         reason: 'Check media consent before gallery and after reading media');
     expect(source, contains('bytes.fillRange(0, bytes.length, 0)'));
