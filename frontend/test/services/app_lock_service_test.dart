@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -28,6 +29,8 @@ class _FakeAuthenticator implements AppLockAuthenticator {
   AppLockAssertion assertion;
   Object? enrollError;
   Object? unlockError;
+  Completer<AppLockAssertion>? pendingUnlock;
+  Completer<void>? unlockStarted;
   int enrollCalls = 0;
   int unlockCalls = 0;
 
@@ -53,6 +56,10 @@ class _FakeAuthenticator implements AppLockAuthenticator {
     final error = unlockError;
     if (error != null) throw error;
     expect(credential.credentialId, enrollmentCredential.credentialId);
+    if (pendingUnlock != null) {
+      unlockStarted?.complete();
+      return pendingUnlock!.future;
+    }
     return assertion;
   }
 }
@@ -414,6 +421,62 @@ void main() {
         key: 'iamina_app_lock_choice_v3_$owner'), isNull);
     reopened.dispose();
     auth.dispose();
+  });
+
+  test('D10 owner change during opt-out verification cannot persist skip', () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      fail('Account transition must not call the network in this fixture');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final owner = (await auth.resolvePatientVaultScope())!.databaseName;
+    final authenticator = _FakeAuthenticator();
+    final lock = AppLockService(authService: auth,
+        authenticator: authenticator);
+    await lock.initialize();
+    await lock.configure();
+
+    final assertion = Completer<AppLockAssertion>();
+    final started = Completer<void>();
+    authenticator.pendingUnlock = assertion;
+    authenticator.unlockStarted = started;
+
+    final disable = lock.disableForCurrentVault();
+    await started.future;
+    await auth.signOut();
+    assertion.complete(const AppLockAssertion(signCount: 9));
+    await expectLater(
+      disable,
+      throwsA(isA<AppLockException>().having(
+        (error) => error.code,
+        'code',
+        'patient_changed_during_lock_verification',
+      )),
+    );
+    expect(lock.isExplicitlySkipped, isFalse);
+    expect(lock.isUnlocked, isFalse);
+    expect(await const FlutterSecureStorage().read(
+        key: 'iamina_app_lock_choice_v3_$owner'), isNull);
+    lock.dispose();
+    auth.dispose();
+  });
+
+  test('D10 anonymous fresh session cannot opt out without patient scope', () async {
+    seedStorage({});
+    final lock = AppLockService(
+      authenticator: _FakeAuthenticator(),
+      protectedLocalStateProbe: () async => false,
+    );
+    await lock.initialize();
+    await expectLater(
+      lock.continueWithoutAppLock(),
+      throwsA(isA<AppLockException>().having(
+        (error) => error.code, 'code', 'patient_vault_identity_required')),
+    );
+    expect(lock.isExplicitlySkipped, isFalse);
+    expect(lock.isUnlocked, isFalse);
+    lock.dispose();
   });
 
   test('D30 opting out never survives logout into another account', () async {
