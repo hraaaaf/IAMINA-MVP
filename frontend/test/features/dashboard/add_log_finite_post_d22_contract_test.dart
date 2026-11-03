@@ -74,7 +74,7 @@ void main() {
 
         // 400 digits are allowed by the decimal keypad filter but parse
         // to nonfinite double; the UI must not let this reach Drift.
-        await tester.enterText(input, '9' * 400);
+        await tester.enterText(input, List<String>.filled(400, '9').join());
         await tester.pump();
         expect(
           tester.widget<FilledButton>(save).onPressed,
