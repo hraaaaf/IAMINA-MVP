@@ -509,7 +509,6 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
   bool _allowed = false;
   int _recognitionCalls = 0;
   bool _proposalSeenBeforeRevocation = false;
-  String _step = 'starting';
 
   @override
   void initState() {
@@ -563,7 +562,6 @@ class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface
       Future<void>.delayed(const Duration(milliseconds: 260));
 
   void _publish(String step) {
-    _step = step;
     _d14BrowserCert = jsonEncode(<String, Object?>{
       'scenario': _scenario,
       'step': step,
