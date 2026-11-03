@@ -32,7 +32,9 @@ Future<void> migrationPhase(String phase) async {
   stage('migration_start');
   final scope = PatientVaultScope.deviceLocal(patientA);
   final sourcePhase = phase == 'migration_seed_plain' ||
-      phase == 'migration_check_source' || phase == 'migration_copy_cipher';
+      phase == 'migration_check_source' || phase == 'migration_copy_cipher' ||
+      phase == 'migration_source_before_shutdown' ||
+      phase == 'migration_source_after_restart';
   if (phase == 'migration_raw_cipher') {
     final probe = await WasmDatabase.probe(
       sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
@@ -77,6 +79,25 @@ Future<void> migrationPhase(String phase) async {
     verify(!probe.existingDatabases.any((v) => v.$2 == migrationDestination),
         'D18_MIG_DEST_ALREADY_EXISTS');
   }
+  // Physically inspect the persisted source before opening it. This is
+  // a diagnostics / durability gate, never a silent reseed or retry.
+  if (phase == 'migration_source_before_shutdown' ||
+      phase == 'migration_source_after_restart') {
+    stage(phase + '_probe_physical_source');
+    final probe = await WasmDatabase.probe(
+      sqlite3Uri: Uri.parse('sqlite3.wasm'),
+      driftWorkerUri: Uri.parse('drift_worker.js'),
+      databaseName: migrationSource,
+    );
+    final entries = probe.existingDatabases
+        .where((entry) => entry.$2 == migrationSource).toList();
+    verify(entries.length == 1, 'D18_MIG_SOURCE_CIPHERTEXT_MISSING');
+    final physicalBytes = await probe.exportDatabase(entries.single);
+    verify(physicalBytes != null && physicalBytes.length > 100,
+        'D18_MIG_SOURCE_PHYSICAL_BYTES_MISSING');
+    verify(String.fromCharCodes(physicalBytes!.take(16)) ==
+        'SQLite format 3\u0000', 'D18_MIG_SOURCE_NOT_STOCK_SQLITE');
+  }
   AppDatabase? db;
   try {
     stage('migration_open_initial_database');
@@ -101,12 +122,33 @@ Future<void> migrationPhase(String phase) async {
         'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
         [1, migrationMarker],
       );
+    } else if (phase == 'migration_source_before_shutdown' ||
+               phase == 'migration_source_after_restart') {
+      stage(phase + '_query_integrity');
+      final integrity = await db.customSelect('PRAGMA integrity_check').get();
+      stage(phase + '_check_integrity_result');
+      verify(integrity.length == 1 &&
+          integrity.single.data.values.single == 'ok',
+          'D18_MIG_PERSISTED_SOURCE_CORRUPT');
+      stage(phase + '_query_foreign_keys');
+      final fks = await db.customSelect('PRAGMA foreign_key_check').get();
+      verify(fks.isEmpty, 'D18_MIG_PERSISTED_SOURCE_FK_ERROR');
+      stage(phase + '_query_marker');
+      final row = await db.customSelect(
+          'SELECT marker FROM "$migrationTable" WHERE id = 1').getSingle();
+      verify(row.read<String>('marker') == migrationMarker,
+          'D18_MIG_PERSISTED_SOURCE_MARKER_LOST');
     } else if (phase == 'migration_copy_cipher') {
-      stage('migration_verify_source_integrity');
-      final integrity = await db.customSelect('PRAGMA integrity_check').getSingle();
-      verify(integrity.data.values.single == 'ok', 'D18_MIG_SOURCE_CORRUPT');
+      stage('migration_source_query_integrity');
+      final integrity = await db.customSelect('PRAGMA integrity_check').get();
+      stage('migration_source_check_integrity_result');
+      verify(integrity.length == 1 &&
+          integrity.single.data.values.single == 'ok',
+          'D18_MIG_SOURCE_CORRUPT');
+      stage('migration_source_query_foreign_keys');
       final fks = await db.customSelect('PRAGMA foreign_key_check').get();
       verify(fks.isEmpty, 'D18_MIG_SOURCE_FK_ERROR');
+      stage('migration_source_query_marker');
       final source = await db.customSelect(
         'SELECT marker FROM "$migrationTable" WHERE id = 1',
       ).getSingle();
@@ -287,7 +329,8 @@ Future<void> main() async {
       'stock_reject', 'write', 'wrong_key',
       'read', 'isolation_b', 'raw_bytes', 'rotate',
       'old_key_reject', 'read_rotated', 'raw_bytes_after_rotate',
-      'migration_seed_plain', 'migration_copy_cipher',
+      'migration_seed_plain', 'migration_source_before_shutdown',
+      'migration_source_after_restart', 'migration_copy_cipher',
       'migration_wrong_key', 'migration_verify_cipher',
       'migration_check_source', 'migration_raw_cipher',
     }.contains(phase), 'D18_POC_BAD_PHASE');
