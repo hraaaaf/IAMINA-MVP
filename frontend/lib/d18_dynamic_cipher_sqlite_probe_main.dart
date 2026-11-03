@@ -363,7 +363,190 @@ Future<void> verifyUnpublishedConnector(String phase) async {
   }finally{session.lock();}
 }
 
+
+// D18 step 4 Web: real unpublished encrypted worker, two independent scoped
+// key envelopes and authentication epochs. Synthetic identities ONLY.
+// No passphrase, recovery code or unwrapped key is persisted in browser data.
+const _switchA='e2dbe28f-3eea-4410-86a7-274150f00018';
+const _switchB='e2dbe28f-3eea-4410-86a7-274150900018';
+const _switchAEnvelope='d18_ci_auth_switch_a_public_envelope';
+const _switchBEnvelope='d18_ci_auth_switch_b_public_envelope';
+const _switchPassA='D18-SYNTHETIC-local-secret-A-2026-NEVER-PRODUCTION';
+const _switchPassB='D18-SYNTHETIC-local-secret-B-2026-NEVER-PRODUCTION';
+const _switchMarkerA='D18_STEP4_SYNTHETIC_A_ONLY';
+const _switchMarkerB='D18_STEP4_SYNTHETIC_B_ONLY';
+
+Future<void> verifySwitch(String phase) async {
+  final a=PatientVaultScope.deviceLocal(_switchA);
+  final b=PatientVaultScope.deviceLocal(_switchB);
+  PatientVaultScope? authorized=a;
+  var authEpoch=1;
+  var calls=0;
+  D18PreCutoverCipherAdapter adapter() => D18PreCutoverCipherAdapter(
+    guard:D18KeyedOpenGuard(
+      resolveAuthenticatedScope:() async=>authorized,
+      readAuthEpoch:()=>authEpoch),
+    openVerifiedWorker:(scope,intent,destination,key) async {
+      calls++;
+      return openD18UnpublishedCipherWorker(scope,intent,destination,key);
+    });
+  Future<void> insertMarker(D18UnpublishedCipherVault vault,String marker) async {
+    await vault.database.customStatement(
+      'INSERT INTO patient_profiles(user_id,updated_at,diabetes_type) '
+      'VALUES(?,?,?)',[1,1700000000,marker]);
+  }
+  Future<void> expectMarker(
+      D18UnpublishedCipherVault vault,String marker) async {
+    final rows=await vault.database.customSelect(
+      'SELECT diabetes_type FROM patient_profiles WHERE user_id=1').get();
+    verify(rows.length==1 &&
+      rows.single.read<String>('diabetes_type')==marker,
+      'D18_SWITCH_WRONG_PATIENT_OR_LOST_CIPHERTEXT');
+  }
+  if(phase=='switch_enroll') {
+    stage('switch_preflight_empty_envelopes');
+    verify(html.window.localStorage[_switchAEnvelope]==null &&
+      html.window.localStorage[_switchBEnvelope]==null,
+      'D18_SWITCH_ENVELOPE_ALREADY_EXISTS');
+    final enrollmentA=await D18VaultKeyPolicy.createForEmptyVault(
+      scope:a,passphrase:_switchPassA);
+    try {
+      stage('switch_a_create_real_encrypted_db');
+      final vault=await adapter().openUnpublished(
+        scope:a,keySession:enrollmentA.session,
+        intent:D18CipherVaultOpenIntent.createFresh);
+      try {await insertMarker(vault,_switchMarkerA);}
+      finally {await vault.close();}
+    }finally{enrollmentA.session.lock();}
+    verify(enrollmentA.session.isLocked,'D18_SWITCH_A_SESSION_NOT_LOCKED');
+    stage('switch_a_logout_b_login');
+    authorized=null;authEpoch++;
+    authorized=b;authEpoch++;
+    final enrollmentB=await D18VaultKeyPolicy.createForEmptyVault(
+      scope:b,passphrase:_switchPassB);
+    try {
+      stage('switch_cross_patient_pre_worker_denial');
+      final beforeCalls=calls;
+      var denied=false;
+      try {
+        final wrong=await adapter().openUnpublished(
+          scope:a,keySession:enrollmentB.session,
+          intent:D18CipherVaultOpenIntent.reopenExisting);
+        await wrong.close();
+      }on StateError{denied=true;}
+      verify(denied && calls==beforeCalls,
+        'D18_SWITCH_B_OPENED_A_BEFORE_WORKER');
+      stage('switch_b_create_real_encrypted_db');
+      final vault=await adapter().openUnpublished(
+        scope:b,keySession:enrollmentB.session,
+        intent:D18CipherVaultOpenIntent.createFresh);
+      try {
+        await insertMarker(vault,_switchMarkerB);
+        await expectMarker(vault,_switchMarkerB);
+      }finally {await vault.close();}
+    }finally{enrollmentB.session.lock();}
+    authorized=null;authEpoch++;
+    verify(enrollmentB.session.isLocked,'D18_SWITCH_B_SESSION_NOT_LOCKED');
+    // Store only public, scope-bound envelopes after both workers closed.
+    html.window.localStorage[_switchAEnvelope]=enrollmentA.publicEnvelopeJson;
+    html.window.localStorage[_switchBEnvelope]=enrollmentB.publicEnvelopeJson;
+    verify(!enrollmentA.publicEnvelopeJson.contains(_switchPassA) &&
+      !enrollmentB.publicEnvelopeJson.contains(_switchPassB),
+      'D18_SWITCH_SECRET_LEAKED_IN_ENVELOPE');
+    return;
+  }
+  final envelopeA=html.window.localStorage[_switchAEnvelope];
+  final envelopeB=html.window.localStorage[_switchBEnvelope];
+  verify(envelopeA!=null && envelopeB!=null &&
+    !envelopeA.contains(_switchPassA) &&
+    !envelopeB.contains(_switchPassB),
+    'D18_SWITCH_PUBLIC_ENVELOPE_MISSING');
+  if(phase=='switch_reopen_b') {
+    stage('switch_new_browser_process_b_login');
+    authorized=b;authEpoch=5;
+    var wrongScopeRejected=false;
+    try {
+      final unexpected=await D18VaultKeyPolicy.unlockWithPassphrase(
+        scope:b,publicEnvelopeJson:envelopeA!,passphrase:_switchPassA);
+      unexpected.lock();
+    }catch(_){wrongScopeRejected=true;}
+    verify(wrongScopeRejected,'D18_SWITCH_ENVELOPE_SCOPE_CONFUSION');
+    final session=await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope:b,publicEnvelopeJson:envelopeB!,passphrase:_switchPassB);
+    try {
+      final vault=await adapter().openUnpublished(
+        scope:b,keySession:session,
+        intent:D18CipherVaultOpenIntent.reopenExisting);
+      try {await expectMarker(vault,_switchMarkerB);}
+      finally {await vault.close();}
+    }finally{session.lock();}
+    authorized=null;authEpoch++;
+    verify(session.isLocked,'D18_SWITCH_B_LOGOUT_NOT_LOCKED');
+    return;
+  }
+  if(phase=='switch_reopen_a') {
+    stage('switch_a_login_after_b_logout');
+    authorized=a;authEpoch=7;
+    final session=await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope:a,publicEnvelopeJson:envelopeA!,passphrase:_switchPassA);
+    try{
+      final vault=await adapter().openUnpublished(
+        scope:a,keySession:session,
+        intent:D18CipherVaultOpenIntent.reopenExisting);
+      try{await expectMarker(vault,_switchMarkerA);}
+      finally{await vault.close();}
+    }finally{session.lock();}
+    authorized=null;authEpoch++;
+    verify(session.isLocked,'D18_SWITCH_A_LOGOUT_NOT_LOCKED');
+    return;
+  }
+  if(phase=='switch_epoch_race') {
+    stage('switch_auth_epoch_races_during_open');
+    authorized=a;authEpoch=9;
+    final session=await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope:a,publicEnvelopeJson:envelopeA!,passphrase:_switchPassA);
+    try{
+      final raceAdapter=D18PreCutoverCipherAdapter(
+        guard:D18KeyedOpenGuard(
+          resolveAuthenticatedScope:() async=>authorized,
+          readAuthEpoch:()=>authEpoch),
+        openVerifiedWorker:(scope,intent,destination,key) async{
+          final opened=await openD18UnpublishedCipherWorker(
+            scope,intent,destination,key);
+          authEpoch++; // force logout / epoch change after physical open
+          return opened;
+        });
+      var rejectedForStaleEpoch=false;
+      try {
+        final stale=await raceAdapter.openUnpublished(
+          scope:a,keySession:session,
+          intent:D18CipherVaultOpenIntent.reopenExisting);
+        await stale.close();
+      }on StateError catch(error){
+        rejectedForStaleEpoch=error.toString().contains(
+          'D18 authentication changed while opening');
+      }
+      verify(rejectedForStaleEpoch,
+        'D18_SWITCH_AUTH_EPOCH_RACE_ACCEPTED_OR_WRONG_REASON');
+      // Guard must fully close rejected worker and release its Web Lock.
+      stage('switch_epoch_race_lock_released');
+      final recovered=await adapter().openUnpublished(
+        scope:a,keySession:session,
+        intent:D18CipherVaultOpenIntent.reopenExisting);
+      try{await expectMarker(recovered,_switchMarkerA);}
+      finally{await recovered.close();}
+    }finally{session.lock();}
+    authorized=null;authEpoch++;
+    verify(session.isLocked,'D18_SWITCH_EPOCH_SESSION_REMAINS_OPEN');
+    return;
+  }
+  throw StateError('D18_SWITCH_UNSUPPORTED_PHASE');
+}
+
 Future<void> runPhase(String name) async {
+  if(name.startsWith('switch_')) {
+    await verifySwitch(name);return;
+  }
   if(name.startsWith('candidate_')) {
     await verifyUnpublishedConnector(name);return;
   }
@@ -534,6 +717,7 @@ Future<void> main() async {
       'intent_wrong_key',
       'candidate_missing','candidate_create','candidate_create_exists',
       'candidate_wrong_key','candidate_reopen','candidate_physical_bytes',
+      'switch_enroll','switch_reopen_b','switch_reopen_a','switch_epoch_race',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
