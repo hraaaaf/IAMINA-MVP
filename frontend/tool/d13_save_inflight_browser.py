@@ -36,13 +36,13 @@ def run(browser, lang, size, out):
             candidates = page.locator("input, textarea")
             vals = candidates.evaluate_all("(nodes) => nodes.map(n => n.value || '')")
             semantic = (glucose.get_attribute("aria-valuetext") or "") + " " + (glucose.get_attribute("aria-label") or "")
-            if "126" in vals or re.search(r"(?<!\\d)126(?!\\d)", semantic) or page.get_by_text("126", exact=True).count() > 0:
+            if "126" in vals or re.search(r"(?<!\d)126(?!\d)", semantic) or page.get_by_text("126", exact=True).count() > 0:
                 break
         else:
             raise AssertionError("D13_GLUCOSE_ENTRY_NOT_VERIFIED: "+repr({"values":vals,"semantic":semantic})[:400])
         save=page.get_by_role("button",name=re.compile("Enregistrer|حفظ|Save",re.I))
         expect(save).to_be_enabled(timeout=6000)
-        proof["stages"].append("glucose_126_native_input_confirmed")
+        proof["stages"].append("glucose_126_entry_confirmed")
         page.screenshot(path=str(out/("before-"+case+".png")))
         save.click(timeout=10000)
         page.wait_for_function("document.documentElement.dataset.d13Stage === 'held'",timeout=15000)
