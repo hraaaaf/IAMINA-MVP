@@ -96,11 +96,24 @@ def main():
                                 state="visible", timeout=30000)
                             glucose_fields = page.get_by_role("textbox")
                             assert glucose_fields.count() >= 1
-                            first = glucose_fields.first.aria_snapshot()
-                            assert "5.7" in first or glucose_fields.first.get_attribute(
-                                "aria-valuenow") == "5.7", (
-                                f"F04 synthetic raw 103.25 must show rounded mmol 5.7, "
-                                f"got {first[:220]!r}"
+                            # Flutter exposes a CanvasKit semantics textbox
+                            # without its value in aria_snapshot (observed in
+                            # real Chrome). Focus the REAL editing host and
+                            # inspect its text input value without typing.
+                            glucose_fields.first.click(timeout=15000)
+                            page.wait_for_timeout(220)
+                            input_state = page.evaluate("""() => ({
+                                activeTag: document.activeElement?.tagName || '',
+                                activeValue: document.activeElement?.value ?? null,
+                                editingHostValues: [...document.querySelectorAll(
+                                  'flt-text-editing-host input, flt-text-editing-host textarea, input, textarea'
+                                )].map(e => ({tag:e.tagName,value:e.value||''})).slice(0,12),
+                            })""")
+                            values = [input_state["activeValue"]] + [
+                                x["value"] for x in input_state["editingHostValues"]
+                            ]
+                            assert "5.7" in values, (
+                                f"F04 actual Flutter text entry does not show 5.7: {input_state}"
                             )
                             before = OUT / f"before-edit-{width}x{height}.png"
                             page.screenshot(path=str(before), full_page=False,
