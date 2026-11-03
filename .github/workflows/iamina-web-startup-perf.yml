@@ -5,6 +5,7 @@ on:
       - perf/iamina-web-startup-20261103
     paths:
       - scripts/iamina_web_startup_perf_ci.py
+      - scripts/iamina_web_locale_matrix_ci.py
       - .github/workflows/iamina-web-startup-perf.yml
   workflow_dispatch:
 
@@ -17,9 +18,9 @@ concurrency:
 
 jobs:
   compare-flutter-web:
-    name: Chromium public cold/warm + Django health
+    name: Chromium Intl Locale failure matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 12
     env:
       PYTHONUNBUFFERED: "1"
     steps:
@@ -31,26 +32,26 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install browser benchmark dependencies
+      - name: Install Chromium
         run: |
           python -m pip install --disable-pip-version-check playwright==1.56.0
           python -m playwright install --with-deps chromium
 
-      - name: Compile-check profiler
-        run: python -m py_compile scripts/iamina_web_startup_perf_ci.py
-
-      - name: Collect browser timings (anonymous; no patient content)
+      - name: Compile-check both diagnostic scripts
         run: |
-          python scripts/iamina_web_startup_perf_ci.py \
-            --runs 3 --observe-ms 9000 --output perf_web_results.json
+          python -m py_compile scripts/iamina_web_startup_perf_ci.py
+          python -m py_compile scripts/iamina_web_locale_matrix_ci.py
 
-      - name: Upload timing evidence
+      - name: Diagnose locale failures on both public frontends
+        run: python scripts/iamina_web_locale_matrix_ci.py
+
+      - name: Upload anonymous locale diagnosis
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-perf-web-anonymous-${{ github.run_id }}
+          name: iamina-perf-web-locale-anonymous-${{ github.run_id }}
           path: |
-            perf_web_results.json
-            perf_web_summary.md
+            perf_web_locale_matrix.json
+            perf_web_locale_matrix.md
           if-no-files-found: warn
           retention-days: 7
