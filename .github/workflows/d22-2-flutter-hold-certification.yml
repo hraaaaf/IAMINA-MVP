@@ -1,0 +1,39 @@
+name: D22.2 Web — Flutter hold certification
+
+on:
+  push:
+    branches:
+      - fix/d22-2-web-ios-pointer-hold-20261103
+  pull_request:
+    branches:
+      - fix/d22-1-web-accelerated-hold-visible-reading-20261103
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d22-2-flutter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-hold-certification:
+    name: D22.2 Flutter FR/AR hold regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: D22.2 hold regression — FR/AR, repeat, release, unit
+        run: flutter test --no-pub --reporter expanded test/features/dashboard/d22_1_accelerated_hold_thumb_reading_test.dart
+      - name: D22.2 widget static analysis
+        run: flutter analyze --no-fatal-infos lib/features/dashboard/widgets/glucose_half_dial_input.dart test/features/dashboard/d22_1_accelerated_hold_thumb_reading_test.dart
