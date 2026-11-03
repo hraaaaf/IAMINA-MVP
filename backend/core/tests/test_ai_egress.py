@@ -290,3 +290,22 @@ def test_d24_photo_grants_are_patient_scoped_and_do_not_cross_a_b_a(patient):
     with ai_egress_scope(patient.id, "meal_vision", IMAGE):
         with pytest.raises(AIConsentRequired, match="Explicit media consent"):
             assert_ai_egress_allowed(IMAGE)
+
+
+def test_d24_media_grant_does_not_override_pending_processor_approval(patient):
+    """Even consented synthetic image data never leaves via an unapproved vendor."""
+    from core.ai_processor_policy import AIProcessorPolicyDenied
+    from llm.runtime import execute_external_provider_call
+
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+    send_external = MagicMock(return_value="forbidden")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        assert_ai_egress_allowed(IMAGE)  # Two-level patient consent is present.
+        with pytest.raises(AIProcessorPolicyDenied, match="not approved"):
+            execute_external_provider_call(
+                "gemini", IMAGE, "meal_vision", send_external
+            )
+
+    send_external.assert_not_called()
