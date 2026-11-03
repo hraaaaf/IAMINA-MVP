@@ -1,0 +1,56 @@
+name: IAMINA PERF-WEB — public frontend startup diagnostic
+on:
+  push:
+    branches:
+      - perf/iamina-web-startup-20261103
+    paths:
+      - scripts/iamina_web_startup_perf_ci.py
+      - .github/workflows/iamina-web-startup-perf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iamina-perf-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare-flutter-web:
+    name: Chromium public cold/warm + Django health
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout exact probe source
+        uses: actions/checkout@v4
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser benchmark dependencies
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install --with-deps chromium
+
+      - name: Compile-check profiler
+        run: python -m py_compile scripts/iamina_web_startup_perf_ci.py
+
+      - name: Collect browser timings (anonymous; no patient content)
+        run: |
+          python scripts/iamina_web_startup_perf_ci.py \
+            --runs 3 --observe-ms 9000 --output perf_web_results.json
+
+      - name: Upload timing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-perf-web-anonymous-${{ github.run_id }}
+          path: |
+            perf_web_results.json
+            perf_web_summary.md
+          if-no-files-found: warn
+          retention-days: 7
