@@ -171,18 +171,10 @@ class GlucoseHalfDialInput extends StatelessWidget {
     final colors = theme.colorScheme;
     final selected = valueMgdl?.clamp(minScale, maxScale).toDouble();
     final displayed = selected ?? 140.0;
-    final step = unit == 'mmol/L' ? 1.8 : 1.0;
     // Fine adjustment follows the entered reading even outside the visual
     // dial scale; unlike the arc, it must never clamp a valid direct value.
     final fineMinus = d22FineAdjustedMgdl(valueMgdl, unit, -1);
     final finePlus = d22FineAdjustedMgdl(valueMgdl, unit, 1);
-
-    void adjustFromAccessibility(int direction) {
-      final mg = (displayed + direction * step)
-          .clamp(minScale, maxScale)
-          .toDouble();
-      onValueSelected(mg);
-    }
 
     return Column(
       key: const Key('glucose-half-dial-input'),
@@ -270,12 +262,18 @@ class GlucoseHalfDialInput extends StatelessWidget {
                         value: valueMgdl == null
                             ? _copy(context, 'Aucune valeur', 'No value', 'لا قيمة')
                             : _display(valueMgdl!) + ' ' + unit,
-                        increasedValue:
-                            _display((displayed + step).clamp(minScale, maxScale).toDouble()) + ' ' + unit,
-                        decreasedValue:
-                            _display((displayed - step).clamp(minScale, maxScale).toDouble()) + ' ' + unit,
-                        onIncrease: () => adjustFromAccessibility(1),
-                        onDecrease: () => adjustFromAccessibility(-1),
+                        increasedValue: finePlus == null
+                            ? null
+                            : '${_display(finePlus)} $unit',
+                        decreasedValue: fineMinus == null
+                            ? null
+                            : '${_display(fineMinus)} $unit',
+                        onIncrease: finePlus == null
+                            ? null
+                            : () => onValueSelected(finePlus),
+                        onDecrease: fineMinus == null
+                            ? null
+                            : () => onValueSelected(fineMinus),
                         child: CustomPaint(
                           key: const Key('glucose-half-dial-arc'),
                           painter: _PremiumGlucoseArcPainter(
