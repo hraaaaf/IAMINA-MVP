@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -290,10 +291,12 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                   (item) => InputChip(
                     key: Key('meal-selected-${item.id}'),
                     avatar: ExcludeSemantics(
-                      child: Text(
-                        item.visual,
-                        style: const TextStyle(fontSize: 15),
-                      ),
+                      child: kIsWeb
+                          ? FoodPictogram(item: item, size: 24)
+                          : Text(
+                              item.visual,
+                              style: const TextStyle(fontSize: 15),
+                            ),
                     ),
                     label: Text(item.plainLabelFor(locale)),
                     onDeleted: () => _toggleItem(item.id),
@@ -477,7 +480,9 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                         (item) => FilterChip(
                           key: Key('meal-photo-candidate-${item.id}'),
                           avatar: ExcludeSemantics(
-                            child: Text(item.visual),
+                            child: kIsWeb
+                                ? FoodPictogram(item: item, size: 24)
+                                : Text(item.visual),
                           ),
                           label: Text(item.plainLabelFor(locale)),
                           selected: _proposalSelection.contains(item.id),

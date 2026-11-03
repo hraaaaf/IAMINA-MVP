@@ -41,6 +41,7 @@ const steps=[
         });
         const page=await ctx.newPage();
         const external=[],externalResponses=[],photoUploads=[],errors=[],authResponses=[];
+        const fontAssetPaths=new Set();
         page.on('pageerror',e=>errors.push('pageerror: '+String(e)));
         page.on('response',r=>{
           if(r.url().startsWith(api+'/api/v1/auth/login'))authResponses.push(r.status());
@@ -69,8 +70,11 @@ const steps=[
             return route.continue();
           try {
             const u=new URL(url);
-            // Diagnostics exclude credentials, query strings and page payload.
+            // Record only origin + font filename, never credentials/queries/payload.
             external.push(u.origin);
+            if (u.hostname === 'fonts.gstatic.com') {
+              fontAssetPaths.add(u.pathname.split('/').slice(-2).join('/'));
+            }
           }catch{
             external.push('non-http-scheme');
           }
@@ -96,7 +100,7 @@ const steps=[
             item.clinicalTransport==='disabled'&&
             item.realDjangoAuth===true&&item.realPatientVault===true&&
             JSON.stringify(authResponses)===JSON.stringify([200,200,200])&&
-            external.every(x=>x==='https://fonts.gstatic.com')&&
+            external.length===0&&
             externalResponses.length===0&&photoUploads.length===0&&errors.length===0&&
             fs.statSync(path.join(root,screenshot)).size>=10000;
           const result={
@@ -104,10 +108,11 @@ const steps=[
             nativeLoginStatuses:authResponses,providerRequests:photoUploads.length,
             blockedExternal:external.length,
             blockedExternalOrigins:[...new Set(external)].sort(),
+            requestedRemoteFontFiles:[...fontAssetPaths].sort(),
             attemptedFlutterFontFallbacks:external.filter(
               x=>x==='https://fonts.gstatic.com').length,
             remoteResponses:externalResponses.length,
-            fontPrivacyGate:external.length?'OPEN_UNRESOLVED':'PASS',
+            fontPrivacyGate:external.length?'FAIL_EXTERNAL_FONT_ATTEMPT':'PASS',
             pageErrors:errors.length,
             finalTitle:title,reason:item.reason||null
           };

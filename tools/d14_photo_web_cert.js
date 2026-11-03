@@ -35,11 +35,22 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
   const page=await ctx.newPage();
   const fatalErrors=[];
   const providerRequests=[];
+  const offOriginRequests=[];
+  const allowedOrigins = new Set([new URL(beforeOrigin).origin, new URL(afterOrigin).origin]);
   page.on('pageerror', error=>fatalErrors.push(String(error)));
   page.on('request', request=>{
     const url=request.url();
     if (/generativelanguage\.googleapis\.com|api\.groq\.com|\/api\/v1\/ai\//.test(url))
-      providerRequests.push(url);
+      providerRequests.push('AI_REQUEST_DENIED');
+  });
+  await page.route('**/*', route=>{
+    const url=route.request().url();
+    if(url.startsWith('data:')||url.startsWith('blob:'))return route.continue();
+    if(/^https?:/.test(url)&&!allowedOrigins.has(new URL(url).origin)){
+      offOriginRequests.push(new URL(url).origin);
+      return route.abort();
+    }
+    return route.continue();
   });
   try {
     const url=origin+'/?'+new URLSearchParams({surface:synthetic?'d14-photo-cert':'meal-picker',locale,seed:'0',...(synthetic?{scenario:query}:{})}).toString();
@@ -69,8 +80,11 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
     await page.screenshot({path:target,fullPage:false});
     if(fs.statSync(target).size<10000) fail(name+': suspicious blank screenshot');
     if(fatalErrors.length) fail(name+': JS pageerror '+fatalErrors.join('; '));
-    if(providerRequests.length) fail(name+': forbidden provider request '+JSON.stringify(providerRequests));
-    return {image:target,size:fs.statSync(target).size,state,providerRequests:providerRequests.length};
+    if(providerRequests.length) fail(name+': forbidden provider request');
+    // BEFORE is a historical baseline; reject external requests on candidate only.
+    if(origin===afterOrigin && offOriginRequests.length)
+      fail(name+': Web candidate attempted external font/other request: '+JSON.stringify([...new Set(offOriginRequests)]));
+    return {image:target,size:fs.statSync(target).size,state,providerRequests:providerRequests.length,offOriginRequestCount:offOriginRequests.length};
   }finally{await ctx.close();}
 }
 (async()=>{
