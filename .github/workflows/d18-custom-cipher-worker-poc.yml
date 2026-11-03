@@ -169,10 +169,12 @@ jobs:
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
-          # Three independent fresh Chromium profiles. Any single failure
-          # aborts the job. This is NOT a retry or a weakened assertion.
-          for sample in 1 2 3; do
-            echo "D18 stage3 independent durability sample $sample/3"
+          # D18 source persistence stress: 20 independent fresh Chromium
+          # profiles with a new synthetic key each time. This is NOT a
+          # retry: the first failure aborts the whole job, preserving logs.
+          set -euo pipefail
+          for sample in $(seq 1 20); do
+            echo "D18 stage3 independent durability stress $sample/20"
             node tools/d18_candidate_cipher_migration_probe.js
           done
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js

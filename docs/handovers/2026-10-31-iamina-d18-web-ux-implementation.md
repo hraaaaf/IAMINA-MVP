@@ -1,3 +1,18 @@
+## REPRISE COURANTE — 2026-11-03 — D18 Web 6/6 : CSP double moteur verte, 20x durabilité source en qualification
+
+**État confirmé avant stress** : PR [#1243](https://github.com/hraaaaf/IAMINA-MVP/pull/1243) DRAFT, SHA CODE `54400df70e71c72c31da72379e9c8598dbcbfcc6` ; **4/4 workflows D18 SUCCESS** sur ce SHA :
+- [worker #41665219824](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41665219824) SUCCESS. Logs bruts **37/37** worker, **10/10** multi-onglets, **3 évaluations de migration chacune 4/4 pass**, **18/18** historique, **16/16** transfert clés, **15/15** Web Locks, **9/9** whole-schema/crash/rollback.
+- [CSP #41665219762](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41665219762) SUCCESS, Chromium 10/10 restauration + 2/2 témoins XSS et WebKit 10/10 + 2/2 ; scripts inline et eval exécutés sur page sans CSP, refusés sous `script-src 'self' 'wasm-unsafe-eval'` dans la vraie page.
+- [restauration Chromium #41665219846](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41665219846) SUCCESS et [restauration WebKit #41665219760](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41665219760) SUCCESS.
+
+**Risque non levé** : [worker précédent #41659996331](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996331) FAILED au préflight migration source (`minified:c_`). 3/3 profils verts ne prouvent pas l'absence d'intermittence IndexedDB/SharedWorker ; le code maintenant trace explicitement ouverture, ensureOpen, BEGIN IMMEDIATE, intégrité et snapshot. **Nouveau sous-lot autorisé** : après vérification GitHub Actions **0 run in_progress** via API lors de la préparation, remplacer 3 par **20 profils Chromium *indépendants*, fresh userDataDir et clef synthétique par échantillon, NO RETRY, fail-fast** ; tous les autres tests demeurent inchangés. **Cette campagne 20/20 n'est PAS encore prouvée ici.** SHA exact final / nouveau run à enregistrer.
+
+**Gates D18 restants :** source intermittente non diagnostiquée formellement, patient runtime `AppDatabase.forPatientVault` toujours `sqlite3.wasm` + `drift_worker.js` en clair, CSP effective sur vrai site non vérifiée/déployée, limite de sauvegarde entière 16 Mio (pas de streaming), reprise des fichiers partiels non idempotente, écrivains historiques non coordonnés, Safari/iPhone physique, audit XSS/crypto indépendant et UX FR/AR non validés. Tous les essais précédents sont **pré-cutover**, sans données patients, aucune certification clinique. **Aucun merge, aucune migration clinique ou déploiement Vercel sans autorisation explicite.**
+
+**Next exact :** relire les 20 échantillons d'un seul workflow GitHub sur SHA final, collecter l'échec précis si rouge, maintenir les PRs en Draft et Notion synchronisé ; aucune relance masquant une défaillance.
+
+---
+
 ## REPRISE COURANTE — 2026-11-03 — D18 Web 6/6 : CSP VALIDÉE ; source migration CI intermittente NON RÉSOLUE
 
 **Goal :** coffre SQLite clinique Web entièrement chiffré, isolé et récupérable. **Preuve CSP sur PR Draft #1243 SHA `a40a7db493d3d1636c6e5e813f2c7397234efa17`** : [run #41659996561](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996561) **SUCCESS** : Chromium 390px **10/10 restauration + 2/2 canaris**, WebKit 390px **10/10 restauration + 2/2 canaris**. Témoin sans CSP exécute inline et `eval()`; page statique sous CSP refuse les deux (`EvalError`). CSP SERVEUR CI SEULEMENT, aucune politique production appliquée. [Chromium standalone #41659996281](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996281) 10/10 SUCCESS ; [WebKit #41659996321](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996321) 10/10 SUCCESS sur le même SHA.
