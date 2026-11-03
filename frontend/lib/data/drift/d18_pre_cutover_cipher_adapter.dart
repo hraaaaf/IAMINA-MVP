@@ -58,13 +58,16 @@ typedef D18OpenKeyedCipherWorker = Future<D18KeyedCipherWorkerLease> Function(
 final class D18UnpublishedCipherVault {
   final AppDatabase database;
   final Future<void> Function() _disposeWorker;
-  bool _closed = false;
+  Future<void>? _closeFuture;
 
   D18UnpublishedCipherVault._(this.database, this._disposeWorker);
 
-  Future<void> close() async {
-    if (_closed) return;
-    _closed = true;
+  /// Concurrent logout/close callers must await the SAME worker shutdown.
+  /// Returning early while the exclusive physical lock is still held could
+  /// permit a second opening to race the retired encrypted executor.
+  Future<void> close() => _closeFuture ??= _closeOnce();
+
+  Future<void> _closeOnce() async {
     try {
       await database.close();
     } finally {
