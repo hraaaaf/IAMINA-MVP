@@ -36,6 +36,8 @@ void main() {
             LogEntriesCompanion.insert(
               createdAt: DateTime.now().subtract(const Duration(hours: 2)),
               bloodSugar: 103.25,
+          // Reports filters on loggedAt (not createdAt).
+          loggedAt: drift.Value(DateTime.now().subtract(const Duration(hours: 1))),
               clientUuid: 'f07-text200-${language}-${width.toInt()}',
             ),
           );
