@@ -16,6 +16,7 @@ on:
       - 'tools/d18_source_writer_barrier_probe.js'
       - 'tools/d18_real_source_interlock_probe.js'
       - 'tools/d18_source_lock_dart_browser_probe.js'
+      - 'tools/d18_source_sqlite_entrypoint_inventory.py'
       - 'frontend/lib/d18_source_lock_probe_main.dart'
       - 'frontend/web/d18_source_interlock.js'
       - 'frontend/web/index.html'
@@ -66,6 +67,8 @@ jobs:
       - name: Resolve locked Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Inventory all real Web SQLite opening code paths (static fail-closed)
+        run: python3 tools/d18_source_sqlite_entrypoint_inventory.py
       - name: Verify D18 optional async lease integration into real patient controller (NOT ENABLED)
         working-directory: frontend
         run: |
