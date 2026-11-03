@@ -2,7 +2,7 @@
 
 **Date** : 2026-11-03  
 **Décision** : D12, issue [#971](https://github.com/hraaaaf/IAMINA-MVP/issues/971)  
-**Statut** : garde D12 **VALIDÉE TECHNIQUEMENT sur SHA `1032bdec80f77256831bf0f50c10d167c5675d62`** ; PR Draft #1251 non fusionnée, non déployée ; revue indépendante et acceptation utilisateur toujours ouvertes. Le présent ajout documentaire crée un SHA distinct qui nécessite ses propres checks.
+**Statut** : garde D12 **VALIDÉE TECHNIQUEMENT et déployée en production** sur SHA exact `7697a179caec0b094e589fbb8775b967754853c4` (12/12 workflows SUCCESS). Vercel READY/alias public vérifiés, PR Draft #1251 non fusionnée. Recette authentifiée iPhone/revue indépendante et D32 clinique non validées ; un commit docs-only ultérieur n'est pas le SHA déployé.
 
 ## Goal, succès, preuve
 
@@ -41,8 +41,18 @@
 - Portée code vérifiée `compare_commits` : parent D13 publié `0b2ad7e...` → ce SHA D12 = **3 fichiers seulement** (un widget source, un test, un .md), **0 fichier backend**. Vercel Production demeure sur D13 `dpl_9XFXHNP2gSJAvbt3B6M7EBNM4dSN` READY. Aucune release D12.
 - **Gates persistants :** revue indépendante, recette Web réelle/iPhone, décisions cliniques de bornes/slider dans D32, GO explicite distinct pour tout merge ou Vercel. Une CI verte ne suffit pas à déclarer D12 mise en production.
 
+## Déploiement direct en production — vérifié 2026-11-03
+
+- **GO utilisateur explicite :** « Pk en preview !? Directement to prod ». Aucune preview préalable, action ciblée D12 Web.
+- **Commit code+docs publié** : `7697a179caec0b094e589fbb8775b967754853c4`, [GitHub CI #41696210864](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41696210864) **SUCCESS 12/12 workflows**, 984 tests Flutter PASS/7 skipped, PWA build et [D13 Chromium #41696210601](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41696210601) SUCCESS 6/6.
+- **Vercel frontend seulement** : `iamina-review`, project `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI`, deployment `dpl_AzTqctoykcFwtvSsTT1bomBn5i9h` **READY** target production ; `get_project.latestDeployment` identique et `aliasError=null`. URL publique : **https://iamina-review.vercel.app** (alias vérifié par `list_deployment_aliases`).
+- **Observabilité** : `get_runtime_errors` last 30m aucun résultat ; `get_runtime_logs` erreur/fatal du déploiement aucun log, ne valide pas le comportement Flutter client ni les navigations authentifiées.
+- **Gouvernance** : [PR #1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) OPEN/DRAFT/non mergée, base D13 (`0b2ad7e...`), diff GitHub **3 fichiers**, pas de backend déployé ni de migration DB. Notion Chantier A actualisé.
+- **Reste à tester sur iPhone Web** (données synthétiques seulement) : saisir 126 mg/dL → bascule 7.0 mmol/L → retour 126 mg/dL, enregistrer, reçu et exactement une ligne après recharge ; sortie depuis brouillon (confirmer/garder), retour pendant insertion, FR/AR, absence de valeur/overflow interdit. La revue externe, le test réel sur compte et la qualification clinique D32 sont des gates distincts **non validés**.
+- **Traçabilité** : le présent chapitre est un *commit documentaire post-release*. Le SHA déployé reste `7697a179...` et ne doit pas être confondu avec le SHA produit par cette mise à jour du .md. Aucun nouveau déploiement n'est nécessaire pour ce commentaire documentaire.
+
 ## Reprise
 
 Branche : `fix/a-d12-web-finite-post-d13-20261103`  
 Parent : `fix/a-d13-web-post-d22-20261103@0b2ad7e...`  
-Next : [PR DRAFT #1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) ouverte. GitHub CI ne s'exécute que sur PR `main` ou `dev`; base temporaire `main` utilisée pour certification `1032bdec`. Après intégration des preuves documentaires et nouveau contrôle CI, **rétablir base #1251 vers `fix/a-d13-web-post-d22-20261103`** (delta D12 uniquement), clore l'ancienne PR Draft #972 sans fusion avec lien de supersession, actualiser Notion. Ensuite, revue et recette humaine ; **aucune fusion ni déploiement sans GO explicite**.
+Next : [PR DRAFT #1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) ouverte, toujours non mergée ; **base D13 rétablie et vérifiée**, delta **3 fichiers**. Ancienne PR #972 CLOSED sans merge. D12 Web **production déployée sur SHA `7697a179` avec GO propriétaire explicite**. Reste : recette authentifiée iPhone/Web avec données de test, revue externe, correction si anomalie puis nouvel accord avant tout autre déploiement/merge. D32 clinique hors périmètre.
