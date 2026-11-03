@@ -214,7 +214,7 @@ def main() -> int:
             errors,
         )
         require(
-            re.search(r"_flutter\\.loader\\.load\\(\\s*(?:\\)|\\{)", bootstrap) is not None,
+            re.search(r"_flutter[.]loader[.]load[(]", bootstrap) is not None,
             "Custom Flutter bootstrap does not start the Flutter loader",
             errors,
         )
