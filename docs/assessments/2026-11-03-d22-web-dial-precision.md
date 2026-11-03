@@ -2,7 +2,7 @@
 
 **Date** : 2026-11-03.  
 **Décision** : D22 — UX de saisie de glycémie (issue [#1252](https://github.com/hraaaaf/IAMINA-MVP/issues/1252)).  
-**Statut** : **validé techniquement sur code HEAD `a7cc05138dab3c38311fbbe37aff99415368659c`** : 12/12 workflows GitHub SUCCESS, tests Flutter et captures Web FR/AR contrôlés. PR Draft #1253 non fusionnée, non déployée ; la recette iPhone du correctif reste à faire. Cette mise à jour est un commit documentaire post-test, pas une nouvelle version du code testée.
+**Statut** : **VALIDÉ techniquement puis DÉPLOYÉ en production** sur code SHA `a7cc05138dab3c38311fbbe37aff99415368659c` : 12/12 workflows GitHub SUCCESS, tests Flutter et captures Web FR/AR contrôlés, Vercel READY/alias public vérifiés. PR Draft #1253 reste non fusionnée. Recette réelle iPhone après release ouverte ; D32 clinique distincte. Un commit documentaire post-release ne modifie pas le SHA applicatif effectivement déployé.
 
 ## Feedback terrain, BEFORE et cause
 - Utilisateur iPhone sur la **vraie production** D12 : « Je peux pas aller précisément, ça vacille entre 126 et 127, c’est pas très intuitif. C’est le seul problème, tout le reste fonctionne. »
@@ -46,6 +46,16 @@ Concept validé comme direction d'implémentation (non comme test visuel) : cons
 - **Intégrité** : aucun seuil médical nouveau, aucun changement de DB, backend, navigation D13 ou validation D12. Sur champ vide les deux contrôles et l'action de lecteur d'écran sont inactifs, sans générer de mesure fictive. Contrats `126 + →127 −→126`, `7.0 + →7.1 −→7.0`, et une seule sauvegarde SQLite verte.
 - **Gates restants** : QA réelle iPhone après déploiement explicite, revue indépendante, clinique D32 toujours hors portée. **Aucun GO de Vercel ni merge donné pour D22**. Prod actuelle D12 `dpl_AzTqctoykcFwtvSsTT1bomBn5i9h`, SHA `7697a179...`, demeure inchangée.
 - **Traçabilité** : tout commit supplémentaire uniquement .md au-delà de `a7cc051...` doit être distingué du SHA de code validé ; ne pas déclarer tests exact HEAD post-documentaire sans revérification de ses workflows.
+
+## Déploiement production direct — vérifié 03/11/2026
+
+- **GO utilisateur explicite** : « Je valide deploy to prod », pour **D22 Web** (pas autorisation de merge).
+- **Cible Vercel** : projet `iamina-review` (`prj_AYaUi32KTDHak8I7dmdQpDrqd8SI`) ; `target=production`, `get_project.latestDeployment.id` = **`dpl_6RntVe5ckPRvxNL8Cw7YPGGWHNE9`**, état **READY**, `aliasError=null`.
+- **Domaine réellement assigné** : **https://iamina-review.vercel.app** via `list_deployment_aliases` du déploiement. Aucun preview préalable, pas de migration ni backend. Code source Vercel **`a7cc05138dab3c38311fbbe37aff99415368659c`** (SHA certifié 12/12 CI, 991 PASS / 7 SKIP et Chrome D13 FUE 6/6).
+- **Journal d'exploitation** : `get_runtime_errors` pendant les 30 minutes examinées = **aucun cluster d'erreur remonté** ; `get_runtime_logs` fatal/error pour ce déploiement = **aucune entrée trouvée**. Cela ne remplace pas les tests d'usage Flutter client Safari/iPhone.
+- **Traçabilité** : [PR Draft #1253](https://github.com/hraaaaf/IAMINA-MVP/pull/1253) toujours OPEN/non mergée, base D12, diff 3 fichiers ; commit documentaire `59bc7a34...` intermédiaire = 6/6 workflows visuels SUCCESS, code inchangé. Le présent paragraphe crée un nouveau commit **documentation seule** ; ne pas le confondre avec le SHA déployé.
+- **Recette humaine finale** (compte test et données synthétiques, sur iPhone) : ouvrir Ajouter, cadran sur 126, appuyer `+` (127), `−` (126), basculer en mmol/L (7,0), `+` (7,1), `−` (7,0), enregistrer, vérifier reçu et une seule mesure 126 mg/dL après actualisation. Vérifier absence de préremplissage et boutons inactifs au départ, affichage FR/AR, aucun effet indésirable de navigation. En cas d'anomalie : hotfix sur branche, CI, **nouveau GO** avant autre Vercel.
+- **Hors périmètre** : bornes et seuils médicaux D32, aucune validation clinique implicite.
 
 ## Reprise
 Source de reprise `docs/assessments/2026-11-03-d22-web-dial-precision.md` ; incident UX #1252. Ne pas confondre la publication antérieure D12 avec une autorisation pour publier D22. La recette réelle iPhone est la validation humaine finale.
