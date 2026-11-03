@@ -111,7 +111,7 @@ class PatientVaultSessionController extends ChangeNotifier {
   // The opt-in CANARY guards the real plaintext source before opening it.
   // It cannot stop older cached clients and never authorizes a migration.
   factory PatientVaultSessionController.forAuth(
-    AuthService auth, {bool d18SourceBarrierCanary = false},
+    AuthService auth, {bool d18SourceBarrierCanary = false,}
   ) => PatientVaultSessionController(
     authChanges: auth,
     resolveScope: auth.resolvePatientVaultScope,
