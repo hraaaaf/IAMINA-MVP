@@ -149,6 +149,9 @@ class GlucoseHalfDialInput extends StatefulWidget {
 
 class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
   Timer? _holdTimer;
+  Timer? _holdActivationTimer;
+  int? _holdPointer;
+  bool _holdWasActivated = false;
   int? _holdDirection;
   int _completedRepeats = 0;
   int? _arcPointer;
@@ -171,6 +174,8 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
   void _stopHold() {
     _holdTimer?.cancel();
     _holdTimer = null;
+    _holdActivationTimer?.cancel();
+    _holdActivationTimer = null;
     _holdDirection = null;
     _completedRepeats = 0;
   }
@@ -194,6 +199,45 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
       _completedRepeats++;
       _scheduleHeldStep();
     });
+  }
+
+  // Safari's native long-press/tooltip gesture can consume the touch after
+  // the first change. Use raw pointer lifetime, not IconButton.onLongPress.
+  void _beginFinePointer(PointerDownEvent event, int direction) {
+    _stopHold();
+    _holdPointer = event.pointer;
+    _holdWasActivated = false;
+    if (d22FineAdjustedMgdl(widget.valueMgdl, widget.unit, direction) == null) {
+      return;
+    }
+    _holdActivationTimer = Timer(const Duration(milliseconds: 420), () {
+      if (!mounted || _holdPointer != event.pointer) return;
+      _holdWasActivated = true;
+      _startHold(direction);
+    });
+  }
+
+  void _endFinePointer(int pointer) {
+    if (_holdPointer != pointer) return;
+    _holdPointer = null;
+    _stopHold();
+  }
+
+  void _moveFinePointer(PointerMoveEvent event) {
+    if (_holdPointer != event.pointer) return;
+    if (!Rect.fromLTWH(0, 0, 48, 48)
+        .inflate(16)
+        .contains(event.localPosition)) {
+      _endFinePointer(event.pointer);
+    }
+  }
+
+  void _fineTap(int direction) {
+    if (_holdWasActivated) {
+      _holdWasActivated = false;
+      return;
+    }
+    _applyFineStep(direction);
   }
 
   void _startHold(int direction) {
@@ -499,19 +543,10 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
               children: [
                 Listener(
                   behavior: HitTestBehavior.opaque,
-                  // Let IconButton's own InkResponse win the long-press
-                  // gesture over its Tooltip; raw pointer up/cancel stops
-                  // the repeating timer without competing recognizers.
-                  onPointerUp: (_) => _stopHold(),
-                  onPointerCancel: (_) => _stopHold(),
-                  onPointerMove: (event) {
-                    if (_holdDirection == -1 &&
-                        !Rect.fromLTWH(0, 0, 48, 48)
-                            .inflate(16)
-                            .contains(event.localPosition)) {
-                      _stopHold();
-                    }
-                  },
+                  onPointerDown: (event) => _beginFinePointer(event, -1),
+                  onPointerUp: (event) => _endFinePointer(event.pointer),
+                  onPointerCancel: (event) => _endFinePointer(event.pointer),
+                  onPointerMove: _moveFinePointer,
                   child: IconButton.outlined(
                   key: const Key('glucose-fine-minus'),
                   tooltip: _copy(context,
@@ -519,12 +554,7 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                     'Decrease by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
                     'إنقاص ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
                   ),
-                  onPressed: fineMinus == null
-                      ? null
-                      : () => onValueSelected(fineMinus),
-                  onLongPress: fineMinus == null
-                      ? null
-                      : () => _startHold(-1),
+                  onPressed: fineMinus == null ? null : () => _fineTap(-1),
                   icon: const Icon(Icons.remove_rounded),
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),
@@ -560,19 +590,10 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                 const SizedBox(width: 10),
                 Listener(
                   behavior: HitTestBehavior.opaque,
-                  // Let IconButton's own InkResponse win the long-press
-                  // gesture over its Tooltip; raw pointer up/cancel stops
-                  // the repeating timer without competing recognizers.
-                  onPointerUp: (_) => _stopHold(),
-                  onPointerCancel: (_) => _stopHold(),
-                  onPointerMove: (event) {
-                    if (_holdDirection == 1 &&
-                        !Rect.fromLTWH(0, 0, 48, 48)
-                            .inflate(16)
-                            .contains(event.localPosition)) {
-                      _stopHold();
-                    }
-                  },
+                  onPointerDown: (event) => _beginFinePointer(event, 1),
+                  onPointerUp: (event) => _endFinePointer(event.pointer),
+                  onPointerCancel: (event) => _endFinePointer(event.pointer),
+                  onPointerMove: _moveFinePointer,
                   child: IconButton.outlined(
                   key: const Key('glucose-fine-plus'),
                   tooltip: _copy(context,
@@ -580,12 +601,7 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                     'Increase by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
                     'زيادة ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
                   ),
-                  onPressed: finePlus == null
-                      ? null
-                      : () => onValueSelected(finePlus),
-                  onLongPress: finePlus == null
-                      ? null
-                      : () => _startHold(1),
+                  onPressed: finePlus == null ? null : () => _fineTap(1),
                   icon: const Icon(Icons.add_rounded),
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),
