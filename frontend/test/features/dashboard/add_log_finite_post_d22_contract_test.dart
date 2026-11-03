@@ -51,11 +51,16 @@ void main() {
   });
 
   for (final locale in [const Locale('fr'), const Locale('ar')]) {
-    testWidgets(
-      'D12 ${locale.languageCode}: overflow stays disabled and unpersisted; '
-      'D22 unit roundtrip persists original value exactly once',
-      (tester) async {
-        tester.view.physicalSize = const Size(390, 844);
+    for (final viewport in const [
+      Size(390, 844),
+      Size(768, 1024),
+      Size(1280, 900),
+    ]) {
+      testWidgets(
+        'D12 ${locale.languageCode} ${viewport.width.toInt()}x'
+        '${viewport.height.toInt()}: invalid stays disabled, D22 roundtrip is exact',
+        (tester) async {
+          tester.view.physicalSize = viewport;
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
@@ -102,7 +107,8 @@ void main() {
         expect(rows.single.bloodSugar, 126.0);
         expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
         expect(tester.takeException(), isNull);
-      },
-    );
+        },
+      );
+    }
   }
 }
