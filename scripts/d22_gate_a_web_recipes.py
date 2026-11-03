@@ -14,6 +14,7 @@ import os
 import pathlib
 import re
 import socketserver
+import struct
 import threading
 
 from playwright.sync_api import sync_playwright
@@ -327,16 +328,33 @@ def main():
                                 raise AssertionError(
                                     f"F03 banner outside visible {width}x{height} screenshot: {rect}"
                                 )
-                            # These are only post-change English captures, not a
-                            # BEFORE/AFTER score or a clinical target migration.
+                            # CanvasKit scrolls within Flutter's own view. Playwright
+                            # full_page=True temporarily resizes the document to
+                            # document.body.scrollWidth. In Arabic 1280, this
+                            # falsely captures 6px of blank WHITE body outside
+                            # the 1280px Flutter view (checked in the PNG).
+                            # Capture the exact, unresized viewport instead.
+                            # Keep strict pixel dimensions AND a separate root
+                            # document overflow oracle; don't crop/clip a genuine
+                            # horizontal user-scrollable element.
                             target = OUT / f"f03-unknown-target-{width}x{height}.png"
                             page.screenshot(
-                                path=str(target), full_page=True,
+                                path=str(target), full_page=False,
                                 animations="disabled", timeout=30000,
                             )
                             data = target.read_bytes()
                             assert data.startswith(bytes.fromhex("89504e470d0a1a0a"))
                             assert len(data) > 1000
+                            pixels = struct.unpack(">II", data[16:24])
+                            assert pixels == (width, height), (
+                                f"F07 screenshot pixels {pixels} differ from {width}x{height}"
+                            )
+                            rect_after = banner.bounding_box()
+                            assert (
+                                rect_after is not None
+                                and rect_after["y"] >= 80
+                                and rect_after["y"] + rect_after["height"] < bottom_safe
+                            ), f"F03 banner lost visibility during viewport capture: {rect_after}"
                             geometry = page.evaluate("""() => {
                                 const viewport = window.innerWidth;
                                 const overflowNodes = [...document.querySelectorAll('body *')]
@@ -371,6 +389,18 @@ def main():
                                     overflowNodes,
                                 };
                             }""")
+                            assert geometry["innerWidth"] == width, (
+                                f"Unexpected browser viewport: {geometry}"
+                            )
+                            assert geometry["flutterViewWidth"] == width, (
+                                f"Flutter view exceeds or undershoots viewport: {geometry}"
+                            )
+                            assert geometry["htmlScrollWidth"] <= width, (
+                                f"Actual document horizontal overflow: {geometry}"
+                            )
+                            # Preserve bodyScrollWidth in the evidence. A body
+                            # intrinsic width differing from HTML scroll width
+                            # is a diagnostic, not permission to hide overflow.
                             evidence["captures"].append({
                                 "viewport": f"{width}x{height}",
                                 "file": target.name,
