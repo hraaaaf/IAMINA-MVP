@@ -1,6 +1,6 @@
 // D18 CI-ONLY: active XSS-canary control proving the candidate policy blocks
-// inline JavaScript and eval(), while the identical page without CSP permits
-// both. This prevents false green from a broken/no-op policy test.
+// inline JavaScript and eval() IN THE PAGE REALM, while the identical page
+// without CSP permits both. DevTools page.evaluate() is not a valid eval probe.
 'use strict';
 const {chromium,webkit}=require('playwright');
 const fs=require('node:fs');
@@ -22,22 +22,14 @@ async function probe(ctx,origin,shouldBlock,label){
     throw Error('D18_CSP_POLICY_NOT_ACTIVE');
   if(!shouldBlock && policy)
     throw Error('D18_CSP_BASELINE_NOT_UNPROTECTED');
-  const observed=await page.evaluate(()=>{
-    const inline=document.createElement('script');
-    inline.textContent='window.__d18InlineCanary=1;';
-    document.head.appendChild(inline);
-    let evalThrows=false;
-    try {
-      (0,eval)('window.__d18EvalCanary=1;');
-    } catch(error){
-      evalThrows=true;
-    }
-    return {
-      inlineExecuted:window.__d18InlineCanary===1,
-      evalExecuted:window.__d18EvalCanary===1,
-      evalThrows,
-    };
-  });
+  // Run the attack from a real same-origin external script executed in the
+  // page realm. Playwright page.evaluate() can run in a privileged debugging
+  // context and is NOT a sound probe for eval() restrictions.
+  await page.addScriptTag({url:origin+'/d18_csp_attack_canary.js'});
+  const observed=await page.evaluate(()=>
+    window.__d18ExternalCanaryResult||null);
+  if(!observed || observed.externalScriptLoaded!==true)
+    throw Error('D18_CSP_EXTERNAL_CANARY_NOT_EXECUTED');
   const pass=shouldBlock
     ? !observed.inlineExecuted && !observed.evalExecuted &&
         observed.evalThrows
@@ -45,7 +37,8 @@ async function probe(ctx,origin,shouldBlock,label){
         !observed.evalThrows;
   evidence.push({phase:label,pass,engine:name,
     inlineExecuted:observed.inlineExecuted,evalExecuted:observed.evalExecuted,
-    evalThrows:observed.evalThrows});
+    evalThrows:observed.evalThrows,
+    evalErrorName:observed.evalErrorName});
   if(!pass)throw Error('D18_CSP_XSS_CANARY_UNEXPECTED_EXECUTION');
  }finally{
   await page.close();
