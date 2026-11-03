@@ -194,7 +194,7 @@ void main() {
           find.byKey(const Key('reminder-title-input')), 'PREMIER');
       await tester.tap(find.byKey(const Key('save-reminder')));
       await tester.pumpAndSettle();
-      expect((await db.watchReminders().first).length, 1);
+      expect((await db.select(db.reminders).get()).length, 1);
 
       // Return Home: first saved row is present, and + STILL works.
       await tester.tap(find.byKey(const ValueKey('amina-page-exit')));
@@ -215,7 +215,7 @@ void main() {
           find.byKey(const Key('reminder-title-input')), 'DEUXIEME');
       await tester.tap(find.byKey(const Key('save-reminder')));
       await tester.pumpAndSettle();
-      final saved = await db.watchReminders().first;
+      final saved = await db.select(db.reminders).get();
       expect(saved.length, 2);
       expect(saved.map((r) => r.title).toSet(), {'PREMIER', 'DEUXIEME'});
 
