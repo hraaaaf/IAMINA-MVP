@@ -244,9 +244,13 @@ void main() {
       readAuthEpoch:()=>epoch);
     final adapter=D18PreCutoverCipherAdapter(
       guard:guard,
-      openVerifiedWorker:(scope,keyBytes) async {
+      openVerifiedWorker:(scope,intent,destination,keyBytes) async {
         opens++;
         expect(keyBytes.length,32);
+        expect(destination,D18PreCutoverCipherAdapter.destinationFor(scope));
+        expect(intent,anyOf(
+          D18CipherVaultOpenIntent.createFresh,
+          D18CipherVaultOpenIntent.reopenExisting));
         final executor=NativeDatabase.memory();
         if(staleDuringOpen) epoch++;
         return D18KeyedCipherWorkerLease(
