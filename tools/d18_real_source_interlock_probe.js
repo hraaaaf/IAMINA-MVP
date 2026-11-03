@@ -82,7 +82,7 @@ async function run() {
     phase('legacy_blocks_migration', await attemptMigration(migrator, a), false);
     phase('close_legacy', await close(legacy, l), true);
     phase('patient_a_blocks_migration', await attemptMigration(migrator, a), false);
-    phase('patient_b_independent', await attemptMigration(migrator, b), true);
+    phase('patient_b_blocks_migration_b', await attemptMigration(migrator, b), false);
     phase('close_patient_a', await close(pa, aa), true);
     phase('migration_a_available', await attemptMigration(migrator, a), true);
     phase('close_patient_b', await close(pb, bb), true);
@@ -109,5 +109,5 @@ async function run() {
   }
   console.log(JSON.stringify({kind: 'D18_REAL_SCRIPT_COOPERATIVE_CANARY_NOT_CUTOVER',
     browser: engineName, sha: process.env.GITHUB_SHA || null, report}));
-  if (report.length !== 14 || report.some(x => !x.pass)) process.exitCode = 1;
+  if (report.length !== 15 || report.some(x => !x.pass)) process.exitCode = 1;
 })().catch(e => {console.error('D18_CANARY_FATAL', e.name);process.exitCode = 1;});
