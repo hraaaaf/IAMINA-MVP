@@ -68,3 +68,12 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - Le test n'échoue plus sur l'ancien oracle du titre : l'échec est un **reçu FAIL émis par la fixture Dart dans la phase populated**. Il ne faut pas conclure que WebKit ne sait pas stocker les données en l'absence du stage.
 - [Run #41737035938](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41737035938), commit 538854576677fc8236926d54a969e3a3c3126b06 : nouvelle instrumentation de diagnostic, **IN_PROGRESS au contrôle**. Sur FAIL, conserver l'étape réelle (avant écrasement par 'failure'), une catégorie d'assertion allowlistée et les échantillons partiels en artefact, sans données patient ou message libre.
 - **Next exact :** lire le reçu FAIL et identifier si WebKit échoue à l'ouverture, au guard, à la persistance ou à la réconciliation ; ne corriger qu'après attribution technique et tests.
+
+
+### Verdict du comptage WebKit et test isolation locale (03/11/2026)
+
+- [Run #41738985327](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738985327) **RED**. [Artefact #13280597024](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41738985327/artifacts/13280597024) : 12/12 mesures Chromium réussies. WebKit empty passe une fois, mais la réouverture WebKit populated retourne 0 logs et 0 profils au lieu de 300 logs et 1 profil. Le guard false est cohérent avec le stockage vide. Non-persistance prouvée en environnement de CI ; backend Drift réellement choisi non déterminé.
+- Docs primaires : https://drift.simonbinder.eu/platforms/web/ et https://www.sqlite.org/wasm/doc/trunk/persistence.md. OPFS peut dépendre de COOP/COEP et SharedArrayBuffer ; cette explication pour WebKit reste hypothétique.
+- Commit test-only 586e5d0f5a6214c540621ef7e3cdd44a0feef243 : serveur loopback CI avec COOP same-origin, COEP require-corp et MIME wasm ; capture des capacités isolées, API OPFS, SAB, SharedWorker et IndexedDB. Aucun changement du runtime, de la CSP ni du déploiement Vercel.
+- [Run #41740199293](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41740199293) QUEUED au contrôle de lancement. Si GREEN, preuves de persistance des 300 logs via 24 mesures ; sinon, explorer le backend sélectionné dans la fixture, sans effacer ni masquer le guard.
+- Next exact : vérifier le nouveau run et son JSON. L'environnement Linux WebKit Playwright ne certifie pas Safari iPhone.
