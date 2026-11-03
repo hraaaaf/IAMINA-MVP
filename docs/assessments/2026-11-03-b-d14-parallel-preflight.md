@@ -49,3 +49,23 @@ Le delta AR mobile sous 9,5 est **une amélioration visuelle intentionnelle et v
 4. Si certifié, mettre à jour le closeout/roadmap et lier les artefacts, puis validation explicite avant merge/Preview Vercel/activation patient. **D18 explicitement exclue** : aucune modification ni intervention sur sa branche.
 
 **Conclusion prouvée :** le Web D14 a une preuve forte de suppression de l'egress de polices et d'isolation de comptes sur un banc synthétique ; release patient **NO-GO**.
+
+## 03/11/2026 — Closeout du correctif CanvasKit dans le préflight D14 Web (HEAD a766d0c9)
+
+**Exact HEAD de preuve :** `a766d0c9f9557c942a0785976142b10145abbdfe`, PR Draft [#1245](https://github.com/hraaaaf/IAMINA-MVP/pull/1245). Il succède au HEAD historique `96e56dd8` décrit plus haut. **18/18 workflows GitHub Actions COMPLETED/SUCCESS** (vérification réelle sur ce SHA). Aucun merge ni Vercel.
+
+- [D14 Chrome photo #41713564554](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41713564554) PASS. Le workflow isolé avait auparavant échoué en tentant d'importer CanvasKit JS depuis `www.gstatic.com` après un build omettant `--no-web-resources-cdn`. Sur le HEAD courant, `.github/workflows/d14-web-photo-consent-cert.yml` active ce flag officiel Flutter 3.41 et exige les assets `canvaskit/canvaskit.js` et `canvaskit/canvaskit.wasm` livrés par le même hôte. **Le blocage Playwright off-origin n'a pas été assoupli** et ni le bootstrap de production ni D18 n'ont été modifiés dans ce correctif.
+- [D14 réel AuthService/Django/PostgreSQL16 A→B→A #41713564623](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41713564623) PASS. [CI générale #41713564285](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41713564285) PASS. PWA offline #41713564310, persistance #41713564322 et update/recovery #41713564279 PASS.
+- **Audit indépendant de l'artefact Chrome #13269791312 :** 43 fichiers, `browser-report.json` HEAD/base exacts ; 30/30 scénarios FR/AR aboutis et six paires BEFORE/AFTER, `errors=[]`, **0 off-origin attempt**, **0 provider request**. Les six PNG BEFORE sont SHA256-identiques aux références certifiées du `main@6adf3fbe` (artifact original #13247088428). Tous les scores recalculés en indépendant à partir des pixels (seuil 16 par canal) concordent avec le rapport :
+
+| Surface | FR (/10) | AR (/10) |
+| --- | ---: | ---: |
+| Mobile 390×844 | 9,947 | 9,915 |
+| Tablette 768×1024 | 9,955 | 9,939 |
+| Desktop 1280×900 | 9,952 | 9,941 |
+
+**Évidence visuelle :** captures mobile FR/AR BEFORE et AFTER examinées côte à côte ; panneaux, libellés, contrôles, direction RTL et icônes présents. Ces chiffres sont des scores de **stabilité pixel**, pas des scores de qualité clinique ou UX.
+
+**Durabilité des preuves :** artefact original #13247088428 expire le **10/11/2026** ; copie ZIP d'origine (SHA256 `93b0eb74f6f8d5d857b8d10b240a3ea557b0a4bb5c9519b89c22661091b414b1`) et copie HEAD actuelle (SHA256 `1a96fa27805a867428b3ad032b8671968f1c669ea247ccf9f7d5db269f0618d8`) archivées durablement dans [Notion chantier B](https://app.notion.com/p/40777c66336281729c03c9bb294e71b7). **Limite restante :** le workflow GitHub Chrome continue de récupérer l'artefact original et ne sera plus rejouable tel quel après expiration ; stocker une fixture immuable exploitable directement par CI reste nécessaire avant certification durable.
+
+**Conclusion bornée :** le correctif CI CanvasKit et le préflight D14 Web synthétique **PASS sur a766d0c9**. Cela ne démontre PAS de transfert réel à un fournisseur IA ni de sûreté clinique du produit complet. Consentement média effectif côté serveur, revues qualifiées privacy/clinique, dépendances de coffre Web et arbitrage humain de release/merge demeurent **NO-GO patient**. D18 non modifiée.
