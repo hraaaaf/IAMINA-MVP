@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_my_reminders_card.dart';
+import 'package:amina/features/reminders/reminders_screen.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -137,6 +138,94 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('d3-reminders-see-all')));
       await tester.pumpAndSettle();
       expect(find.text('REMINDERS_DESTINATION'), findsOneWidget);
+    });
+  }
+
+  for (final locale in const [Locale('fr'), Locale('ar'), Locale('en')]) {
+    testWidgets('D3 second reminder: the + stays tappable after first save ' +
+        locale.languageCode, (tester) async {
+      // Matches iPhone width; navigation uses the actual RemindersScreen and
+      // persists BOTH records in the same local Drift vault.
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final router = GoRouter(
+        initialLocation: '/dashboard',
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) =>
+                const Scaffold(body: DashboardMyRemindersCard()),
+          ),
+          GoRoute(
+            path: '/reminders',
+            builder: (context, state) => const RemindersScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        Provider<AppDatabase>.value(
+          value: db,
+          child: MaterialApp.router(
+            locale: locale,
+            supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('d3-reminders-add-another')),
+          findsOneWidget);
+
+      // First reminder created through the empty-state action.
+      await tester.tap(find.byKey(const ValueKey('d3-reminders-create')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('reminder-title-input')), 'PREMIER');
+      await tester.tap(find.byKey(const Key('save-reminder')));
+      await tester.pumpAndSettle();
+      expect((await db.watchReminders().first).length, 1);
+
+      // Return Home: first saved row is present, and + STILL works.
+      await tester.tap(find.byKey(const ValueKey('amina-page-exit')));
+      await tester.pumpAndSettle();
+      expect(find.text('PREMIER'), findsOneWidget);
+      final plus = find.byKey(const ValueKey('d3-reminders-add-another'));
+      expect(plus, findsOneWidget);
+      final btn = tester.widget<IconButton>(plus);
+      expect(btn.onPressed, isNotNull);
+      expect(btn.tooltip, isNotEmpty);
+
+      await tester.tap(plus);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('reminder-title-input')), findsOneWidget);
+
+      // Second actual save must not overwrite the first.
+      await tester.enterText(
+          find.byKey(const Key('reminder-title-input')), 'DEUXIEME');
+      await tester.tap(find.byKey(const Key('save-reminder')));
+      await tester.pumpAndSettle();
+      final saved = await db.watchReminders().first;
+      expect(saved.length, 2);
+      expect(saved.map((r) => r.title).toSet(), {'PREMIER', 'DEUXIEME'});
+
+      await tester.tap(find.byKey(const ValueKey('amina-page-exit')));
+      await tester.pumpAndSettle();
+      expect(find.text('PREMIER'), findsOneWidget);
+      expect(find.text('DEUXIEME'), findsOneWidget);
+      expect(find.byKey(const ValueKey('d3-reminders-add-another')),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   }
 
