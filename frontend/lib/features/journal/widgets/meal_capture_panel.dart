@@ -45,6 +45,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   bool _browseAll = false;
   int _browseLimit = _pageSize;
   bool _recognizing = false;
+  int _photoRequestGeneration = 0;
   List<MealFoodItem> _photoCandidates = const <MealFoodItem>[];
   final Set<String> _proposalSelection = <String>{};
   Set<String> _favoriteIds = <String>{};
@@ -63,6 +64,17 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _historyFuture ??= context.read<AppDatabase>().getRecentLogs(limit: 100);
+  }
+
+  @override
+  void didUpdateWidget(covariant MealCapturePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.canUsePhotoRecognition && !widget.canUsePhotoRecognition) {
+      // Never render proposals obtained under a revoked AI permission.
+      _photoRequestGeneration++;
+      _photoCandidates = const <MealFoodItem>[];
+      _proposalSelection.clear();
+    }
   }
 
   @override
@@ -132,10 +144,12 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       _message(l10n.journalMealPhotoConsent);
       return;
     }
+    final requestGeneration = ++_photoRequestGeneration;
     setState(() => _recognizing = true);
     try {
       final result = await (widget.photoRecognition ?? _pickAndRecognize)();
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _photoRequestGeneration ||
+          !widget.canUsePhotoRecognition) return;
       if (result == null || result.fallback || result.foods.isEmpty) {
         setState(() {
           _photoCandidates = const <MealFoodItem>[];
