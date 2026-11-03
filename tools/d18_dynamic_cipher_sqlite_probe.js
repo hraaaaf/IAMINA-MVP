@@ -41,7 +41,7 @@ async function verify(ctx,name,key) {
       await page.waitForFunction(() =>
         document.title.startsWith('D18_DYNAMIC_SQL_PASS:') ||
         document.title.startsWith('D18_DYNAMIC_SQL_FAIL:'),
-        null,{timeout:name.startsWith('guarded_')?120000:45000});
+        null,{timeout:(name.startsWith('guarded_')||name.startsWith('switch_'))?120000:45000});
     } catch (_) {
       const state = await page.evaluate(() => ({
         title:document.title,
@@ -181,6 +181,7 @@ async function verifyActualWorkerLock(ctx) {
     await verify(ctx,'candidate_missing',secrets.a);
     await verify(ctx,'candidate_create',secrets.a);
     await verify(ctx,'candidate_create_exists',secrets.a);
+    await verify(ctx,'switch_enroll',secrets.a);
     // Physical existence is checked under the worker's real Web Lock.
     // No sqlite3mc connection must be opened for a rejected intent.
     await verify(ctx,'intent_reopen_missing',secrets.a);
@@ -201,6 +202,7 @@ async function verifyActualWorkerLock(ctx) {
     await verify(ctx,'intent_reopen',secrets.a);
     await verify(ctx,'candidate_wrong_key',secrets.wrong);
     await verify(ctx,'candidate_reopen',secrets.a);
+    await verify(ctx,'switch_reopen_b',secrets.a);
     await verify(ctx,'candidate_physical_bytes',secrets.a);
     await verify(ctx,'guarded_wrong_passphrase',secrets.wrong);
     await verify(ctx,'guarded_reopen',secrets.a);
@@ -210,6 +212,8 @@ async function verifyActualWorkerLock(ctx) {
       locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await verify(ctx,'read',secrets.a);
+    await verify(ctx,'switch_reopen_a',secrets.a);
+    await verify(ctx,'switch_epoch_race',secrets.a);
     await verifyActualWorkerLock(ctx);
 
   }catch(e){
@@ -225,13 +229,14 @@ async function verifyActualWorkerLock(ctx) {
   },null,2));
   console.log(JSON.stringify(results));
   const expected=['guarded_open','candidate_missing','candidate_create',
-    'candidate_create_exists',
+    'candidate_create_exists','switch_enroll',
     'intent_reopen_missing','intent_create','intent_create_exists',
     'intent_wrong_key', phases[0][0], 'intent_reopen',
-    'candidate_wrong_key','candidate_reopen',
+    'candidate_wrong_key','candidate_reopen','switch_reopen_b',
     'candidate_physical_bytes',
     'guarded_wrong_passphrase','guarded_reopen',
     ...phases.slice(1).map(p=>p[0]),
+    'switch_reopen_a','switch_epoch_race',
     'owner_a_ready','create_b','owner_b_ready',
     'a_second_worker_denied','b_second_worker_denied',
     'a_terminate_releases','owner_a_reopened_b_still_held',
