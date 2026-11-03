@@ -31,6 +31,9 @@ on:
       - 'frontend/d18_crypto/worker_lock_gate.js'
       - 'tools/fixtures/d18_session_handshake_probe_worker.js'
       - 'frontend/lib/data/drift/**'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/test/services/d18_async_patient_vault_lease_test.dart'
+      - 'frontend/test/services/patient_vault_session_controller_test.dart'
       - 'frontend/lib/main.dart'
   workflow_dispatch:
 
@@ -57,6 +60,11 @@ jobs:
       - name: Resolve locked Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Verify D18 optional async lease integration into real patient controller (NOT ENABLED)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos             lib/services/patient_vault_session_controller.dart             test/services/d18_async_patient_vault_lease_test.dart             test/services/patient_vault_session_controller_test.dart
+          flutter test test/services/patient_vault_session_controller_test.dart test/services/d18_async_patient_vault_lease_test.dart
       - name: Verify D18 unpublished async session lifecycle (pre-cutover only)
         working-directory: frontend
         run: |
