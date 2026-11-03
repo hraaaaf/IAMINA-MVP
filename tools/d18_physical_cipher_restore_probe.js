@@ -11,6 +11,7 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'d18-cipher-full-restore-'));
 const archivePath=path.join(root,'independent-sealed-vault.json');
 const origin='http://127.0.0.1:7398/';
 const results=[];
+const enforceCsp=process.env.D18_CSP_ASSERT==='1';
 async function createProfile(name){
  return browserEngine.launchPersistentContext(path.join(root,name),{
    headless:true,locale:'fr-FR',
@@ -23,6 +24,16 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
  try{
   const errors=[];
   page.on('pageerror',e=>errors.push(e.name));
+  if(enforceCsp){
+   // A violation is a FAIL, never a harmless warning. Collect only directive
+   // names, no potentially sensitive blocked URLs or source content.
+   await page.addInitScript(()=>{
+     window.__d18CspViolations=[];
+     document.addEventListener('securitypolicyviolation',event=>{
+       window.__d18CspViolations.push(event.effectiveDirective);
+     },true);
+   });
+  }
   if(importArchive){
    const sealed=fs.readFileSync(archivePath,'utf8');
    if(!sealed.startsWith('{"format":"iamina-d18-whole-ciphertext-backup"'))
@@ -32,8 +43,19 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
        {value,configurable:false,writable:false});
    },sealed);
   }
-  await page.goto(origin+'?phase='+name,{
+  const navigation=await page.goto(origin+'?phase='+name,{
    waitUntil:'domcontentloaded',timeout:45000});
+  if(enforceCsp){
+   const csp=navigation.headers()['content-security-policy']||'';
+   const scriptRule=csp.split(';').find(s=>s.trim().startsWith('script-src '))||'';
+   if(!csp.includes("default-src 'none'")||
+      !csp.includes("object-src 'none'")||
+      !csp.includes("frame-ancestors 'none'")||
+      !scriptRule.includes("'wasm-unsafe-eval'")||
+      /unsafe-eval|unsafe-inline/.test(scriptRule)){
+     throw Error('D18_CSP_ENFORCEMENT_MISSING_OR_WEAK');
+   }
+  }
   await page.waitForFunction(()=>
     document.title.startsWith('D18_FULL_RESTORE_PASS:')||
     document.title.startsWith('D18_FULL_RESTORE_FAIL:'),
@@ -43,9 +65,13 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
     stage:document.documentElement.dataset.d18RestoreStage||null,
     error:document.documentElement.dataset.d18RestoreError||null,
   }));
-  const pass=r.title==='D18_FULL_RESTORE_PASS:'+name;
+  const violations=enforceCsp?
+    await page.evaluate(()=>window.__d18CspViolations||[]):[];
+  const pass=r.title==='D18_FULL_RESTORE_PASS:'+name &&
+    (!enforceCsp||violations.length===0);
   results.push({phase:name,pass,...(pass?{}:{
-    stage:r.stage,error:r.error,pageErrors:errors.slice(0,5)})});
+    stage:r.stage,error:r.error,pageErrors:errors.slice(0,5),
+    violatedDirectives:violations.slice(0,12)})});
   if(!pass)throw Error('D18_FULL_RESTORE_PHASE_FAILED_'+name);
   if(exportArchive){
    const sealed=await page.evaluate(()=>window.__D18_CI_EXPORTED_ARCHIVE);
@@ -105,6 +131,7 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
   JSON.stringify({sha:process.env.GITHUB_SHA||null,
    kind:'synthetic-sqlite3mc-physical-restore-fresh-'+engineName,
    browserEngine:engineName,viewport:{width:390,height:844},
+   candidateCspEnforced:enforceCsp,
    phases:results},null,2));
  console.log(JSON.stringify(results));
  const expected=['export','bad_archive','restore_crash',
