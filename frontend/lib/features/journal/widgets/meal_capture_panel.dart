@@ -15,12 +15,16 @@ import 'food_category_rail.dart';
 import 'food_pictogram.dart';
 
 typedef MealPhotoRecognition = Future<MealAnalysisResult?> Function();
+// Test-only grant-state probe for synthetic recognition. Production recognition
+// always rechecks the owner-scoped media grant through its injected ApiClient.
+typedef MealPhotoMediaConsentProbe = Future<bool> Function();
 
 class MealCapturePanel extends StatefulWidget {
   final List<String> selectedIds;
   final ValueChanged<List<String>> onChanged;
   final bool canUsePhotoRecognition;
   final MealPhotoRecognition? photoRecognition;
+  final MealPhotoMediaConsentProbe? photoMediaConsentProbe;
   final MealFoodFavoritesRepository? favoritesRepository;
 
   const MealCapturePanel({
@@ -29,6 +33,7 @@ class MealCapturePanel extends StatefulWidget {
     required this.onChanged,
     required this.canUsePhotoRecognition,
     this.photoRecognition,
+    this.photoMediaConsentProbe,
     this.favoritesRepository,
   });
 
@@ -169,6 +174,25 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     }
   }
 
+  // Fail closed if the media grant is revoked while a photo request is pending
+  // or after a proposal was shown but before the patient confirms it.
+  // The synthetic callback is only for test/audit fixtures. Real photo access
+  // never trusts a caller-supplied permission boolean.
+  Future<bool> _photoMediaConsentStillValid() async {
+    try {
+      if (widget.photoRecognition != null) {
+        final fixtureProbe = widget.photoMediaConsentProbe;
+        return fixtureProbe == null || await fixtureProbe();
+      }
+      final apiClient = context.read<ApiClient?>();
+      return apiClient != null &&
+          apiClient.canSyncClinicalData &&
+          await apiClient.hasActiveMealPhotoMediaConsent();
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _recognizePhoto(AppLocalizations l10n) async {
     if (!widget.canUsePhotoRecognition) {
       _message(l10n.journalMealPhotoConsent);
@@ -181,6 +205,19 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       final result = await (injected != null
           ? injected()
           : _pickAndRecognize(requestGeneration));
+      if (!mounted || requestGeneration != _photoRequestGeneration ||
+          !widget.canUsePhotoRecognition) return;
+      // A media-only revocation does not necessarily flip the global AI
+      // consent widget flag. Check again after the pending image result.
+      if (result != null && !await _photoMediaConsentStillValid()) {
+        if (mounted && requestGeneration == _photoRequestGeneration) {
+          setState(() {
+            _photoCandidates = const <MealFoodItem>[];
+            _proposalSelection.clear();
+          });
+        }
+        return;
+      }
       if (!mounted || requestGeneration != _photoRequestGeneration ||
           !widget.canUsePhotoRecognition) return;
       if (result == null || result.fallback || result.foods.isEmpty) {
@@ -204,8 +241,23 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     }
   }
 
-  void _confirmProposal() {
-    if (!widget.canUsePhotoRecognition || _proposalSelection.isEmpty) return;
+  Future<void> _confirmProposal() async {
+    if (!widget.canUsePhotoRecognition || _proposalSelection.isEmpty ||
+        _photoCandidates.isEmpty) return;
+    final requestGeneration = _photoRequestGeneration;
+    // An already-visible proposal must never be accepted after a media-only
+    // revocation, even if global consent and the widget remain enabled.
+    if (!await _photoMediaConsentStillValid()) {
+      if (mounted && requestGeneration == _photoRequestGeneration) {
+        setState(() {
+          _photoCandidates = const <MealFoodItem>[];
+          _proposalSelection.clear();
+        });
+      }
+      return;
+    }
+    if (!mounted || requestGeneration != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition || _photoCandidates.isEmpty) return;
     final next = <String>{...widget.selectedIds, ..._proposalSelection};
     widget.onChanged(next.toList(growable: false));
     setState(() {

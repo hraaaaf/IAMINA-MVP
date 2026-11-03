@@ -24,7 +24,7 @@ void main() {
   late AppDatabase db;
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
   tearDown(() async => db.close());
-  Widget harness({Locale locale = const Locale('fr'),required List<String> selected,required ValueChanged<List<String>> onChanged,MealPhotoRecognition? photoRecognition,bool canUsePhoto = true,MealFoodFavoritesRepository? favoritesRepository,}) => MaterialApp(locale:locale,localizationsDelegates:AppLocalizations.localizationsDelegates,supportedLocales:AppLocalizations.supportedLocales,home:Scaffold(body:Provider<AppDatabase>.value(value:db,child:SingleChildScrollView(child:MealCapturePanel(selectedIds:selected,onChanged:onChanged,canUsePhotoRecognition:canUsePhoto,photoRecognition:photoRecognition,favoritesRepository:favoritesRepository)))));
+  Widget harness({Locale locale = const Locale('fr'),required List<String> selected,required ValueChanged<List<String>> onChanged,MealPhotoRecognition? photoRecognition,MealPhotoMediaConsentProbe? photoMediaConsentProbe,bool canUsePhoto = true,MealFoodFavoritesRepository? favoritesRepository,}) => MaterialApp(locale:locale,localizationsDelegates:AppLocalizations.localizationsDelegates,supportedLocales:AppLocalizations.supportedLocales,home:Scaffold(body:Provider<AppDatabase>.value(value:db,child:SingleChildScrollView(child:MealCapturePanel(selectedIds:selected,onChanged:onChanged,canUsePhotoRecognition:canUsePhoto,photoRecognition:photoRecognition,photoMediaConsentProbe:photoMediaConsentProbe,favoritesRepository:favoritesRepository)))));
 
   test('catalog v3 is broad, unique and Morocco + GCC aware', () {
     expect(mealFoodCatalogVersion, '3.19.0-palestine-core-b33');
@@ -131,6 +131,60 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
     expect(selected, isEmpty);
+  });
+
+  testWidgets('D14 media-only revoke during pending photo rejects late response',
+      (tester) async {
+    final pending = Completer<MealAnalysisResult?>();
+    var mediaGrantActive = true;
+    var selected = <String>[];
+    await tester.pumpWidget(harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      // Global AI consent stays true throughout; only the media grant changes.
+      canUsePhoto: true,
+      photoRecognition: () => pending.future,
+      photoMediaConsentProbe: () async => mediaGrantActive,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    ));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    mediaGrantActive = false;
+    pending.complete(const MealAnalysisResult(
+      foods: <String>['œuf'], confidence: 'high', fallback: false));
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+  });
+
+  testWidgets('D14 media-only revoke after proposal refuses human confirmation',
+      (tester) async {
+    var mediaGrantActive = true;
+    var selected = <String>[];
+    await tester.pumpWidget(harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: true,
+      photoRecognition: () async => const MealAnalysisResult(
+        foods: <String>['œuf'], confidence: 'high', fallback: false),
+      photoMediaConsentProbe: () async => mediaGrantActive,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    ));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('meal-photo-candidate-egg')));
+    await tester.pump();
+    expect(selected, isEmpty);
+    mediaGrantActive = false;
+    await tester.tap(find.byKey(const Key('meal-photo-confirm')));
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
   });
 
   testWidgets('D14 reconsent starts clean and stale request does not end new busy state',
