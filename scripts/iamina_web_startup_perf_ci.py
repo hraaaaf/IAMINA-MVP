@@ -21,10 +21,6 @@ TARGETS = {
         "https://iamina-review.vercel.app/",
         "current public frontend alias; latest deployed SHA must be checked independently",
     ),
-    "frontend_preview": (
-        "https://iamina-review-lbucreox3-achraf-benmoussa-s-projects.vercel.app/",
-        "Vercel preview (51996d18); SSO protection may block unauthenticated CI",
-    ),
     "frontend_prior_release": (
         "https://iamina-review-101uvcmqh-achraf-benmoussa-s-projects.vercel.app/",
         "older frontend production deployment (9570e4c); reference only",
@@ -224,7 +220,7 @@ def main():
         try:
             for label,(url,description) in TARGETS.items():
                 for i in range(args.runs):
-                    context=browser.new_context(service_workers="allow", viewport={"width":390,"height":844})
+                    context=browser.new_context(service_workers="allow", locale="en-US", viewport={"width":390,"height":844})
                     context.add_init_script(script=INSTRUMENT)
                     try:
                         page=context.new_page()
@@ -269,7 +265,8 @@ def main():
         "timestamp_utc":datetime.now(timezone.utc).isoformat(),
         "runner":os.getenv("RUNNER_OS","unknown"),
         "github_sha":os.getenv("GITHUB_SHA","unknown"),
-        "method":"headless Chromium, 390x844, isolated cold + same-context warm; unauthenticated",
+        "method":"headless Chromium, 390x844, explicit browser locale en-US, isolated cold + same-context warm; unauthenticated",
+        "browser_locale":"en-US",
         "limitations":[
             "Protected previews do not provide valid Flutter measurements.",
             "Different frontend SHAs and build envs prevent causal attribution.",
@@ -307,6 +304,11 @@ def main():
         with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:
             f.write(report)
     print(report)
+    # Green must mean public Flutter actually rendered, not just successful probes.
+    failures = [row for row in summary if row["flutter_rendered_pages"] < 2]
+    if failures:
+        print("FAIL: at least 2/3 frames required for each public frontend and phase.", flush=True)
+        return 2
     return 0
 
 if __name__=="__main__":

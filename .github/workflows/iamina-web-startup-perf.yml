@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   compare-flutter-web:
-    name: Chromium Intl Locale failure matrix
+    name: Chromium cold/warm with valid BCP47 locale
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -42,16 +42,17 @@ jobs:
           python -m py_compile scripts/iamina_web_startup_perf_ci.py
           python -m py_compile scripts/iamina_web_locale_matrix_ci.py
 
-      - name: Diagnose locale failures on both public frontends
-        run: python scripts/iamina_web_locale_matrix_ci.py
+      - name: Benchmark public Flutter first frame (explicit en-US; 3 cold/warm pairs)
+        run: |
+          python scripts/iamina_web_startup_perf_ci.py --runs 3 --observe-ms 9000 --output perf_web_results.json
 
-      - name: Upload anonymous locale diagnosis
+      - name: Upload validated anonymous performance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-perf-web-locale-anonymous-${{ github.run_id }}
+          name: iamina-perf-web-valid-locale-${{ github.run_id }}
           path: |
-            perf_web_locale_matrix.json
-            perf_web_locale_matrix.md
+            perf_web_results.json
+            perf_web_summary.md
           if-no-files-found: warn
           retention-days: 7
