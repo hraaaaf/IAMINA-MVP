@@ -5,7 +5,9 @@ const fs = require('node:fs'), os = require('node:os'), path = require('node:pat
 const userData = fs.mkdtempSync(path.join(os.tmpdir(),'d18-mc-'));
 const required=['stock_reject','write','wrong_key','read','isolation_b',
   'raw_bytes','rotate','old_key_reject','read_rotated',
-  'raw_bytes_after_rotate','migration_seed_plain','migration_copy_cipher',
+  'raw_bytes_after_rotate','migration_seed_plain',
+  'migration_source_before_shutdown','migration_source_after_restart',
+  'migration_copy_cipher',
   'migration_wrong_key','migration_verify_cipher','migration_check_source',
   'migration_raw_cipher'];
 const steps=[];
@@ -39,15 +41,16 @@ async function phase(ctx,name){
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(userData,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
-    for(const p of required.slice(7,11))await phase(ctx,p);
+    for(const p of required.slice(7,12))await phase(ctx,p);
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(userData,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
+    await phase(ctx,'migration_source_after_restart');
     await phase(ctx,'migration_copy_cipher');
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(userData,
       {headless:true,locale:'fr-FR',args:['--no-sandbox','--disable-dev-shm-usage']});
-    for(const p of required.slice(12))await phase(ctx,p);
+    for(const p of required.slice(14))await phase(ctx,p);
   }catch(e){steps.push({phase:'harness',pass:false,error:String(e).slice(0,350)})}
   finally{if(ctx)await ctx.close();fs.rmSync(userData,{recursive:true,force:true})}
   fs.mkdirSync('d18-cipher-poc-proof',{recursive:true});

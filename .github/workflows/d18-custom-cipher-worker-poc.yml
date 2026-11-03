@@ -143,6 +143,27 @@ jobs:
           # Flutter may retain unrelated files between successive builds.
           rm frontend/build/web/d18_dynamic_worker_lock_gate.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
+      - name: Analyze and build standalone D18 step 3 actual-worker migration
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/d18_candidate_full_cipher_migration_probe_main.dart
+          rm -f build/web/d18_dynamic_worker_lock_gate.js
+          flutter build web --release --no-web-resources-cdn -t lib/d18_candidate_full_cipher_migration_probe_main.dart
+      - name: Real Chromium full-schema migration into D18 unpublished worker
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_candidate_cipher_migration_probe.js
+          if test -e frontend/build/web/d18_unpublished_worker_lock_gate.js; then
+            echo 'D18 unpublished gate leaked into ordinary Flutter build'; exit 1
+          fi
+          cp frontend/d18_crypto/worker_lock_gate.js frontend/build/web/d18_unpublished_worker_lock_gate.js
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-candidate-migration-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_candidate_cipher_migration_probe.js
+          rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend
         run: |
@@ -211,27 +232,6 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
           node tools/d18_full_cipher_migration_probe.js
-      - name: Analyze and build standalone D18 step 3 actual-worker migration
-        working-directory: frontend
-        run: |
-          flutter analyze --no-fatal-infos lib/d18_candidate_full_cipher_migration_probe_main.dart
-          rm -f build/web/d18_dynamic_worker_lock_gate.js
-          flutter build web --release --no-web-resources-cdn -t lib/d18_candidate_full_cipher_migration_probe_main.dart
-      - name: Real Chromium full-schema migration into D18 unpublished worker
-        env:
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          node --check tools/d18_candidate_cipher_migration_probe.js
-          if test -e frontend/build/web/d18_unpublished_worker_lock_gate.js; then
-            echo 'D18 unpublished gate leaked into ordinary Flutter build'; exit 1
-          fi
-          cp frontend/d18_crypto/worker_lock_gate.js frontend/build/web/d18_unpublished_worker_lock_gate.js
-          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-candidate-migration-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
-          node tools/d18_candidate_cipher_migration_probe.js
-          rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
