@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/d18-csp-security-poc.yml'
       - 'tools/d18_csp_preview_server.py'
+      - 'tools/d18_csp_negative_probe.js'
       - 'frontend/lib/d18_full_cipher_restore_probe_main.dart'
       - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
       - 'tools/d18_physical_cipher_restore_probe.js'
@@ -91,6 +92,7 @@ jobs:
         run: |
           python3 -m py_compile tools/d18_csp_preview_server.py
           node --check tools/d18_physical_cipher_restore_probe.js
+          node --check tools/d18_csp_negative_probe.js
           if test -e frontend/build/web/d18_unpublished_worker_lock_gate.js; then
             echo 'D18 lock test helper leaked into normal Web build'
             exit 1
@@ -99,15 +101,23 @@ jobs:
           python3 tools/d18_csp_preview_server.py \
             --directory frontend/build/web --port 7398 > /tmp/d18-csp-http.log 2>&1 &
           SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          python3 -m http.server 7399 --bind 127.0.0.1 \
+            --directory frontend/build/web > /tmp/d18-unprotected-control-http.log 2>&1 &
+          CONTROL_PID=$!
+          trap 'kill "$SERVER_PID" "$CONTROL_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused \
             --silent http://127.0.0.1:7398/ > /dev/null
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused \
+            --silent http://127.0.0.1:7399/ > /dev/null
           node tools/d18_physical_cipher_restore_probe.js
+          node tools/d18_csp_negative_probe.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: d18-csp-${{ matrix.browser }}-restore-${{ github.event.pull_request.head.sha || github.sha }}
-          path: d18-physical-restore-proof/report.json
+          path: |
+            d18-physical-restore-proof/report.json
+            d18-csp-negative-proof/report.json
           if-no-files-found: warn
           retention-days: 14
