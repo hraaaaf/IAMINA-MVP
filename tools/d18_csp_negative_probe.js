@@ -14,7 +14,7 @@ const evidence=[];
 async function probe(ctx,origin,shouldBlock,label){
  const page=await ctx.newPage();
  try {
-  const response=await page.goto(origin+'/?phase=bad_archive',{
+  const response=await page.goto(origin+'/d18_csp_canary.html',{
     waitUntil:'domcontentloaded',timeout:45000});
   if(!response||!response.ok())throw Error('D18_CSP_PROBE_NO_DOCUMENT');
   const policy=response.headers()['content-security-policy']||'';
@@ -22,10 +22,9 @@ async function probe(ctx,origin,shouldBlock,label){
     throw Error('D18_CSP_POLICY_NOT_ACTIVE');
   if(!shouldBlock && policy)
     throw Error('D18_CSP_BASELINE_NOT_UNPROTECTED');
-  // Run the attack from a real same-origin external script executed in the
-  // page realm. Playwright page.evaluate() can run in a privileged debugging
-  // context and is NOT a sound probe for eval() restrictions.
-  await page.addScriptTag({url:origin+'/d18_csp_attack_canary.js'});
+  // Load the external canary through a real static HTML script tag. Neither
+  // page.evaluate() nor page.addScriptTag() may inject attack code, as
+  // automation/debugger script injection can bypass or misreport CSP.
   const observed=await page.evaluate(()=>
     window.__d18ExternalCanaryResult||null);
   if(!observed || observed.externalScriptLoaded!==true)
@@ -36,7 +35,9 @@ async function probe(ctx,origin,shouldBlock,label){
     : observed.inlineExecuted && observed.evalExecuted &&
         !observed.evalThrows;
   evidence.push({phase:label,pass,engine:name,
-    inlineExecuted:observed.inlineExecuted,evalExecuted:observed.evalExecuted,
+    inlineExecuted:observed.inlineExecuted,
+    inlineInsertionThrows:observed.inlineInsertionThrows,
+    evalExecuted:observed.evalExecuted,
     evalThrows:observed.evalThrows,
     evalErrorName:observed.evalErrorName});
   if(!pass)throw Error('D18_CSP_XSS_CANARY_UNEXPECTED_EXECUTION');

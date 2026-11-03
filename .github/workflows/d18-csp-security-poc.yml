@@ -7,6 +7,7 @@ on:
       - 'tools/d18_csp_preview_server.py'
       - 'tools/d18_csp_negative_probe.js'
       - 'tools/fixtures/d18_csp_attack_canary.js'
+      - 'tools/fixtures/d18_csp_canary.html'
       - 'frontend/lib/d18_full_cipher_restore_probe_main.dart'
       - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
       - 'tools/d18_physical_cipher_restore_probe.js'
@@ -95,10 +96,12 @@ jobs:
           node --check tools/d18_physical_cipher_restore_probe.js
           node --check tools/d18_csp_negative_probe.js
           node --check tools/fixtures/d18_csp_attack_canary.js
-          if test -e frontend/build/web/d18_csp_attack_canary.js; then
+          if test -e frontend/build/web/d18_csp_attack_canary.js ||
+             test -e frontend/build/web/d18_csp_canary.html; then
             echo 'D18 attack canary leaked into normal Flutter build'; exit 1
           fi
           cp tools/fixtures/d18_csp_attack_canary.js frontend/build/web/d18_csp_attack_canary.js
+          cp tools/fixtures/d18_csp_canary.html frontend/build/web/d18_csp_canary.html
           if test -e frontend/build/web/d18_unpublished_worker_lock_gate.js; then
             echo 'D18 lock test helper leaked into normal Web build'
             exit 1
@@ -119,6 +122,7 @@ jobs:
           node tools/d18_csp_negative_probe.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
           rm frontend/build/web/d18_csp_attack_canary.js
+          rm frontend/build/web/d18_csp_canary.html
       - uses: actions/upload-artifact@v4
         if: always()
         with:

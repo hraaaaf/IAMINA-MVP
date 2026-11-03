@@ -4,7 +4,15 @@
   'use strict';
   const inline = document.createElement('script');
   inline.textContent = 'window.__d18InlineCanary = true;';
-  document.head.appendChild(inline);
+  // Some engines may surface CSP blocking synchronously. The eval probe
+  // must still run, so a blocked inline append cannot abort the external
+  // script. No exception is swallowed by the security assertions below.
+  let inlineInsertionThrows = false;
+  try {
+    document.head.appendChild(inline);
+  } catch (_) {
+    inlineInsertionThrows = true;
+  }
   let evalThrows = false;
   let evalErrorName = null;
   try {
@@ -16,6 +24,7 @@
   window.__d18ExternalCanaryResult = Object.freeze({
     externalScriptLoaded: true,
     inlineExecuted: window.__d18InlineCanary === true,
+    inlineInsertionThrows,
     evalExecuted: window.__d18EvalCanary === true,
     evalThrows,
     evalErrorName,
