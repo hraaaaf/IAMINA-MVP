@@ -33,6 +33,15 @@ final class NoMigrations implements QueryExecutorUser {
   Future<void> beforeOpen(QueryExecutor e,OpeningDetails d) async {}
 }
 Future<QueryExecutor> openSource() async {
+  // This is a REOPEN-only synthetic migration. Never silently create an
+  // empty plaintext source on failed persistence across page lifetimes.
+  stage('source_probe_before_reopen');
+  final existing = await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('sqlite3.wasm'),
+    driftWorkerUri:Uri.parse('drift_worker.js'),
+    databaseName:srcName);
+  check(existing.existingDatabases.any((entry)=>entry.$2==srcName),
+    'D18_SOURCE_MISSING_BEFORE_REOPEN');
   stage('source_open_wasm_indexeddb');
   final opened=await WasmDatabase.open(
     databaseName:srcName,sqlite3Uri:Uri.parse('sqlite3.wasm'),
@@ -135,6 +144,15 @@ Future<void> seed() async {
     check((await db.customSelect('PRAGMA foreign_key_check').get()).isEmpty,
       'BAD_SEED_FOREIGN_KEY');
   }finally{await db.close();}
+  // Require seed durability after closing its connection. A subsequent
+  // migration page must not generate a fresh empty SQLite source.
+  stage('seed_probe_persisted_source');
+  final persisted=await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('sqlite3.wasm'),
+    driftWorkerUri:Uri.parse('drift_worker.js'),
+    databaseName:srcName);
+  check(persisted.existingDatabases.any((entry)=>entry.$2==srcName),
+    'D18_SEED_NOT_PERSISTED');
 }
 final class Snap {
   final List<Map<String,Object?>> schema,seq;
@@ -357,11 +375,24 @@ Future<void> migrateWithSourceGateHeld() async {
     await integrity(src);
     stage('preflight_snapshot_under_lock');
     original=await snapshot(src);
-    stage('preflight_check_source_schema');
-    check(original.schema.any((x)=>x['name']=='d18_child_trigger')&&
-      original.schema.any((x)=>x['name']=='d18_parent_view')&&
-      original.schema.any((x)=>x['name']=='d18_parent_label_idx'),
-      'MISSING_DYNAMIC_SCHEMA');
+    // Fail closed on *which* synthetic schema invariant is missing.
+    // Avoid logging any SQL, patient-like values, or full schema contents.
+    stage('preflight_check_source_version');
+    check(original.version==12, 'D18_SOURCE_VERSION_NOT_12');
+    stage('preflight_check_source_table');
+    check(original.schema.any((x)=>x['name']=='d18_parent')&&
+      original.schema.any((x)=>x['name']=='d18_child'),
+      'D18_SOURCE_SYNTHETIC_TABLES_MISSING');
+    stage('preflight_check_source_index');
+    check(original.schema.any((x)=>x['name']=='d18_parent_label_idx'),
+      'D18_SOURCE_SYNTHETIC_INDEX_MISSING');
+    stage('preflight_check_source_view');
+    check(original.schema.any((x)=>x['name']=='d18_parent_view'),
+      'D18_SOURCE_SYNTHETIC_VIEW_MISSING');
+    stage('preflight_check_source_trigger');
+    check(original.schema.any((x)=>x['name']=='d18_child_trigger'),
+      'D18_SOURCE_SYNTHETIC_TRIGGER_MISSING');
+    stage('preflight_schema_validated');
     stage('ensure_new_destination');
     final probe=await WasmDatabase.probe(
       sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
@@ -469,7 +500,21 @@ Future<void> main() async {
     }
     html.document.title='D18_CANDIDATE_MIGRATION_PASS:'+phase;
   }catch(e){
-    html.document.documentElement?.dataset['d18FullError']=e.runtimeType.toString();
+    // A safe whitelist of synthetic failure codes, never raw exception text:
+    // SQL errors can expose user-supplied content in future implementations.
+    const safeCodes=<String>[
+      'D18_SOURCE_MISSING_BEFORE_REOPEN',
+      'D18_SEED_NOT_PERSISTED',
+      'D18_SOURCE_VERSION_NOT_12',
+      'D18_SOURCE_SYNTHETIC_TABLES_MISSING',
+      'D18_SOURCE_SYNTHETIC_INDEX_MISSING',
+      'D18_SOURCE_SYNTHETIC_VIEW_MISSING',
+      'D18_SOURCE_SYNTHETIC_TRIGGER_MISSING',
+    ];
+    final message=e.toString();
+    final code=safeCodes.where((s)=>message.contains(s)).firstOrNull
+        ?? 'D18_CI_UNCLASSIFIED_ERROR';
+    html.document.documentElement?.dataset['d18FullError']=code;
     html.document.title='D18_CANDIDATE_MIGRATION_FAIL:'+phase;
   }
   runApp(const SizedBox.shrink());

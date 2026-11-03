@@ -1,3 +1,17 @@
+## REPRISE COURANTE — 2026-11-03 — D18 Web : CI INTERMITTENTE CONFIRMÉE, diagnostic persistance source renforcé
+
+**Décision D18 — Goal réel :** chiffrer au repos le vrai coffre patient SQLite Web, et prouver migration/restauration fiables. **Ce n'est PAS terminé cliniquement** : `AppDatabase.forPatientVault` utilise encore `sqlite3.wasm` / `drift_worker.js` non chiffré. Toutes les branches D18 sont Draft pré-cutover, aucune migration de patients, aucune activation ni déploiement Vercel.
+
+**Dernier HEAD précédent** `8b2c3bb0b414a84e2d9fb61909cfdc3b0a1d8392` (documentation seule après code `ece4f027f49d599727d7a1ff9c6f42e63ae4c137`): 3/4 workflows SUCCESS (CSP [#41672836264](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41672836264), restauration Chromium [#41672836101](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41672836101), WebKit [#41672836255](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41672836255)), **worker [#41672836023](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41672836023) FAILURE** malgré worker 37/37 + Web Locks 10/10. Premier profil de migration : seed PASS, migrate FAIL sous `preflight_check_source_schema`, exception Dart minifiée `c_`, avant copie chiffrée ; impossible de conclure quel objet manque. Sur code identique `ece4f027` [worker #41666658151](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41666658151) avait réussi 20/20 profils indépendants (4/4 phases chacun). **Intermittence confirmée par CI, cause non prouvée.** Le prototype CSP 10+2/10+2 sur les deux moteurs et la restauration sont prouvés sur données synthétiques uniquement.
+
+**Correctif de diagnostic (nouveau commit, PRE-CUTOVER uniquement)** : migration exige d'abord la présence de la source dans `WasmDatabase.probe` avant toute ouverture susceptible de créer une base vide, et vérifie la persistance du seed après fermeture ; contrôles séparés version12, tables, index, vue et trigger ; expose seulement un code d'échec synthétique whitelisté au harness (jamais SQL, données ni passphrase). Ne change ni les règles de migration ni la CSP, n'ajoute aucun retry, fallback, reseed ou suppression. Les 20 essais indépendants restent fail-fast. **Nouveau run requis : aucun succès de ce changement encore prouvé.**
+
+**Autres gates cliniques** : zéro chiffrement effectif runtime, politique CSP réelle Vercel absente des configurations examinées, migration writers historiques/AuthEpoch, récupération d'import partiel sans écrasement non implémentée, archive 16 Mio non streamée, Safari iPhone physique et revue indépendante encore non validés. **Ne pas certifier D18, merger, activer patient ni déployer Vercel sans accord humain.**
+
+**Next exact** : lire les 20 profils sur nouveau SHA ; en cas de rouge exploiter code synthétique précis et corriger cause, pas masquer ; puis spécifier le cutover du vrai runtime et les tests cliniques requis.
+
+---
+
 ## REPRISE COURANTE — 2026-11-03 — IAMINA D18 Web : benchmark 20/20 et CSP 2 moteurs VERTS — GATES CLINIQUES OUVERTS
 
 **Décision D18 ; Goal :** protection chiffrée au repos de l'intégralité du coffre SQLite patient Web, isolation des sessions, migration sans perte et récupération hors navigateur. **Succès expérimental vérifié, NON release clinique.** PR [#1243](https://github.com/hraaaaf/IAMINA-MVP/pull/1243) toujours **DRAFT**, commit de référence `ece4f027f49d599727d7a1ff9c6f42e63ae4c137`. 4/4 workflows D18 **COMPLETED/SUCCESS sur ce même SHA** :
