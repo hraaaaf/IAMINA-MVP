@@ -494,26 +494,21 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
             constraints: const BoxConstraints(maxWidth: 354),
             child: Row(
               children: [
-                GestureDetector(
+                Listener(
                   behavior: HitTestBehavior.opaque,
-                  onLongPressStart: fineMinus == null
-                      ? null
-                      : (_) => _startHold(-1),
-                  onLongPressEnd: fineMinus == null
-                      ? null
-                      : (_) => _stopHold(),
-                  // Sliding off the control while holding must not keep
-                  // changing a medical reading behind the user's finger.
-                  onLongPressMoveUpdate: fineMinus == null
-                      ? null
-                      : (details) {
-                          if (!Rect.fromLTWH(0, 0, 48, 48)
-                              .inflate(16)
-                              .contains(details.localPosition)) {
-                            _stopHold();
-                          }
-                        },
-                  onLongPressCancel: fineMinus == null ? null : _stopHold,
+                  // Let IconButton's own InkResponse win the long-press
+                  // gesture over its Tooltip; raw pointer up/cancel stops
+                  // the repeating timer without competing recognizers.
+                  onPointerUp: (_) => _stopHold(),
+                  onPointerCancel: (_) => _stopHold(),
+                  onPointerMove: (event) {
+                    if (_holdDirection == -1 &&
+                        !Rect.fromLTWH(0, 0, 48, 48)
+                            .inflate(16)
+                            .contains(event.localPosition)) {
+                      _stopHold();
+                    }
+                  },
                   child: IconButton.outlined(
                   key: const Key('glucose-fine-minus'),
                   tooltip: _copy(context,
@@ -524,6 +519,9 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                   onPressed: fineMinus == null
                       ? null
                       : () => onValueSelected(fineMinus),
+                  onLongPress: fineMinus == null
+                      ? null
+                      : () => _startHold(-1),
                   icon: const Icon(Icons.remove_rounded),
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),
@@ -557,26 +555,21 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                GestureDetector(
+                Listener(
                   behavior: HitTestBehavior.opaque,
-                  onLongPressStart: finePlus == null
-                      ? null
-                      : (_) => _startHold(1),
-                  onLongPressEnd: finePlus == null
-                      ? null
-                      : (_) => _stopHold(),
-                  // Sliding off the control while holding must not keep
-                  // changing a medical reading behind the user's finger.
-                  onLongPressMoveUpdate: finePlus == null
-                      ? null
-                      : (details) {
-                          if (!Rect.fromLTWH(0, 0, 48, 48)
-                              .inflate(16)
-                              .contains(details.localPosition)) {
-                            _stopHold();
-                          }
-                        },
-                  onLongPressCancel: finePlus == null ? null : _stopHold,
+                  // Let IconButton's own InkResponse win the long-press
+                  // gesture over its Tooltip; raw pointer up/cancel stops
+                  // the repeating timer without competing recognizers.
+                  onPointerUp: (_) => _stopHold(),
+                  onPointerCancel: (_) => _stopHold(),
+                  onPointerMove: (event) {
+                    if (_holdDirection == 1 &&
+                        !Rect.fromLTWH(0, 0, 48, 48)
+                            .inflate(16)
+                            .contains(event.localPosition)) {
+                      _stopHold();
+                    }
+                  },
                   child: IconButton.outlined(
                   key: const Key('glucose-fine-plus'),
                   tooltip: _copy(context,
@@ -587,6 +580,9 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                   onPressed: finePlus == null
                       ? null
                       : () => onValueSelected(finePlus),
+                  onLongPress: finePlus == null
+                      ? null
+                      : () => _startHold(1),
                   icon: const Icon(Icons.add_rounded),
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),
