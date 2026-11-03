@@ -1,5 +1,8 @@
 # IAMINA — D19 → D22 Web/PWA : fiche d'arbitrage d'autorité clinique (NON APPROUVÉE)
 
+> **NOTE DE TRANSFERT — 03/11/2026 :** ce document est une photographie historique du préflight D19→D22. Par décision propriétaire, ses arbitrages G1–G7 et sa validation clinique ont été **reportés à [D32 #1248](https://github.com/hraaaaf/IAMINA-MVP/issues/1248)** ; ils **ne bloquent plus l'acceptation technique bornée de D22**. Voir [l'état D22 actualisé](2026-11-03-d22-web-technical-acceptance.md). Aucune approbation scientifique/clinique, migration, merge ou publication patient n'est déduite de ce changement de périmètre. Les lignes historiques ci-dessous sont conservées comme sources d'audit, non comme état courant.
+
+
 **Établi le 29/10/2026.** Sources relues : `main@278159a2988c860861e24301c6db37588f1b4eb8` et branche D19 [PR #920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) à `81bf4d6ac4e182f3058ca6ff52b504ce8404beb9`. D22 [issue #1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165), préflight [#1173](https://github.com/hraaaaf/IAMINA-MVP/pull/1173) et closeout [#1174](https://github.com/hraaaaf/IAMINA-MVP/pull/1174) fusionnés. **D19 reste OPEN/DRAFT/non fusionnable, sans revue GitHub enregistrée au relevé.** D22 produit : **OPEN / FUE_NO_GO**.
 
 ## Goal / succès / preuve — sous-lot documentaire uniquement

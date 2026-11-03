@@ -1,5 +1,8 @@
 # IAMINA — D22 G7 — Répétition SQLite synthétique avant toute migration
 
+> **NOTE DE TRANSFERT — 03/11/2026 :** ce document est une photographie historique du préflight D19→D22. Par décision propriétaire, ses arbitrages G1–G7 et sa validation clinique ont été **reportés à [D32 #1248](https://github.com/hraaaaf/IAMINA-MVP/issues/1248)** ; ils **ne bloquent plus l'acceptation technique bornée de D22**. Voir [l'état D22 actualisé](2026-11-03-d22-web-technical-acceptance.md). Aucune approbation scientifique/clinique, migration, merge ou publication patient n'est déduite de ce changement de périmètre. Les lignes historiques ci-dessous sont conservées comme sources d'audit, non comme état courant.
+
+
 **Date :** 2026-11-02  
 **Goal :** prouver sur un jeu entièrement fictif qu'une future table de provenance peut être ajoutée *sans modifier* les mesures et cibles historiques, avec snapshot/restore et non-propagation entre coffres distincts.  
 **Décision :** G1/G4/G7, **candidat technique uniquement**. **AUCUNE migration active**, aucun patient réel, aucun déploiement Vercel.  
