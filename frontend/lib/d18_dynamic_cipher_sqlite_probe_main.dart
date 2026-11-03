@@ -55,6 +55,35 @@ const _guardedEnvelopeStorageKey='d18_ci_only_public_vault_envelope';
 const _guardedPassphrase='D18-CI-only-synthetic-2026-verified-policy';
 const _guardedMarker='D18_CI_GUARDED_V12_PERSISTED_20261103';
 
+// After a full browser-process restart, an incorrect passphrase must never
+// release a data key; this phase does not even construct the SQLite worker.
+// The subsequent guarded_reopen phase proves ciphertext remains intact.
+Future<void> verifyGuardedWrongPassphrase() async {
+  stage('guarded_wrong_passphrase_load_public_envelope');
+  final envelope=html.window.localStorage[_guardedEnvelopeStorageKey];
+  verify(envelope!=null && envelope.isNotEmpty &&
+      !envelope.contains(_guardedPassphrase),
+      'D18_GUARDED_PUBLIC_ENVELOPE_UNAVAILABLE_OR_UNSAFE');
+  final scope=PatientVaultScope.deviceLocal(_guardedC);
+  D18VaultKeySession? unlocked;
+  var rejected=false;
+  stage('guarded_wrong_passphrase_unwrap_rejected');
+  try {
+    unlocked=await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope:scope,publicEnvelopeJson:envelope,
+      passphrase:_guardedPassphrase+'-INCORRECT');
+  } catch (_) {
+    rejected=true;
+  } finally {
+    unlocked?.lock();
+  }
+  verify(rejected && unlocked==null,
+      'D18_GUARDED_WRONG_PASSPHRASE_ACCEPTED');
+  stage('guarded_wrong_passphrase_public_envelope_preserved');
+  verify(html.window.localStorage[_guardedEnvelopeStorageKey]==envelope,
+      'D18_GUARDED_WRONG_PASSWORD_CORRUPTED_ENVELOPE');
+}
+
 Future<void> verifyGuardedWebOpen({bool reopen=false}) async {
   final scope=PatientVaultScope.deviceLocal(_guardedC);
   stage(reopen ? 'guarded_policy_unlock_after_restart' : 'guarded_policy_enroll');
@@ -235,6 +264,9 @@ Future<void> verifyGuardedWebOpen({bool reopen=false}) async {
 }
 
 Future<void> runPhase(String name) async {
+  if(name=='guarded_wrong_passphrase') {
+    await verifyGuardedWrongPassphrase();return;
+  }
   if(name=='guarded_open'||name=='guarded_reopen') {
     await verifyGuardedWebOpen(reopen:name=='guarded_reopen');return;
   }
@@ -363,6 +395,7 @@ Future<void> main() async {
     verify(const {
       'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
       'lock_denied', 'create_b', 'read_b', 'guarded_open', 'guarded_reopen',
+      'guarded_wrong_passphrase',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
