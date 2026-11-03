@@ -359,68 +359,70 @@ class GlucoseHalfDialInput extends StatelessWidget {
           );
         }),
         const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            children: [
-              IconButton.outlined(
-                key: const Key('glucose-fine-minus'),
-                tooltip: _copy(context,
-                  'Diminuer de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
-                  'Decrease by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
-                  'إنقاص ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 354),
+            child: Row(
+              children: [
+                IconButton.outlined(
+                  key: const Key('glucose-fine-minus'),
+                  tooltip: _copy(context,
+                    'Diminuer de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
+                    'Decrease by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                    'إنقاص ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                  ),
+                  onPressed: fineMinus == null
+                      ? null
+                      : () => onValueSelected(fineMinus),
+                  icon: const Icon(Icons.remove_rounded),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                  ),
                 ),
-                onPressed: fineMinus == null
-                    ? null
-                    : () => onValueSelected(fineMinus),
-                icon: const Icon(Icons.remove_rounded),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _copy(context, 'RÉGLAGE PRÉCIS', 'FINE ADJUSTMENT',
-                        'ضبط دقيق'),
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: colors.onSurface,
-                        fontSize: 10.5,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _copy(context, 'RÉGLAGE PRÉCIS', 'FINE ADJUSTMENT',
+                          'ضبط دقيق'),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: colors.onSurface,
+                          fontSize: 10.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colors.onSurfaceVariant,
+                      const SizedBox(height: 2),
+                      Text(
+                        unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              IconButton.outlined(
-                key: const Key('glucose-fine-plus'),
-                tooltip: _copy(context,
-                  'Augmenter de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
-                  'Increase by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
-                  'زيادة ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                const SizedBox(width: 10),
+                IconButton.outlined(
+                  key: const Key('glucose-fine-plus'),
+                  tooltip: _copy(context,
+                    'Augmenter de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
+                    'Increase by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                    'زيادة ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                  ),
+                  onPressed: finePlus == null
+                      ? null
+                      : () => onValueSelected(finePlus),
+                  icon: const Icon(Icons.add_rounded),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                  ),
                 ),
-                onPressed: finePlus == null
-                    ? null
-                    : () => onValueSelected(finePlus),
-                icon: const Icon(Icons.add_rounded),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 10),
