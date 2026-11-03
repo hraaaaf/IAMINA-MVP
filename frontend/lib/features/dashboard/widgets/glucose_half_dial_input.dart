@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -110,10 +111,18 @@ double? d22FineAdjustedMgdl(double? currentMgdl, String unit, int direction) {
   return next != null && next.isFinite && next > 0 ? next : null;
 }
 
+/// Progressive repeat cadence for a held fine adjustment, bounded so a
+/// precision control does not become impossible to stop on touch devices.
+Duration d221HoldRepeatDelay(int completedRepeats) {
+  if (completedRepeats < 3) return const Duration(milliseconds: 270);
+  if (completedRepeats < 9) return const Duration(milliseconds: 155);
+  return const Duration(milliseconds: 85);
+}
+
 /// Actual reading input — keeps the existing journal save pipeline intact.
 /// Drag the half-ring for fast selection; edit the number directly or use
 /// localized fine-step controls for a precise measurement.
-class GlucoseHalfDialInput extends StatelessWidget {
+class GlucoseHalfDialInput extends StatefulWidget {
   const GlucoseHalfDialInput({
     super.key,
     required this.controller,
@@ -134,6 +143,83 @@ class GlucoseHalfDialInput extends StatelessWidget {
   static const double minScale = 40;
   static const double maxScale = 320;
 
+  @override
+  State<GlucoseHalfDialInput> createState() => _GlucoseHalfDialInputState();
+}
+
+class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
+  Timer? _holdTimer;
+  int? _holdDirection;
+  int _completedRepeats = 0;
+  int? _arcPointer;
+  bool _arcDragging = false;
+
+  @override
+  void didUpdateWidget(covariant GlucoseHalfDialInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.unit != widget.unit || widget.valueMgdl == null) {
+      _stopHold();
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopHold();
+    super.dispose();
+  }
+
+  void _stopHold() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _holdDirection = null;
+    _completedRepeats = 0;
+  }
+
+  bool _applyFineStep(int direction) {
+    final next = d22FineAdjustedMgdl(widget.valueMgdl, widget.unit, direction);
+    if (next == null) return false;
+    widget.onValueSelected(next);
+    return true;
+  }
+
+  void _scheduleHeldStep() {
+    if (!mounted || _holdDirection == null) return;
+    final direction = _holdDirection!;
+    _holdTimer = Timer(d221HoldRepeatDelay(_completedRepeats), () {
+      if (!mounted || _holdDirection != direction) return;
+      if (!_applyFineStep(direction)) {
+        _stopHold();
+        return;
+      }
+      _completedRepeats++;
+      _scheduleHeldStep();
+    });
+  }
+
+  void _startHold(int direction) {
+    _stopHold();
+    if (!_applyFineStep(direction)) return;
+    _holdDirection = direction;
+    _scheduleHeldStep();
+  }
+
+  void _beginArcPointer(PointerDownEvent event, Size size) {
+    if (_arcPointer != null) return;
+    if (!_selectArc(event.localPosition, size)) return;
+    _arcPointer = event.pointer;
+    setState(() => _arcDragging = true);
+  }
+
+  void _moveArcPointer(PointerMoveEvent event, Size size) {
+    if (event.pointer == _arcPointer) _selectArc(event.localPosition, size);
+  }
+
+  void _endArcPointer(int pointer) {
+    if (pointer != _arcPointer) return;
+    _arcPointer = null;
+    if (mounted) setState(() => _arcDragging = false);
+  }
+
   String _copy(BuildContext context, String fr, String en, String ar) =>
       switch (Localizations.localeOf(context).languageCode) {
         'fr' => fr,
@@ -142,11 +228,11 @@ class GlucoseHalfDialInput extends StatelessWidget {
       };
 
   String _display(double mg) =>
-      unit == 'mmol/L'
+      widget.unit == 'mmol/L'
           ? (mg / 18.0).toStringAsFixed(1)
           : mg.round().toString();
 
-  void _selectArc(Offset localPoint, Size size) {
+  bool _selectArc(Offset localPoint, Size size) {
     final center = Offset(size.width / 2, size.height - 18);
     final rel = localPoint - center;
     final radius = math.min(size.width / 2 - 30, size.height - 35);
@@ -154,7 +240,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
     // slightly inside/outside the ring onto the real semicircle, so fast
     // drags remain responsive and never jump to the opposite end.
     if (rel.dy > 25 || rel.distance < radius * 0.38 ||
-        rel.distance > radius + 76) return;
+        rel.distance > radius + 76) return false;
     final projectedY = math.min(rel.dy, 0.0);
     var radians = math.atan2(projectedY, rel.dx);
     if (radians <= 0) radians += math.pi * 2;
@@ -162,11 +248,20 @@ class GlucoseHalfDialInput extends StatelessWidget {
     final mg = d22DialMgdlForFraction(fraction).roundToDouble();
     // Update just the reading. Firing a platform haptic on *every* pixel
     // move slows iOS Safari down and can break finger tracking.
-    if (mg != valueMgdl) onValueSelected(mg);
+    if (mg != widget.valueMgdl) widget.onValueSelected(mg);
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final unit = widget.unit;
+    final valueMgdl = widget.valueMgdl;
+    final onTextChanged = widget.onTextChanged;
+    final onValueSelected = widget.onValueSelected;
+    final onToggleUnit = widget.onToggleUnit;
+    const minScale = GlucoseHalfDialInput.minScale;
+    const maxScale = GlucoseHalfDialInput.maxScale;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final selected = valueMgdl?.clamp(minScale, maxScale).toDouble();
@@ -183,12 +278,50 @@ class GlucoseHalfDialInput extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                _copy(context, 'SAISIE DIRECTE', 'DIRECT INPUT', 'إدخال مباشر'),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
+              child: SizedBox(
+                height: 46,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: _arcDragging && valueMgdl != null
+                      ? Column(
+                          key: const Key('glucose-drag-reading'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _copy(context, 'VALEUR', 'READING', 'القراءة'),
+                              maxLines: 1,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              '${_display(valueMgdl)} $unit',
+                              key: const Key('glucose-drag-reading-value'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 21,
+                                // Fixed 46px header must also fit Arabic
+                                // font metrics, with no 1px flex overflow.
+                                height: 1.0,
+                                color: colors.onSurface,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          _copy(context, 'SAISIE DIRECTE', 'DIRECT INPUT',
+                              'إدخال مباشر'),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -249,10 +382,10 @@ class GlucoseHalfDialInput extends StatelessWidget {
                       },
                       child: Listener(
                         behavior: HitTestBehavior.opaque,
-                        onPointerDown: (event) =>
-                            _selectArc(event.localPosition, size),
-                        onPointerMove: (event) =>
-                            _selectArc(event.localPosition, size),
+                        onPointerDown: (event) => _beginArcPointer(event, size),
+                        onPointerMove: (event) => _moveArcPointer(event, size),
+                        onPointerUp: (event) => _endArcPointer(event.pointer),
+                        onPointerCancel: (event) => _endArcPointer(event.pointer),
                         child: Semantics(
                         label: _copy(context,
                           'Sélecteur de glycémie par demi-cercle',
@@ -261,7 +394,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
                         ),
                         value: valueMgdl == null
                             ? _copy(context, 'Aucune valeur', 'No value', 'لا قيمة')
-                            : _display(valueMgdl!) + ' ' + unit,
+                            : _display(valueMgdl) + ' ' + unit,
                         increasedValue: finePlus == null
                             ? null
                             : '${_display(finePlus)} $unit',
@@ -364,7 +497,22 @@ class GlucoseHalfDialInput extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 354),
             child: Row(
               children: [
-                IconButton.outlined(
+                Listener(
+                  behavior: HitTestBehavior.opaque,
+                  // Let IconButton's own InkResponse win the long-press
+                  // gesture over its Tooltip; raw pointer up/cancel stops
+                  // the repeating timer without competing recognizers.
+                  onPointerUp: (_) => _stopHold(),
+                  onPointerCancel: (_) => _stopHold(),
+                  onPointerMove: (event) {
+                    if (_holdDirection == -1 &&
+                        !Rect.fromLTWH(0, 0, 48, 48)
+                            .inflate(16)
+                            .contains(event.localPosition)) {
+                      _stopHold();
+                    }
+                  },
+                  child: IconButton.outlined(
                   key: const Key('glucose-fine-minus'),
                   tooltip: _copy(context,
                     'Diminuer de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
@@ -374,9 +522,13 @@ class GlucoseHalfDialInput extends StatelessWidget {
                   onPressed: fineMinus == null
                       ? null
                       : () => onValueSelected(fineMinus),
+                  onLongPress: fineMinus == null
+                      ? null
+                      : () => _startHold(-1),
                   icon: const Icon(Icons.remove_rounded),
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),
+                  ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -406,7 +558,22 @@ class GlucoseHalfDialInput extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                IconButton.outlined(
+                Listener(
+                  behavior: HitTestBehavior.opaque,
+                  // Let IconButton's own InkResponse win the long-press
+                  // gesture over its Tooltip; raw pointer up/cancel stops
+                  // the repeating timer without competing recognizers.
+                  onPointerUp: (_) => _stopHold(),
+                  onPointerCancel: (_) => _stopHold(),
+                  onPointerMove: (event) {
+                    if (_holdDirection == 1 &&
+                        !Rect.fromLTWH(0, 0, 48, 48)
+                            .inflate(16)
+                            .contains(event.localPosition)) {
+                      _stopHold();
+                    }
+                  },
+                  child: IconButton.outlined(
                   key: const Key('glucose-fine-plus'),
                   tooltip: _copy(context,
                     'Augmenter de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
@@ -416,9 +583,13 @@ class GlucoseHalfDialInput extends StatelessWidget {
                   onPressed: finePlus == null
                       ? null
                       : () => onValueSelected(finePlus),
+                  onLongPress: finePlus == null
+                      ? null
+                      : () => _startHold(1),
                   icon: const Icon(Icons.add_rounded),
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),
+                  ),
                   ),
                 ),
               ],
@@ -451,9 +622,9 @@ class GlucoseHalfDialInput extends StatelessWidget {
         const SizedBox(height: 13),
         Text(
           _copy(context,
-            'Glisse pour aller vite, utilise − / + pour ajuster, ou touche le nombre.',
-            'Drag for speed, use − / + for precision, or tap the number.',
-            'اسحب بسرعة، واضبط بدقة بواسطة − / + أو المس الرقم.',
+            'Glisse : valeur visible en haut. Maintiens − / + pour accélérer.',
+            'Drag: reading stays visible above. Hold − / + to accelerate.',
+            'اسحب لترى القراءة بالأعلى. اضغط مطولاً − / + للتسريع.',
           ),
           key: const Key('glucose-half-dial-instruction'),
           textAlign: TextAlign.center,
@@ -489,7 +660,7 @@ class GlucoseHalfDialInput extends StatelessWidget {
         Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: colors.onSurfaceVariant, fontSize: 10,
         )),
-        Text(value + ' ' + unit,
+        Text(value + ' ' + widget.unit,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: colors.onSurface,
             fontWeight: FontWeight.w800,
