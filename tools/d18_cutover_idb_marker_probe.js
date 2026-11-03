@@ -43,13 +43,21 @@ async function withDb(page,operation,payload={}){
    return await new Promise((resolve,reject)=>{
     const tx=db.transaction(storeName,'readwrite',{durability:'strict'});
     const store=tx.objectStore(storeName);
-    let wrote=false;
+    let wrote=false,intentionallyAborted=false;
     tx.oncomplete=()=>resolve({wrote,abortedAsExpected:false});
     tx.onabort=()=>{
-     if(operation==='abort_after_put')resolve({wrote:false,abortedAsExpected:true});
+     if(operation==='abort_after_put'&&intentionallyAborted)
+      resolve({wrote:false,abortedAsExpected:true});
+     else reject(tx.error||new Error('IDB_UNEXPECTED_TRANSACTION_ABORT'));
      else reject(tx.error||new Error('IDB_CAS_ABORT'));
     };
-    tx.onerror=()=>reject(tx.error||new Error('IDB_CAS_ERROR'));
+    // Deliberate tx.abort may dispatch an error event before onabort.
+    // Only ignore that event if the fixture itself initiated the abort.
+    // The phase still insists on abort ACK and unchanged physical marker.
+    tx.onerror=()=>{
+     if(operation==='abort_after_put'&&intentionallyAborted)return;
+     reject(tx.error||new Error('IDB_CAS_ERROR'));
+    };
     const read=store.get(syntheticScope);
     read.onsuccess=()=>{
      const actual=read.result??null,expected=payload.expected??null;
@@ -57,7 +65,10 @@ async function withDb(page,operation,payload={}){
      if(JSON.stringify(actual)!==JSON.stringify(expected))return;
      store.put(payload.next,syntheticScope);
      wrote=true;
-     if(operation==='abort_after_put')tx.abort();
+     if(operation==='abort_after_put'){
+      intentionallyAborted=true;
+      tx.abort();
+     }
     };
     // No await between read.onsuccess and store.put.
     // 'complete' is the commit signal, not the put's request success.
