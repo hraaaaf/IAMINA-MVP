@@ -159,7 +159,7 @@ def test_d24_global_off_denies_existing_scopes_and_provider_calls(patient):
         gateway = GatewayLLM()
         with ai_egress_scope(patient.id, "companion_chat", TEXT):
             assert_ai_egress_allowed(TEXT)
-            status = withdraw_consent(SimpleNamespace(user=patient))
+            status = withdraw_consent(SimpleNamespace(user=patient, META={}))
             assert status["ai_consent_given"] is False
             with pytest.raises(AIConsentRequired, match="AI consent"):
                 gateway.complete("Safe system", "Safe user")
@@ -176,7 +176,7 @@ def test_d24_reconsent_never_resurrects_revoked_media_grant(patient):
     _grant_global_consent(patient)
     grant_media_consent(patient.id, "meal_vision", IMAGE)
     from core.api.v1.account import withdraw_consent
-    withdraw_consent(SimpleNamespace(user=patient))
+    withdraw_consent(SimpleNamespace(user=patient, META={}))
     _grant_global_consent(patient)
 
     with ai_egress_scope(patient.id, "meal_vision", IMAGE):
