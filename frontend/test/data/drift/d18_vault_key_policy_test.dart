@@ -238,6 +238,7 @@ void main() {
     var epoch=3, opens=0, disposed=0;
     var authenticated=_a;
     var badEngine=false, badDestination=false, staleDuringOpen=false;
+    var physicalState=D18CipherPhysicalState.absent;
     final guard=D18KeyedOpenGuard(
       resolveAuthenticatedScope:() async=>authenticated,
       readAuthEpoch:()=>epoch);
@@ -255,6 +256,7 @@ void main() {
               ? scope.databaseName
               : D18PreCutoverCipherAdapter.destinationFor(scope),
           cipherEngine:badEngine ? 'sqlite3-stock' : 'sqlite3mc',
+          physicalState:physicalState,
           disposeWorker:() async {
             disposed++;
             // The worker-side lease owns cleanup on rejection even before
@@ -264,40 +266,59 @@ void main() {
         );
       });
     await expectLater(adapter.openUnpublished(
-      scope:_b,keySession:enrollment.session),throwsStateError);
+      scope:_b,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
     expect(opens,0);
 
     badEngine=true;
     await expectLater(adapter.openUnpublished(
-      scope:_a,keySession:enrollment.session),throwsStateError);
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
     expect(disposed,1);
     badEngine=false;
 
     badDestination=true;
     await expectLater(adapter.openUnpublished(
-      scope:_a,keySession:enrollment.session),throwsStateError);
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
     expect(disposed,2);
     badDestination=false;
 
+    // Existing ciphertext must never be overwritten by enrollment.
+    physicalState=D18CipherPhysicalState.existingAuthenticated;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
+    expect(disposed,3);
+    // Missing ciphertext must never be silently replaced during reopen.
+    physicalState=D18CipherPhysicalState.absent;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.reopenExisting),throwsStateError);
+    expect(disposed,4);
+
     staleDuringOpen=true;
     await expectLater(adapter.openUnpublished(
-      scope:_a,keySession:enrollment.session),throwsStateError);
-    expect(disposed,3);
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
+    expect(disposed,5);
     staleDuringOpen=false;
     // A still controls the simulated authenticated account after the epoch
     // update, so a fresh approved opening must be independently verified.
     final candidate=await adapter.openUnpublished(
-      scope:_a,keySession:enrollment.session);
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh);
     final version=await candidate.database.customSelect(
         'PRAGMA user_version').getSingle();
     expect(version.read<int>('user_version'),12);
     await candidate.close();
     await candidate.close();
-    expect(disposed,4); // Idempotent close, no orphan worker.
+    expect(disposed,6); // Idempotent close, no orphan worker.
     authenticated=_b;
     await expectLater(adapter.openUnpublished(
-      scope:_a,keySession:enrollment.session),throwsStateError);
-    expect(opens,4);
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
+    expect(opens,6);
   });
 
 }
