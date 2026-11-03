@@ -47,66 +47,73 @@ void main() {
         (tester) async {
       final db = AppDatabase(NativeDatabase.memory());
       final service = _CountingCompanionService();
-      addTearDown(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await db.close();
-        service.dispose();
-      });
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(390, 844);
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
 
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: db,
-          child: MaterialApp(
-            locale: locale,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    DashboardTodaySection(
-                      targetConfigured: false,
-                      service: service,
-                    ),
-                    DashboardResponsiveSections(
-                      unit: 'mg/dL',
-                      low: null,
-                      high: null,
-                      companionService: service,
-                    ),
-                  ],
+      // Keep Drift stream cleanup inside testWidgets' fake-async zone.
+      // Previous teardown awaited db.close() while a zero-delay Drift
+      // StreamQueryStore cancellation timer was still pending.
+      try {
+        await tester.pumpWidget(
+          Provider<AppDatabase>.value(
+            value: db,
+            child: MaterialApp(
+              locale: locale,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      DashboardTodaySection(
+                        targetConfigured: false,
+                        service: service,
+                      ),
+                      DashboardResponsiveSections(
+                        unit: 'mg/dL',
+                        low: null,
+                        high: null,
+                        companionService: service,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
 
-      expect(service.overviewCalls, 0);
-      expect(service.previewCalls, 0);
-      expect(service.actionCalls, 0);
-      expect(find.byType(DashboardInsightSection), findsNothing);
-      expect(find.byType(DashboardNextActionSection), findsNothing);
-      expect(find.byKey(const ValueKey('d22-dashboard-personalization-blocked')),
-          findsOneWidget);
-      if (locale.languageCode == 'fr') {
-        expect(find.textContaining('objectifs glycémiques non vérifiés'),
-            findsWidgets);
-      } else {
-        expect(find.textContaining('أهداف سكر الدم غير مؤكدة'), findsWidgets);
+        expect(service.overviewCalls, 0);
+        expect(service.previewCalls, 0);
+        expect(service.actionCalls, 0);
+        expect(find.byType(DashboardInsightSection), findsNothing);
+        expect(find.byType(DashboardNextActionSection), findsNothing);
+        expect(find.byKey(const ValueKey('d22-dashboard-personalization-blocked')),
+            findsOneWidget);
+        if (locale.languageCode == 'fr') {
+          expect(find.textContaining('objectifs glycémiques non vérifiés'),
+              findsWidgets);
+        } else {
+          expect(find.textContaining('أهداف سكر الدم غير مؤكدة'), findsWidgets);
+        }
+      } finally {
+        // Unmount all StreamBuilders and flush Drift's cancellation timer
+        // before closing the local database, as in the passing dashboard
+        // responsive visual test.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(milliseconds: 1));
+        await db.close();
+        service.dispose();
+        await tester.pump(const Duration(milliseconds: 1));
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
       }
     });
   }
