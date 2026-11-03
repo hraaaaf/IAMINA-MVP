@@ -15,11 +15,21 @@ import 'patient_vault_scope.dart';
 ///
 /// Metadata below is an assertion FROM A TRUSTED WORKER, not cryptographic proof
 /// in itself. Never instantiate a production connector using stock sqlite3.wasm.
+/// A caller must make the opening purpose explicit. Reopening an existing
+/// encrypted vault must NEVER silently replace it with an empty database.
+enum D18CipherVaultOpenIntent { createFresh, reopenExisting }
+
+/// Evidence returned by the TRUSTED encrypted worker after checking the
+/// physical ciphertext namespace before any SQLite connection is created.
+/// Not a substitute for auditing the worker/storage implementation.
+enum D18CipherPhysicalState { absent, existingAuthenticated }
+
 final class D18KeyedCipherWorkerLease {
   final QueryExecutor executor;
   final String authenticatedScopeName;
   final String physicalDatabaseName;
   final String cipherEngine;
+  final D18CipherPhysicalState physicalState;
   final Future<void> Function() disposeWorker;
 
   const D18KeyedCipherWorkerLease({
@@ -27,6 +37,7 @@ final class D18KeyedCipherWorkerLease {
     required this.authenticatedScopeName,
     required this.physicalDatabaseName,
     required this.cipherEngine,
+    required this.physicalState,
     required this.disposeWorker,
   });
 }
@@ -74,6 +85,7 @@ final class D18PreCutoverCipherAdapter {
   Future<D18UnpublishedCipherVault> openUnpublished({
     required PatientVaultScope scope,
     required D18VaultKeySession keySession,
+    required D18CipherVaultOpenIntent intent,
   }) => guard.openUnpublished<D18UnpublishedCipherVault>(
     requestedScope: scope,
     keySession: keySession,
@@ -87,6 +99,16 @@ final class D18PreCutoverCipherAdapter {
             lease.physicalDatabaseName != destinationFor(scope) ||
             lease.cipherEngine != 'sqlite3mc') {
           throw StateError('D18 cipher worker identity/engine mismatch');
+        }
+        // Enforce a BEFORE-OPEN physical-state contract. It must be backed
+        // by worker-side storage inspection, not inferred from SQL tables:
+        // Drift can initialize an empty database on its first query.
+        final expectedPhysicalState =
+            intent == D18CipherVaultOpenIntent.createFresh
+                ? D18CipherPhysicalState.absent
+                : D18CipherPhysicalState.existingAuthenticated;
+        if (lease.physicalState != expectedPhysicalState) {
+          throw StateError('D18 ciphertext missing or already exists');
         }
         db = AppDatabase.testPatientVault(lease.executor, scope);
         // Exercise the actual Drift schema. The WORKER must already have
