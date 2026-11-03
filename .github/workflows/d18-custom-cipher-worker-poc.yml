@@ -12,6 +12,10 @@ on:
       - 'tools/d18_full_cipher_migration_probe.js'
       - 'tools/d18_candidate_cipher_migration_probe.js'
       - 'tools/d18_cutover_idb_marker_probe.js'
+      - 'tools/d18_dart_idb_marker_bridge_probe.js'
+      - 'tools/fixtures/d18_marker_idb_bridge.js'
+      - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
+      - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
       - 'frontend/lib/d18_candidate_full_cipher_migration_probe_main.dart'
       - 'frontend/lib/d18_full_cipher_migration_probe_main.dart'
       - 'tools/fixtures/d18_dynamic_worker_lock_gate.js'
@@ -269,6 +273,22 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
           node tools/d18_full_cipher_migration_probe.js
+      - name: Build D18 Flutter Dart bridge to IndexedDB (pre-cutover CI only)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart lib/d18_dart_marker_bridge_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dart_marker_bridge_probe_main.dart
+      - name: Exercise Flutter Dart IndexedDB bridge — Chromium
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/fixtures/d18_marker_idb_bridge.js
+          node --check tools/d18_dart_idb_marker_bridge_probe.js
+          python3 -m http.server 7397 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dart-idb-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7397/ > /dev/null
+          D18_DART_IDB_BROWSER=chromium node tools/d18_dart_idb_marker_bridge_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -282,5 +302,6 @@ jobs:
             d18-full-vault-proof/
             d18-candidate-migration-proof/
             d18-idb-marker-proof/report-chromium.json
+            d18-dart-idb-marker-proof/report-chromium.json
           if-no-files-found: warn
           retention-days: 14

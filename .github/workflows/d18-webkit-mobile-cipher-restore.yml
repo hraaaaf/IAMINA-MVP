@@ -8,6 +8,10 @@ on:
       - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
       - 'tools/d18_physical_cipher_restore_probe.js'
       - 'tools/d18_cutover_idb_marker_probe.js'
+      - 'tools/d18_dart_idb_marker_bridge_probe.js'
+      - 'tools/fixtures/d18_marker_idb_bridge.js'
+      - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
+      - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
       - 'frontend/lib/data/drift/d18_full_cipher_archive.dart'
       - 'frontend/lib/d18_unpublished_cipher_worker.dart'
       - 'frontend/lib/data/drift/d18_unpublished_cipher_connector_web.dart'
@@ -103,6 +107,22 @@ jobs:
             --silent http://127.0.0.1:7398/ > /dev/null
           D18_TEST_BROWSER=webkit node tools/d18_physical_cipher_restore_probe.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
+      - name: Build D18 Flutter Dart bridge to IndexedDB (pre-cutover CI only)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart lib/d18_dart_marker_bridge_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dart_marker_bridge_probe_main.dart
+      - name: Exercise Flutter Dart IndexedDB bridge — WebKit Linux
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/fixtures/d18_marker_idb_bridge.js
+          node --check tools/d18_dart_idb_marker_bridge_probe.js
+          python3 -m http.server 7397 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dart-idb-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7397/ > /dev/null
+          D18_DART_IDB_BROWSER=webkit node tools/d18_dart_idb_marker_bridge_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -110,5 +130,6 @@ jobs:
           path: |
             d18-physical-restore-proof/report.json
             d18-idb-marker-proof/report-webkit.json
+            d18-dart-idb-marker-proof/report-webkit.json
           if-no-files-found: warn
           retention-days: 14
