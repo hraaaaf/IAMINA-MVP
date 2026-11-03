@@ -33,7 +33,27 @@ TARGETS = {
 
 INSTRUMENT = r"""
 (() => {
-  window.__perf = {firstFrame: null, host: null, longTasks: 0, longTaskMs: 0};
+  window.__perf = {firstFrame: null, host: null, longTasks: 0, longTaskMs: 0, jsErrorCount: 0, rejectionCount: 0, errorCategories: []};
+  const classify = (raw) => {
+    const msg = String(raw ?? '').toLowerCase();
+    if (msg.includes('indexeddatabase') || msg.includes('indexeddb')) return 'indexeddb';
+    if (msg.includes('sqlite') || msg.includes('drift') || msg.includes('wasm')) return 'sqlite_or_wasm';
+    if (msg.includes('failed to fetch') || msg.includes('networkerror')) return 'network_or_fetch';
+    if (msg.includes('firebase')) return 'firebase';
+    if (msg.includes('typeerror')) return 'type_error';
+    if (msg.includes('securityerror') || msg.includes('notallowederror')) return 'security_policy';
+    if (msg.includes('syntaxerror')) return 'syntax_error';
+    if (msg.includes('referenceerror')) return 'reference_error';
+    return 'other';
+  };
+  window.addEventListener('error', event => {
+    window.__perf.jsErrorCount++;
+    window.__perf.errorCategories.push(classify(event.error?.message || event.message));
+  });
+  window.addEventListener('unhandledrejection', event => {
+    window.__perf.rejectionCount++;
+    window.__perf.errorCategories.push(classify(event.reason?.message || event.reason));
+  });
   window.addEventListener('flutter-first-frame', () => {
     window.__perf.firstFrame = performance.now();
   }, {once: true});
@@ -85,6 +105,13 @@ READ_TIMINGS = r"""async () => {
   return {
     title: document.title.slice(0,80),
     has_bootstrap: !!document.querySelector('script[src*="flutter_bootstrap"]'),
+    ready_state: document.readyState,
+    flutter_element_count: document.querySelectorAll('flutter-view, flt-glass-pane').length,
+    flutter_loader_present: typeof window._flutter?.loader?.load === 'function',
+    js_error_count: window.__perf.jsErrorCount,
+    promise_rejection_count: window.__perf.rejectionCount,
+    js_error_categories: window.__perf.errorCategories.slice(0, 15),
+    body_tags: Array.from(document.body.children).slice(0, 10).map(e => e.tagName),
     ttfb_ms: navigation ? Math.round(navigation.responseStart) : null,
     dom_content_loaded_ms: navigation ?
        Math.round(navigation.domContentLoadedEventEnd) : null,
@@ -124,7 +151,7 @@ def one_page(page, label, url, run_no, temperature, observe_ms):
         elif not reading.get("has_bootstrap") or "iamina" not in title:
             record["classification"] = "non_flutter_page"
         elif reading.get("flutter_host_ms") is None and reading.get("flutter_first_frame_event_ms") is None:
-            record["classification"] = "flutter_first_frame_unobserved"
+            record["classification"] = "flutter_unrendered_within_observation_window"
         else:
             record["classification"] = "flutter_observed"
     except Exception as exc:
@@ -175,7 +202,8 @@ def main():
                             print(label, phase, "run", i+1, record["classification"],
                                   "ttfb", record.get("ttfb_ms"), "first-frame",
                                   record.get("flutter_first_frame_event_ms"),
-                                  "host", record.get("flutter_host_ms"), flush=True)
+                                  "host", record.get("flutter_host_ms"),
+                                  "js_errors", record.get("js_error_categories", []), flush=True)
                     finally:
                         context.close()
         finally:
@@ -185,10 +213,11 @@ def main():
         for phase in ("cold","warm"):
             subset=[s for s in samples if s["target"]==label and s["phase"]==phase]
             valid=[s for s in subset if s["classification"] in
-                   ("flutter_observed","flutter_first_frame_unobserved")]
+                   ("flutter_observed","flutter_unrendered_within_observation_window")]
             summary.append({
                 "target":label,"phase":phase,"url":url,"description":description,
-                "total":len(subset),"valid_flutter_pages":len(valid),
+                "total":len(subset),"flutter_bootstrap_pages":len(valid),
+                "flutter_rendered_pages":sum(s["classification"]=="flutter_observed" for s in subset),
                 "classifications":{k:sum(s["classification"]==k for s in subset)
                     for k in sorted({s["classification"] for s in subset})},
                 "ttfb_median_ms":med(valid,"ttfb_ms"),
@@ -197,6 +226,9 @@ def main():
                 "load_median_ms":med(valid,"load_event_ms"),
                 "long_tasks_median_ms":med(valid,"long_task_total_ms"),
                 "api_max_median_ms":med(valid,"api_max_ms"),
+                "js_error_median_count":med(valid,"js_error_count"),
+                "unhandled_rejection_median_count":med(valid,"promise_rejection_count"),
+                "error_categories":sorted({c for s in valid for c in s.get("js_error_categories",[])}),
             })
     health=healthcheck()
     document={
@@ -209,6 +241,8 @@ def main():
             "Different frontend SHAs and build envs prevent causal attribution.",
             "No returning-patient vault is opened; real IndexedDB/secure-storage latency not measured.",
             "Flutter first-frame event may not fire; missing metric is UNKNOWN, never zero.",
+            "Flutter bootstrap presence is not a rendered Flutter frame; report counts separately.",
+            "Error categories are bounded labels; raw browser errors and patient data never enter artifacts.",
             "Resource timing may be restricted across origins; transfer bytes are diagnostic only.",
             "GitHub runner network differs from user device and Moroccan network."
         ],
@@ -217,15 +251,17 @@ def main():
     Path(args.output).write_text(json.dumps(document,indent=2,ensure_ascii=False),encoding="utf-8")
     lines=["## IAMINA Web — GitHub Actions performance audit",
            "Unauthenticated Chromium only; **not patient-representative**.",
-           "","| Target | Mode | Valid / runs | TTFB median | Flutter first-frame | Flutter host | Status |",
-           "|---|---|---:|---:|---:|---:|---|"]
+           "","| Target | Mode | Bootstrap / runs | Rendered / runs | TTFB median | Flutter first-frame | Flutter host | JS errors | Status |",
+           "|---|---|---:|---:|---:|---:|---:|---:|---|"]
     def fmt(v): return str(v)+" ms" if v is not None else "UNKNOWN"
     for item in summary:
         lines.append("| "+ " | ".join([
             item["target"],item["phase"],
-            str(item["valid_flutter_pages"])+"/"+str(item["total"]),
+            str(item["flutter_bootstrap_pages"])+"/"+str(item["total"]),
+            str(item["flutter_rendered_pages"])+"/"+str(item["total"]),
             fmt(item["ttfb_median_ms"]),fmt(item["flutter_first_frame_median_ms"]),
             fmt(item["flutter_host_median_ms"]),
+            str(item["js_error_median_count"])+"/"+str(item["unhandled_rejection_median_count"]),
             ", ".join(k+"="+str(v) for k,v in item["classifications"].items())])+" |")
     lines.extend(["","**Django /api/v1/health**: "+", ".join(
         str(x.get("wall_ms"))+"ms (db="+str(x.get("db","?"))+
