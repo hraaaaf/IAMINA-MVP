@@ -79,6 +79,13 @@ void main() {
     expect(responsive, contains('DashboardTrendSection('));
     expect(responsive, isNot(contains('DashboardAdaptiveKpiSection(')));
     expect(responsive, contains('DashboardInsightSection('));
-    expect(responsive, contains('DashboardNextActionSection('));
+    // D3 replaces the non-clinical Next Action block with genuine local
+    // reminders; clinical Trend/Insight and KPI non-duplication remain.
+    expect(responsive, contains('DashboardMyRemindersCard()'));
+    expect(responsive, isNot(contains('DashboardNextActionSection(')));
+    expect(
+      responsive.indexOf('DashboardMyRemindersCard()'),
+      greaterThan(responsive.indexOf('DashboardTrendSection(')),
+    );
   });
 }
