@@ -8,6 +8,17 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+
+class _FailedCloseDb extends AppDatabase {
+  _FailedCloseDb(PatientVaultScope scope)
+      : super.testPatientVault(NativeDatabase.memory(), scope);
+
+  @override
+  Future<void> close() async {
+    throw StateError('D18_SIMULATED_DB_CLOSE_FAILURE');
+  }
+}
+
 final class _FakeAuth extends ChangeNotifier {
   void changed() => notifyListeners();
 }
@@ -188,6 +199,20 @@ void main() {
     await controller.reconcile();
     expect(attemptedB, 0);
     expect(controller.activeDatabase, isNull);
+  });
+
+  test('D18 source lock survives a failed physical Drift close', () async {
+    var released = 0;
+    final lease = PatientVaultDbLease(
+      scope: a,
+      database: _FailedCloseDb(a),
+      releaseWorker: () async { released++; },
+      retainSourceLockOnCloseFailure: true,
+    );
+    await expectLater(lease.close(), throwsStateError);
+    expect(released, 0);
+    await expectLater(lease.close(), throwsStateError);
+    expect(released, 0);
   });
 
   test('concurrent close calls free a worker exactly once', () async {

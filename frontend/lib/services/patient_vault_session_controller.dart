@@ -26,6 +26,9 @@ final class PatientVaultDbLease {
   final PatientVaultScope scope;
   final Future<void> Function()? releaseWorker;
   final bool Function()? isKeyLocked;
+  // Source-only CANARY: keep Web Lock held if Drift close fails.
+  // Other D18 encrypted-worker leases retain their original cleanup contract.
+  final bool retainSourceLockOnCloseFailure;
   Future<void>? _closeFuture;
 
   PatientVaultDbLease({
@@ -33,6 +36,7 @@ final class PatientVaultDbLease {
     required this.scope,
     this.releaseWorker,
     this.isKeyLocked,
+    this.retainSourceLockOnCloseFailure = false,
   });
 
   bool get isAccessible {
@@ -46,10 +50,16 @@ final class PatientVaultDbLease {
   Future<void> close() => _closeFuture ??= _closeOnce();
 
   Future<void> _closeOnce() async {
-    try {
+    if (retainSourceLockOnCloseFailure) {
+      // Fail-closed: if Drift fails to close, another tab must NOT migrate.
       await database.close();
-    } finally {
       await releaseWorker?.call();
+    } else {
+      try {
+        await database.close();
+      } finally {
+        await releaseWorker?.call();
+      }
     }
   }
 }
@@ -117,6 +127,7 @@ class PatientVaultSessionController extends ChangeNotifier {
         scope: scope,
         database: AppDatabase.forPatientVault(scope),
         releaseWorker: lock.close,
+        retainSourceLockOnCloseFailure: true,
       );
     } catch (_) {
       await lock.close();

@@ -68,6 +68,7 @@ Future<void> main() async {
   final legacyLock = d18SourceCanary
       ? await D18SourceLockGate.legacy() : null;
   bool legacyProtected = true;
+  var legacyPhysicallyClosed = false;
   try {
     final legacy = AppDatabase.defaults();
     try {
@@ -76,10 +77,11 @@ Future<void> main() async {
       );
     } finally {
       await legacy.close();
+      legacyPhysicallyClosed = true;
     }
   } finally {
-    // Never release the cooperative lock until Drift has physically closed.
-    await legacyLock?.close();
+    // A failed close is uncertain: retain the source lock until tab teardown.
+    if (legacyPhysicallyClosed) await legacyLock?.close();
   }
 
   // A missing app-lock credential must not be treated as a fresh install
@@ -102,11 +104,9 @@ Future<void> main() async {
       // An inaccessible vault is not proof of a clean fresh installation.
       currentVaultProtected = true;
     } finally {
-      try {
-        await protectedStateProbe?.close();
-      } finally {
-        await protectedStateLock?.close();
-      }
+      // If close throws, NEVER free the lock over a possibly live DB.
+      await protectedStateProbe?.close();
+      await protectedStateLock?.close();
     }
   }
 
