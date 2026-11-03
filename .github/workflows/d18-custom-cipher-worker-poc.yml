@@ -51,6 +51,11 @@ jobs:
       - name: Resolve locked Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Verify D18 unpublished async session lifecycle (pre-cutover only)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos             lib/data/drift/d18_pre_cutover_cipher_adapter.dart             lib/data/drift/d18_pre_cutover_session_coordinator.dart             test/data/drift/d18_pre_cutover_session_coordinator_test.dart
+          flutter test test/data/drift/d18_pre_cutover_session_coordinator_test.dart
       - name: Reject test-only cipher fixtures leaking into application runtime
         run: |
           python3 - <<'PY'

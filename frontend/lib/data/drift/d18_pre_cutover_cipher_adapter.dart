@@ -53,9 +53,15 @@ typedef D18OpenKeyedCipherWorker = Future<D18KeyedCipherWorkerLease> Function(
   List<int> ephemeralKey,
 );
 
+/// Narrow lifecycle interface for a disposable, strictly UNPUBLISHED vault.
+/// The clinical host MUST NOT provide this handle to patient-facing providers.
+abstract interface class D18UnpublishedVaultLifecycle {
+  Future<void> close();
+}
+
 /// Disposable, never-published database handle. The clinical host does not
 /// consume this type and cannot accidentally switch to this candidate.
-final class D18UnpublishedCipherVault {
+final class D18UnpublishedCipherVault implements D18UnpublishedVaultLifecycle {
   final AppDatabase database;
   final Future<void> Function() _disposeWorker;
   Future<void>? _closeFuture;
@@ -65,6 +71,7 @@ final class D18UnpublishedCipherVault {
   /// Concurrent logout/close callers must await the SAME worker shutdown.
   /// Returning early while the exclusive physical lock is still held could
   /// permit a second opening to race the retired encrypted executor.
+  @override
   Future<void> close() => _closeFuture ??= _closeOnce();
 
   Future<void> _closeOnce() async {
