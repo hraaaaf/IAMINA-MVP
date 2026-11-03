@@ -9,6 +9,7 @@ on:
       - 'tools/d18_physical_cipher_restore_probe.js'
       - 'tools/d18_cutover_idb_marker_probe.js'
       - 'tools/d18_dart_idb_marker_bridge_probe.js'
+      - 'tools/d18_source_writer_barrier_probe.js'
       - 'tools/fixtures/d18_marker_idb_bridge.js'
       - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
       - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
@@ -123,6 +124,12 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7397/ > /dev/null
           D18_DART_IDB_BROWSER=webkit node tools/d18_dart_idb_marker_bridge_probe.js
+      - name: D18 synthetic legacy + patient source lease — webkit (21 checks)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_source_writer_barrier_probe.js
+          D18_SOURCE_BARRIER_BROWSER=webkit node tools/d18_source_writer_barrier_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -131,5 +138,6 @@ jobs:
             d18-physical-restore-proof/report.json
             d18-idb-marker-proof/report-webkit.json
             d18-dart-idb-marker-proof/report-webkit.json
+            d18-source-barrier-proof/report-webkit.json
           if-no-files-found: warn
           retention-days: 14
