@@ -21,6 +21,9 @@ const _table = 'd18_ci_real_keyed_worker';
 const _marker = 'D18_CI_DYNAMIC_REAL_SQLITE_WORKER_20261102';
 const _tableB = 'd18_ci_second_vault';
 const _markerB = 'D18_CI_SYNTHETIC_SECOND_VAULT_20261102';
+const _patientD = 'e2dbe28f-3eea-4410-86a7-274150d00018';
+const _tableD = 'd18_ci_physical_cipher_guard';
+const _markerD = 'D18_CI_PHYSICAL_CIPHERTEXT_PRESERVED_20261103';
 
 void stage(String value) =>
     html.document.documentElement?.dataset['d18DynamicStage'] = value;
@@ -273,7 +276,8 @@ Future<void> runPhase(String name) async {
   stage('resolve_scope');
   final scope = PatientVaultScope.deviceLocal(
     const {'isolate_b', 'create_b', 'read_b'}.contains(name)
-        ? _patientB : _patientA,
+        ? _patientB
+        : name.startsWith('intent_') ? _patientD : _patientA,
   );
   final dbName = scope.databaseName + '_d18_ci_dynamic';
   final jsKey = globalContext.getProperty('__D18_DYNAMIC_CI_KEY'.toJS);
@@ -315,10 +319,18 @@ Future<void> runPhase(String name) async {
   AppDatabase? database;
   try {
     final keyArrayBuffer = ephemeral.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
+    final intentMode=name.startsWith('intent_');
     final message = JSObject()
-      ..setProperty('type'.toJS, 'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
+      ..setProperty('type'.toJS, (intentMode
+          ? 'D18_CI_DYNAMIC_SQL_OPEN_INTENT'
+          : 'D18_CI_DYNAMIC_SQL_OPEN').toJS)
       ..setProperty('name'.toJS, dbName.toJS)
       ..setProperty('key'.toJS, keyArrayBuffer);
+    if(intentMode) {
+      final intent=name=='intent_create'||name=='intent_create_exists'
+          ? 'createFresh' : 'reopenExisting';
+      message.setProperty('intent'.toJS,intent.toJS);
+    }
     // The control port uses addEventListener via EventStreamProviders.
     // It will NOT dispatch messages until MessagePort.start() is called.
     // Subscribe before posting to avoid losing an immediate worker response.
@@ -338,6 +350,16 @@ Future<void> runPhase(String name) async {
       verify(status == 'KEY_REJECTED', 'D18_DYNAMIC_BAD_KEY_ACCEPTED');
       return;
     }
+    if (name == 'intent_reopen_missing') {
+      verify(status == 'MISSING_CIPHERTEXT',
+          'D18_INTENT_MISSING_DB_RECREATED');
+      return;
+    }
+    if (name == 'intent_create_exists') {
+      verify(status == 'CIPHERTEXT_ALREADY_EXISTS',
+          'D18_INTENT_EXISTING_CIPHERTEXT_OVERWRITTEN');
+      return;
+    }
     if (name == 'lock_denied') {
       verify(status == 'LOCK_UNAVAILABLE', 'D18_DYNAMIC_SAME_VAULT_LOCK_BYPASS');
       return;
@@ -350,7 +372,17 @@ Future<void> runPhase(String name) async {
     stage('remote_connected');
     database = AppDatabase.testPatientVault(connection, scope);
     await database.customSelect('SELECT count(*) FROM sqlite_master').getSingle();
-    if (name == 'create') {
+    if (name == 'intent_create') {
+      await database.customStatement(
+        'CREATE TABLE "$_tableD" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)');
+      await database.customStatement(
+        'INSERT INTO "$_tableD" (id, marker) VALUES (?, ?)',[1,_markerD]);
+    } else if (name == 'intent_reopen') {
+      final row=await database.customSelect(
+        'SELECT marker FROM "$_tableD" WHERE id=1').getSingle();
+      verify(row.read<String>('marker')==_markerD,
+        'D18_INTENT_REOPEN_CIPHERTEXT_DATA_LOST');
+    } else if (name == 'create') {
       await database.customStatement(
           'CREATE TABLE "$_table" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)');
       await database.customStatement(
@@ -395,7 +427,8 @@ Future<void> main() async {
     verify(const {
       'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
       'lock_denied', 'create_b', 'read_b', 'guarded_open', 'guarded_reopen',
-      'guarded_wrong_passphrase',
+      'guarded_wrong_passphrase', 'intent_reopen_missing',
+      'intent_create', 'intent_create_exists', 'intent_reopen',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
