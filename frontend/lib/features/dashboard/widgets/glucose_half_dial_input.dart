@@ -391,7 +391,7 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                         ),
                         value: valueMgdl == null
                             ? _copy(context, 'Aucune valeur', 'No value', 'لا قيمة')
-                            : _display(valueMgdl!) + ' ' + unit,
+                            : _display(valueMgdl) + ' ' + unit,
                         increasedValue: finePlus == null
                             ? null
                             : '${_display(finePlus)} $unit',
