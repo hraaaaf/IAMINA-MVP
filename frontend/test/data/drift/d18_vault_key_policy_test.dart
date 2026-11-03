@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:amina/data/drift/d18_keyed_open_guard.dart';
+import 'package:amina/data/drift/d18_pre_cutover_cipher_adapter.dart';
+import 'package:drift/native.dart';
 import 'package:amina/data/drift/d18_vault_key_policy.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -225,6 +227,77 @@ void main() {
       createUnpublished: open, discardUnpublished: discard,
     ), throwsStateError);
     expect(opens, 2);
+  });
+
+
+  test('pre-cutover adapter never publishes a plaintext or wrong-scope worker',
+      () async {
+    final enrollment=await D18VaultKeyPolicy.createForEmptyVault(
+      scope:_a, passphrase:_first);
+    addTearDown(enrollment.session.lock);
+    var epoch=3, opens=0, disposed=0;
+    var authenticated=_a;
+    var badEngine=false, badDestination=false, staleDuringOpen=false;
+    final guard=D18KeyedOpenGuard(
+      resolveAuthenticatedScope:() async=>authenticated,
+      readAuthEpoch:()=>epoch);
+    final adapter=D18PreCutoverCipherAdapter(
+      guard:guard,
+      openVerifiedWorker:(scope,keyBytes) async {
+        opens++;
+        expect(keyBytes.length,32);
+        final executor=NativeDatabase.memory();
+        if(staleDuringOpen) epoch++;
+        return D18KeyedCipherWorkerLease(
+          executor:executor,
+          authenticatedScopeName:scope.databaseName,
+          physicalDatabaseName:badDestination
+              ? scope.databaseName
+              : D18PreCutoverCipherAdapter.destinationFor(scope),
+          cipherEngine:badEngine ? 'sqlite3-stock' : 'sqlite3mc',
+          disposeWorker:() async {
+            disposed++;
+            // The worker-side lease owns cleanup on rejection even before
+            // AppDatabase takes ownership of the query executor.
+            await executor.close();
+          },
+        );
+      });
+    await expectLater(adapter.openUnpublished(
+      scope:_b,keySession:enrollment.session),throwsStateError);
+    expect(opens,0);
+
+    badEngine=true;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session),throwsStateError);
+    expect(disposed,1);
+    badEngine=false;
+
+    badDestination=true;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session),throwsStateError);
+    expect(disposed,2);
+    badDestination=false;
+
+    staleDuringOpen=true;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session),throwsStateError);
+    expect(disposed,3);
+    staleDuringOpen=false;
+    // A still controls the simulated authenticated account after the epoch
+    // update, so a fresh approved opening must be independently verified.
+    final candidate=await adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session);
+    final version=await candidate.database.customSelect(
+        'PRAGMA user_version').getSingle();
+    expect(version.read<int>('user_version'),12);
+    await candidate.close();
+    await candidate.close();
+    expect(disposed,4); // Idempotent close, no orphan worker.
+    authenticated=_b;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session),throwsStateError);
+    expect(opens,4);
   });
 
 }
