@@ -49,7 +49,6 @@ async function withDb(page,operation,payload={}){
      if(operation==='abort_after_put'&&intentionallyAborted)
       resolve({wrote:false,abortedAsExpected:true});
      else reject(tx.error||new Error('IDB_UNEXPECTED_TRANSACTION_ABORT'));
-     else reject(tx.error||new Error('IDB_CAS_ABORT'));
     };
     // Deliberate tx.abort may dispatch an error event before onabort.
     // Only ignore that event if the fixture itself initiated the abort.
