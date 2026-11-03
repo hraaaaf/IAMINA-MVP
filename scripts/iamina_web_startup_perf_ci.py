@@ -69,6 +69,16 @@ INSTRUMENT = r"""
       reason_name: safeNames.includes(reasonName) ? reasonName : 'other',
       reason_type: Object.prototype.toString.call(reason) === '[object Error]' ? 'Error' : typeof reason,
       message_length: message.length,
+      // Anonymous fresh Chromium context: retain only a bounded, scrubbed
+      // diagnostic prefix. Never serialize raw text, URLs or long identifiers.
+      message_prefix_redacted: message.slice(0, 360)
+        .replace(/https?:\/\/[^\s)'\"`]+/gi, '[url]')
+        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+        .replace(/(['\"`])(?:(?!\1)[^\r\n])*?\1/g, '[quoted]')
+        .replace(/\b\d{4,}\b/g, '[digits]')
+        .replace(/\b[A-Za-z0-9_-]{28,}\b/g, '[opaque]')
+        .replace(/[\r\n\t]+/g, ' ')
+        .slice(0, 220),
       source_file: source ? source[1] : 'unknown',
       source_line: source && source[2] ? Number(source[2]) : null,
       source_column: source && source[3] ? Number(source[3]) : null,
