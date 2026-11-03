@@ -60,7 +60,13 @@ const steps=[
           if(url.startsWith(origin)||url.startsWith(api)||
               url.startsWith('data:')||url.startsWith('blob:'))
             return route.continue();
-          external.push('external_blocked');
+          try {
+            const u=new URL(url);
+            // Diagnostics exclude credentials, query strings and page payload.
+            external.push(u.origin);
+          }catch{
+            external.push('non-http-scheme');
+          }
           return route.abort();
         });
         const name=locale+'-'+viewport.width+'x'+viewport.height;
@@ -88,7 +94,9 @@ const steps=[
           const result={
             locale,viewport,screenshot,passed:valid,steps:item.steps||[],
             nativeLoginStatuses:authResponses,providerRequests:photoUploads.length,
-            blockedExternal:external.length,pageErrors:errors.length,
+            blockedExternal:external.length,
+            blockedExternalOrigins:[...new Set(external)].sort(),
+            pageErrors:errors.length,
             finalTitle:title,reason:item.reason||null
           };
           report.cases.push(result);
