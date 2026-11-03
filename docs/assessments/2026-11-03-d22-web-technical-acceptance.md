@@ -1,6 +1,6 @@
 # IAMINA — D22 Web : acceptation technique bornée, transfert scientifique à D32
 
-**Décision explicite du propriétaire, 03/11/2026 :** retirer de D22 les arbitrages scientifiques/cliniques G1–G7 et les transférer à [D32 #1248](https://github.com/hraaaaf/IAMINA-MVP/issues/1248). **État D22 : TECHNICALLY_ACCEPTED / UNMERGED / NOT_DEPLOYED.** Il s'agit de l'acceptation des comportements Web démontrés par tests synthétiques au SHA exact, **pas** de l'approbation d'une politique de soin, d'une migration, d'un export médical ni d'une mise en service patient.
+**Décision explicite du propriétaire, 03/11/2026 :** retirer de D22 les arbitrages scientifiques/cliniques G1–G7 et les transférer à [D32 #1248](https://github.com/hraaaaf/IAMINA-MVP/issues/1248). **État D22 : TECHNICALLY_ACCEPTED / MERGED / NOT_DEPLOYED ; CI postmerge à vérifier au SHA intégré.** Il s'agit de l'acceptation des comportements Web démontrés par tests synthétiques au SHA exact, **pas** de l'approbation d'une politique de soin, d'une migration, d'un export médical ni d'une mise en service patient.
 
 ## Nom, goal, succès, preuve
 
@@ -19,7 +19,7 @@
 | F06 coffre local A/B [#1241](https://github.com/hraaaaf/IAMINA-MVP/pull/1241) | `b04ea588f3b1ac68c3f0f8ed591c92248a4e7068` | **2/2 SUCCESS** ; navigateur Chrome, vrai contrôleur Drift/IndexedDB mais principaux simulés A/B ; A=103.25, B=222.5, logout et reload | PASS_BOUNDED |
 | F07 texte FR/AR 200 % [#1242](https://github.com/hraaaaf/IAMINA-MVP/pull/1242) | `aa7c64abced94fce18b0729f44e0bfb8cd5d0f88` | **20/20 SUCCESS** ; six tests Flutter `TextScaler.linear(2.0)` FR/AR × 390/768/1280, RTL et rendu sans exception | PASS_BOUNDED |
 
-**Important : toutes les PR de cette table restent DRAFT et NON FUSIONNÉES au dernier relevé.** `main` ne contient donc pas encore nécessairement ces correctifs ; l'état ici est une **acceptation de candidat**, pas une livraison réelle. Ne pas fusionner automatiquement les PR superposées (#1240 est basée sur le travail de #1225 ; #1242 dépend du travail de #1231). Aucune autorisation de déploiement Vercel découle de cette acceptation.
+**Intégration vérifiée, 03/11/2026 : les six PR ci-dessus et la PR documentaire #1247 sont FUSIONNÉES** (merge commits, historique conservé). Ordre : #1247 → #1225 → #1231 → #1242 → #1240 → #1238 → #1241 ; dernier `main@29a7c0ccb5e4271bb9f2e5e2bce15849d7bf0fef`. Les dépendances héritées sont conservées. Les deux manifests Vercel contiennent `git.deploymentEnabled=false` sur ce SHA. **Une fusion GitHub n'est pas un déploiement** ; aucun Vercel demandé ni publication patient certifiée. La réussite prémerge par PR ne remplace pas la CI postmerge intégrée [#41668434340](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41668434340).
 
 ## Ce qui est TRANSFÉRÉ et retiré du périmètre de clôture D22
 
@@ -36,10 +36,24 @@
 
 ## Conclusion de D22 et chemin opérationnel
 
-**Décision : D22 `TECHNICALLY_ACCEPTED / SCOPED_CLOSED / UNMERGED / NOT_DEPLOYED`.** Aucun chiffre d'avancement global n'est inventé. Aucun nouveau test d'un lot vert n'est requis par le simple changement de périmètre. La protection « objectifs non vérifiés » doit rester fail-closed ; elle n'est pas contournée pour accélérer D32.
+**Décision : D22 `TECHNICALLY_ACCEPTED / SCOPED_CLOSED / MERGED / NOT_DEPLOYED` (sous réserve du verdict de la CI intégrée).** Aucun chiffre d'avancement global n'est inventé. Aucun nouveau test d'un lot vert n'est requis par le simple changement de périmètre. La protection « objectifs non vérifiés » doit rester fail-closed ; elle n'est pas contournée pour accélérer D32.
 
-**Next exact de la phase livraison, séparé de la décision D22 :** conserver les six PR candidates jusqu'à un plan d'intégration non contradictoire/autorisé et une CI postmerge réelle. Si un merge déclenche un déploiement Vercel automatique, **obtenir une autorisation explicite AVANT** ; ne jamais annoncer « livré » ou « production-ready » à l'avance.
+**Next exact de clôture :** lire la CI postmerge intégrée sur `main@29a7c0cc` ([run #41668434340](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41668434340)), corriger seulement un rouge prouvé, consigner son verdict exact dans la [D22 #1165](https://github.com/hraaaaf/IAMINA-MVP/issues/1165) et Notion, puis passer au chantier suivant. **Vercel reste une action séparée exigeant une autorisation explicite** ; ne pas annoncer « livré au patient ».
 
 **Next décision de recherche :** D32 [#1248](https://github.com/hraaaaf/IAMINA-MVP/issues/1248), recherche scientifique documentée et tests réels avant politique clinique ; aucun GO patient implicite.
 
 **Origines historiques (conservées, mais supersédées pour l'allocation de périmètre) :** `docs/assessments/2026-10-29-d19-d22-web-clinical-decision-gate.md`, `2026-11-02-d22-g1-g4-g7-evidence-contract-gate.md`, `2026-11-02-d22-g7-synthetic-migration-rehearsal.md`.
+
+## Intégration GitHub des sept PR — preuve de fusion
+
+| PR | SHA du merge enregistré dans `main` |
+| --- | --- |
+| Docs transfert D32 #1247 | `6bcf21da085545dd22eaa9419452c0c76ccc53b2` |
+| Gate A #1225 | `f02165cb75dea4e59e43043863771db33390315a` |
+| QA Web #1231 | `69d29a22ccec79d2cc15d044c2163394a6534e4e` |
+| F07 texte #1242 | `9c9c0d8ee099e4e27fc0b1258300dd4335d340c1` |
+| F05 #1240 | `cc4fa4172eff86ec36fbdb6d6f0397b9b101c321` |
+| F04 #1238 | `7792695b235ba7f1230d9d6e91a2d2286820568c` |
+| F06 #1241 | `29a7c0ccb5e4271bb9f2e5e2bce15849d7bf0fef` |
+
+**État CI à la rédaction :** postmerge [#41668434340](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41668434340) `in_progress`. Contrôler à l'état terminal ; les 86/86 anciens CI prémerge restent historiques. **D32 #1248** est le propriétaire exclusif des validations médicales/scientifiques transférées.
