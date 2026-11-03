@@ -54,3 +54,9 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - **Changement de stratégie après deux échecs :** le nouvel oracle est un reçu structuré et uniquement synthétique conservé dans localStorage, avec phase et état de réussite ou classe d'échec. Le test doit également observer l'hôte Flutter et le premier frame ; le titre document n'est plus une condition de réussite. L'étape exacte d'exécution est aussi stockée dans une clé technique indépendante.
 - **Nouveau commit test-only :** 4d00b67893e66026e43618714bd4a2c2840c8b58 ; [run #41734802258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734802258), IN_PROGRESS au premier contrôle. Aucune mesure acquise avant sa certification.
 - **Next :** vérifier les reçus locaux et l'intégrité du coffre vide/300 lignes via Chromium et WebKit. Si réussite, consigner médianes et limites ; sinon, corriger la cause attestée par le reçu ou les étapes.
+
+### Contrôle du 03/11/2026 à 23:02 UTC — en attente
+
+- Run [#41734802258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734802258), HEAD de code `4d00b67893e66026e43618714bd4a2c2840c8b58` : **IN_PROGRESS**.
+- Build/analyse Flutter **GREEN** ; installation des navigateurs **IN_PROGRESS** ; mesure des coffres et upload **PENDING**. Aucun JSON de mesure ni médiane ne peut être certifié.
+- **Next exact :** vérifier fin du run, puis contrôler reçu synthétique, frame Flutter, intégrité des coffres et les 24 échantillons attendus. En cas de RED, analyser l'artefact debug avant de modifier le banc. Aucun merge ni déploiement.
