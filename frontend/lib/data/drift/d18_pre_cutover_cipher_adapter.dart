@@ -42,8 +42,14 @@ final class D18KeyedCipherWorkerLease {
   });
 }
 
+/// The trusted worker MUST receive the intent *before* inspecting/opening
+/// IndexedDB. It must reject an existing destination on createFresh and reject
+/// an absent or unauthenticated destination on reopenExisting. Returning a
+/// lease after destructive creation is NOT a valid implementation.
 typedef D18OpenKeyedCipherWorker = Future<D18KeyedCipherWorkerLease> Function(
   PatientVaultScope scope,
+  D18CipherVaultOpenIntent intent,
+  String expectedDestination,
   List<int> ephemeralKey,
 );
 
@@ -90,7 +96,8 @@ final class D18PreCutoverCipherAdapter {
     requestedScope: scope,
     keySession: keySession,
     createUnpublished: (keyBytes) async {
-      final lease = await openVerifiedWorker(scope, keyBytes);
+      final lease = await openVerifiedWorker(
+        scope, intent, destinationFor(scope), keyBytes);
       AppDatabase? db;
       try {
         // Fail-closed BEFORE any SQL call if the trusted worker reports an
@@ -116,6 +123,27 @@ final class D18PreCutoverCipherAdapter {
         final version = await db.customSelect('PRAGMA user_version').getSingle();
         if (version.read<int>('user_version') != db.schemaVersion) {
           throw StateError('D18 encrypted schema version mismatch');
+        }
+        // A version number alone is insufficient: a physically damaged or
+        // incomplete database can advertise v12 with missing tables.
+        final actualTables = (await db.customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' "
+          "AND name NOT LIKE 'sqlite_%'").get())
+          .map((row) => row.read<String>('name')).toSet();
+        if (!actualTables.containsAll(const {
+          'patient_profiles', 'log_entries', 'chat_messages',
+          'medication_events', 'reminders',
+          'patient_treatment_declarations_v1',
+        })) {
+          throw StateError('D18 encrypted schema incomplete');
+        }
+        final integrity = await db.customSelect('PRAGMA quick_check').getSingle();
+        if (integrity.data.values.single != 'ok') {
+          throw StateError('D18 encrypted SQLite integrity failed');
+        }
+        final foreignKeys = await db.customSelect('PRAGMA foreign_key_check').get();
+        if (foreignKeys.isNotEmpty) {
+          throw StateError('D18 encrypted SQLite foreign key failure');
         }
         return D18UnpublishedCipherVault._(db, lease.disposeWorker);
       } catch (_) {
