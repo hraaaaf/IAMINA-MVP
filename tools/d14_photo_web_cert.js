@@ -44,10 +44,28 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
   const ctx=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1,locale:locale==='ar'?'ar-MA':'fr-FR'});
   const page=await ctx.newPage();
   const fatalErrors=[];
+  const consoleErrors=[];
+  const failedRequests=[];
+  const responseErrors=[];
   const providerRequests=[];
   const offOriginRequests=[];
   const allowedOrigins = new Set([new URL(beforeOrigin).origin, new URL(afterOrigin).origin]);
   page.on('pageerror', error=>fatalErrors.push(String(error)));
+  page.on('console',msg=>{
+    if(msg.type()==='error') consoleErrors.push(msg.text().slice(0,350));
+  });
+  page.on('requestfailed',req=>{
+    failedRequests.push({
+      origin:(()=>{try{return new URL(req.url()).origin}catch{return 'non-http'}})(),
+      failure:(req.failure()?.errorText||'unknown').slice(0,120),
+    });
+  });
+  page.on('response',resp=>{
+    if(resp.status()>=400) responseErrors.push({
+      status:resp.status(),
+      path:(()=>{try{return new URL(resp.url()).pathname.slice(0,120)}catch{return 'unknown'}})(),
+    });
+  });
   page.on('request', request=>{
     const url=request.url();
     if (/generativelanguage\.googleapis\.com|api\.groq\.com|\/api\/v1\/ai\//.test(url))
@@ -72,7 +90,27 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
   try {
     const url=origin+'/?'+new URLSearchParams({surface:synthetic?'d14-photo-cert':'meal-picker',locale,seed:'0',...(synthetic?{scenario:query}:{})}).toString();
     await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForSelector('flutter-view',{timeout:60000});
+    try {
+      await page.waitForSelector('flutter-view',{timeout:60000});
+    } catch(error) {
+      // Never mask a candidate boot regression. Capture sanitized startup
+      // diagnostics and a screenshot, then let the CI fail.
+      const boot=await page.evaluate(()=>({
+        readyState:document.readyState,
+        title:document.title,
+        appScripts:[...document.scripts].map(x=>(x.src||'inline').split('?')[0]).slice(-10),
+        flutterViewCount:document.querySelectorAll('flutter-view').length,
+        bodyText:document.body.innerText.slice(0,150),
+      })).catch(e=>({inspectionError:String(e).slice(0,120)}));
+      const diag={case:name,origin:origin===afterOrigin?'after':'before',boot,
+        fatalErrors,consoleErrors:consoleErrors.slice(-15),
+        responseErrors:responseErrors.slice(-15),
+        failedRequests:failedRequests.slice(-15),
+        offOriginRequests:[...new Set(offOriginRequests)]};
+      fs.writeFileSync(path.join(root,'boot-failure-'+name+'.json'),JSON.stringify(diag,null,2));
+      await page.screenshot({path:path.join(root,'boot-failure-'+name+'.png')}).catch(()=>{});
+      fail(name+': flutter-view did not mount; diagnostic: '+JSON.stringify(diag).slice(0,2000)+' ; '+String(error));
+    }
     let state=null;
     if (synthetic) {
       try {

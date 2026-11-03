@@ -168,12 +168,23 @@ class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (error) {
-    debugPrint('Browser audit Firebase init unavailable: $error');
+  // D14's isolated, synthetic photo surfaces do not use Firebase. In Flutter
+  // Web, Firebase.initializeApp can request Firebase scripts from a remote
+  // CDN before runApp. The D14 zero-off-origin test must exercise the actual
+  // widget without loading unrelated Firebase migrations or masking requests.
+  // This guard is restricted to the test-only browser audit entrypoint.
+  final d14NoFirebaseAudit = const <String>{
+    'meal-picker',
+    'd14-photo-cert',
+  }.contains(Uri.base.queryParameters['surface']);
+  if (!d14NoFirebaseAudit) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (error) {
+      debugPrint('Browser audit Firebase init unavailable: $error');
+    }
   }
 
   // Synthetic D3 browser fixture only; never used by production main.dart.
