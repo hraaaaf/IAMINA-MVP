@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:amina/data/drift/database.dart';
@@ -17,6 +18,43 @@ class _OwnerDatabase extends AppDatabase {
 
   @override
   Stream<List<ReminderData>> watchReminders() => Stream.value(items);
+}
+
+
+class _UiReminderDatabase extends AppDatabase {
+  _UiReminderDatabase() : super(NativeDatabase.memory());
+
+  final List<ReminderData> items = [];
+  final _changes = StreamController<List<ReminderData>>.broadcast(sync: true);
+  int _nextId = 1;
+
+  // The widget navigation/save test is synchronous in memory. Real Drift
+  // persistence is covered separately in a non-widget async test below.
+  @override
+  Stream<List<ReminderData>> watchReminders() async* {
+    yield List<ReminderData>.of(items);
+    yield* _changes.stream;
+  }
+
+  @override
+  Future<int> addReminder({required String title, required DateTime dueAt}) async {
+    final id = _nextId++;
+    items.add(ReminderData(
+      id: id,
+      title: title.trim(),
+      dueAt: dueAt,
+      enabled: true,
+      createdAt: DateTime.now(),
+    ));
+    _changes.add(List<ReminderData>.of(items));
+    return id;
+  }
+
+  @override
+  Future<void> close() async {
+    await _changes.close();
+    await super.close();
+  }
 }
 
 MaterialApp _localizedApp(Widget child, Locale locale) => MaterialApp(
@@ -141,17 +179,19 @@ void main() {
     });
   }
 
+  // UI form interactions are exercised with the real RemindersScreen.
+  // A deterministic in-memory repository avoids Drift stream timers inside
+  // Flutter's fake-async widget test clock. Actual SQL persistence is asserted
+  // independently in the next (non-widget) asynchronous test.
   for (final locale in const [Locale('fr'), Locale('ar'), Locale('en')]) {
-    testWidgets('D3 second reminder: the + stays tappable after first save ' +
+    testWidgets('D3 second reminder: + routes and saves twice ' +
         locale.languageCode, (tester) async {
-      // Matches iPhone width; navigation uses the actual RemindersScreen and
-      // persists BOTH records in the same local Drift vault.
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final db = AppDatabase(NativeDatabase.memory());
+      final db = _UiReminderDatabase();
       addTearDown(db.close);
       final router = GoRouter(
         initialLocation: '/dashboard',
@@ -184,40 +224,37 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('d3-reminders-add-another')),
-          findsOneWidget);
 
-      // First reminder created through the empty-state action.
+      // Start from the empty-state CTA, using the real form and its submit.
+      expect(find.byKey(const ValueKey('d3-reminders-create')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('d3-reminders-create')));
       await tester.pumpAndSettle();
       await tester.enterText(
           find.byKey(const Key('reminder-title-input')), 'PREMIER');
       await tester.tap(find.byKey(const Key('save-reminder')));
       await tester.pumpAndSettle();
-      expect((await db.select(db.reminders).get()).length, 1);
+      expect(db.items.map((r) => r.title).toList(), ['PREMIER']);
 
-      // Return Home: first saved row is present, and + STILL works.
+      // Back on Home, the first reminder must not remove the add button.
       await tester.tap(find.byKey(const ValueKey('amina-page-exit')));
       await tester.pumpAndSettle();
       expect(find.text('PREMIER'), findsOneWidget);
       final plus = find.byKey(const ValueKey('d3-reminders-add-another'));
       expect(plus, findsOneWidget);
-      final btn = tester.widget<IconButton>(plus);
-      expect(btn.onPressed, isNotNull);
-      expect(btn.tooltip, isNotEmpty);
-
+      final button = tester.widget<IconButton>(plus);
+      expect(button.onPressed, isNotNull);
+      expect(button.tooltip, isNotEmpty);
       await tester.tap(plus);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('reminder-title-input')), findsOneWidget);
 
-      // Second actual save must not overwrite the first.
+      // The same genuine form can save a distinct second reminder.
       await tester.enterText(
           find.byKey(const Key('reminder-title-input')), 'DEUXIEME');
       await tester.tap(find.byKey(const Key('save-reminder')));
       await tester.pumpAndSettle();
-      final saved = await db.select(db.reminders).get();
-      expect(saved.length, 2);
-      expect(saved.map((r) => r.title).toSet(), {'PREMIER', 'DEUXIEME'});
+      expect(db.items.map((r) => r.title).toList(),
+          ['PREMIER', 'DEUXIEME']);
 
       await tester.tap(find.byKey(const ValueKey('amina-page-exit')));
       await tester.pumpAndSettle();
@@ -228,6 +265,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  test('D3 local Drift stores both independent reminder records', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    try {
+      final now = DateTime.now();
+      final first = await db.addReminder(
+          title: 'PREMIER', dueAt: now.add(const Duration(days: 1)));
+      final second = await db.addReminder(
+          title: 'DEUXIEME', dueAt: now.add(const Duration(days: 2)));
+      expect(second, isNot(first));
+      final rows = await db.select(db.reminders).get();
+      expect(rows.length, 2);
+      expect(rows.map((r) => r.title).toSet(), {'PREMIER', 'DEUXIEME'});
+    } finally {
+      await db.close();
+    }
+  });
 
   testWidgets('D3 vault A to B to A never exposes previous owner reminders',
       (tester) async {
