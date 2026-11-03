@@ -8,6 +8,7 @@ import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/services/medical_vault_protected_state.dart';
 import 'package:amina/services/patient_vault_session_controller.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -17,6 +18,35 @@ const _n = 300;
 const _key = 'iamina_perf_web_synthetic_v1';
 const _progressKey = 'iamina_perf_web_synthetic_progress_v1';
 const _storageEvidenceKey = 'iamina_perf_web_synthetic_storage_evidence_v1';
+const _modeKey = 'iamina_perf_web_synthetic_mode_v1';
+
+// Test-only equivalent of AppDatabase.forPatientVault, adding only Drift's
+// documented onResult observation hook. Same physical db name, same WASM and
+// worker, same generated schema and vault scope. Never use in production.
+AppDatabase _trackedVault(PatientVaultScope scope) {
+  final isFilled = scope.databaseName == _scope(true).databaseName;
+  final label = isFilled ? 'populated' : 'empty';
+  return AppDatabase.testPatientVault(
+    driftDatabase(
+      name: scope.databaseName,
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+        onResult: (result) {
+          // Enum identifiers only. No patient IDs, records or SQL contents.
+          html.window.localStorage[_modeKey] = jsonEncode({
+            'phase': label,
+            'chosen_implementation': result.chosenImplementation.name,
+            'missing_features':
+                result.missingFeatures.map((f) => f.name).toList(),
+            'fixture': 'synthetic_only',
+          });
+        },
+      ),
+    ),
+    scope,
+  );
+}
 void _stage(String value) {
   // Codes only, never patient data, credentials or error strings.
   html.document.title = 'IAMINA_PERF_WEB_STAGE:' + value;
@@ -47,7 +77,7 @@ Future<Map<String, Object?>> _seed() async {
   for (final filled in [false, true]) {
     final label = filled ? 'filled' : 'empty';
     _stage('seed_' + label + '_open');
-    final db = AppDatabase.forPatientVault(_scope(filled));
+    final db = _trackedVault(_scope(filled));
     try {
       await db.customSelect('SELECT 1').getSingle();
       _stage('seed_' + label + '_count');
@@ -100,7 +130,7 @@ Future<Map<String, Object?>> _measure(bool filled) async {
   final scope = _scope(filled);
   final openWatch = Stopwatch()..start();
   _stage(filled ? 'filled_scoped_open' : 'empty_scoped_open');
-  final db = AppDatabase.forPatientVault(scope);
+  final db = _trackedVault(scope);
   late final bool protected;
   late final int rows;
   late final double openMs;
@@ -141,6 +171,7 @@ Future<Map<String, Object?>> _measure(bool filled) async {
   _stage(filled ? 'filled_controller' : 'empty_controller');
   final controller = PatientVaultSessionController(
     authChanges: notifier, resolveScope: () async => scope,
+    openDatabase: _trackedVault,
   );
   late final bool hasVault;
   try {
@@ -174,6 +205,7 @@ Future<void> main() async {
     }
     final data = phase == 'seed'
         ? await _seed() : await _measure(phase == 'populated');
+    data['storage_mode'] = jsonDecode(html.window.localStorage[_modeKey] ?? 'null');
     html.window.localStorage[_key] = jsonEncode(data);
     html.document.title = 'IAMINA_PERF_WEB_' + phase.toUpperCase() + '_PASS';
     runApp(const MaterialApp(
@@ -210,6 +242,7 @@ Future<void> main() async {
       'failure_stage': failingStage,
       'failure_reason': reason,
       'storage_evidence': evidenceJson == null ? null : jsonDecode(evidenceJson),
+      'storage_mode': jsonDecode(html.window.localStorage[_modeKey] ?? 'null'),
       'fixture': 'synthetic_only',
     });
     _stage('failure');

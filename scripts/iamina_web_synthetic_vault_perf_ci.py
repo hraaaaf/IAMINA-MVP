@@ -127,6 +127,7 @@ def navigate(page, base, phase):
             "failure_reason": status.get("failure_reason", "other_error"),
             "fixture": "synthetic_only",
             "storage_evidence": status.get("storage_evidence"),
+            "storage_mode": status.get("storage_mode"),
             "browser_capabilities": browser_capabilities,
         }
         Path("perf_web_synthetic_vault_debug.json").write_text(
@@ -146,6 +147,8 @@ def navigate(page, base, phase):
         raise AssertionError("Missing or stale synthetic evidence")
     if result["rejections"] or not result["hasFlutter"]:
         raise AssertionError("Synthetic Flutter app did not render cleanly")
+    if not result["metrics"].get("storage_mode") and phase != "seed":
+        raise AssertionError("Drift did not report a storage mode for synthetic vault")
     if not browser_capabilities["cross_origin_isolated"]:
         raise AssertionError("Isolated CI storage server did not enable COOP/COEP")
     if response is None or response.status != 200:
