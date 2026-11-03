@@ -124,18 +124,23 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   }
 
   Future<MealAnalysisResult?> _pickAndRecognize(int generation) async {
+    // Use the patient-vault-bound transport; never construct an unrelated
+    // AuthService/ApiClient that bypasses lock, identity or auth-epoch policy.
+    // Pilot local-only transport has to fail closed before touching the gallery.
+    final apiClient = context.read<ApiClient?>();
+    if (apiClient == null || !apiClient.canSyncClinicalData) return null;
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
       maxWidth: 1600,
     );
-    if (file == null || !mounted ||
+    if (file == null || !mounted || !apiClient.canSyncClinicalData ||
         generation != _photoRequestGeneration || !widget.canUsePhotoRecognition) {
       return null;
     }
     final bytes = await file.readAsBytes();
-    if (!mounted || generation != _photoRequestGeneration ||
-        !widget.canUsePhotoRecognition) {
+    if (!mounted || !apiClient.canSyncClinicalData ||
+        generation != _photoRequestGeneration || !widget.canUsePhotoRecognition) {
       bytes.fillRange(0, bytes.length, 0);
       return null;
     }
@@ -145,7 +150,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         : lower.endsWith('.webp')
         ? 'image/webp'
         : 'image/jpeg';
-    return ApiClient().analyzeMealImage(bytes, mimeType: mime);
+    return apiClient.analyzeMealImage(bytes, mimeType: mime);
   }
 
   Future<void> _recognizePhoto(AppLocalizations l10n) async {
