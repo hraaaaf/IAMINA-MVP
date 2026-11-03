@@ -177,6 +177,10 @@ jobs:
             echo "D18 stage3 independent durability stress $sample/20"
             node tools/d18_candidate_cipher_migration_probe.js
           done
+          # Two independent negative controls. Expected failures are strict
+          # assertions, not retries or alternate migration paths.
+          D18_NEGATIVE_MODE=missing_source node tools/d18_candidate_cipher_migration_probe.js
+          D18_NEGATIVE_MODE=missing_trigger node tools/d18_candidate_cipher_migration_probe.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend

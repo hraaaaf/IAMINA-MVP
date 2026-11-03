@@ -487,13 +487,77 @@ Future<void> raw() async {
     check(!chars.contains(value),'PLAINTEXT_CONTENT');
   }
 }
+// CI negative control: never create a plaintext source or ciphertext target
+// when a migration preflight fails, even if this browser has no prior vault.
+Future<void> assertNoCipherDestination() async {
+  stage('negative_assert_no_cipher_destination');
+  final probe=await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
+    driftWorkerUri:Uri.parse('d18_cipher_worker_correct.js'),
+    databaseName:dstName);
+  check(!probe.existingDatabases.any((entry)=>entry.$2==dstName),
+    'D18_NEGATIVE_CREATED_CIPHERTEXT');
+}
+Future<void> assertMissingSourceUntouched() async {
+  stage('negative_assert_missing_source_untouched');
+  final source=await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('sqlite3.wasm'),
+    driftWorkerUri:Uri.parse('drift_worker.js'),
+    databaseName:srcName);
+  check(!source.existingDatabases.any((entry)=>entry.$2==srcName),
+    'D18_NEGATIVE_CREATED_PLAINTEXT_SOURCE');
+  await assertNoCipherDestination();
+}
+Future<void> seedWithMissingTrigger() async {
+  // Deliberately corrupt only a disposable synthetic schema object after
+  // seeding. No original patient data exists or may be supplied here.
+  await seed();
+  stage('negative_drop_synthetic_trigger');
+  final q=await openSource();
+  try {
+    await q.runCustom('DROP TRIGGER "d18_child_trigger"',[]);
+    await integrity(q);
+    final s=await snapshot(q);
+    check(!s.schema.any((row)=>row['name']=='d18_child_trigger'),
+      'D18_NEGATIVE_TRIGGER_STILL_PRESENT');
+  } finally {await q.close();}
+}
+Future<void> assertMissingTriggerUntouched() async {
+  stage('negative_assert_incomplete_source_untouched');
+  final q=await openSource();
+  try {
+    await integrity(q);
+    final snap=await snapshot(q);
+    check(snap.version==12 && 
+      !snap.schema.any((row)=>row['name']=='d18_child_trigger') &&
+      snap.schema.any((row)=>row['name']=='d18_parent') &&
+      snap.schema.any((row)=>row['name']=='d18_child') &&
+      snap.schema.any((row)=>row['name']=='d18_parent_label_idx') &&
+      snap.schema.any((row)=>row['name']=='d18_parent_view'),
+      'D18_NEGATIVE_INCOMPLETE_SCHEMA_CHANGED');
+    final parents=snap.data['d18_parent'];
+    final children=snap.data['d18_child'];
+    check(parents!=null && parents.length==1 &&
+      parents.single['id']==3 && parents.single['label']==marker &&
+      children!=null && children.length==1 &&
+      children.single['id']==5 && children.single['parent_id']==3 &&
+      snap.seq.any((row)=>row['name']=='d18_parent' && row['seq']==100),
+      'D18_NEGATIVE_SOURCE_CONTENT_CHANGED');
+  } finally {await q.close();}
+  await assertNoCipherDestination();
+}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final phase=Uri.base.queryParameters['phase']??'';
   try{
     switch(phase){
       case 'seed':await seed();break;
+      case 'seed_missing_trigger':await seedWithMissingTrigger();break;
       case 'migrate':await migrate();break;
+      case 'assert_missing_source_untouched':
+        await assertMissingSourceUntouched();break;
+      case 'assert_missing_trigger_untouched':
+        await assertMissingTriggerUntouched();break;
       case 'verify':await verify();break;
       case 'physical_bytes':await raw();break;
       default:throw StateError('INVALID_PHASE');
