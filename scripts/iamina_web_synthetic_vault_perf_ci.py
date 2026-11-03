@@ -109,6 +109,7 @@ def navigate(page, base, phase):
             "failure_stage": status.get("failure_stage", "unknown"),
             "failure_reason": status.get("failure_reason", "other_error"),
             "fixture": "synthetic_only",
+            "storage_evidence": status.get("storage_evidence"),
         }
         Path("perf_web_synthetic_vault_debug.json").write_text(
             json.dumps(proof, indent=2), encoding="utf-8")

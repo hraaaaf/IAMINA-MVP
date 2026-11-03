@@ -16,6 +16,7 @@ const _filledId = '22222222-2222-4222-8222-222222222222';
 const _n = 300;
 const _key = 'iamina_perf_web_synthetic_v1';
 const _progressKey = 'iamina_perf_web_synthetic_progress_v1';
+const _storageEvidenceKey = 'iamina_perf_web_synthetic_storage_evidence_v1';
 void _stage(String value) {
   // Codes only, never patient data, credentials or error strings.
   html.document.title = 'IAMINA_PERF_WEB_STAGE:' + value;
@@ -113,7 +114,21 @@ Future<Map<String, Object?>> _measure(bool filled) async {
     protected = await hasProtectedMedicalVaultRows(db);
     guardWatch.stop();
     guardMs = _ms(guardWatch);
+    _stage(filled ? 'filled_raw_counts' : 'empty_raw_counts');
     rows = await _count(db);
+    // Independent SQL counts distinguish guard mismatch from missing storage
+    // after physical reload. Counts ONLY; never serialize row contents.
+    final profileRow = await db.customSelect(
+      'SELECT COUNT(*) AS n FROM patient_profiles',
+    ).getSingle();
+    html.window.localStorage[_storageEvidenceKey] = jsonEncode({
+      'phase': filled ? 'populated' : 'empty',
+      'expected_rows': filled ? _n : 0,
+      'observed_log_count': rows,
+      'observed_profile_count': profileRow.read<int>('n'),
+      'guard_value': protected,
+      'storage_scope': 'synthetic_only',
+    });
   } finally {
     await db.close();
   }
@@ -187,12 +202,14 @@ Future<void> main() async {
         .where((entry) => name.contains(entry.key))
         .map((entry) => entry.value)
         .firstOrNull ?? 'other_error';
+    final evidenceJson = html.window.localStorage[_storageEvidenceKey];
     html.window.localStorage[_key] = jsonEncode({
       'phase': phase,
       'status': 'FAIL',
       'error_type': error.runtimeType.toString(),
       'failure_stage': failingStage,
       'failure_reason': reason,
+      'storage_evidence': evidenceJson == null ? null : jsonDecode(evidenceJson),
       'fixture': 'synthetic_only',
     });
     _stage('failure');
