@@ -1,0 +1,65 @@
+name: IAMINA PERF-WEB — synthetic local vault startup Chromium WebKit
+on:
+  push:
+    branches: [perf/iamina-web-startup-20261103]
+    paths:
+      - 'frontend/lib/ui_perf_web_synthetic_vault_probe_main.dart'
+      - 'scripts/iamina_web_synthetic_vault_perf_ci.py'
+      - '.github/workflows/iamina-web-synthetic-vault-perf.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iamina-perf-web-local-vault-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-local-startup:
+    name: Real Drift Web synthetic startup subset Chromium and WebKit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Analyze and build isolated synthetic Flutter probe
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_perf_web_synthetic_vault_probe_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/ui_perf_web_synthetic_vault_probe_main.dart \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+            --dart-define=API_BASE_URL=http://127.0.0.1:9
+          test -s build/web/main.dart.js
+          test -s build/web/sqlite3.wasm
+          test -s build/web/drift_worker.js
+      - name: Install disposable browsers
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0
+          python3 -m playwright install --with-deps chromium webkit
+          python3 -m py_compile scripts/iamina_web_synthetic_vault_perf_ci.py
+      - name: Measure real physical synthetic IndexedDB empty vs populated
+        run: |
+          set -euo pipefail
+          python3 scripts/iamina_web_synthetic_vault_perf_ci.py
+      - name: Upload bounded synthetic proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-perf-web-synthetic-vault-${{ github.run_id }}
+          path: |
+            perf_web_synthetic_vault.json
+            perf_web_synthetic_vault.md
+          retention-days: 7
+          if-no-files-found: warn
