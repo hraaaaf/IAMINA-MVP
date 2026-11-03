@@ -97,7 +97,10 @@ void main() {
           await tester.tap(unitSwitch);
           await tester.pump();
           expect(tester.widget<TextField>(input).controller?.text, '7.0');
-          expect(tester.widget<IconButton>(plus).tooltip, contains('0.1').or(contains('0,1')));
+          expect(
+            tester.widget<IconButton>(plus).tooltip,
+            anyOf(contains('0.1'), contains('0,1')),
+          );
           await tester.tap(plus);
           await tester.pump();
           expect(tester.widget<TextField>(input).controller?.text, '7.1');
