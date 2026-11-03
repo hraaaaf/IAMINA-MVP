@@ -69,5 +69,6 @@ jobs:
           grep -q 'test_d24_open_photo_scope_checks_revocation_before_provider_start' /tmp/d24-collected.txt
           grep -q 'test_d24_photo_grants_are_patient_scoped_and_do_not_cross_a_b_a' /tmp/d24-collected.txt
           grep -q 'test_d24_media_api_a_b_a_withdraw_and_reconsent' /tmp/d24-collected.txt
+          grep -q 'test_d24_media_grant_does_not_override_pending_processor_approval' /tmp/d24-collected.txt
       - name: Run full AI egress consent test module
         run: python -m pytest --tb=short -q core/tests/test_ai_egress.py core/tests/test_media_consent_api.py
