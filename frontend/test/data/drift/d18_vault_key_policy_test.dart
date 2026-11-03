@@ -327,9 +327,10 @@ void main() {
     final version=await candidate.database.customSelect(
         'PRAGMA user_version').getSingle();
     expect(version.read<int>('user_version'),12);
+    // Both callers must await the same close AND worker lock release.
+    await Future.wait([candidate.close(), candidate.close()]);
     await candidate.close();
-    await candidate.close();
-    expect(disposed,7); // Idempotent close, no orphan worker.
+    expect(disposed,7); // Concurrent idempotent close, no orphan worker.
     authenticated=_b;
     await expectLater(adapter.openUnpublished(
       scope:_a,keySession:enrollment.session,
