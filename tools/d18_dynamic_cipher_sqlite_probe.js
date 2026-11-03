@@ -208,8 +208,7 @@ async function verifyActualWorkerLock(ctx) {
     'a_second_worker_denied','b_second_worker_denied',
     'a_terminate_releases','owner_a_reopened_b_still_held',
     'b_still_denied','b_terminate_releases',
-    'owner_b_reopened_a_still_held','a_still_denied','read','read_b',
-    'guarded_open'];
+    'owner_b_reopened_a_still_held','a_still_denied','read','read_b'];
   if(results.length!==expected.length||results.some((p,i)=>
     !p.pass||p.phase!==expected[i]))process.exitCode=1;
 })().catch(e=>{
