@@ -473,8 +473,9 @@ def main():
 
                         # F07 Web accessibility evidence: physical keyboard
                         # Tab/Shift+Tab/Enter on actual Flutter unit controls.
-                        # 640x450 CSS px at DPR 2 models a 200% zoomed
-                        # 1280x900 desktop. It is NOT toolbar zoom certification.
+                        # A 640x450 CSS layout viewport models the available
+                        # width/height of a 1280x900 desktop at browser zoom 200%.
+                        # This is a reflow test, NOT native browser zoom certification.
                         if LOCALE in ("fr", "ar"):
                             page.set_viewport_size({"width": 768, "height": 1024})
                             profile_open()
@@ -531,14 +532,11 @@ def main():
                                 "back_focus": keyboard_back_focus, "result": "PASS",
                             })
 
-                            # Keep Playwright's screenshot viewport in sync
-                            # with the CDP CSS layout viewport; an override
-                            # alone leaves Playwright at prior 768x1024.
+                            # Use ONE viewport system: Playwright. Stacking a
+                            # CDP DPR2 override on page.set_viewport_size
+                            # proved to double-scale Flutter (320px view in
+                            # 640px layout), so it does not test accessibility.
                             page.set_viewport_size({"width": 640, "height": 450})
-                            cdp.send("Emulation.setDeviceMetricsOverride", {
-                                "width": 640, "height": 450,
-                                "deviceScaleFactor": 2, "mobile": False,
-                            })
                             profile_open()
                             zoom_state = page.evaluate("""() => ({
                                 cssWidth: window.innerWidth,
@@ -552,7 +550,7 @@ def main():
                             assert (
                                 zoom_state["cssWidth"] == 640
                                 and zoom_state["cssHeight"] == 450
-                                and zoom_state["dpr"] == 2
+                                and zoom_state["dpr"] >= 1
                                 and zoom_state["rootScrollWidth"] <= 640
                                 and zoom_state["flutterViewWidth"] == 640
                             ), f"F07 equivalent zoom overflow/scale: {zoom_state}"
@@ -584,12 +582,12 @@ def main():
                             )
                             evidence["accessibility"]["captures"].append({
                                 "file": zoom_path.name, "viewport_css": "640x450",
-                                "device_pixel_ratio": 2,
+                                "device_pixel_ratio": zoom_state["dpr"],
                                 "pixels": list(zoom_pixels),
                                 "sha256": hashlib.sha256(zoom_png).hexdigest(),
                             })
                             evidence["accessibility"]["checks"].append({
-                                "name": "desktop-200pct-equivalent-CSS-reflow-DPR2",
+                                "name": "desktop-200pct-equivalent-CSS-reflow",
                                 "locale": LOCALE, "result": "PASS",
                                 "geometry": zoom_state,
                                 "native_browser_toolbar_zoom": "NOT_RUN",
