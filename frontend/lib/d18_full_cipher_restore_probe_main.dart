@@ -169,6 +169,7 @@ Future<void> seedAndExport() async {
 }
 Future<String> transferPhysicalRestore(
   D18FullCipherArchiveContents archive,D18VaultKeySession session,
+  {bool crashAfterOneChunk=false},
 ) async {
   stage('request_exclusive_worker_restore');
   final worker=web.Worker('d18_unpublished_cipher_restore_worker.js'.toJS);
@@ -181,7 +182,10 @@ Future<String> transferPhysicalRestore(
     final keyBuffer=key.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
     final cipherBuffer=physical.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
     final message=JSObject()
-      ..setProperty('type'.toJS,'D18_CI_ENCRYPTED_RESTORE_FRESH'.toJS)
+      ..setProperty('type'.toJS,
+        (crashAfterOneChunk ?
+          'D18_CI_RESTORE_CRASH_AFTER_FIRST_PERSISTED_BLOCK' :
+          'D18_CI_ENCRYPTED_RESTORE_FRESH').toJS)
       ..setProperty('scope'.toJS,_scope.databaseName.toJS)
       ..setProperty('name'.toJS,physicalName().toJS)
       ..setProperty('key'.toJS,keyBuffer)
@@ -213,16 +217,19 @@ Future<String> transferPhysicalRestore(
     }
   }
 }
-Future<void> doRestore({required bool expectAlreadyExists}) async {
+Future<void> doRestore({
+  required bool expectAlreadyExists, bool crashAfterOneChunk=false,
+}) async {
   final archive=await importedArchive();
   stage('unseal_independent_ciphertext_archive');
   final session=await D18VaultKeyPolicy.unlockWithPassphrase(
     scope:_scope,publicEnvelopeJson:archive.publicKeyEnvelopeJson,
     passphrase:_localPass);
   try{
-    final status=await transferPhysicalRestore(archive,session);
-    check(status==(expectAlreadyExists ?
-      'CIPHERTEXT_ALREADY_EXISTS' : 'READY_RESTORED'),
+    final status=await transferPhysicalRestore(archive,session,
+      crashAfterOneChunk:crashAfterOneChunk);
+    check(status==(crashAfterOneChunk ? 'D18_CI_PARTIAL_PERSISTED' :
+      expectAlreadyExists ? 'CIPHERTEXT_ALREADY_EXISTS' : 'READY_RESTORED'),
       'D18_RESTORE_INVALID_PHYSICAL_RESPONSE');
   }finally{session.lock();}
 }
@@ -247,8 +254,10 @@ Future<void> reopenAndValidate({bool wrongKey=false}) async {
           scope:_scope,keySession:session,
           intent:D18CipherVaultOpenIntent.reopenExisting);
         await wrong.close();
-      }on StateError{rejected=true;}
-      check(rejected,'D18_RESTORE_WRONG_KEY_ACCEPTED');
+      }on StateError catch(error){
+        rejected=error.toString().contains('D18_WORKER_KEY_REJECTED');
+      }
+      check(rejected,'D18_RESTORE_WRONG_KEY_NOT_CRYPTOGRAPHIC_REJECTION');
     }else{
       final vault=await adapter().openUnpublished(
         scope:_scope,keySession:session,
@@ -265,6 +274,27 @@ Future<void> reopenAndValidate({bool wrongKey=false}) async {
     }
   }finally{session.lock();}
 }
+// A deliberately interrupted import MUST NOT become an authenticated vault.
+// The incomplete physical file is quarantined, requiring an explicit future
+// recovery policy, and must never be silently replaced with a fresh key.
+Future<void> verifyInterruptedImportCannotOpen() async {
+  final archive=await importedArchive();
+  final session=await D18VaultKeyPolicy.unlockWithPassphrase(
+    scope:_scope,publicEnvelopeJson:archive.publicKeyEnvelopeJson,
+    passphrase:_localPass);
+  try{
+    stage('crash_partial_file_must_not_authenticate');
+    var rejected=false;
+    try{
+      final vault=await adapter().openUnpublished(
+        scope:_scope,keySession:session,
+        intent:D18CipherVaultOpenIntent.reopenExisting);
+      await vault.close();
+    }on StateError{rejected=true;}
+    check(rejected,'D18_CRASH_PARTIAL_FILE_INCORRECTLY_ACCEPTED');
+  }finally{session.lock();}
+}
+
 Future<void> verifyFailedArchiveWithoutCreatingVault() async {
   final envelope=globalContext.getProperty('__D18_CI_IMPORTED_ARCHIVE'.toJS);
   check(envelope is JSString,'D18_RESTORE_TEST_ARCHIVE_MISSING');
@@ -290,10 +320,18 @@ Future<void> main() async {
       case 'export':await seedAndExport();break;
       case 'bad_archive':await verifyFailedArchiveWithoutCreatingVault();break;
       case 'restore':await doRestore(expectAlreadyExists:false);break;
+      case 'restore_crash':
+        await doRestore(expectAlreadyExists:false,
+          crashAfterOneChunk:true);break;
+      case 'restore_crash_denied':
+        await doRestore(expectAlreadyExists:true);break;
+      case 'restore_crash_unreadable':
+        await verifyInterruptedImportCannotOpen();break;
       case 'restore_again_denied':
         await doRestore(expectAlreadyExists:true);break;
       case 'wrong_key':await reopenAndValidate(wrongKey:true);break;
       case 'reopen':await reopenAndValidate();break;
+      case 'source_reopen':await reopenAndValidate();break;
       default:throw StateError('D18_RESTORE_BAD_TEST_PHASE');
     }
     html.document.title='D18_FULL_RESTORE_PASS:'+p;

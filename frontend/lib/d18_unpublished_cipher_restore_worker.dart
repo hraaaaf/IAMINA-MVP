@@ -64,7 +64,10 @@ Future<void> _serve(web.MessageEvent event) async {
     // INTENT variant is scoped to disposable synthetic namespaces and MUST
     // inspect the VFS under the Web Lock before sqlite3 opens a DB file.
     final intentMode = kind == 'D18_UNPUBLISHED_KEYED_OPEN';
-    final restoreMode = kind == 'D18_CI_ENCRYPTED_RESTORE_FRESH';
+    final faultMode =
+        kind == 'D18_CI_RESTORE_CRASH_AFTER_FIRST_PERSISTED_BLOCK';
+    final restoreMode = kind == 'D18_CI_ENCRYPTED_RESTORE_FRESH' ||
+        faultMode;
     if ((!intentMode && !restoreMode) || !RegExp(_namespace).hasMatch(name) ||
         !RegExp(_scope).hasMatch(scope) ||
         name != scope + '_d18_cipher_v1') {
@@ -159,6 +162,17 @@ Future<void> _serve(web.MessageEvent event) async {
           final end = offset + chunkSize < imported.length
               ? offset + chunkSize : imported.length;
           restored.xWrite(imported.sublist(offset, end), offset);
+          if (faultMode && offset == 0) {
+            // Durable partial write, then the TEST HARNESS terminates this
+            // worker abruptly before close(), COMMIT or final VFS flush.
+            // A real crash leaves a quarantine file, not a false empty DB.
+            stage = 'fault_first_partial_block_flush';
+            await storage.flush();
+            control.postMessage('D18_CI_PARTIAL_PERSISTED'.toJS);
+            // Never release the lock cooperatively: the harness forcibly
+            // terminates the dedicated worker on receiving the ack.
+            await Completer<void>().future;
+          }
         }
         restored.xSync(0);
         if (restored.xFileSize() != imported.length) {

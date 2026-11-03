@@ -65,6 +65,13 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
   // any ciphertext database is created.
   ctx=await createProfile('browser-rejected-C');
   await phase(ctx,'bad_archive',{importArchive:true});
+  await phase(ctx,'restore_crash',{importArchive:true});
+  await ctx.close();ctx=null;
+  // The partial SQLite ciphertext is durable but MUST stay locked and may
+  // not be overwritten or authenticated after a real browser restart.
+  ctx=await createProfile('browser-rejected-C');
+  await phase(ctx,'restore_crash_denied',{importArchive:true});
+  await phase(ctx,'restore_crash_unreadable',{importArchive:true});
   await ctx.close();ctx=null;
   // RESTORE TARGET B is a completely new Chromium userDataDir.
   ctx=await createProfile('browser-fresh-B');
@@ -78,7 +85,7 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
   await ctx.close();ctx=null;
   // Original source has not been modified, deleted or replaced.
   ctx=await createProfile('browser-source-A');
-  await phase(ctx,'reopen',{importArchive:true});
+  await phase(ctx,'source_reopen',{importArchive:true});
  }catch(e){
   results.push({phase:'harness',pass:false,errorName:e.name||'Error',
     errorCode:String(e.message||'').replace(/[^A-Za-z0-9_]/g,'_').slice(0,140)});
@@ -94,8 +101,9 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
    kind:'synthetic-sqlite3mc-physical-restore-fresh-chromium',
    phases:results},null,2));
  console.log(JSON.stringify(results));
- const expected=['export','bad_archive','restore','restore_again_denied',
-  'wrong_key','reopen','reopen'];
+ const expected=['export','bad_archive','restore_crash',
+  'restore_crash_denied','restore_crash_unreadable',
+  'restore','restore_again_denied','wrong_key','reopen','source_reopen'];
  if(results.length!==expected.length ||
    results.some((r,i)=>!r.pass||r.phase!==expected[i])){
   process.exitCode=1;
