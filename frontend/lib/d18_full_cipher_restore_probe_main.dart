@@ -168,9 +168,10 @@ Future<void> seedAndExport() async {
   globalContext.setProperty('__D18_CI_EXPORTED_ARCHIVE'.toJS,archive.toJS);
 }
 Future<String> transferPhysicalRestore(
-  D18FullCipherArchiveContents archive,D18VaultKeySession session,
-  {bool crashAfterOneChunk=false},
-) async {
+  D18FullCipherArchiveContents archive,
+  D18VaultKeySession session, {
+  bool crashAfterOneChunk=false,
+}) async {
   stage('request_exclusive_worker_restore');
   final worker=web.Worker('d18_unpublished_cipher_restore_worker.js'.toJS);
   final control=web.MessageChannel(),sql=web.MessageChannel();
