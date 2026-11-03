@@ -502,6 +502,17 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                   onLongPressEnd: fineMinus == null
                       ? null
                       : (_) => _stopHold(),
+                  // Sliding off the control while holding must not keep
+                  // changing a medical reading behind the user's finger.
+                  onLongPressMoveUpdate: fineMinus == null
+                      ? null
+                      : (details) {
+                          if (!Rect.fromLTWH(0, 0, 48, 48)
+                              .inflate(16)
+                              .contains(details.localPosition)) {
+                            _stopHold();
+                          }
+                        },
                   onLongPressCancel: fineMinus == null ? null : _stopHold,
                   child: IconButton.outlined(
                   key: const Key('glucose-fine-minus'),
@@ -554,6 +565,17 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                   onLongPressEnd: finePlus == null
                       ? null
                       : (_) => _stopHold(),
+                  // Sliding off the control while holding must not keep
+                  // changing a medical reading behind the user's finger.
+                  onLongPressMoveUpdate: finePlus == null
+                      ? null
+                      : (details) {
+                          if (!Rect.fromLTWH(0, 0, 48, 48)
+                              .inflate(16)
+                              .contains(details.localPosition)) {
+                            _stopHold();
+                          }
+                        },
                   onLongPressCancel: finePlus == null ? null : _stopHold,
                   child: IconButton.outlined(
                   key: const Key('glucose-fine-plus'),
