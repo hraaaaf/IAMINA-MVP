@@ -135,7 +135,19 @@ def run():
                 finally:
                     browser.close()
         assert not failures, f"Flutter browser errors: {failures[:3]}"
-        assert not blocked, f"Unexpected network: {blocked[:3]}"
+        # CanvasKit may request its optional Noto Sans Symbols glyph font
+        # even with --no-web-resources-cdn. All external requests were
+        # already ABORTED by local_only: do not allow network egress here.
+        # Fail for ANY unexpected external request; keep the denied
+        # Noto font URL count as a diagnostic, not clinical proof.
+        optional_font = "https://fonts.gstatic.com/s/notosanssymbols/"
+        unexpected = [url for url in blocked if not url.startswith(optional_font)]
+        assert not unexpected, f"Unexpected external request (blocked): {unexpected[:3]}"
+        proof["external_requests_denied"] = len(blocked)
+        proof["optional_noto_symbols_requests_denied"] = (
+            len(blocked) - len(unexpected)
+        )
+        proof["network_egress_permitted"] = False
         assert len(proof["checks"]) == 4
         proof["result"] = "PASS_BOUNDED_REAL_CHROME"
     finally:
