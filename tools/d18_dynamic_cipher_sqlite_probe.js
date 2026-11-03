@@ -41,7 +41,7 @@ async function verify(ctx,name,key) {
       await page.waitForFunction(() =>
         document.title.startsWith('D18_DYNAMIC_SQL_PASS:') ||
         document.title.startsWith('D18_DYNAMIC_SQL_FAIL:'),
-        null,{timeout:name==='guarded_open'?120000:45000});
+        null,{timeout:name.startsWith('guarded_')?120000:45000});
     } catch (_) {
       const state = await page.evaluate(() => ({
         title:document.title,
@@ -183,6 +183,9 @@ async function verifyActualWorkerLock(ctx) {
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
       locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
+    // Fresh Chromium PROCESS, same persistent profile, only public envelope
+    // retained. Policy must unwrap the DEK and reopen the REAL v12 keyed DB.
+    await verify(ctx,'guarded_reopen',secrets.a);
     for(const [name,k] of phases.slice(1,5))await verify(ctx,name,secrets[k]);
     await ctx.close(); ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
@@ -203,7 +206,8 @@ async function verifyActualWorkerLock(ctx) {
     head:process.env.GITHUB_SHA||null,results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['guarded_open',...phases.map(p=>p[0]),
+  const expected=['guarded_open',phases[0][0],'guarded_reopen',
+    ...phases.slice(1).map(p=>p[0]),
     'owner_a_ready','create_b','owner_b_ready',
     'a_second_worker_denied','b_second_worker_denied',
     'a_terminate_releases','owner_a_reopened_b_still_held',
