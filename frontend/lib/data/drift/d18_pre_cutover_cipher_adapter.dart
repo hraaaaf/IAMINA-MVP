@@ -1,0 +1,110 @@
+import 'package:drift/drift.dart' show QueryExecutor;
+
+import 'd18_keyed_open_guard.dart';
+import 'd18_vault_key_policy.dart';
+import 'database.dart';
+import 'patient_vault_scope.dart';
+
+/// D18 Web lot 2 — PRE-CUTOVER ONLY. Not wired into AppDatabase.forPatientVault.
+///
+/// The connector implementation is responsible for proving in its own worker:
+/// 1. sqlite3mc was loaded from the pinned audited WASM bundle;
+/// 2. PRAGMA key authenticated the physical database *before* exposing SQL;
+/// 3. an exclusive origin-wide lock covers the entire connection lifetime;
+/// 4. the physical namespace is separate from ALL historical plaintext vaults.
+///
+/// Metadata below is an assertion FROM A TRUSTED WORKER, not cryptographic proof
+/// in itself. Never instantiate a production connector using stock sqlite3.wasm.
+final class D18KeyedCipherWorkerLease {
+  final QueryExecutor executor;
+  final String authenticatedScopeName;
+  final String physicalDatabaseName;
+  final String cipherEngine;
+  final Future<void> Function() disposeWorker;
+
+  const D18KeyedCipherWorkerLease({
+    required this.executor,
+    required this.authenticatedScopeName,
+    required this.physicalDatabaseName,
+    required this.cipherEngine,
+    required this.disposeWorker,
+  });
+}
+
+typedef D18OpenKeyedCipherWorker = Future<D18KeyedCipherWorkerLease> Function(
+  PatientVaultScope scope,
+  List<int> ephemeralKey,
+);
+
+/// Disposable, never-published database handle. The clinical host does not
+/// consume this type and cannot accidentally switch to this candidate.
+final class D18UnpublishedCipherVault {
+  final AppDatabase database;
+  final Future<void> Function() _disposeWorker;
+  bool _closed = false;
+
+  D18UnpublishedCipherVault._(this.database, this._disposeWorker);
+
+  Future<void> close() async {
+    if (_closed) return;
+    _closed = true;
+    try {
+      await database.close();
+    } finally {
+      await _disposeWorker();
+    }
+  }
+}
+
+final class D18PreCutoverCipherAdapter {
+  final D18KeyedOpenGuard guard;
+  final D18OpenKeyedCipherWorker openVerifiedWorker;
+
+  const D18PreCutoverCipherAdapter({
+    required this.guard,
+    required this.openVerifiedWorker,
+  });
+
+  static String destinationFor(PatientVaultScope scope) =>
+      '${scope.databaseName}_d18_cipher_v1';
+
+  /// Only returns an *unpublished* candidate, guarded by independent verified
+  /// authentication state before and after the async worker startup.
+  /// The caller must close it and may not bind it to patient-facing providers.
+  Future<D18UnpublishedCipherVault> openUnpublished({
+    required PatientVaultScope scope,
+    required D18VaultKeySession keySession,
+  }) => guard.openUnpublished<D18UnpublishedCipherVault>(
+    requestedScope: scope,
+    keySession: keySession,
+    createUnpublished: (keyBytes) async {
+      final lease = await openVerifiedWorker(scope, keyBytes);
+      AppDatabase? db;
+      try {
+        // Fail-closed BEFORE any SQL call if the trusted worker reports an
+        // unexpected engine or source namespace. Never use a plaintext DB.
+        if (lease.authenticatedScopeName != scope.databaseName ||
+            lease.physicalDatabaseName != destinationFor(scope) ||
+            lease.cipherEngine != 'sqlite3mc') {
+          throw StateError('D18 cipher worker identity/engine mismatch');
+        }
+        db = AppDatabase.testPatientVault(lease.executor, scope);
+        // Exercise the actual Drift schema. The WORKER must already have
+        // authenticated and classified this ciphertext before this point.
+        final version = await db.customSelect('PRAGMA user_version').getSingle();
+        if (version.read<int>('user_version') != db.schemaVersion) {
+          throw StateError('D18 encrypted schema version mismatch');
+        }
+        return D18UnpublishedCipherVault._(db, lease.disposeWorker);
+      } catch (_) {
+        try {
+          if (db != null) await db.close();
+        } finally {
+          await lease.disposeWorker();
+        }
+        rethrow;
+      }
+    },
+    discardUnpublished: (candidate) => candidate.close(),
+  );
+}
