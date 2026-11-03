@@ -19,4 +19,16 @@
 5. **Gouvernance** : revue privacy/clinique humaine requise avant activation, pas de merge ni Vercel sans accord exprès.
 
 ## Séquence restante
-Test Flutter ciblé -> CI complète du SHA exact -> correction si rouge -> preuve GitHub/Notion -> STAND-BY fonctionnel D15 jusqu'à levée D14/D13 -> véritable recette Web ensuite, approbation humaine. **État du présent fichier : candidat rédigé, CI non vérifiée.** Aucune certification anticipée.
+Test Flutter ciblé -> CI complète du SHA exact -> correction si rouge -> preuve GitHub/Notion -> STAND-BY fonctionnel D15 jusqu'à levée D14/D13 -> véritable recette Web ensuite, approbation humaine. **État historique à l'ouverture : CI non vérifiée.** Verdict exact-SHA prouvé dans le closeout ci-dessous.
+
+## Closeout du préflight autonome D15 — 03/11/2026 (HEAD correctif `b90e5480`)
+
+**Résultat — preuves exécutées :** [PR Draft #1258](https://github.com/hraaaaf/IAMINA-MVP/pull/1258), branche `test/iamina-b-d15-web-single-draft-20261103`, commit testé exact `b90e54804c601e7bf23832ce76a9e89cb77b46c2`. **2/2 workflows complets SUCCESS** : [CI Frontend #41734935481](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734935481) et [P5-5 #41734935492](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41734935492). Job Frontend `126261647770` SUCCESS (analyze Flutter, **972 tests PASS, 7 skipped, 0 failed**, build Web release). Jobs backend SQLite et PostgreSQL **skipped, pas PASS**, car seuls tests/doc Flutter sont modifiés.
+
+**Contrat D15 effectivement observé dans logs** : cinq tests D15 PASS : nouveau test du formulaire `AddLogSheet` qui sélectionne `egg` à l'écran 390×844, saisi note FR/AR et 75g, vérifie 0 ligne Drift avant un vrai tap `save-log-button` puis 1 ligne avec `mealDescription`, `mealItemsJson`, `mealPortionsJson` vérifiés et insuline nulle ; quatre tests synthétiques hérités #978 (candidats photo seulement après confirmation, fallback sans mutation, IDs inconnus éliminés, source path unique pour note/voix/items/portions/Save). **Photo et voix fournisseur réelles NON testées** ; la sélection photo est mockée en mémoire dans un autre test et l'insertion du contrat image n'est pas un test navigateur de Save.
+
+**Incident corrigé sans altérer le produit** : CI antérieure [#41733967630](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41733967630) = 971 PASS, 1 FAIL, 7 SKIPPED. Cause : l'ancien helper de tap faisait un drag −175px après `ensureVisible`, plaçant `meal-search-egg` à Y=−143px hors écran. Patch `b90e5480` uniquement dans `frontend/test/features/add_log_sheet_test.dart` : recentrage conditionnel et `hitTestable()` avant clic. La CI a confirmé le test au second SHA ; 0 fichier produit modifié par D15.
+
+**Conclusion bornée** : **D15 sous-lot préflight autonome TEST-ONLY PASS sur `b90e5480`** ; la **D15 globale reste ouverte / dependency-blocked** jusqu'à D13 (brouillons / sauvegarde en cours) + D14 (photo / consentement), privacy/clinique et vérification Web autorisée. D14 officiellement STAND-BY ; aucun merge, aucune preview Vercel, aucune activation patient. La mise à jour documentaire présente constitue un SHA Git ultérieur distinct : ne pas propager mécaniquement 2/2 sans contrôler ses workflows.
+
+**Next exact** : vérifier les CI éventuelles du commit documentaire, figer dossier et Notion en préflight PASS, puis attendre levée vérifiée de D13/D14 pour D15 fonctionnelle ; pas de travaux sur D14, D18 ou D24 dans cette PR.
