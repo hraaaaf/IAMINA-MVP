@@ -33,10 +33,14 @@ TARGETS = {
 
 INSTRUMENT = r"""
 (() => {
-  window.__perf = {firstFrame: null, host: null, longTasks: 0, longTaskMs: 0, jsErrorCount: 0, rejectionCount: 0, errorCategories: []};
+  window.__perf = {firstFrame: null, host: null, longTasks: 0, longTaskMs: 0, jsErrorCount: 0, rejectionCount: 0, errorCategories: [], rejectionEvidence: []};
   const classify = (raw) => {
     const msg = String(raw ?? '').toLowerCase();
-    if (msg.includes('indexeddatabase') || msg.includes('indexeddb')) return 'indexeddb';
+    if (msg.includes('indexeddatabase') || msg.includes('indexeddb') || msg.includes('idberror')) return 'indexeddb';
+    if (msg.includes('secure_storage') || msg.includes('securestorage') || msg.includes('missingpluginexception')) return 'secure_storage_or_plugin';
+    if (msg.includes('aborterror') || msg.includes('operationerror')) return 'browser_storage_or_abort';
+    if (msg.includes('quotaexceeded') || msg.includes('notreadableerror')) return 'storage_access';
+    if (msg.includes('flutter') || msg.includes('dart')) return 'flutter_runtime';
     if (msg.includes('sqlite') || msg.includes('drift') || msg.includes('wasm')) return 'sqlite_or_wasm';
     if (msg.includes('failed to fetch') || msg.includes('networkerror')) return 'network_or_fetch';
     if (msg.includes('firebase')) return 'firebase';
@@ -52,7 +56,24 @@ INSTRUMENT = r"""
   });
   window.addEventListener('unhandledrejection', event => {
     window.__perf.rejectionCount++;
-    window.__perf.errorCategories.push(classify(event.reason?.message || event.reason));
+    const reason = event.reason;
+    const reasonName = String(reason?.name ?? 'unknown');
+    const message = String(reason?.message ?? reason ?? '');
+    const stack = typeof reason?.stack === 'string' ? reason.stack : '';
+    const source = stack.match(/(main\.dart\.js|flutter_bootstrap\.js|flutter\.js|canvaskit\.js|sqlite3\.wasm|drift_worker\.js)(?::(\d+):(\d+))?/);
+    const safeNames = ['Error','TypeError','RangeError','ReferenceError','SyntaxError','DOMException','AbortError','SecurityError','StateError','MissingPluginException'];
+    const category = classify(message);
+    window.__perf.errorCategories.push(category);
+    window.__perf.rejectionEvidence.push({
+      category,
+      reason_name: safeNames.includes(reasonName) ? reasonName : 'other',
+      reason_type: Object.prototype.toString.call(reason) === '[object Error]' ? 'Error' : typeof reason,
+      message_length: message.length,
+      source_file: source ? source[1] : 'unknown',
+      source_line: source && source[2] ? Number(source[2]) : null,
+      source_column: source && source[3] ? Number(source[3]) : null,
+      markers: ['auth','vault','sqlite','drift','index','storage','firebase','wasm','network','fetch','platform','unsupported','permission','null','security','crypto','worker','404','401','403','cors','database','open'].filter(k => message.toLowerCase().includes(k)),
+    });
   });
   window.addEventListener('flutter-first-frame', () => {
     window.__perf.firstFrame = performance.now();
@@ -111,6 +132,7 @@ READ_TIMINGS = r"""async () => {
     js_error_count: window.__perf.jsErrorCount,
     promise_rejection_count: window.__perf.rejectionCount,
     js_error_categories: window.__perf.errorCategories.slice(0, 15),
+    rejection_evidence: window.__perf.rejectionEvidence.slice(0, 4),
     body_tags: Array.from(document.body.children).slice(0, 10).map(e => e.tagName),
     ttfb_ms: navigation ? Math.round(navigation.responseStart) : null,
     dom_content_loaded_ms: navigation ?
@@ -203,7 +225,8 @@ def main():
                                   "ttfb", record.get("ttfb_ms"), "first-frame",
                                   record.get("flutter_first_frame_event_ms"),
                                   "host", record.get("flutter_host_ms"),
-                                  "js_errors", record.get("js_error_categories", []), flush=True)
+                                  "js_errors", record.get("js_error_categories", []),
+                                  "rejections", record.get("rejection_evidence", []), flush=True)
                     finally:
                         context.close()
         finally:
@@ -229,6 +252,7 @@ def main():
                 "js_error_median_count":med(valid,"js_error_count"),
                 "unhandled_rejection_median_count":med(valid,"promise_rejection_count"),
                 "error_categories":sorted({c for s in valid for c in s.get("js_error_categories",[])}),
+                "rejection_evidence":sorted({json.dumps(e,sort_keys=True) for s in valid for e in s.get("rejection_evidence",[])})[:5],
             })
     health=healthcheck()
     document={
@@ -242,7 +266,7 @@ def main():
             "No returning-patient vault is opened; real IndexedDB/secure-storage latency not measured.",
             "Flutter first-frame event may not fire; missing metric is UNKNOWN, never zero.",
             "Flutter bootstrap presence is not a rendered Flutter frame; report counts separately.",
-            "Error categories are bounded labels; raw browser errors and patient data never enter artifacts.",
+            "Error evidence includes only allowlisted categories, script basenames, line/columns and keyword markers; never raw error strings.",
             "Resource timing may be restricted across origins; transfer bytes are diagnostic only.",
             "GitHub runner network differs from user device and Moroccan network."
         ],
