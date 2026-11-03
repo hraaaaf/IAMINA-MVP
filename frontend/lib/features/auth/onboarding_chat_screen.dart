@@ -813,38 +813,45 @@ class _Question extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-        ),
-        const SizedBox(height: 10),
-        if (keyboardOrderExplicit)
-          // D5: explicit reversibility for physical keyboard traversal
-          // of the language chips, including FR and Arabic RTL.
-          FocusTraversalGroup(
-            policy: OrderedTraversalPolicy(),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (var index = 0; index < children.length; index++)
-                  FocusTraversalOrder(
-                    order: NumericFocusOrder(index.toDouble()),
-                    child: children[index],
-                  ),
-              ],
-            ),
-          )
-        else
-          Wrap(spacing: 8, runSpacing: 8, children: children),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    // NotoSansArabic is now rendered rather than a missing-glyph fallback.
+    // Its taller language chip must not push the desktop CTA under the fold.
+    // Mobile sticky CTA and taller desktop layouts are unchanged.
+    final size = MediaQuery.sizeOf(context);
+    final compactDesktop = size.width >= 900 && size.height <= 900;
+    return Padding(
+      padding: EdgeInsets.only(bottom: compactDesktop ? 16 : 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          if (keyboardOrderExplicit)
+            // D5: explicit reversibility for physical keyboard traversal
+            // of the language chips, including FR and Arabic RTL.
+            FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var index = 0; index < children.length; index++)
+                    FocusTraversalOrder(
+                      order: NumericFocusOrder(index.toDouble()),
+                      child: children[index],
+                    ),
+                ],
+              ),
+            )
+          else
+            Wrap(spacing: 8, runSpacing: 8, children: children),
+        ],
+      ),
+    );
+  }
 }
 
 /// Editable, offline country suggestions. Free text alone is never saved.

@@ -337,14 +337,40 @@ def main():
                             data = target.read_bytes()
                             assert data.startswith(bytes.fromhex("89504e470d0a1a0a"))
                             assert len(data) > 1000
-                            geometry = page.evaluate("""() => ({
-                                innerWidth: window.innerWidth,
-                                htmlScrollWidth: document.documentElement.scrollWidth,
-                                bodyScrollWidth: document.body.scrollWidth,
-                                flutterViewWidth: Math.round(
-                                    document.querySelector('flutter-view')?.getBoundingClientRect().width || 0
-                                ),
-                            })""")
+                            geometry = page.evaluate("""() => {
+                                const viewport = window.innerWidth;
+                                const overflowNodes = [...document.querySelectorAll('body *')]
+                                    .map((el) => {
+                                        const rect = el.getBoundingClientRect();
+                                        const protrusion = Math.max(0, rect.right - viewport);
+                                        if (protrusion < 1 || rect.height <= 0 || rect.width <= 0) return null;
+                                        const style = getComputedStyle(el);
+                                        return {
+                                            tag: el.tagName.toLowerCase(),
+                                            id: (el.id || '').slice(0, 72),
+                                            cls: String(el.className || '').slice(0, 72),
+                                            left: Math.round(rect.left * 10)/10,
+                                            right: Math.round(rect.right * 10)/10,
+                                            width: Math.round(rect.width * 10)/10,
+                                            protrusion: Math.round(protrusion * 10)/10,
+                                            position: style.position,
+                                            overflowX: style.overflowX,
+                                            direction: style.direction,
+                                        };
+                                    })
+                                    .filter(Boolean)
+                                    .sort((a,b) => b.protrusion-a.protrusion)
+                                    .slice(0, 25);
+                                return {
+                                    innerWidth: viewport,
+                                    htmlScrollWidth: document.documentElement.scrollWidth,
+                                    bodyScrollWidth: document.body.scrollWidth,
+                                    flutterViewWidth: Math.round(
+                                        document.querySelector('flutter-view')?.getBoundingClientRect().width || 0
+                                    ),
+                                    overflowNodes,
+                                };
+                            }""")
                             evidence["captures"].append({
                                 "viewport": f"{width}x{height}",
                                 "file": target.name,
