@@ -43,11 +43,27 @@ async function load(browser, origin, query, viewport, locale, name, synthetic) {
     if (/generativelanguage\.googleapis\.com|api\.groq\.com|\/api\/v1\/ai\//.test(url))
       providerRequests.push('AI_REQUEST_DENIED');
   });
-  await page.route('**/*', route=>{
+  await page.route('**/*', async route=>{
     const url=route.request().url();
     if(url.startsWith('data:')||url.startsWith('blob:'))return route.continue();
     if(/^https?:/.test(url)&&!allowedOrigins.has(new URL(url).origin)){
-      offOriginRequests.push(new URL(url).origin);
+      const remote=new URL(url);
+      offOriginRequests.push(remote.origin);
+      // BEFORE is historic main without the new bootstrap setting. Satisfy its
+      // known Google font requests from bundled local fonts to avoid any actual
+      // third-party request by this synthetic comparison job.
+      if(origin===beforeOrigin && remote.hostname==='fonts.gstatic.com'){
+        const basename=remote.pathname.includes('/notosansarabic/')
+          ? 'NotoSansArabic.ttf'
+          : remote.pathname.includes('/notosanssymbols/')
+          ? 'NotoSansSymbols.ttf' : null;
+        if(basename){
+          const local=await ctx.request.get(origin+'/assets/assets/fonts/'+basename);
+          if(local.ok())return route.fulfill({
+            status:200,body:await local.body(),contentType:'application/octet-stream',
+          });
+        }
+      }
       return route.abort();
     }
     return route.continue();

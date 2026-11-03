@@ -214,8 +214,23 @@ def main() -> int:
             errors,
         )
         require(
-            "_flutter.loader.load();" in bootstrap,
+            re.search(r"_flutter\\.loader\\.load\\(\\s*(?:\\)|\\{)", bootstrap) is not None,
             "Custom Flutter bootstrap does not start the Flutter loader",
+            errors,
+        )
+        require(
+            "fontFallbackBaseUrl" in bootstrap
+            and "new URL('iamina-font-fallback/', document.baseURI)" in bootstrap
+            and "https://fonts.gstatic.com" not in bootstrap,
+            "D14 Web font fallback is not configured to same-origin assets",
+            errors,
+        )
+        require(
+            all((ROOT / path).is_file() for path in (
+                "frontend/web/iamina-font-fallback/notosansarabic/v28/nwpxtLGrOAZMl5nJ_wfgRg3DrWFZWsnVBJ_sS6tlqHHFlhQ5l3sQWIHPqzCfyGyvvnCBFQLaig.woff2",
+                "frontend/web/iamina-font-fallback/notosanssymbols/v43/rP2up3q65FkAtHfwd-eIS2brbDN6gxP34F9jRRCe4W3gfQ8gb_VFRkzrbQ.woff2",
+            )),
+            "D14 Web same-origin fallback font files are missing",
             errors,
         )
         require(
