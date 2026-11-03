@@ -325,7 +325,16 @@ Future<void> verifyUnpublishedConnector(String phase) async {
         final unexpected=await adapter.openUnpublished(
           scope:scope,keySession:session,intent:intent);
         await unexpected.close();
-      } on StateError {rejected=true;}
+      } on StateError catch(error) {
+        final required = phase == 'candidate_missing'
+            ? 'D18_WORKER_MISSING_CIPHERTEXT'
+            : phase == 'candidate_create_exists'
+                ? 'D18_WORKER_CIPHERTEXT_ALREADY_EXISTS'
+                : 'D18_WORKER_KEY_REJECTED';
+        verify(error.toString().contains(required),
+            'D18_CANDIDATE_DENIED_FOR_UNEXPECTED_REASON');
+        rejected=true;
+      }
       verify(rejected,'D18_UNPUBLISHED_UNSAFE_OPEN_ACCEPTED');
       verify(html.window.localStorage[_candidateEnvelope]==before,
           'D18_UNPUBLISHED_PUBLIC_ENVELOPE_CHANGED');

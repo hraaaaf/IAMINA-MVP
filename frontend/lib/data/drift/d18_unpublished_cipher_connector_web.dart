@@ -51,7 +51,22 @@ Future<D18KeyedCipherWorkerLease> openD18UnpublishedCipherWorker(
     final response = ((await ack).data as JSString).toDart;
     final expected = intent == D18CipherVaultOpenIntent.createFresh
         ? 'READY_FRESH' : 'READY_EXISTING_AUTHENTICATED';
-    if (response != expected) throw StateError('D18 encrypted worker denied');
+    if (response != expected) {
+      // Only these finite, non-sensitive codes may reach the CI caller.
+      if (response == 'MISSING_CIPHERTEXT') {
+        throw StateError('D18_WORKER_MISSING_CIPHERTEXT');
+      }
+      if (response == 'CIPHERTEXT_ALREADY_EXISTS') {
+        throw StateError('D18_WORKER_CIPHERTEXT_ALREADY_EXISTS');
+      }
+      if (response == 'KEY_REJECTED') {
+        throw StateError('D18_WORKER_KEY_REJECTED');
+      }
+      if (response == 'LOCK_UNAVAILABLE') {
+        throw StateError('D18_WORKER_LOCK_UNAVAILABLE');
+      }
+      throw StateError('D18_WORKER_OPEN_DENIED');
+    }
     executor = await connectToRemoteAndInitialize(
         sql.port1.channel(explicitClose:true));
     final db = AppDatabase.testPatientVault(executor,scope);
