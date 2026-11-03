@@ -280,7 +280,21 @@ async function proof(page, width) {
     }else{
       await labelClick(page,locale==='fr'?'Profil':'الملف الشخصي');
       await labelClick(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
-      await labelClick(page,locale==='fr'?'Se déconnecter':'تسجيل الخروج');
+      // On the 390px profile the expanded account action is BELOW the
+      // sticky bottom navigation. Reveal it using a real wheel scroll before
+      // pointer hit testing; never force a click or invoke Flutter handlers.
+      await page.mouse.move(width / 2, 500);
+      await page.mouse.wheel(0, 720);
+      await page.waitForTimeout(350);
+      await screenshot(page,'06b-account-controls-revealed');
+      const logoutLabel=locale==='fr'?'Se déconnecter':'تسجيل الخروج';
+      const logoutVisible=page.getByText(logoutLabel,{exact:true}).last();
+      const logoutBox=await logoutVisible.boundingBox().catch(()=>null);
+      const viewportHeight=page.viewportSize()?.height||844;
+      if(!logoutBox || logoutBox.y<0 || logoutBox.y+logoutBox.height>viewportHeight-62)
+        throw new Error('Logout still covered after physical scroll: '+
+          JSON.stringify({logoutBox,viewportHeight}));
+      await labelClick(page,logoutLabel);
       await labelClick(page,locale==='fr'?'Déconnecter':'خروج');
     }
     // The response listener is attached before page navigation and also
