@@ -168,3 +168,40 @@ mmol/L = mg/dL / 18.01559    [référence théorique à partir de NIST]
 **Owner priority decision / counters:** owner explicitly accepts D7 as working and asks to mark 1/17 and advance. Record `CHANTIER_B_OWNER_ACCEPTED=1/17 (5.88%)` separately from `CHANTIER_B_FORMALLY_D_CERTIFIED=0/17`. Product D7 on Production is released; its independent clinical/privacy certification remains open (do not invent expert review). D22 is next active item, not completed.
 
 **Current real block and next exact:** [D19 gate G1–G7](2026-10-29-d19-d22-web-clinical-decision-gate.md) remains unsigned; [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) OPEN/DRAFT/nonmergeable. Source `main` still writes `70/180` regardless of `mmol/L`, target before unit in profile, raw `toStringAsFixed(0)` display and raw save; do **not** authorize a medical refactor while G1–G7 pending. Next **human gate**: qualified clinical and data/privacy review/approvals on unit authority, personalized target provenance, legacy and migration, factor/rounding, permissible classifications and FR/AR RTL wording. After those decisions, collect actual BEFORE screenshots at 390/768/1280 → target mockup → bounded implementation → AFTER identical viewports + tests and owner safety review → score/perfection → merge/release only if authorized. D22 `BLOCKED_D19`, FUE `NOT_RUN`.
+
+
+## 01/11/2026 — D22-A Web : candidat d'ordre visuel isolé, NON LIVRÉ
+
+**Décision :** implémenter un seul sous-ensemble non clinique de D22 sur branche isolée, sans merge ni activation de cibles : le choix « Unité de mesure » précède désormais le bloc « Objectifs glycémiques » dans `_buildMedicalSection` du Profil. **Goal** : éliminer l'inversion visuelle connue sans modifier les valeurs, l'interprétation, les données patients ou les règles cliniques.
+
+- **Base contrôlée** : `main@cb60a2fdc04d52b028770cd783eb8f0ec45f7d05`.
+- **Branche candidate** : `fix/d22-web-unit-first-candidate-20261101`.
+- **Diff préliminaire** : `frontend/lib/features/profile/profile_screen_presentation.dart` (déplacement du bloc UI existant, sans changement de ses contrôleurs/handlers), plus `frontend/test/d22_profile_unit_before_target_source_contract_test.dart` (deux tests de contrat **statique source uniquement**).
+- **Preuve de lecture GitHub** : la branche contient `l10n.measureUnit` avant `l10n.glucoseTarget`, dans la même section et avec les deux champs Low/High préservés. Aucun run Flutter/Chrome n'a encore été prouvé pour ce candidat à la date de création de cette note.
+- **BEFORE/AFTER réels** : `NOT_RUN` (aucune capture Web 390/768/1280 FR/AR et aucune comparaison de rendu).
+- **Risque persistant critique** : l'onboarding écrit toujours `70/180` quel que soit `mmol/L` ; Profile lit et écrit les bornes brutes ; les rapports et classifications demandent une revue d'autorité. La seule inversion visuelle **ne sécurise pas la glycémie**.
+- **Gates** : G1–G7 cliniques/DB/privacy/RTL toujours `PENDING`. D22 `FUE_NO_GO`, `RELEASE_NO_GO`. Aucune conversion ni migration, aucun déploiement Vercel autorisé. Ne pas fusionner ce candidat seul en donnant l'impression d'une correction globale.
+- **Next exact** : obtenir les arbitrages humains, puis traiter les conversions et la provenance sur le même contrat approuvé ; tests runtime Flutter + FUE navigateur, BEFORE/AFTER, scoring et certification. Le présent candidat est révisable/abandonnable si G6 impose un autre parcours.
+
+
+### 01/11/2026 — D22-A : test de rendu Flutter FR/AR × 3 ajouté (en attente de preuve CI)
+
+- **Code ajouté à la PR candidate #1213** : `frontend/test/features/profile/d22_web_unit_first_widget_test.dart`, six scénarios synthétiques réutilisant le vrai `ProfileScreen` avec coffre patient fictif et `ExpansionTile` médicale dépliée, en FR/AR aux tailles 390×844, 768×1024, 1280×900.
+- Les assertions ciblent l'existence des titres localisés, leur ordre vertical réellement calculé par Flutter et le sens RTL/LTR ; elles ne changent **aucune** borne glycémiques ou autorité clinique.
+- **Statut probatoire à la création** : widget tests nouveaux **non encore exécutés par une CI vérifiée** ; aucun parcours Chrome FUE D22 spécifique, aucune comparaison BEFORE/AFTER signée. Les runs verts du SHA précédent `5933bb9f` deviennent historiques pour cette branche.
+- **Maintien du NO-GO** : ni les six tests widget ni la CI ne peuvent remplacer G1–G7, la correction `onboarding 70/180` et la FUE réelle ; PR reste Draft sans merge/déploiement.
+
+
+## 01/11/2026 — décision propriétaire D22 G2–G5 produit approuvée ; travaux techniques sûrs
+
+**Goal :** figer explicitement les quatre principes G2–G5 au niveau produit, sans jamais les représenter comme des recommandations médicales ni comme un contrat numérique clinique signé.
+
+**Validé par le propriétaire (produit uniquement) :** G2 absence de cible automatiquement autorisée ; G3 legacy inconnu conservé brut sans conversion/classification ; G4 préférence d'affichage séparée de l'intégrité des valeurs, facteur/arrondi précis encore en revue ; G5 aucune classe cible sans autorité individuelle ni faux TIR CGM à partir de relevés manuels.
+
+**Gates inchangés :** G1, G6, G7 restent PENDING. Revue clinique spécialisée des G2–G5 et facteur numérique G4 restent PENDING. L'onboarding conserve toujours le défaut 70/180 et le profil la saisie brute ; ce commit de préparation NE les corrige PAS. Pas de migration et pas de Vercel.
+
+**Preuve déjà établie avant ce changement :** PR #1213 HEAD 5e16882, CI #41314664294 SUCCESS, 8/8 tests spécifiques D22 réussis, mais FUE réelle D22 Chrome/BEFORE-AFTER NOT_RUN ; une automatisation D5 hors périmètre a échoué. Ces preuves précédentes ne certifient pas le futur SHA.
+
+**Préparation technique supplémentaire :** enrichir l'oracle D22 test-only pour refuser explicitement les lectures manuelles / sources inconnues en tant que preuve de TIR CGM et pour exiger une fenêtre temporelle documentée et une règle de métrique revue. Aucun seuil, facteur, valeur patient ou comportement de production modifié. Le produit complet demeure FUE_NO_GO / RELEASE_NO_GO.
+
+**Next exact :** CI exacte du nouveau HEAD, review G1/G6/G7 et revue clinique des principes approuvés, puis implémentation du modèle vérifié, tests négatifs/migrations et FUE Web FR/AR 390/768/1280. 
