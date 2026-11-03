@@ -62,3 +62,15 @@ Le schéma `ReminderData` actuel contient `title`, `dueAt`, `enabled`, `createdA
 **Next exact** : ouvrir PR de correctif → CI exact SHA / tests create1→create2 et visual Chrome FR/AR x 390/768/1280 → score fondé sur captures → GO Vercel Production dédié si nécessaire → deploy + vraie recette iPhone → closeout Notion et doc.
 
 **Précision preuve visuelle de ce correctif :** le workflow Chrome D3 est maintenant comparatif **ancienne carte D3 Production `578250e` vs même carte D3 modifiée** avec `surface=d3-reminders` et les **mêmes 3 rappels synthétiques** FR/AR × 390/768/1280. On vérifie la différence du bouton + de manière causale ; une comparaison contre le vieux bloc « Your next step » de D17 aurait été hors périmètre. Aucun pixel/score affiché avant publication des images du nouveau run.
+
+## 03/11/2026 — RED CI du correctif deuxième rappel et correction ciblée
+
+**Preuve CI RED HEAD `8e43a8775c9421bce9770dbd6d4a10a3593234a7` :** [CI #41607786831](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41607786831), job `Frontend — analyze + tests + PWA build` FAILED sur `Run Flutter tests`, résultat **937 PASS, 5 FAIL, 7 SKIP**. Le premier test nouvellement ajouté `D3 second reminder: ... fr` se bloque 10 minutes, puis les tests AR/EN et deux tests préexistants échouent en cascade avec `Guarded function conflict` signalé à la ligne 200 du test. Chrome D3 AVANT/APRÈS et les huit autres workflows sur ce HEAD sont SUCCESS.
+
+**Cause technique retenue après lecture du test et de Drift :** dans un `testWidgets` avec horloge fake async, deux assertions utilisaient `await db.watchReminders().first` pour une nouvelle écoute du stream Drift. Cette attente ne se résout pas dans le contexte du test et se termine au timeout 10 minutes ; la cascade de `tapAt` est secondaire. La production ne présente pas de preuve d'un défaut de sauvegarde.
+
+**Correctif test uniquement**, commit `52c78720dd4995fa71ab745e7c515d3f263a753d` : remplacer uniquement ces deux lectures de stream par des requêtes directes `await db.select(db.reminders).get()` sur la même DB Drift en mémoire. Le test garde la navigation réelle `RemindersScreen`, la création via `+`, les valeurs `PREMIER` et `DEUXIEME` et les deux retours Home, sur 390×844 FR/AR/EN. Aucune assertion supprimée, aucun code métier changé, aucun schéma DB touché.
+
+**CI nouveau HEAD :** au premier contrôle, [CI #41611025146](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41611025146) IN_PROGRESS, et huit workflows visuels/fonctionnels relancés sur le commit exact. Les preuves du précédent HEAD ne certifient pas à elles seules le nouveau commit ; la fusion vers `main` et le déploiement Production restent conditionnés par le vert exact.
+
+**Autorisation humaine** : « Oui deploy » déjà accordé pour CE correctif D3 seulement, dès tous les tests verts. Aucun nouveau GO nécessaire ; pas de déploiement prématuré ni de Preview. À partir du verdict CI : si vert, fusion/squash sur `main` vérifié, déploiement `iamina-review` Production sur SHA fusionné, vérifier READY/alias public/HTTP, CI postmerge et recette iPhone.
