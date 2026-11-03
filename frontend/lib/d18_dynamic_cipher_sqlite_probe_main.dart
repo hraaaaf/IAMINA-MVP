@@ -13,6 +13,8 @@ import 'package:web/web.dart' as web;
 import 'data/drift/database.dart';
 import 'data/drift/patient_vault_scope.dart';
 import 'data/drift/d18_keyed_open_guard.dart';
+import 'data/drift/d18_pre_cutover_cipher_adapter.dart';
+import 'data/drift/d18_unpublished_cipher_connector_web.dart';
 import 'data/drift/d18_vault_key_policy.dart';
 
 const _patientA = 'e2dbe28f-3eea-4410-86a7-274150a00018';
@@ -266,7 +268,72 @@ Future<void> verifyGuardedWebOpen({bool reopen=false}) async {
   } finally {session.lock();}
 }
 
+
+const _candidatePatient='e2dbe28f-3eea-4410-86a7-274150e00018';
+const _candidateEnvelope='d18_ci_unpublished_envelope';
+const _candidatePass='CI synthetic-only local passphrase for D18';
+const _candidateMarker='D18_REAL_UNPUBLISHED_CIPHERTEXT_MARKER';
+
+Future<void> verifyUnpublishedConnector(String phase) async {
+  final scope=PatientVaultScope.deviceLocal(_candidatePatient);
+  final before=html.window.localStorage[_candidateEnvelope];
+  final enroll = phase != 'candidate_reopen';
+  final registration=enroll
+    ? await D18VaultKeyPolicy.createForEmptyVault(
+        scope:scope,passphrase:_candidatePass)
+    : null;
+  final session=registration?.session ??
+      await D18VaultKeyPolicy.unlockWithPassphrase(
+        scope:scope,publicEnvelopeJson:before??'',
+        passphrase:_candidatePass);
+  try {
+    final adapter=D18PreCutoverCipherAdapter(
+      guard:D18KeyedOpenGuard(
+        resolveAuthenticatedScope:() async=>scope,readAuthEpoch:()=>11),
+      openVerifiedWorker:openD18UnpublishedCipherWorker);
+    final intent=phase=='candidate_create'||phase=='candidate_create_exists'
+        ? D18CipherVaultOpenIntent.createFresh
+        : D18CipherVaultOpenIntent.reopenExisting;
+    if(phase=='candidate_missing'||phase=='candidate_create_exists'||
+        phase=='candidate_wrong_key'){
+      var rejected=false;
+      try {
+        final unexpected=await adapter.openUnpublished(
+          scope:scope,keySession:session,intent:intent);
+        await unexpected.close();
+      } on StateError {rejected=true;}
+      verify(rejected,'D18_UNPUBLISHED_UNSAFE_OPEN_ACCEPTED');
+      verify(html.window.localStorage[_candidateEnvelope]==before,
+          'D18_UNPUBLISHED_PUBLIC_ENVELOPE_CHANGED');
+      return;
+    }
+    final vault=await adapter.openUnpublished(
+      scope:scope,keySession:session,intent:intent);
+    try {
+      if(phase=='candidate_create') {
+        await vault.database.customStatement(
+          'INSERT INTO patient_profiles(user_id,updated_at,diabetes_type) '
+          'VALUES(?,?,?)',[1,1700000000,_candidateMarker]);
+      }
+      final rows=await vault.database.customSelect(
+        'SELECT diabetes_type FROM patient_profiles WHERE user_id=1').get();
+      verify(rows.length==1 &&
+        rows.single.read<String>('diabetes_type')==_candidateMarker,
+        'D18_UNPUBLISHED_PATIENT_DATA_LOST');
+    }finally {await vault.close();}
+    if(phase=='candidate_create') {
+      html.window.localStorage[_candidateEnvelope]=registration!.publicEnvelopeJson;
+    }else{
+      verify(html.window.localStorage[_candidateEnvelope]==before,
+        'D18_UNPUBLISHED_ENVELOPE_REPLACED');
+    }
+  }finally{session.lock();}
+}
+
 Future<void> runPhase(String name) async {
+  if(name.startsWith('candidate_')) {
+    await verifyUnpublishedConnector(name);return;
+  }
   if(name=='guarded_wrong_passphrase') {
     await verifyGuardedWrongPassphrase();return;
   }
@@ -432,6 +499,8 @@ Future<void> main() async {
       'guarded_wrong_passphrase', 'intent_reopen_missing',
       'intent_create', 'intent_create_exists', 'intent_reopen',
       'intent_wrong_key',
+      'candidate_missing','candidate_create','candidate_create_exists',
+      'candidate_wrong_key','candidate_reopen',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);

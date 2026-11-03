@@ -178,6 +178,9 @@ async function verifyActualWorkerLock(ctx) {
     // Test the newest risk first: report schema failures without running the
     // entire historical A/B suite before reaching the new keyed-open gate.
     await verify(ctx,'guarded_open',secrets.a);
+    await verify(ctx,'candidate_missing',secrets.a);
+    await verify(ctx,'candidate_create',secrets.a);
+    await verify(ctx,'candidate_create_exists',secrets.a);
     // Physical existence is checked under the worker's real Web Lock.
     // No sqlite3mc connection must be opened for a rejected intent.
     await verify(ctx,'intent_reopen_missing',secrets.a);
@@ -196,6 +199,8 @@ async function verifyActualWorkerLock(ctx) {
     // Negative recovery precedes correct-key reopen: the failed attempt
     // must not reset, overwrite, or unlock the existing encrypted v12 store.
     await verify(ctx,'intent_reopen',secrets.a);
+    await verify(ctx,'candidate_wrong_key',secrets.wrong);
+    await verify(ctx,'candidate_reopen',secrets.a);
     await verify(ctx,'guarded_wrong_passphrase',secrets.wrong);
     await verify(ctx,'guarded_reopen',secrets.a);
     for(const [name,k] of phases.slice(1,5))await verify(ctx,name,secrets[k]);
@@ -218,9 +223,11 @@ async function verifyActualWorkerLock(ctx) {
     head:process.env.GITHUB_SHA||null,results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['guarded_open',
+  const expected=['guarded_open','candidate_missing','candidate_create',
+    'candidate_create_exists',
     'intent_reopen_missing','intent_create','intent_create_exists',
     'intent_wrong_key', phases[0][0], 'intent_reopen',
+    'candidate_wrong_key','candidate_reopen',
     'guarded_wrong_passphrase','guarded_reopen',
     ...phases.slice(1).map(p=>p[0]),
     'owner_a_ready','create_b','owner_b_ready',

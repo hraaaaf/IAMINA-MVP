@@ -16,6 +16,8 @@ on:
       - 'tools/fixtures/d18_web_locks_worker.js'
       - 'tools/fixtures/d18_web_locks_test.html'
       - 'frontend/lib/d18_dynamic_cipher_*.dart'
+      - 'frontend/lib/d18_unpublished_cipher_worker.dart'
+      - 'frontend/d18_crypto/worker_lock_gate.js'
       - 'tools/fixtures/d18_session_handshake_probe_worker.js'
       - 'frontend/lib/data/drift/**'
       - 'frontend/lib/main.dart'
@@ -57,6 +59,7 @@ jobs:
               'd18_dynamic_cipher_sqlite_worker.dart',
               'd18_dynamic_cipher_sqlite_probe_main.dart',
               'd18_full_cipher_migration_probe_main.dart',
+              'd18_unpublished_cipher_worker.dart',
           }
           forbidden = (
               'd18_cipher_worker_setup.dart',
@@ -99,7 +102,8 @@ jobs:
         working-directory: frontend
         run: |
           dart compile js -O4 -o web/d18_dynamic_cipher_sqlite_worker.js lib/d18_dynamic_cipher_sqlite_worker.dart
-          flutter analyze --no-fatal-infos             lib/d18_dynamic_cipher_sqlite_worker.dart             lib/d18_dynamic_cipher_sqlite_probe_main.dart
+          dart compile js -O4 -o web/d18_unpublished_cipher_worker.js lib/d18_unpublished_cipher_worker.dart
+          flutter analyze --no-fatal-infos             lib/d18_dynamic_cipher_sqlite_worker.dart             lib/d18_dynamic_cipher_sqlite_probe_main.dart             lib/d18_unpublished_cipher_worker.dart             lib/data/drift/d18_unpublished_cipher_connector_web.dart
           flutter build web --release --no-web-resources-cdn -t lib/d18_dynamic_cipher_sqlite_probe_main.dart
       - uses: actions/setup-node@v4
         with:
@@ -111,11 +115,13 @@ jobs:
       - name: Stage CI-only exclusive Web Lock gate for dynamic sqlite3mc worker
         run: |
           node --check tools/fixtures/d18_dynamic_worker_lock_gate.js
+          node --check frontend/d18_crypto/worker_lock_gate.js
           if test -e frontend/build/web/d18_dynamic_worker_lock_gate.js; then
             echo 'D18 worker Web Locks gate leaked into production Flutter build'
             exit 1
           fi
           cp tools/fixtures/d18_dynamic_worker_lock_gate.js frontend/build/web/d18_dynamic_worker_lock_gate.js
+          cp frontend/d18_crypto/worker_lock_gate.js frontend/build/web/d18_unpublished_worker_lock_gate.js
       - name: Real Chromium per-vault dynamic sqlite3mc key test
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -129,6 +135,7 @@ jobs:
           # build output before compiling the next standalone Web entrypoint;
           # Flutter may retain unrelated files between successive builds.
           rm frontend/build/web/d18_dynamic_worker_lock_gate.js
+          rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend
         run: |
