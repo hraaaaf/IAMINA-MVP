@@ -305,6 +305,9 @@ class _GlucoseHalfDialInputState extends State<GlucoseHalfDialInput> {
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 21,
+                                // Fixed 46px header must also fit Arabic
+                                // font metrics, with no 1px flex overflow.
+                                height: 1.0,
                                 color: colors.onSurface,
                               ),
                             ),
