@@ -15,6 +15,10 @@ const _emptyId = '11111111-1111-4111-8111-111111111111';
 const _filledId = '22222222-2222-4222-8222-222222222222';
 const _n = 300;
 const _key = 'iamina_perf_web_synthetic_v1';
+void _stage(String value) {
+  // Codes only, never patient data, credentials or error strings.
+  html.document.title = 'IAMINA_PERF_WEB_STAGE:' + value;
+}
 PatientVaultScope _scope(bool filled) =>
     PatientVaultScope.deviceLocal(filled ? _filledId : _emptyId);
 void _check(bool ok, String reason) {
@@ -28,19 +32,25 @@ Future<int> _count(AppDatabase db) async {
   return row.read<int>('n');
 }
 Future<Map<String, Object?>> _seed() async {
+  _stage('seed_legacy_open');
   final legacy = AppDatabase.defaults();
   try {
     await legacy.customSelect('SELECT 1').getSingle();
+    _stage('seed_legacy_guard');
     _check(!await hasProtectedMedicalVaultRows(legacy), 'legacy not empty');
   } finally {
     await legacy.close();
   }
   for (final filled in [false, true]) {
+    final label = filled ? 'filled' : 'empty';
+    _stage('seed_' + label + '_open');
     final db = AppDatabase.forPatientVault(_scope(filled));
     try {
       await db.customSelect('SELECT 1').getSingle();
+      _stage('seed_' + label + '_count');
       _check(await _count(db) == 0, 'nonempty synthetic fixture');
       if (filled) {
+        _stage('seed_filled_profile');
         await db.into(db.patientProfiles).insert(
           PatientProfilesCompanion.insert(
             userId: drift.Value(db.activeProfileRowId),
@@ -48,6 +58,7 @@ Future<Map<String, Object?>> _seed() async {
             diabetesType: const drift.Value('type2'),
           ),
         );
+        _stage('seed_filled_batch');
         await db.batch((batch) {
           for (var i = 0; i < _n; i++) {
             batch.insert(db.logEntries, LogEntriesCompanion.insert(
@@ -58,6 +69,7 @@ Future<Map<String, Object?>> _seed() async {
           }
         });
       }
+      _stage('seed_' + label + '_verify');
       _check(await _count(db) == (filled ? _n : 0), 'seed count mismatch');
       _check(await hasProtectedMedicalVaultRows(db) == filled,
           'seed guard mismatch');
@@ -65,9 +77,11 @@ Future<Map<String, Object?>> _seed() async {
       await db.close();
     }
   }
+  _stage('seed_done');
   return {'phase':'seed','seeded_rows':_n,'fixture':'synthetic_only'};
 }
 Future<Map<String, Object?>> _measure(bool filled) async {
+  _stage(filled ? 'filled_legacy_probe' : 'empty_legacy_probe');
   final total = Stopwatch()..start();
   final legacyWatch = Stopwatch()..start();
   final legacy = AppDatabase.defaults();
@@ -82,6 +96,7 @@ Future<Map<String, Object?>> _measure(bool filled) async {
 
   final scope = _scope(filled);
   final openWatch = Stopwatch()..start();
+  _stage(filled ? 'filled_scoped_open' : 'empty_scoped_open');
   final db = AppDatabase.forPatientVault(scope);
   late final bool protected;
   late final int rows;
@@ -91,6 +106,7 @@ Future<Map<String, Object?>> _measure(bool filled) async {
     await db.customSelect('SELECT 1').getSingle();
     openWatch.stop();
     openMs = _ms(openWatch);
+    _stage(filled ? 'filled_protected_scan' : 'empty_protected_scan');
     final guardWatch = Stopwatch()..start();
     protected = await hasProtectedMedicalVaultRows(db);
     guardWatch.stop();
@@ -105,6 +121,7 @@ Future<Map<String, Object?>> _measure(bool filled) async {
   // Real controller with a fake, isolated principal only. No AuthService.
   final notifier = ChangeNotifier();
   final controllerWatch = Stopwatch()..start();
+  _stage(filled ? 'filled_controller' : 'empty_controller');
   final controller = PatientVaultSessionController(
     authChanges: notifier, resolveScope: () async => scope,
   );
@@ -133,7 +150,7 @@ Future<Map<String, Object?>> _measure(bool filled) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final phase = Uri.base.queryParameters['phase'] ?? '';
-  html.document.title = 'IAMINA_PERF_WEB_PENDING';
+  _stage('entry');
   try {
     if (!{'seed','empty','populated'}.contains(phase)) {
       throw StateError('unknown synthetic phase');

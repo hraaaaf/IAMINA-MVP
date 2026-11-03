@@ -15,7 +15,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 BUILD = Path("frontend/build/web").resolve()
 BROWSERS = ("chromium", "webkit")
@@ -57,10 +57,32 @@ def local_server():
 def navigate(page, base, phase):
     response = page.goto(f"{base}/?phase={phase}",
                          wait_until="domcontentloaded", timeout=45000)
-    page.wait_for_function(
-        "(x) => document.title.startsWith('IAMINA_PERF_WEB_FAIL:') "
-        "|| document.title === 'IAMINA_PERF_WEB_' + x + '_PASS'",
-        arg=phase.upper(), timeout=90000)
+    try:
+        page.wait_for_function(
+            "(x) => document.title.startsWith('IAMINA_PERF_WEB_FAIL:') "
+            "|| document.title === 'IAMINA_PERF_WEB_' + x + '_PASS'",
+            arg=phase.upper(), timeout=20000)
+    except PlaywrightTimeoutError as exc:
+        # Bounded, synthetic-only progress/error evidence. No raw URL or error text.
+        evidence = page.evaluate("""() => ({
+          title: document.title.slice(0,100),
+          language: navigator.language,
+          bootstrap: !!document.querySelector('script[src*="flutter_bootstrap"]'),
+          flutter_host: !!document.querySelector('flutter-view, flt-glass-pane'),
+          first_frame_seen: window.__firstFrame !== null,
+          rejection_count: window.__rejections,
+          scripts: [...document.querySelectorAll('script')].length,
+          static_assets: performance.getEntriesByType('resource')
+            .map(x => new URL(x.name).pathname.split('/').pop())
+            .filter(x => ['flutter_bootstrap.js', 'main.dart.js', 'flutter.js',
+              'sqlite3.wasm', 'drift_worker.js', 'canvaskit.wasm'].includes(x))
+            .slice(0,18)
+        })""")
+        proof = {'phase':phase,'stage':evidence,'failure':'phase_timeout'}
+        Path('perf_web_synthetic_vault_debug.json').write_text(
+            json.dumps(proof,indent=2),encoding='utf-8')
+        print('SYNTHETIC_PHASE_TIMEOUT '+json.dumps(proof),flush=True)
+        raise AssertionError('Synthetic phase deadline; debug artifact captured') from exc
     title = page.title()
     if title != f"IAMINA_PERF_WEB_{phase.upper()}_PASS":
         raise AssertionError(f"Synthetic startup failed during {phase}: {title}")
