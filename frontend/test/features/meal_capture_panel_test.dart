@@ -115,6 +115,50 @@ void main() {
     expect(selected, isEmpty);
   });
 
+  testWidgets('D14 reconsent starts clean and stale request does not end new busy state',
+      (tester) async {
+    final first = Completer<MealAnalysisResult?>();
+    final second = Completer<MealAnalysisResult?>();
+    var calls = 0;
+    var selected = <String>[];
+    Future<MealAnalysisResult?> recognize() =>
+        (++calls == 1 ? first : second).future;
+    Widget build(bool allowed) => harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: allowed,
+      photoRecognition: recognize,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    );
+
+    await tester.pumpWidget(build(true));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    expect(calls, 1);
+
+    await tester.pumpWidget(build(false));
+    await tester.pump();
+    await tester.pumpWidget(build(true));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    expect(calls, 2);
+
+    first.complete(const MealAnalysisResult(
+      foods: <String>['œuf'], confidence: 'high', fallback: false));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+
+    second.complete(const MealAnalysisResult(
+      foods: <String>['pain complet'], confidence: 'high', fallback: false));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+    expect(selected, isEmpty);
+  });
+
   testWidgets('Arabic search uses Arabic food labels and RTL',(tester)async{var selected=<String>[];await tester.pumpWidget(harness(locale:const Locale('ar'),selected:selected,onChanged:(value)=>selected=value,favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();await tester.enterText(find.byKey(const Key('meal-food-search')),'بيض');await tester.pump();final result=find.byKey(const Key('meal-search-egg'));expect(result,findsOneWidget);expect(Directionality.of(tester.element(result)),TextDirection.rtl);expect(find.descendant(of:result,matching:find.text('بيض')),findsWidgets);expect(find.text('Œuf'),findsNothing);});
   testWidgets('first use hides empty history and keeps capture actions immediately available',(tester)async{await tester.pumpWidget(harness(selected:const <String>[],onChanged:(_){},favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();expect(find.text('Récents'),findsNothing);expect(find.text('Habituels'),findsNothing);expect(find.byKey(const Key('meal-food-search')),findsOneWidget);expect(find.byKey(const Key('meal-category-rail')),findsOneWidget);expect(find.byKey(const Key('meal-photo-button')),findsOneWidget);});
   testWidgets('Gulf category browses regional dishes without typing',(tester)async{await tester.pumpWidget(harness(selected:const <String>[],onChanged:(_){},favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();final rail=find.byKey(const Key('meal-category-rail'));await tester.drag(rail,const Offset(-500,0));await tester.pumpAndSettle();await tester.tap(find.byKey(const Key('meal-category-gulfDish')));await tester.pumpAndSettle();expect(find.text('Harees'),findsWidgets);expect(find.text('Cuisine du Golfe'),findsWidgets);expect(find.byKey(const Key('meal-search-rfissa')),findsNothing);});

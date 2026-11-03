@@ -72,6 +72,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     if (oldWidget.canUsePhotoRecognition && !widget.canUsePhotoRecognition) {
       // Never render proposals obtained under a revoked AI permission.
       _photoRequestGeneration++;
+      _recognizing = false;
       _photoCandidates = const <MealFoodItem>[];
       _proposalSelection.clear();
     }
@@ -122,14 +123,22 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     }
   }
 
-  Future<MealAnalysisResult?> _pickAndRecognize() async {
+  Future<MealAnalysisResult?> _pickAndRecognize(int generation) async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
       maxWidth: 1600,
     );
-    if (file == null) return null;
+    if (file == null || !mounted ||
+        generation != _photoRequestGeneration || !widget.canUsePhotoRecognition) {
+      return null;
+    }
     final bytes = await file.readAsBytes();
+    if (!mounted || generation != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition) {
+      bytes.fillRange(0, bytes.length, 0);
+      return null;
+    }
     final lower = file.name.toLowerCase();
     final mime = lower.endsWith('.png')
         ? 'image/png'
@@ -147,7 +156,10 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     final requestGeneration = ++_photoRequestGeneration;
     setState(() => _recognizing = true);
     try {
-      final result = await (widget.photoRecognition ?? _pickAndRecognize)();
+      final injected = widget.photoRecognition;
+      final result = await (injected != null
+          ? injected()
+          : _pickAndRecognize(requestGeneration));
       if (!mounted || requestGeneration != _photoRequestGeneration ||
           !widget.canUsePhotoRecognition) return;
       if (result == null || result.fallback || result.foods.isEmpty) {
@@ -165,12 +177,14 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       });
       if (matches.isEmpty) _message(l10n.journalMealPhotoUnavailable);
     } finally {
-      if (mounted) setState(() => _recognizing = false);
+      if (mounted && requestGeneration == _photoRequestGeneration) {
+        setState(() => _recognizing = false);
+      }
     }
   }
 
   void _confirmProposal() {
-    if (_proposalSelection.isEmpty) return;
+    if (!widget.canUsePhotoRecognition || _proposalSelection.isEmpty) return;
     final next = <String>{...widget.selectedIds, ..._proposalSelection};
     widget.onChanged(next.toList(growable: false));
     setState(() {
