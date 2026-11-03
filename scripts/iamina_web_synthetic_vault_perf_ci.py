@@ -58,14 +58,28 @@ def navigate(page, base, phase):
     response = page.goto(f"{base}/?phase={phase}",
                          wait_until="domcontentloaded", timeout=45000)
     try:
+        # Flutter MaterialApp is allowed to reset document.title. Use the
+        # synthetic-only localStorage receipt instead of presentation metadata.
         page.wait_for_function(
-            "(x) => document.title.startsWith('IAMINA_PERF_WEB_FAIL:') "
-            "|| document.title === 'IAMINA_PERF_WEB_' + x + '_PASS'",
-            arg=phase.upper(), timeout=20000)
+            """(phase) => {
+              try {
+                const x = JSON.parse(localStorage.getItem(
+                    'iamina_perf_web_synthetic_v1'));
+                return x && x.phase === phase &&
+                    (x.fixture === 'synthetic_only') &&
+                    (x.status === 'FAIL' || x.status === undefined);
+              } catch (_) { return false; }
+            }""",
+            arg=phase, timeout=30000)
     except PlaywrightTimeoutError as exc:
         # Bounded, synthetic-only progress/error evidence. No raw URL or error text.
         evidence = page.evaluate("""() => ({
           title: document.title.slice(0,100),
+          progress_stage: localStorage.getItem('iamina_perf_web_synthetic_progress_v1'),
+          stored_phase: (() => {
+            try { return JSON.parse(localStorage.getItem('iamina_perf_web_synthetic_v1'))?.phase ?? null; }
+            catch (_) { return null; }
+          })(),
           language: navigator.language,
           bootstrap: !!document.querySelector('script[src*="flutter_bootstrap"]'),
           flutter_host: !!document.querySelector('flutter-view, flt-glass-pane'),
@@ -83,9 +97,11 @@ def navigate(page, base, phase):
             json.dumps(proof,indent=2),encoding='utf-8')
         print('SYNTHETIC_PHASE_TIMEOUT '+json.dumps(proof),flush=True)
         raise AssertionError('Synthetic phase deadline; debug artifact captured') from exc
-    title = page.title()
-    if title != f"IAMINA_PERF_WEB_{phase.upper()}_PASS":
-        raise AssertionError(f"Synthetic startup failed during {phase}: {title}")
+    status = page.evaluate("""() => JSON.parse(localStorage.getItem(
+        'iamina_perf_web_synthetic_v1'))""")
+    if status.get("status") == "FAIL":
+        raise AssertionError(
+            f"Synthetic phase {phase} failed: {status.get('error_type','unknown')}")
     page.wait_for_function("() => window.__firstFrame !== null", timeout=30000)
     result = page.evaluate("""() => ({
       metrics: JSON.parse(localStorage.getItem('iamina_perf_web_synthetic_v1')),

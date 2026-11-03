@@ -15,9 +15,11 @@ const _emptyId = '11111111-1111-4111-8111-111111111111';
 const _filledId = '22222222-2222-4222-8222-222222222222';
 const _n = 300;
 const _key = 'iamina_perf_web_synthetic_v1';
+const _progressKey = 'iamina_perf_web_synthetic_progress_v1';
 void _stage(String value) {
   // Codes only, never patient data, credentials or error strings.
   html.document.title = 'IAMINA_PERF_WEB_STAGE:' + value;
+  html.window.localStorage[_progressKey] = value;
 }
 PatientVaultScope _scope(bool filled) =>
     PatientVaultScope.deviceLocal(filled ? _filledId : _emptyId);
@@ -165,6 +167,15 @@ Future<void> main() async {
       )),
     ));
   } catch (error) {
+    // MaterialApp can overwrite document.title after runApp. A structured,
+    // synthetic-only status survives Flutter's document metadata updates.
+    html.window.localStorage[_key] = jsonEncode({
+      'phase': phase,
+      'status': 'FAIL',
+      'error_type': error.runtimeType.toString(),
+      'fixture': 'synthetic_only',
+    });
+    _stage('failure');
     html.document.title = 'IAMINA_PERF_WEB_FAIL:' + error.runtimeType.toString();
     runApp(const MaterialApp(
       home: Scaffold(body: Text('Synthetic probe failed')),
