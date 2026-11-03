@@ -103,7 +103,10 @@ async function run() {
     // A lock disappearing from navigator.locks.query() is NOT sufficient.
     // Require a real exclusive legacy+patient acquisition after the old tab
     // physically closes. Permit only bounded browser teardown scheduling.
-    await observer.waitForFunction(async ({root,a}) => {
+    // The successful exclusive probe IS the proof. Repeating it immediately
+    // may race WebKit's async release of the first grant. Never count merely
+    // an empty query snapshot as success.
+    const exclusiveAfterClose = await observer.waitForFunction(async ({root,a}) => {
       const state = await navigator.locks.query();
       if (state.held.some(lock =>
           lock.name === root+'legacy' || lock.name === root+'patient:'+a)) {
@@ -114,7 +117,8 @@ async function run() {
           globalLock ? navigator.locks.request(root+'patient:'+a,
             {mode:'exclusive', ifAvailable:true}, lock => !!lock) : false);
     }, {root,a}, {timeout:15000, polling:250});
-    check('closed_tab_releases_physical_lock', await migrate(observer,a), true);
+    check('closed_tab_releases_physical_lock',
+      await exclusiveAfterClose.jsonValue(), true);
   } finally {
     await browser.close().catch(()=>{});
   }
