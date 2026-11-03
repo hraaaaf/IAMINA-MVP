@@ -4,13 +4,13 @@
 import 'dart:async';
 import 'dart:html' as html;
 
-import 'package:flutter/widgets.dart';
 import 'data/drift/d18_source_lock_gate.dart';
 import 'data/drift/d18_source_lock_lease.dart';
 import 'data/drift/patient_vault_scope.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // CI-only Dart→Web Locks bridge proof: do not bootstrap Flutter renderer.
+  // The full application UI is validated by separate browser workflows.
   final phase = Uri.base.queryParameters['phase'] ?? '';
   try {
     late final D18SourceLockLease lease;
@@ -52,5 +52,4 @@ Future<void> main() async {
         e.runtimeType.toString();
     html.document.title = 'D18_SOURCE_DART_FAIL:' + phase;
   }
-  runApp(const SizedBox.shrink());
 }

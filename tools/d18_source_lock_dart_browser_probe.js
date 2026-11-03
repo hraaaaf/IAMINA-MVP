@@ -101,24 +101,35 @@ async function run() {
       'D18_SOURCE_DART_HELD:a');
     await crashed.close();
     // A lock disappearing from navigator.locks.query() is NOT sufficient.
-    // Require a real exclusive legacy+patient acquisition after the old tab
-    // physically closes. Permit only bounded browser teardown scheduling.
-    // The successful exclusive probe IS the proof. Repeating it immediately
-    // may race WebKit's async release of the first grant. Never count merely
-    // an empty query snapshot as success.
-    const exclusiveAfterClose = await observer.waitForFunction(async ({root,a}) => {
-      const state = await navigator.locks.query();
-      if (state.held.some(lock =>
-          lock.name === root+'legacy' || lock.name === root+'patient:'+a)) {
-        return false;
+    // This is a SINGLE real exclusive acquisition, not a Playwright
+    // waitForFunction(async ...) predicate (WebKit can treat its Promise as
+    // truthy without using the final awaited boolean). Queue at both levels
+    // after the tab closes, bounded to 15s to detect a leaked physical lock.
+    const postCloseGrant = await observer.evaluate(async ({root,a}) => {
+      let deadline;
+      const timeout = new Promise(resolve => {
+        deadline = setTimeout(() => resolve(false), 15000);
+      });
+      const exclusive = navigator.locks.request(root+'legacy',
+        {mode:'exclusive'}, async legacyLock =>
+          legacyLock ? navigator.locks.request(root+'patient:'+a,
+            {mode:'exclusive'}, patientLock => !!patientLock) : false);
+      try {
+        return await Promise.race([exclusive, timeout]);
+      } finally {
+        clearTimeout(deadline);
       }
-      return navigator.locks.request(root+'legacy',
-        {mode:'exclusive', ifAvailable:true}, async globalLock =>
-          globalLock ? navigator.locks.request(root+'patient:'+a,
-            {mode:'exclusive', ifAvailable:true}, lock => !!lock) : false);
-    }, {root,a}, {timeout:15000, polling:250});
-    check('closed_tab_releases_physical_lock',
-      await exclusiveAfterClose.jsonValue(), true);
+    }, {root,a});
+    if (!postCloseGrant) {
+      const state = await observer.evaluate(async () => {
+        const q = await navigator.locks.query();
+        return {held:q.held.map(({name,mode})=>({name,mode})),
+          pending:q.pending.map(({name,mode})=>({name,mode}))};
+      }).catch(() => ({unavailable:true}));
+      console.error('D18_DART_SOURCE_POST_CLOSE_DENIED', engineName,
+        JSON.stringify(state));
+    }
+    check('closed_tab_releases_physical_lock', postCloseGrant, true);
   } finally {
     await browser.close().catch(()=>{});
   }
