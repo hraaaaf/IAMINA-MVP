@@ -337,10 +337,19 @@ def main():
                             data = target.read_bytes()
                             assert data.startswith(bytes.fromhex("89504e470d0a1a0a"))
                             assert len(data) > 1000
+                            geometry = page.evaluate("""() => ({
+                                innerWidth: window.innerWidth,
+                                htmlScrollWidth: document.documentElement.scrollWidth,
+                                bodyScrollWidth: document.body.scrollWidth,
+                                flutterViewWidth: Math.round(
+                                    document.querySelector('flutter-view')?.getBoundingClientRect().width || 0
+                                ),
+                            })""")
                             evidence["captures"].append({
                                 "viewport": f"{width}x{height}",
                                 "file": target.name,
                                 "sha256": hashlib.sha256(data).hexdigest(),
+                                "geometry": geometry,
                             })
                         evidence["verified_scenarios"].append(
                             "F03 limited: unverified legacy-style target not editable at 3 viewports"

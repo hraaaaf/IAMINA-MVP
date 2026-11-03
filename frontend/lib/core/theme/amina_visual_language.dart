@@ -196,6 +196,7 @@ class AminaVisualLanguage {
           surfaceTintColor: Colors.transparent,
           shape: primaryButtonShape,
           textStyle: const TextStyle(
+            fontFamilyFallback: kOfflineFontFallbacks,
             fontSize: 14.5,
             fontWeight: FontWeight.w700,
           ),
@@ -210,6 +211,7 @@ class AminaVisualLanguage {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           shape: primaryButtonShape,
           textStyle: const TextStyle(
+            fontFamilyFallback: kOfflineFontFallbacks,
             fontSize: 14.5,
             fontWeight: FontWeight.w700,
           ),
@@ -224,6 +226,7 @@ class AminaVisualLanguage {
           side: BorderSide(color: primary, width: 1.15),
           shape: primaryButtonShape,
           textStyle: const TextStyle(
+            fontFamilyFallback: kOfflineFontFallbacks,
             fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
@@ -233,7 +236,7 @@ class AminaVisualLanguage {
         style: TextButton.styleFrom(
           foregroundColor: primary,
           shape: primaryButtonShape,
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontFamilyFallback: kOfflineFontFallbacks, fontWeight: FontWeight.w600),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -281,6 +284,7 @@ class AminaVisualLanguage {
             : mintSurface,
         side: BorderSide(color: borderColor.withValues(alpha: .72)),
         labelStyle: TextStyle(
+          fontFamilyFallback: kOfflineFontFallbacks,
           color: primaryTextColor,
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -312,6 +316,7 @@ class AminaVisualLanguage {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: dark ? AminaTheme.darkCardElevated : forestDeep,
         contentTextStyle: const TextStyle(
+          fontFamilyFallback: kOfflineFontFallbacks,
           color: Colors.white,
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -337,6 +342,7 @@ class AminaVisualLanguage {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
+            fontFamilyFallback: kOfflineFontFallbacks,
             fontSize: 11,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
             color: selected ? primary : secondaryColor,
@@ -351,6 +357,7 @@ class AminaVisualLanguage {
           borderRadius: BorderRadius.circular(16),
         ),
         textStyle: TextStyle(
+          fontFamilyFallback: kOfflineFontFallbacks,
           color: primaryTextColor,
           fontSize: 13,
           fontWeight: FontWeight.w600,
