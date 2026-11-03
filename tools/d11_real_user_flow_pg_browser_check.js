@@ -288,8 +288,19 @@ async function proof(page, width) {
       await page.waitForTimeout(350);
       await screenshot(page,'06b-account-controls-revealed');
       const logoutLabel=locale==='fr'?'Se déconnecter':'تسجيل الخروج';
-      const logoutVisible=page.getByText(logoutLabel,{exact:true}).last();
-      const logoutBox=await logoutVisible.boundingBox().catch(()=>null);
+      // In Flutter CanvasKit the actual label may belong to a semantics
+      // node rather than a Playwright getByText match. Inspect live geometry
+      // from that node; reject offscreen/overlapped targets.
+      let logoutBox=null;
+      const semanticNodes=page.locator('flt-semantics');
+      for(let i=(await semanticNodes.count())-1;i>=0;i--){
+        const node=semanticNodes.nth(i);
+        const value=(await node.getAttribute('aria-label').catch(()=>null)) ||
+          (await node.textContent().catch(()=>null));
+        if(!labelMatches(value,logoutLabel))continue;
+        logoutBox=await node.boundingBox().catch(()=>null);
+        if(logoutBox)break;
+      }
       const viewportHeight=page.viewportSize()?.height||844;
       if(!logoutBox || logoutBox.y<0 || logoutBox.y+logoutBox.height>viewportHeight-62)
         throw new Error('Logout still covered after physical scroll: '+
