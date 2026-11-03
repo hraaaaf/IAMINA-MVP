@@ -49,11 +49,25 @@ final class _GuardedSqlCandidate {
   }
 }
 
-Future<void> verifyGuardedWebOpen() async {
-  stage('guarded_policy_enroll');
+// Browser storage may contain only the authenticated PUBLIC key envelope, never
+// the passphrase, offline recovery code, or unwrapped data key. CI fixture only.
+const _guardedEnvelopeStorageKey='d18_ci_only_public_vault_envelope';
+const _guardedPassphrase='D18-CI-only-synthetic-2026-verified-policy';
+const _guardedMarker='D18_CI_GUARDED_V12_PERSISTED_20261103';
+
+Future<void> verifyGuardedWebOpen({bool reopen=false}) async {
   final scope=PatientVaultScope.deviceLocal(_guardedC);
-  final enrolled=await D18VaultKeyPolicy.createForEmptyVault(
-    scope:scope,passphrase:'D18-CI-only-synthetic-2026-verified-policy');
+  stage(reopen ? 'guarded_policy_unlock_after_restart' : 'guarded_policy_enroll');
+  final enrolled=reopen ? null : await D18VaultKeyPolicy.createForEmptyVault(
+    scope:scope,passphrase:_guardedPassphrase);
+  final envelope=reopen
+      ? html.window.localStorage[_guardedEnvelopeStorageKey]
+      : enrolled!.publicEnvelopeJson;
+  verify(envelope!=null && envelope.isNotEmpty,
+      'D18_GUARDED_PUBLIC_ENVELOPE_UNAVAILABLE');
+  final session=reopen ? await D18VaultKeyPolicy.unlockWithPassphrase(
+    scope:scope,publicEnvelopeJson:envelope!,passphrase:_guardedPassphrase)
+      : enrolled!.session;
   try {
     final guard=D18KeyedOpenGuard(
       resolveAuthenticatedScope:() async => scope,
@@ -64,7 +78,7 @@ Future<void> verifyGuardedWebOpen() async {
     try {
       await guard.openUnpublished<_GuardedSqlCandidate>(
         requestedScope:wrong,
-        keySession:enrolled.session,
+        keySession:session,
         createUnpublished:(key) async {
           invoked=true;
           throw StateError('MUST_NOT_ENTER_WORKER');
@@ -78,7 +92,7 @@ Future<void> verifyGuardedWebOpen() async {
     stage('guarded_real_worker_open');
     final candidate=await guard.openUnpublished<_GuardedSqlCandidate>(
       requestedScope:scope,
-      keySession:enrolled.session,
+      keySession:session,
       createUnpublished:(bytes) async {
         final worker=web.Worker('d18_dynamic_cipher_sqlite_worker.js'.toJS);
         final control=web.MessageChannel(),sql=web.MessageChannel();
@@ -190,13 +204,40 @@ Future<void> verifyGuardedWebOpen() async {
         "AND name='patient_treatment_declarations_v1'").get();
       verify(declaration.length==1,'D18_GUARDED_DECLARATION_TABLE_MISSING');
       stage('guarded_session_key_preserved');
-      verify(!enrolled.session.isLocked,'D18_GUARDED_SESSION_KEY_LOST');
+      verify(!session.isLocked,'D18_GUARDED_SESSION_KEY_LOST');
+      if(!reopen) {
+        stage('guarded_write_real_patient_table');
+        await candidate.database.customStatement(
+          'INSERT INTO patient_profiles(user_id,updated_at,diabetes_type) '
+          'VALUES(?,?,?)',[1,1700000000,_guardedMarker]);
+      }
+      stage('guarded_read_real_patient_table');
+      final markerRows=await candidate.database.customSelect(
+        'SELECT diabetes_type FROM patient_profiles WHERE user_id=1').get();
+      verify(markerRows.length==1 &&
+          markerRows.single.read<String>('diabetes_type')==_guardedMarker,
+          'D18_GUARDED_KEYED_V12_ROW_NOT_PERSISTED');
+      stage('guarded_validate_fks');
+      final foreignKeys=await candidate.database.customSelect(
+          'PRAGMA foreign_key_check').get();
+      verify(foreignKeys.isEmpty,'D18_GUARDED_KEYED_V12_FOREIGN_KEY_ERROR');
     } finally {await candidate.close();}
-  } finally {enrolled.session.lock();}
+    if(!reopen) {
+      // Store only the public authenticated envelope *after* the candidate DB
+      // has closed successfully. The original offline recovery code is NEVER
+      // persisted by the browser, even in this synthetic CI harness.
+      html.window.localStorage[_guardedEnvelopeStorageKey]=envelope!;
+      stage('guarded_only_public_envelope_persisted');
+      verify(html.window.localStorage[_guardedEnvelopeStorageKey]==envelope,
+          'D18_GUARDED_PUBLIC_ENVELOPE_NOT_SAVED');
+    }
+  } finally {session.lock();}
 }
 
 Future<void> runPhase(String name) async {
-  if(name=='guarded_open') {await verifyGuardedWebOpen();return;}
+  if(name=='guarded_open'||name=='guarded_reopen') {
+    await verifyGuardedWebOpen(reopen:name=='guarded_reopen');return;
+  }
   stage('resolve_scope');
   final scope = PatientVaultScope.deviceLocal(
     const {'isolate_b', 'create_b', 'read_b'}.contains(name)
@@ -321,7 +362,7 @@ Future<void> main() async {
   try {
     verify(const {
       'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
-      'lock_denied', 'create_b', 'read_b', 'guarded_open',
+      'lock_denied', 'create_b', 'read_b', 'guarded_open', 'guarded_reopen',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
     await runPhase(name);
