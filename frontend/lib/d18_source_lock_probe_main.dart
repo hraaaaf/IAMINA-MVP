@@ -1,4 +1,4 @@
-// D18 CI-only Flutter Web probe: uses the actual Dart source-lock bridge.
+// D18 CI-only standalone Dart Web probe: uses the actual app Dart source-lock bridge.
 // Synthetic namespaces, no patient DB, no migration or clinical UI.
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:async';
@@ -9,8 +9,8 @@ import 'data/drift/d18_source_lock_lease.dart';
 import 'data/drift/patient_vault_scope.dart';
 
 Future<void> main() async {
-  // CI-only Dart→Web Locks bridge proof: do not bootstrap Flutter renderer.
-  // The full application UI is validated by separate browser workflows.
+  // CI-only Dart→Web Locks bridge proof: never bootstrap the Flutter renderer.
+  // The app's real Web/UI is validated by independent browser workflows.
   final phase = Uri.base.queryParameters['phase'] ?? '';
   try {
     late final D18SourceLockLease lease;

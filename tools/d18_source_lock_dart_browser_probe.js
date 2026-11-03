@@ -1,4 +1,4 @@
-// D18: real Flutter Dart -> browser source Web Locks; synthetic, NO CUTOVER.
+// D18: real Dart source-lock bridge compiled alone (no Flutter renderer), synthetic NO CUTOVER.
 'use strict';
 const {chromium, webkit} = require('playwright');
 const engineName = process.env.D18_DART_SOURCE_BROWSER || 'chromium';
@@ -17,7 +17,7 @@ async function run() {
     headless: true, ...(engineName === 'chromium' ? {args: ['--no-sandbox']} : {}),
   });
   try {
-    const ctx = await browser.newContext({viewport:{width:390,height:844}});
+    const ctx = await browser.newContext({viewport:{width:390,height:844}, locale:'en-US'});
     async function tab(phase, disableLocks=false) {
       console.log('D18_DART_SOURCE_OPEN', engineName, phase);
       const page = await ctx.newPage();

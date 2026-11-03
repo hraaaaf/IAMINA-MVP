@@ -16,6 +16,7 @@ on:
       - 'tools/d18_source_writer_barrier_probe.js'
       - 'tools/d18_real_source_interlock_probe.js'
       - 'tools/d18_source_lock_dart_browser_probe.js'
+      - 'tools/fixtures/d18_source_lock_browser_test.html'
       - 'tools/d18_source_sqlite_entrypoint_inventory.py'
       - 'frontend/lib/d18_source_lock_probe_main.dart'
       - 'frontend/web/d18_source_interlock.js'
@@ -166,12 +167,15 @@ jobs:
           node --check frontend/web/d18_source_interlock.js
           node --check tools/d18_real_source_interlock_probe.js
           D18_SOURCE_INTERLOCK_BROWSER=chromium node tools/d18_real_source_interlock_probe.js
-      - name: Verify actual Flutter Dart to source Web Lock (chromium CI-only)
+      - name: Verify isolated Dart source bridge to Web Lock (chromium CI-only)
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           (cd frontend && flutter analyze --no-fatal-infos lib/d18_source_lock_probe_main.dart)
-          (cd frontend && flutter build web --release --no-web-resources-cdn --output build/d18-source-gate-probe -t lib/d18_source_lock_probe_main.dart)
+          (cd frontend && mkdir -p build/d18-source-gate-probe && dart compile js -O4 -o build/d18-source-gate-probe/d18_source_lock_probe.js lib/d18_source_lock_probe_main.dart)
+          cp frontend/web/d18_source_interlock.js frontend/build/d18-source-gate-probe/d18_source_interlock.js
+          cp tools/fixtures/d18_source_lock_browser_test.html frontend/build/d18-source-gate-probe/index.html
+          test ! -e frontend/build/d18-source-gate-probe/flutter_bootstrap.js
           python3 -m http.server 7409 --bind 127.0.0.1 --directory frontend/build/d18-source-gate-probe > /tmp/d18-source-dart-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
