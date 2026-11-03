@@ -152,6 +152,13 @@ void main() {
       expect(late - medium, greaterThan(medium - early),
           reason: 'Hold repeat rate must increase with duration.');
 
+      // Leaving the 48-pixel button must stop a still-pressed finger, too.
+      await finger.moveBy(const Offset(120, 0));
+      await tester.pump();
+      final slidOutside = readingText();
+      await tester.pump(const Duration(milliseconds: 650));
+      expect(readingText(), slidOutside,
+          reason: 'No repeated step after the finger leaves the button.');
       await finger.up();
       await tester.pump();
       final released = readingText();
