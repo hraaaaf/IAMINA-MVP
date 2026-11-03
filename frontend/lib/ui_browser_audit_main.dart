@@ -16,6 +16,7 @@ import 'features/auth/onboarding_chat_screen.dart';
 import 'features/companion/companion_conversation_screen.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
+import 'features/dashboard/widgets/dashboard_my_reminders_card.dart';
 import 'features/dashboard/widgets/add_log_sheet.dart';
 import 'features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
 import 'features/dashboard/widgets/dashboard_insight_section.dart';
@@ -168,7 +169,24 @@ Future<void> main() async {
     debugPrint('Browser audit Firebase init unavailable: $error');
   }
 
+  // Synthetic D3 browser fixture only; never used by production main.dart.
+  final isD3Audit = Uri.base.queryParameters['surface'] == 'd3-reminders';
   final db = AppDatabase.defaults();
+  if (isD3Audit) {
+    final now = DateTime.now();
+    await db.addReminder(
+      title: 'Contrôle synthétique',
+      dueAt: now.add(const Duration(hours: 4)),
+    );
+    await db.addReminder(
+      title: 'Rendez-vous fictif',
+      dueAt: now.add(const Duration(days: 1)),
+    );
+    await db.addReminder(
+      title: 'Vérification test',
+      dueAt: now.add(const Duration(days: 2)),
+    );
+  }
   final auth = AuthService();
   // The synthetic screenshot fixture must use the same profile dependencies
   // as the real application; no patient identity or backend auth is created.
@@ -317,6 +335,10 @@ class _BrowserAuditApp extends StatelessWidget {
               CompanionConversationScreen(service: visualCompanion),
         ),
         GoRoute(
+          path: '/d3-reminders',
+          builder: (context, state) => const _BrowserD3RemindersSurface(),
+        ),
+        GoRoute(
           path: '/first-use-receipt',
           builder: (context, state) => const _BrowserFirstUseReceiptSurface(),
         ),
@@ -441,6 +463,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'companion' => '/companion',
   'companion-unavailable' => '/companion-unavailable',
   'amina-chat' => '/amina-chat',
+  'd3-reminders' => '/d3-reminders',
   'first-use-receipt' => '/first-use-receipt',
   'first-use-chat' => '/first-use-chat',
   'trend' => '/trend',
@@ -622,6 +645,22 @@ class _BrowserNextActionSurface extends StatelessWidget {
   }
 }
 
+
+/// Dedicated synthetic fixture isolates the actual D3 card for Chrome proof.
+class _BrowserD3RemindersSurface extends StatelessWidget {
+  const _BrowserD3RemindersSurface();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AminaTheme.bg(context),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: const DashboardMyRemindersCard(),
+      ),
+    ),
+  );
+}
 
 class _BrowserFirstUseReceiptSurface extends StatefulWidget {
   const _BrowserFirstUseReceiptSurface();

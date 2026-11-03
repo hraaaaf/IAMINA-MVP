@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../services/companion_service.dart';
 import 'dashboard_insight_section.dart';
-import 'dashboard_next_action_section.dart';
+import 'dashboard_my_reminders_card.dart';
 import 'dashboard_trend_section.dart';
 
 class DashboardResponsiveSections extends StatelessWidget {
@@ -30,7 +30,7 @@ class DashboardResponsiveSections extends StatelessWidget {
               const SizedBox(height: 18),
               DashboardInsightSection(service: companionService),
               const SizedBox(height: 18),
-              DashboardNextActionSection(service: companionService),
+              const DashboardMyRemindersCard(),
             ],
           );
         }
@@ -49,9 +49,7 @@ class DashboardResponsiveSections extends StatelessWidget {
                 ),
                 const SizedBox(width: 18),
                 Expanded(
-                  child: DashboardNextActionSection(
-                    service: companionService,
-                  ),
+                  child: const DashboardMyRemindersCard(),
                 ),
               ],
             ),
