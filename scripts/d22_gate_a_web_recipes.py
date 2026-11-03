@@ -127,12 +127,13 @@ def main():
                                 "button", name=re.compile(r"^" + re.escape(COPY["medical"]), re.I)
                             ).first
                             section.wait_for(state="visible", timeout=25000)
-                            # A Flutter responsive rebuild can re-collapse
-                            # the ExpansionTile after its initial click (seen
-                            # in D7 shared Chrome run at a8ca3c5). Reopen
-                            # only when the real accessible state is Collapsed,
-                            # and require BOTH rendered choice and clinical
-                            # banner; an ARIA-only expansion is insufficient.
+                            # Flutter localizes its expansion aria-description:
+                            # EN "Collapsed", FR "Réduit", and AR uses localized
+                            # semantics. Never treat a non-English string as an
+                            # invalid state; the actual visible medical choice
+                            # AND clinical notice must be present three times.
+                            # Reopen by a genuine click only while still closed;
+                            # fail after bounded retries, never force a click.
                             choice = page.get_by_role(
                                 "button", name=re.compile(r"^" + re.escape(COPY["type2"]) + r"$", re.I)
                             ).first
@@ -141,29 +142,32 @@ def main():
                             ).first
                             reopen_count = 0
                             stable = 0
+                            missing = 0
+                            # Only this narrow set is used as a click hint;
+                            # success always requires rendered medical content.
+                            collapsed_labels = ("Collapsed", "Réduit", "مطوي", "منهار")
                             for _ in range(80):
                                 state = section.get_attribute("aria-description")
-                                if state == "Collapsed" and reopen_count < 4:
-                                    section.click(timeout=18000)
-                                    reopen_count += 1
-                                    stable = 0
-                                    page.wait_for_timeout(350)
-                                    continue
-                                if state not in ("Collapsed", "Expanded"):
-                                    raise AssertionError(
-                                        f"D22 profile tile invalid expansion state: {state!r}"
-                                    )
                                 ready = (
-                                    state == "Expanded"
-                                    and choice.count() > 0 and choice.is_visible()
+                                    choice.count() > 0 and choice.is_visible()
                                     and banner.count() > 0 and banner.is_visible()
                                 )
                                 if ready:
                                     stable += 1
+                                    missing = 0
                                     if stable >= 3:
                                         return section
                                 else:
                                     stable = 0
+                                    missing += 1
+                                    if reopen_count < 4 and (
+                                        state in collapsed_labels or missing >= 7
+                                    ):
+                                        section.click(timeout=18000)
+                                        reopen_count += 1
+                                        missing = 0
+                                        page.wait_for_timeout(350)
+                                        continue
                                 page.wait_for_timeout(220)
                             raise AssertionError(
                                 f"D22 profile medical panel never rendered open: "
@@ -280,7 +284,7 @@ def main():
                             section = profile_open()
                             # A stored numerical legacy target never becomes a
                             # visible editable target in the medically unapproved UI.
-                            assert section.get_attribute("aria-description") == "Expanded"
+                            assert page.get_by_text(COPY["banner"]).first.is_visible()
                             tree = page.locator("body").aria_snapshot()
                             assert COPY["banner"] in tree
                             # Negative F03 oracle: an explanatory banner by
