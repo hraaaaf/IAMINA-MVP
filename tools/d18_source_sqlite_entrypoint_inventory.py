@@ -21,6 +21,8 @@ EXPECTED = {
 }
 PATTERN = re.compile(r"\bAppDatabase\s*\.\s*(defaults|forPatientVault)\s*\(")
 DIRECT = re.compile(r"\bdriftDatabase\s*\(")
+DIRECT_APP = re.compile(r"\bAppDatabase\s*\(")
+TEST_FACTORY = re.compile(r"\bAppDatabase\s*\.\s*testPatientVault\s*\(")
 TEST_ENTRY_PREFIXES = ("d18_", "ui_", "d5_", "login_screenshot")
 
 observed = []
@@ -37,8 +39,13 @@ for path in sorted(ROOT.rglob("*.dart")):
             continue
         for match in PATTERN.finditer(content):
             observed.append({"path": rel, "line": i, "kind": match.group(1)})
-        if rel != "data/drift/database.dart" and DIRECT.search(content):
-            observed.append({"path": rel, "line": i, "kind": "directDriftDatabase"})
+        if rel != "data/drift/database.dart":
+            if DIRECT.search(content):
+                observed.append({"path": rel, "line": i, "kind": "directDriftDatabase"})
+            if DIRECT_APP.search(content):
+                observed.append({"path": rel, "line": i, "kind": "directAppDatabase"})
+            if TEST_FACTORY.search(content):
+                observed.append({"path": rel, "line": i, "kind": "testFactoryInRuntime"})
 
 actual = {}
 for item in observed:
@@ -53,6 +60,40 @@ missing = {
     path: counts for path, counts in EXPECTED.items()
     if actual.get(path) != counts
 }
+# Literal ordered source checks deliberately reject a new open path until
+# reviewed. They are NOT runtime proof and CANNOT detect old cached clients.
+CONTRACT = {
+    "main.dart": [
+        ("legacy", "D18SourceLockGate.legacy()", "AppDatabase.defaults()"),
+        ("patient_probe", "D18SourceLockGate.patient(scope)",
+         "AppDatabase.forPatientVault(scope)"),
+        ("audit_guest", "D18SourceLockGate.auditGuest()",
+         "AppDatabase.forPatientVault(PatientVaultScope.auditOnly())"),
+    ],
+    "services/patient_vault_session_controller.dart": [
+        ("patient_controller", "D18SourceLockGate.patient(scope)",
+         "database: AppDatabase.forPatientVault(scope)"),
+        ("close_before_unlock", "await database.close();",
+         "await releaseWorker?.call();"),
+    ],
+    "services/patient_vault_app_host.dart": [
+        ("guest_close_before_unlock", "await _guestDatabase.close();",
+         "await widget.guestSourceLock?.close();"),
+    ],
+}
+contract_failures = []
+for rel, checks in CONTRACT.items():
+    source = (ROOT / rel).read_text(encoding="utf-8")
+    for name, acquire, open_or_release in checks:
+        if (acquire not in source or open_or_release not in source or
+                source.index(acquire) >= source.index(open_or_release)):
+            contract_failures.append(f"{rel}:{name}")
+host = (ROOT / "services/patient_vault_app_host.dart").read_text(encoding="utf-8")
+if "D18_GUEST_SOURCE_LOCK_REQUIRED" not in host:
+    contract_failures.append("services/patient_vault_app_host.dart:guest_fail_closed")
+if "defaultValue: false" not in (ROOT / "main.dart").read_text(encoding="utf-8"):
+    contract_failures.append("main.dart:canary_disabled_by_default")
+
 report = {
     "kind": "D18_STATIC_WEB_APP_SQLITE_SOURCE_INVENTORY_NOT_CUTOVER",
     "allowed": EXPECTED,
@@ -60,7 +101,8 @@ report = {
     "violations": violations,
     "missing": missing,
     "old_cached_tabs": "NOT_COVERED",
+    "contract_failures": contract_failures,
 }
 print(json.dumps(report, indent=2, sort_keys=True))
-if violations or missing:
+if violations or missing or contract_failures:
     sys.exit("D18_REAL_SQLITE_ENTRYPOINT_INVENTORY_FAIL_CLOSED")
