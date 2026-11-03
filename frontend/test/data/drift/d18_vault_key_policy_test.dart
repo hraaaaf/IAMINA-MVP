@@ -238,6 +238,7 @@ void main() {
     var epoch=3, opens=0, disposed=0;
     var authenticated=_a;
     var badEngine=false, badDestination=false, staleDuringOpen=false;
+    var badSchema=false;
     var physicalState=D18CipherPhysicalState.absent;
     final guard=D18KeyedOpenGuard(
       resolveAuthenticatedScope:() async=>authenticated,
@@ -251,7 +252,11 @@ void main() {
         expect(intent,anyOf(
           D18CipherVaultOpenIntent.createFresh,
           D18CipherVaultOpenIntent.reopenExisting));
-        final executor=NativeDatabase.memory();
+        final executor=NativeDatabase.memory(setup:(raw) {
+          // Simulate a corrupted/misleading v12 file: the header claims
+          // version 12 but none of the required clinical tables exist.
+          if(badSchema) raw.execute('PRAGMA user_version=12');
+        });
         if(staleDuringOpen) epoch++;
         return D18KeyedCipherWorkerLease(
           executor:executor,
@@ -301,11 +306,18 @@ void main() {
       intent:D18CipherVaultOpenIntent.reopenExisting),throwsStateError);
     expect(disposed,4);
 
-    staleDuringOpen=true;
+    badSchema=true;
     await expectLater(adapter.openUnpublished(
       scope:_a,keySession:enrollment.session,
       intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
     expect(disposed,5);
+    badSchema=false;
+
+    staleDuringOpen=true;
+    await expectLater(adapter.openUnpublished(
+      scope:_a,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
+    expect(disposed,6);
     staleDuringOpen=false;
     // A still controls the simulated authenticated account after the epoch
     // update, so a fresh approved opening must be independently verified.
@@ -317,12 +329,12 @@ void main() {
     expect(version.read<int>('user_version'),12);
     await candidate.close();
     await candidate.close();
-    expect(disposed,6); // Idempotent close, no orphan worker.
+    expect(disposed,7); // Idempotent close, no orphan worker.
     authenticated=_b;
     await expectLater(adapter.openUnpublished(
       scope:_a,keySession:enrollment.session,
       intent:D18CipherVaultOpenIntent.createFresh),throwsStateError);
-    expect(opens,6);
+    expect(opens,7);
   });
 
 }
