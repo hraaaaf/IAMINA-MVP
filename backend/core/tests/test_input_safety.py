@@ -75,9 +75,15 @@ def test_sse_urgent_fast_path_does_not_initialize_iamina(monkeypatch):
     monkeypatch.setattr(ai, "_get_patient_language", lambda user: "fr")
     monkeypatch.setattr(ai, "track", lambda *args, **kwargs: None)
     monkeypatch.setattr("companion.core.IAmina", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("IAmina initialized")))
-    request = RequestFactory().get("/api/v1/ai/chat/stream")
+    monkeypatch.setattr(
+        "core.emergency_response.compose_emergency_for_patient",
+        lambda *args, **kwargs: SimpleNamespace(
+            as_stream_event=lambda: {"token": "Urgence.", "is_emergency": True}
+        ),
+    )
+    request = RequestFactory().post("/api/v1/ai/chat/stream")
     request.user = SimpleNamespace(id=1)
-    response = ai.chat_stream(request, "urgence")
+    response = ai.chat_stream(request, ai.ChatRequest(message="urgence"))
     assert list(response.streaming_content)[-1] == b"data: [DONE]\n\n"
 
 
@@ -92,9 +98,9 @@ def test_sse_insulin_fast_path_does_not_initialize_iamina(monkeypatch):
     monkeypatch.setattr(ai, "_get_patient_language", lambda user: "fr")
     monkeypatch.setattr(ai, "track", lambda *args, **kwargs: None)
     monkeypatch.setattr("companion.core.IAmina", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("IAmina initialized")))
-    request = RequestFactory().get("/api/v1/ai/chat/stream")
+    request = RequestFactory().post("/api/v1/ai/chat/stream")
     request.user = SimpleNamespace(id=1)
-    response = ai.chat_stream(request, "dose")
+    response = ai.chat_stream(request, ai.ChatRequest(message="dose"))
     assert list(response.streaming_content)[-1] == b"data: [DONE]\n\n"
 
 
