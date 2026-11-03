@@ -2,16 +2,21 @@
 // Chromium persistent profile. Archive exists temporarily OUTSIDE the browser.
 // All patient-like data and passphrases are SYNTHETIC test fixtures.
 'use strict';
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
+const engineName=process.env.D18_TEST_BROWSER||'chromium';
+if(!['chromium','webkit'].includes(engineName))throw Error('Unsupported browser engine');
+const browserEngine=engineName==='webkit'?webkit:chromium;
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'d18-cipher-full-restore-'));
 const archivePath=path.join(root,'independent-sealed-vault.json');
 const origin='http://127.0.0.1:7398/';
 const results=[];
 async function createProfile(name){
- return chromium.launchPersistentContext(path.join(root,name),{
+ return browserEngine.launchPersistentContext(path.join(root,name),{
    headless:true,locale:'fr-FR',
-   args:['--no-sandbox','--disable-dev-shm-usage']});
+   viewport:{width:390,height:844},deviceScaleFactor:2,
+   ...(engineName==='chromium'?{args:['--no-sandbox','--disable-dev-shm-usage']}:{}),
+ });
 }
 async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
  const page=await ctx.newPage();
@@ -98,7 +103,8 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
  fs.mkdirSync('d18-physical-restore-proof',{recursive:true});
  fs.writeFileSync('d18-physical-restore-proof/report.json',
   JSON.stringify({sha:process.env.GITHUB_SHA||null,
-   kind:'synthetic-sqlite3mc-physical-restore-fresh-chromium',
+   kind:'synthetic-sqlite3mc-physical-restore-fresh-'+engineName,
+   browserEngine:engineName,viewport:{width:390,height:844},
    phases:results},null,2));
  console.log(JSON.stringify(results));
  const expected=['export','bad_archive','restore_crash',
