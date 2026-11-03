@@ -1,3 +1,18 @@
+## REPRISE COURANTE — 2026-11-03 — IAMINA D18 Web : benchmark 20/20 et CSP 2 moteurs VERTS — GATES CLINIQUES OUVERTS
+
+**Décision D18 ; Goal :** protection chiffrée au repos de l'intégralité du coffre SQLite patient Web, isolation des sessions, migration sans perte et récupération hors navigateur. **Succès expérimental vérifié, NON release clinique.** PR [#1243](https://github.com/hraaaaf/IAMINA-MVP/pull/1243) toujours **DRAFT**, commit de référence `ece4f027f49d599727d7a1ff9c6f42e63ae4c137`. 4/4 workflows D18 **COMPLETED/SUCCESS sur ce même SHA** :
+- [Worker #41666658151](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41666658151) : 20/20 profils Chromium indépendants, **20 tableaux `seed,migrate,verify,physical_bytes` 4/4**, soit 80/80 phases; **37/37** worker, **10/10** verrous, **18/18** historique, **16/16** transport clés, **15/15** arbitrage Web Locks et **9/9** crash/rollback. Aucun fail ni retry sur ces profils. Logs bruts parsés.
+- [CSP #41666658015](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41666658015) : Chromium 10/10 restaurations + 2/2 canaris ; WebKit Linux 390px 10/10 + 2/2. La même page HTML statique autorise inline + eval sur serveur témoin sans CSP et les refuse sous CSP de **test local uniquement**, avec `EvalError`, sans `unsafe-eval` JS ni inline script autorisés.
+- [Restauration Chromium #41666658746](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41666658746) **10/10** ; [WebKit #41666658260](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41666658260) **10/10**. Coffre SQLite3MC entier, octets physiques, perte d'un profil, fichier archive indépendant, crash partiel, refus d'écrasement, mauvaise clé, réouverture et préservation source. Exclusivement **données synthétiques**.
+
+**Limite explicite :** le run antérieur [#41659996331](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41659996331) était ROUGE (`preflight_lock_source_before_snapshot`, erreur minifiée `c_`) et sa cause racine n'est toujours **pas prouvée**. 20/20 réussites ne démontrent pas absence définitive d'intermittence IndexedDB/SharedWorker. Les checkpoints fins restent dans le banc pour tout échec futur.
+
+**GATES de mise en service NON satisfaits :** (1) `AppDatabase.forPatientVault` sert encore **sqlite3.wasm / drift_worker.js en clair**, le chiffrement n'est pas activé cliniquement ; (2) la CSP test n'a été ni configurée ni prouvée sur le site Vercel réel ; (3) restauration complète plafonnée à **16 Mio** et archive JSON/base64 in-memory, pas de streaming ; (4) crash d'import = destination partielle **quarantainée** mais aucun protocole de reprise contrôlée/idempotente avec consentement de l'utilisateur ; (5) tous les écrivains historiques plaintext et AuthEpoch réel doivent être coordonnés ; (6) Safari iPhone physique / éviction et quotas / UX FR-AR / audit sécurité indépendant manquants. **Aucun merge, aucune migration clinique, aucun Vercel ni changement runtime sans GO explicite.**
+
+**Next exact :** préparer sur une branche D18 pré-cutover un contrat de récupération de destination partielle avec tests de refus par défaut, identité et intégrité du coffre, sans écrasement/suppression implicites ; puis revoir capacité streaming et sécurité du cutover. Continuer à maintenir la PR en Draft et reporter uniquement les états réellement vérifiés. Aucune estimation de pourcentage global inventée.
+
+---
+
 ## REPRISE COURANTE — 2026-11-03 — D18 Web 6/6 : CSP double moteur verte, 20x durabilité source en qualification
 
 **État confirmé avant stress** : PR [#1243](https://github.com/hraaaaf/IAMINA-MVP/pull/1243) DRAFT, SHA CODE `54400df70e71c72c31da72379e9c8598dbcbfcc6` ; **4/4 workflows D18 SUCCESS** sur ce SHA :
