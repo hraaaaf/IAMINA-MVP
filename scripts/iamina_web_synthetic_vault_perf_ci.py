@@ -100,8 +100,22 @@ def navigate(page, base, phase):
     status = page.evaluate("""() => JSON.parse(localStorage.getItem(
         'iamina_perf_web_synthetic_v1'))""")
     if status.get("status") == "FAIL":
+        # Preserve bounded FAIL receipt even when the benchmark cannot
+        # produce final latency aggregates. Prior successfully measured samples
+        # are separately preserved by the outer loop.
+        proof = {
+            "phase": phase,
+            "error_type": status.get("error_type", "unknown"),
+            "failure_stage": status.get("failure_stage", "unknown"),
+            "failure_reason": status.get("failure_reason", "other_error"),
+            "fixture": "synthetic_only",
+        }
+        Path("perf_web_synthetic_vault_debug.json").write_text(
+            json.dumps(proof, indent=2), encoding="utf-8")
+        print("SYNTHETIC_PHASE_FAIL " + json.dumps(proof), flush=True)
         raise AssertionError(
-            f"Synthetic phase {phase} failed: {status.get('error_type','unknown')}")
+            f"Synthetic phase {phase}: "
+            f"{proof['failure_stage']} / {proof['failure_reason']}")
     page.wait_for_function("() => window.__firstFrame !== null", timeout=30000)
     result = page.evaluate("""() => ({
       metrics: JSON.parse(localStorage.getItem('iamina_perf_web_synthetic_v1')),
@@ -122,6 +136,19 @@ def median(rows, field):
 
 def main():
     samples = []
+    try:
+        _run_and_collect(samples)
+    except Exception:
+        Path("perf_web_synthetic_vault_partial.json").write_text(
+            json.dumps({
+                "scope": "synthetic_only",
+                "partial_samples": samples,
+                "final_report": "NOT_CERTIFIED",
+            }, indent=2), encoding="utf-8")
+        raise
+    _write_certified_results(samples)
+
+def _run_and_collect(samples):
     with local_server() as origin, sync_playwright() as p:
         for browser_name in BROWSERS:
             browser = getattr(p, browser_name).launch(headless=True)
@@ -151,6 +178,7 @@ def main():
                         context.close()
             finally:
                 browser.close()
+def _write_certified_results(samples):
     summary=[]
     for browser in BROWSERS:
         for phase in ("empty","populated"):

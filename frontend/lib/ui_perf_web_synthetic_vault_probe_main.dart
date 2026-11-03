@@ -169,10 +169,30 @@ Future<void> main() async {
   } catch (error) {
     // MaterialApp can overwrite document.title after runApp. A structured,
     // synthetic-only status survives Flutter's document metadata updates.
+    final failingStage = html.window.localStorage[_progressKey] ?? 'unknown';
+    // Only bounded allowlisted synthetic test assertions, never raw exception
+    // messages/clinical data/SQL contents are exposed in proof files.
+    final knownMessages = <String, String>{
+      'synthetic guard mismatched': 'guard_presence_mismatch',
+      'synthetic rows not persisted': 'row_persistence_mismatch',
+      'unexpected legacy protected state': 'legacy_guard_unexpected',
+      'synthetic controller could not open vault': 'controller_missing_vault',
+      'seed count mismatch': 'seed_count_mismatch',
+      'seed guard mismatch': 'seed_guard_mismatch',
+      'nonempty synthetic fixture': 'nonempty_seed_fixture',
+      'legacy not empty': 'legacy_not_empty',
+    };
+    final name = error.toString();
+    final reason = knownMessages.entries
+        .where((entry) => name.contains(entry.key))
+        .map((entry) => entry.value)
+        .firstOrNull ?? 'other_error';
     html.window.localStorage[_key] = jsonEncode({
       'phase': phase,
       'status': 'FAIL',
       'error_type': error.runtimeType.toString(),
+      'failure_stage': failingStage,
+      'failure_reason': reason,
       'fixture': 'synthetic_only',
     });
     _stage('failure');

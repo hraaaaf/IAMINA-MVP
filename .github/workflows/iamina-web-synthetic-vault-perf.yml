@@ -62,5 +62,6 @@ jobs:
             perf_web_synthetic_vault.json
             perf_web_synthetic_vault.md
             perf_web_synthetic_vault_debug.json
+            perf_web_synthetic_vault_partial.json
           retention-days: 7
           if-no-files-found: warn
