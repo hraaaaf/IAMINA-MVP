@@ -92,9 +92,27 @@ double d22DialMgdlForFraction(double fraction) {
   return _d22MgKnots.last;
 }
 
+/// D22 fine adjustment uses integer mg/dL or tenths of mmol/L relative to the
+/// displayed value, not raw finger position. It never seeds a missing reading,
+/// imposes a new clinical range, or truncates a direct measurement to the dial.
+double? d22FineAdjustedMgdl(double? currentMgdl, String unit, int direction) {
+  if (currentMgdl == null ||
+      !currentMgdl.isFinite ||
+      currentMgdl <= 0 ||
+      (direction != -1 && direction != 1)) {
+    return null;
+  }
+  final double? next = switch (unit) {
+    'mg/dL' => currentMgdl.roundToDouble() + direction,
+    'mmol/L' => (((currentMgdl / 18.0 * 10).round() + direction) / 10.0) * 18.0,
+    _ => null,
+  };
+  return next != null && next.isFinite && next > 0 ? next : null;
+}
+
 /// Actual reading input — keeps the existing journal save pipeline intact.
-/// Touch/drag the half-ring or tap the number inside it to edit precisely.
-/// No redundant +/- buttons or horizontal slider.
+/// Drag the half-ring for fast selection; edit the number directly or use
+/// localized fine-step controls for a precise measurement.
 class GlucoseHalfDialInput extends StatelessWidget {
   const GlucoseHalfDialInput({
     super.key,
@@ -154,6 +172,10 @@ class GlucoseHalfDialInput extends StatelessWidget {
     final selected = valueMgdl?.clamp(minScale, maxScale).toDouble();
     final displayed = selected ?? 140.0;
     final step = unit == 'mmol/L' ? 1.8 : 1.0;
+    // Fine adjustment follows the entered reading even outside the visual
+    // dial scale; unlike the arc, it must never clamp a valid direct value.
+    final fineMinus = d22FineAdjustedMgdl(valueMgdl, unit, -1);
+    final finePlus = d22FineAdjustedMgdl(valueMgdl, unit, 1);
 
     void adjustFromAccessibility(int direction) {
       final mg = (displayed + direction * step)
@@ -339,6 +361,71 @@ class GlucoseHalfDialInput extends StatelessWidget {
           );
         }),
         const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: [
+              IconButton.outlined(
+                key: const Key('glucose-fine-minus'),
+                tooltip: _copy(context,
+                  'Diminuer de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
+                  'Decrease by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                  'إنقاص ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                ),
+                onPressed: fineMinus == null
+                    ? null
+                    : () => onValueSelected(fineMinus),
+                icon: const Icon(Icons.remove_rounded),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _copy(context, 'RÉGLAGE PRÉCIS', 'FINE ADJUSTMENT',
+                        'ضبط دقيق'),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: colors.onSurface,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              IconButton.outlined(
+                key: const Key('glucose-fine-plus'),
+                tooltip: _copy(context,
+                  'Augmenter de ${unit == 'mmol/L' ? '0,1 mmol/L' : '1 mg/dL'}',
+                  'Increase by ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                  'زيادة ${unit == 'mmol/L' ? '0.1 mmol/L' : '1 mg/dL'}',
+                ),
+                onPressed: finePlus == null
+                    ? null
+                    : () => onValueSelected(finePlus),
+                icon: const Icon(Icons.add_rounded),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -364,9 +451,9 @@ class GlucoseHalfDialInput extends StatelessWidget {
         const SizedBox(height: 13),
         Text(
           _copy(context,
-            'Glisse sur l’arc ou touche le nombre pour le modifier.',
-            'Drag the arc or tap the number to edit it.',
-            'حرّك المؤشر على القوس أو المس الرقم لتعديله.',
+            'Glisse pour aller vite, utilise − / + pour ajuster, ou touche le nombre.',
+            'Drag for speed, use − / + for precision, or tap the number.',
+            'اسحب بسرعة، واضبط بدقة بواسطة − / + أو المس الرقم.',
           ),
           key: const Key('glucose-half-dial-instruction'),
           textAlign: TextAlign.center,
