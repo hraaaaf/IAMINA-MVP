@@ -1,0 +1,156 @@
+name: D14 Web photo consent BEFORE AFTER Chrome
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
+      - 'frontend/lib/features/journal/widgets/meal_capture_panel.dart'
+      - 'frontend/test/features/meal_capture_panel_test.dart'
+      - 'tools/d14_photo_web_cert.js'
+      - '.github/workflows/d14-web-photo-consent-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d14-photo-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d14-real-web-browser:
+    name: Chromium BEFORE/AFTER and synthetic consent lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source and scoped preview-only harness
+        run: |
+          set -euo pipefail
+          echo "head=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          node --check tools/d14_photo_web_cert.js
+          test -z "$(git status --porcelain)"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Flutter dependencies and isolated audit entrypoint analysis
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+
+      - name: Build exact baseline and candidate Web (no Vercel)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$BASE_SHA" && test "$BASE_SHA" != "$HEAD_SHA"
+          mkdir -p /tmp/d14-web-before /tmp/d14-web-after
+          git checkout --detach "$BASE_SHA"
+          test "$(git rev-parse HEAD)" = "$BASE_SHA"
+          (
+            cd frontend
+            flutter pub get
+            rm -rf build/web
+            flutter build web --release -t lib/ui_browser_audit_main.dart
+            cp -a build/web/. /tmp/d14-web-before/
+          )
+          git checkout --detach "$HEAD_SHA"
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          (
+            cd frontend
+            flutter pub get
+            rm -rf build/web
+            flutter build web --release -t lib/ui_browser_audit_main.dart
+            cp -a build/web/. /tmp/d14-web-after/
+          )
+          for build in before after; do
+            test -s "/tmp/d14-web-$build/index.html"
+            test -s "/tmp/d14-web-$build/flutter_bootstrap.js"
+            test -s "/tmp/d14-web-$build/sqlite3.wasm"
+          done
+
+      - name: Install Playwright Chromium and pixel measurement
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+          python3 -m pip install --quiet Pillow
+
+      - name: Capture 6 BEFORE/AFTER pairs and 30 photo scenarios
+        env:
+          D14_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          D14_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7358 --bind 127.0.0.1 --directory /tmp/d14-web-before >/tmp/d14-before-http.log 2>&1 &
+          before_pid=$!
+          python3 -m http.server 7359 --bind 127.0.0.1 --directory /tmp/d14-web-after >/tmp/d14-after-http.log 2>&1 &
+          after_pid=$!
+          trap 'kill "$before_pid" "$after_pid" 2>/dev/null || true' EXIT
+          for port in 7358 7359; do
+            ready=0
+            for _ in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:$port/" >/dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            test "$ready" = 1
+            curl -fsSI "http://127.0.0.1:$port/sqlite3.wasm" >/dev/null
+            curl -fsSI "http://127.0.0.1:$port/drift_worker.js" >/dev/null
+          done
+          node tools/d14_photo_web_cert.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops
+
+          root = Path('d14-web-cert')
+          report = json.loads((root/'browser-report.json').read_text())
+          assert len(report['scenarios']) == 30, 'D14 scenario count incomplete'
+          assert len(report['viewports']) == 6, 'BEFORE/AFTER pairs missing'
+          failures = []
+          for viewport, files in report['viewports'].items():
+              before = Image.open(files['before']).convert('RGB')
+              after = Image.open(files['after']).convert('RGB')
+              assert before.size == after.size
+              difference = ImageChops.difference(before, after)
+              changed = sum(1 for p in difference.getdata() if max(p) > 16)
+              total = before.width * before.height
+              score = round(10 * (1 - changed/total), 3)
+              files['pixel_stability_score_of_10'] = score
+              files['changed_percent'] = round(changed/total*100, 4)
+              if score < 9.5:
+                  failures.append(f'{viewport}: image stability {score}/10 below 9.5')
+              print(f'D14 before/after {viewport}: pixel-stability {score}/10')
+          (root/'browser-report.json').write_text(json.dumps(report,indent=2))
+          if failures:
+              raise SystemExit('D14 UI delta requires review: ' + '; '.join(failures))
+          print('D14 WEB CHROME PASS: 30 synthetic consent scenarios, six before/after pairs')
+          PY
+
+      - name: Upload target-specific Web proofs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d14-photo-web-consent-before-after
+          path: |
+            d14-web-cert/*
+          if-no-files-found: warn
+          retention-days: 7
