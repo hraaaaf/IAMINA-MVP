@@ -107,6 +107,25 @@ class BasePatientProfile(models.Model):
         blank=True,
         help_text="Patient-declared date of birth. NULL = not provided.",
     )
+    birth_year = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Patient-declared year only; no exact birth date is inferred.",
+    )
+    GENDER_IDENTITY_CHOICES = [
+        ("woman", "Woman"),
+        ("man", "Man"),
+        ("non_binary", "Non-binary"),
+        ("another_identity", "Another identity"),
+        ("prefer_not_to_say", "Prefer not to say"),
+    ]
+    gender_identity = models.CharField(
+        max_length=24,
+        choices=GENDER_IDENTITY_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Optional self-declared identity, distinct from clinical biology.",
+    )
 
     weight = models.DecimalField(
         max_digits=5,
