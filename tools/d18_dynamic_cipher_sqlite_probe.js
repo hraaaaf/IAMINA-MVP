@@ -185,6 +185,9 @@ async function verifyActualWorkerLock(ctx) {
       args:['--no-sandbox','--disable-dev-shm-usage']});
     // Fresh Chromium PROCESS, same persistent profile, only public envelope
     // retained. Policy must unwrap the DEK and reopen the REAL v12 keyed DB.
+    // Negative recovery precedes correct-key reopen: the failed attempt
+    // must not reset, overwrite, or unlock the existing encrypted v12 store.
+    await verify(ctx,'guarded_wrong_passphrase',secrets.wrong);
     await verify(ctx,'guarded_reopen',secrets.a);
     for(const [name,k] of phases.slice(1,5))await verify(ctx,name,secrets[k]);
     await ctx.close(); ctx=null;
@@ -206,7 +209,8 @@ async function verifyActualWorkerLock(ctx) {
     head:process.env.GITHUB_SHA||null,results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['guarded_open',phases[0][0],'guarded_reopen',
+  const expected=['guarded_open',phases[0][0],
+    'guarded_wrong_passphrase','guarded_reopen',
     ...phases.slice(1).map(p=>p[0]),
     'owner_a_ready','create_b','owner_b_ready',
     'a_second_worker_denied','b_second_worker_denied',
