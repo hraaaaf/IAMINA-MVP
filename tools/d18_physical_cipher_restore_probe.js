@@ -51,8 +51,9 @@ async function phase(ctx,name,{importArchive=false,exportArchive=false}={}){
    if(!csp.includes("default-src 'none'")||
       !csp.includes("object-src 'none'")||
       !csp.includes("frame-ancestors 'none'")||
-      !scriptRule.includes("'wasm-unsafe-eval'")||
-      /unsafe-eval|unsafe-inline/.test(scriptRule)){
+      !scriptRule.trim().split(/\s+/).includes("'wasm-unsafe-eval'")||
+      scriptRule.trim().split(/\s+/).includes("'unsafe-eval'")||
+      scriptRule.trim().split(/\s+/).includes("'unsafe-inline'")){
      throw Error('D18_CSP_ENFORCEMENT_MISSING_OR_WEAK');
    }
   }
