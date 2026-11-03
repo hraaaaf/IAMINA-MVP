@@ -36,6 +36,16 @@ TRACK_FIRST_FRAME = """
 """
 
 class QuietHandler(SimpleHTTPRequestHandler):
+    # Only the disposable loopback CI server is isolated. Do NOT change the
+    # deployed app's CSP/COOP/COEP: real login/popups need separate review.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map,
+                      ".wasm": "application/wasm"}
+
+    def end_headers(self):
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+        super().end_headers()
+
     def log_message(self, fmt, *args):
         pass
 
@@ -99,6 +109,13 @@ def navigate(page, base, phase):
         raise AssertionError('Synthetic phase deadline; debug artifact captured') from exc
     status = page.evaluate("""() => JSON.parse(localStorage.getItem(
         'iamina_perf_web_synthetic_v1'))""")
+    browser_capabilities = page.evaluate("""() => ({
+      cross_origin_isolated: window.crossOriginIsolated === true,
+      shared_array_buffer: typeof SharedArrayBuffer !== 'undefined',
+      opfs_api: !!navigator.storage?.getDirectory,
+      shared_worker_api: typeof SharedWorker !== 'undefined',
+      indexeddb_api: typeof indexedDB !== 'undefined',
+    })""")
     if status.get("status") == "FAIL":
         # Preserve bounded FAIL receipt even when the benchmark cannot
         # produce final latency aggregates. Prior successfully measured samples
@@ -110,6 +127,7 @@ def navigate(page, base, phase):
             "failure_reason": status.get("failure_reason", "other_error"),
             "fixture": "synthetic_only",
             "storage_evidence": status.get("storage_evidence"),
+            "browser_capabilities": browser_capabilities,
         }
         Path("perf_web_synthetic_vault_debug.json").write_text(
             json.dumps(proof, indent=2), encoding="utf-8")
@@ -128,9 +146,15 @@ def navigate(page, base, phase):
         raise AssertionError("Missing or stale synthetic evidence")
     if result["rejections"] or not result["hasFlutter"]:
         raise AssertionError("Synthetic Flutter app did not render cleanly")
+    if not browser_capabilities["cross_origin_isolated"]:
+        raise AssertionError("Isolated CI storage server did not enable COOP/COEP")
     if response is None or response.status != 200:
         raise AssertionError("Local fixture HTTP response not 200")
-    return {**result["metrics"], "first_frame_ms": result["frame"]}
+    return {
+        **result["metrics"],
+        "first_frame_ms": result["frame"],
+        "browser_capabilities": browser_capabilities,
+    }
 
 def median(rows, field):
     return round(statistics.median(x[field] for x in rows), 2)
@@ -198,9 +222,11 @@ def _write_certified_results(samples):
     data={
         "timestamp_utc":datetime.now(timezone.utc).isoformat(),
         "head_sha":os.getenv("GITHUB_SHA","unknown"),
-        "scope":"Synthetic real Drift Web SQLite/IndexedDB + protected guard + controller",
+        "scope":"Synthetic real Drift Web SQLite/IndexedDB or OPFS + protected guard + controller",
         "limitations":[
           "This is only part of pre-runApp; AuthService and AppLockService not measured.",
+          "Synthetic loopback HTTP server supplies COOP same-origin and COEP require-corp to allow persistent OPFS when supported; production headers remain unchanged.",
+          "The selected Drift backend is not proven from API presence alone.",
           "Synthetic-only data and fake principal; no patient data or credentials.",
           "Linux Playwright WebKit is not a physical iPhone Safari device.",
           "Measured in fresh browser contexts with two repeats per local vault state.",
@@ -211,7 +237,7 @@ def _write_certified_results(samples):
     Path("perf_web_synthetic_vault.json").write_text(
         json.dumps(data,indent=2,ensure_ascii=False),encoding="utf-8")
     lines=["## IAMINA PERF-WEB — synthetic IndexedDB startup subset",
-           "Real Drift/IndexedDB and controller with synthetic-only content.",
+           "Real Drift Web storage and controller, local COOP/COEP isolation, synthetic-only content.",
            "", "| Browser | Vault | n | Legacy check | DB open | Guard | Reconcile | Subset | First frame |",
            "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
     for x in summary:
