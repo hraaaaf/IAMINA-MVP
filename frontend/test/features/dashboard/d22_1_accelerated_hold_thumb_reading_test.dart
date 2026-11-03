@@ -177,6 +177,20 @@ void main() {
       expect(readingText(), released,
           reason: 'Release must cancel all accelerated timers.');
 
+      // Real iOS report: the first hold changes the value, but subsequent
+      // holds appear dead. Exercise a SECOND hold on the same mounted button
+      // after release, with fresh pointer identity and actual fake timer ticks.
+      final again = await tester.startGesture(tester.getCenter(plus));
+      await _pumpInFrames(tester, 1050);
+      expect(int.parse(readingText()), greaterThan(int.parse(released)),
+          reason: 'A second long hold must repeat, not only the first hold.');
+      final secondHeld = readingText();
+      await again.up();
+      await tester.pump();
+      await _pumpInFrames(tester, 500);
+      expect(readingText(), secondHeld,
+          reason: 'Second hold must also stop on release.');
+
       await tester.tap(toggle);
       await tester.pump();
       await tester.enterText(input, '7.0');
