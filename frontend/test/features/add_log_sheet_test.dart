@@ -62,6 +62,21 @@ Future<void> _tapFormItem(WidgetTester tester, Finder target) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapCatalogResult(WidgetTester tester, Finder target) async {
+  // Keep the result in the visible center; the generic -175 drag can
+  // move a search result above the viewport on 390px screens.
+  tester.binding.focusManager.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+  await Scrollable.ensureVisible(
+    tester.element(target),
+    alignment: 0.45,
+    duration: const Duration(milliseconds: 100),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _tapOptionalMeal(WidgetTester tester) =>
     _tapFormItem(tester, find.byKey(const Key('add-meal-button')));
 
@@ -426,7 +441,7 @@ void main() {
 
             final egg = find.byKey(const Key('meal-search-egg'));
             expect(egg, findsOneWidget);
-            await _tapFormItem(tester, egg);
+            await _tapCatalogResult(tester, egg);
             expect(find.byKey(const Key('meal-selected-egg')), findsOneWidget);
 
             final grams = find.byKey(const Key('nutrition-grams-egg'));
@@ -472,7 +487,7 @@ void main() {
       await tester.enterText(
         find.byKey(const Key('meal-food-search')), 'oeuf');
       await tester.pumpAndSettle();
-      await _tapFormItem(
+      await _tapCatalogResult(
         tester, find.byKey(const Key('meal-search-egg')));
       final grams = find.byKey(const Key('nutrition-grams-egg'));
       await tester.ensureVisible(grams);
