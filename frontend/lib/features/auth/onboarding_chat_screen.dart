@@ -276,6 +276,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final preferenceSteps = <Widget>[
       _Question(
         title: l10n.onboardingChooseLanguage,
+        keyboardOrderExplicit: true,
         children: [
           _Choice(
             label: 'Français',
@@ -312,6 +313,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final onboardingSteps = <Widget>[
       _Question(
         title: l10n.onboardingChooseLanguage,
+        keyboardOrderExplicit: true,
         children: [
           _Choice(
             label: 'Français',
@@ -801,8 +803,14 @@ class _DesktopWelcomePanel extends StatelessWidget {
 class _Question extends StatelessWidget {
   final String title;
   final List<Widget> children;
+  final bool keyboardOrderExplicit;
 
-  const _Question({super.key, required this.title, required this.children});
+  const _Question({
+    super.key,
+    required this.title,
+    required this.children,
+    this.keyboardOrderExplicit = false,
+  });
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -815,7 +823,25 @@ class _Question extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
         ),
         const SizedBox(height: 10),
-        Wrap(spacing: 8, runSpacing: 8, children: children),
+        if (keyboardOrderExplicit)
+          // D5: explicit reversibility for physical keyboard traversal
+          // of the language chips, including FR and Arabic RTL.
+          FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var index = 0; index < children.length; index++)
+                  FocusTraversalOrder(
+                    order: NumericFocusOrder(index.toDouble()),
+                    child: children[index],
+                  ),
+              ],
+            ),
+          )
+        else
+          Wrap(spacing: 8, runSpacing: 8, children: children),
       ],
     ),
   );
