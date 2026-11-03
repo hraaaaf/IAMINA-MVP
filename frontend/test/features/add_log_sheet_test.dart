@@ -65,6 +65,25 @@ Future<void> _tapFormItem(WidgetTester tester, Finder target) async {
 Future<void> _tapOptionalMeal(WidgetTester tester) =>
     _tapFormItem(tester, find.byKey(const Key('add-meal-button')));
 
+/// Keep a search result inside the usable viewport, above the fixed Save bar.
+/// The generic form helper's unconditional -175px drag could move a result
+/// that ensureVisible placed near the top completely offscreen.
+Future<void> _tapD15SearchResult(WidgetTester tester, Finder target) async {
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
+  final y = tester.getCenter(target).dy;
+  if (y < 160 || y > 560) {
+    await tester.drag(
+      find.byType(SingleChildScrollView).first,
+      Offset(0, 360 - y),
+    );
+    await tester.pumpAndSettle();
+  }
+  expect(target.hitTestable(), findsOneWidget);
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late AppDatabase db;
 
@@ -92,7 +111,7 @@ void main() {
           'oeuf',
         );
         await tester.pumpAndSettle();
-        await _tapFormItem(tester, find.byKey(const Key('meal-search-egg')));
+        await _tapD15SearchResult(tester, find.byKey(const Key('meal-search-egg')));
         expect(find.byKey(const Key('meal-selected-egg')), findsOneWidget);
 
         final grams = find.byKey(const Key('nutrition-grams-egg'));
