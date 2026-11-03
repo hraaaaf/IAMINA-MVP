@@ -467,12 +467,12 @@ Future<void> verifySwitch(String phase) async {
     var wrongScopeRejected=false;
     try {
       final unexpected=await D18VaultKeyPolicy.unlockWithPassphrase(
-        scope:b,publicEnvelopeJson:envelopeA,passphrase:_switchPassA);
+        scope:b,publicEnvelopeJson:envelopeA!,passphrase:_switchPassA);
       unexpected.lock();
     }catch(_){wrongScopeRejected=true;}
     verify(wrongScopeRejected,'D18_SWITCH_ENVELOPE_SCOPE_CONFUSION');
     final session=await D18VaultKeyPolicy.unlockWithPassphrase(
-      scope:b,publicEnvelopeJson:envelopeB,passphrase:_switchPassB);
+      scope:b,publicEnvelopeJson:envelopeB!,passphrase:_switchPassB);
     try {
       final vault=await adapter().openUnpublished(
         scope:b,keySession:session,
@@ -488,7 +488,7 @@ Future<void> verifySwitch(String phase) async {
     stage('switch_a_login_after_b_logout');
     authorized=a;authEpoch=7;
     final session=await D18VaultKeyPolicy.unlockWithPassphrase(
-      scope:a,publicEnvelopeJson:envelopeA,passphrase:_switchPassA);
+      scope:a,publicEnvelopeJson:envelopeA!,passphrase:_switchPassA);
     try{
       final vault=await adapter().openUnpublished(
         scope:a,keySession:session,
@@ -504,7 +504,7 @@ Future<void> verifySwitch(String phase) async {
     stage('switch_auth_epoch_races_during_open');
     authorized=a;authEpoch=9;
     final session=await D18VaultKeyPolicy.unlockWithPassphrase(
-      scope:a,publicEnvelopeJson:envelopeA,passphrase:_switchPassA);
+      scope:a,publicEnvelopeJson:envelopeA!,passphrase:_switchPassA);
     try{
       final raceAdapter=D18PreCutoverCipherAdapter(
         guard:D18KeyedOpenGuard(
