@@ -169,7 +169,7 @@ Future<void> _serve(web.MessageEvent event) async {
       }
       stage = 'persist_ciphertext_flush';
       await storage.flush();
-      imported!.fillRange(0, imported.length, 0);
+      imported.fillRange(0, imported.length, 0);
       stage = 'check_ciphertext_physically_present';
       if (storage.xAccess('/database', 0) == 0) {
         throw StateError('D18_CI_RESTORE_FILE_MISSING');
