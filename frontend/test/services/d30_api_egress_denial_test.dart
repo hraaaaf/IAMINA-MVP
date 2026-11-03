@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:amina/services/api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -7,6 +8,12 @@ void main() {
     // explicit assertions below must pass before even trying a transport.
     final api = ApiClient(baseUrl: 'https://d30-never-contact.invalid');
     expect(api.canSyncClinicalData, isFalse);
+    expect(await api.hasActiveMealPhotoMediaConsent(), isFalse);
+    expect(
+      await api.analyzeMealImage(Uint8List.fromList(<int>[1, 2, 3])),
+      isNull,
+      reason: 'Even direct photo upload must deny with no owner and no media grant',
+    );
     expect(
       await api.syncLogEntry({'client_uuid': 'd30-synthetic', 'blood_sugar': 112}),
       isFalse,

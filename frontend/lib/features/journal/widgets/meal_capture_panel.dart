@@ -129,6 +129,9 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     // Pilot local-only transport has to fail closed before touching the gallery.
     final apiClient = context.read<ApiClient?>();
     if (apiClient == null || !apiClient.canSyncClinicalData) return null;
+    if (!await apiClient.hasActiveMealPhotoMediaConsent()) return null;
+    if (!mounted || generation != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition) return null;
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
@@ -144,13 +147,25 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       bytes.fillRange(0, bytes.length, 0);
       return null;
     }
+    // A grant can be revoked while the OS picker or file read is running.
+    if (!await apiClient.hasActiveMealPhotoMediaConsent() ||
+        !mounted || !apiClient.canSyncClinicalData ||
+        generation != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition) {
+      bytes.fillRange(0, bytes.length, 0);
+      return null;
+    }
     final lower = file.name.toLowerCase();
     final mime = lower.endsWith('.png')
         ? 'image/png'
         : lower.endsWith('.webp')
         ? 'image/webp'
         : 'image/jpeg';
-    return apiClient.analyzeMealImage(bytes, mimeType: mime);
+    try {
+      return await apiClient.analyzeMealImage(bytes, mimeType: mime);
+    } finally {
+      bytes.fillRange(0, bytes.length, 0);
+    }
   }
 
   Future<void> _recognizePhoto(AppLocalizations l10n) async {

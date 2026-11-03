@@ -43,6 +43,11 @@ void main() {
     expect(source, contains('apiClient.canSyncClinicalData'));
     expect(source, contains('return apiClient.analyzeMealImage('));
     expect(source, isNot(contains('ApiClient().analyzeMealImage(')));
+    expect(source, contains('hasActiveMealPhotoMediaConsent()'));
+    expect(RegExp('hasActiveMealPhotoMediaConsent\\\\(\\\\)').allMatches(source).length,
+        greaterThanOrEqualTo(2),
+        reason: 'Check media consent before gallery and after reading media');
+    expect(source, contains('bytes.fillRange(0, bytes.length, 0)'));
     expect(source.indexOf('final apiClient = context.read<ApiClient?>();'),
         lessThan(source.indexOf('ImagePicker().pickImage(')));
   });
