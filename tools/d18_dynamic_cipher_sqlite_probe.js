@@ -183,6 +183,9 @@ async function verifyActualWorkerLock(ctx) {
     await verify(ctx,'intent_reopen_missing',secrets.a);
     await verify(ctx,'intent_create',secrets.a);
     await verify(ctx,'intent_create_exists',secrets.a);
+    // Wrong key must be rejected against EXISTING ciphertext, without
+    // changing its stored bytes or replacing the database.
+    await verify(ctx,'intent_wrong_key',secrets.wrong);
     await verify(ctx,...phases[0].map((x,i)=>i===1?secrets[x]:x));
     await ctx.close(); ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{headless:true,
@@ -217,7 +220,7 @@ async function verifyActualWorkerLock(ctx) {
   console.log(JSON.stringify(results));
   const expected=['guarded_open',
     'intent_reopen_missing','intent_create','intent_create_exists',
-    phases[0][0], 'intent_reopen',
+    'intent_wrong_key', phases[0][0], 'intent_reopen',
     'guarded_wrong_passphrase','guarded_reopen',
     ...phases.slice(1).map(p=>p[0]),
     'owner_a_ready','create_b','owner_b_ready',
