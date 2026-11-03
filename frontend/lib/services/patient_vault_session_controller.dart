@@ -124,20 +124,19 @@ class PatientVaultSessionController extends ChangeNotifier {
     final epoch = AuthEpoch.value;
     final retired = _currentLease;
 
-    // Revoke A immediately, before any await and before B may publish.
+    // Remove the old patient synchronously before any async resolution.
     _currentLease = null;
     _currentScope = null;
     _currentAuthEpoch = null;
     _loading = true;
 
-    // Enqueue the old physical close BEFORE notifying synchronous listeners.
-    // A reentrant reconcile() must never open B before A has been closed.
-    final task = _serialized.then(
-      (_) => _reconcileSerial(generation, epoch, retired),
-    );
-    _serialized = task;
+    // Enqueue physical shutdown BEFORE notifying reentrant listeners.
+    // Crucially, do NOT put the identity resolver on this queue: A's scope
+    // resolution may hang indefinitely, while B must still be able to open.
+    final closeTask = _serialized.then((_) => _retireLease(retired));
+    _serialized = closeTask;
     notifyListeners();
-    return task;
+    return _resolveThenEnqueue(generation, epoch, closeTask);
   }
 
   Future<void> _closeLease(PatientVaultDbLease lease) async {
@@ -149,30 +148,50 @@ class PatientVaultSessionController extends ChangeNotifier {
     }
   }
 
-  Future<void> _reconcileSerial(
-    int generation, int epoch, PatientVaultDbLease? retired,
+  // A physical close failure permanently seals this controller. Keep the
+  // queue settled, otherwise later enqueues could never check that latch.
+  Future<void> _retireLease(PatientVaultDbLease? retired) async {
+    if (retired == null) return;
+    try {
+      await _closeLease(retired);
+    } on Object {
+      // _physicalCloseFailed was set before this failure was swallowed.
+    }
+  }
+
+  // Concurrent identity resolutions are safe; physical opens are NOT.
+  // Stale A can remain pending without holding the serial database lock.
+  Future<void> _resolveThenEnqueue(
+    int generation, int epoch, Future<void> closeTask,
+  ) async {
+    if (!_stillCurrent(generation, epoch)) {
+      await closeTask;
+      return;
+    }
+    PatientVaultScope? scope;
+    try {
+      scope = await _resolveScope();
+    } on Object {
+      // No fallback on an inaccessible authenticated principal.
+      scope = null;
+    }
+    if (!_stillCurrent(generation, epoch)) {
+      await closeTask;
+      return;
+    }
+    final operation = _serialized.then(
+      (_) => _openResolvedScope(generation, epoch, scope),
+    );
+    _serialized = operation;
+    await operation;
+  }
+
+  Future<void> _openResolvedScope(
+    int generation, int epoch, PatientVaultScope? scope,
   ) async {
     try {
-      // Close failure MUST permanently block every new open.
-      if (retired != null) await _closeLease(retired);
-      if (_physicalCloseFailed) {
-        if (_stillCurrent(generation, epoch)) {
-          _loading = false;
-          notifyListeners();
-        }
-        return;
-      }
       if (!_stillCurrent(generation, epoch)) return;
-
-      PatientVaultScope? scope;
-      try {
-        scope = await _resolveScope();
-      } on Object {
-        // Auth resolution failure must never select another local DB.
-        scope = null;
-      }
-      if (!_stillCurrent(generation, epoch)) return;
-      if (scope == null) {
+      if (_physicalCloseFailed || scope == null) {
         _loading = false;
         notifyListeners();
         return;
@@ -190,6 +209,10 @@ class PatientVaultSessionController extends ChangeNotifier {
         await lease.database.customSelect('SELECT 1').getSingle();
         if (!_stillCurrent(generation, epoch) || !lease.isAccessible) {
           await _closeLease(lease);
+          if (_stillCurrent(generation, epoch)) {
+            _loading = false;
+            notifyListeners();
+          }
           return;
         }
         _currentLease = lease;

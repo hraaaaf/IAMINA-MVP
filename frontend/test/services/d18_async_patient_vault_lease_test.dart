@@ -253,4 +253,44 @@ void main() {
     ]));
   });
 
+
+  test('unresolved stale A identity does not hold B physical open queue',
+      () async {
+    final auth = _FakeAuth();
+    final firstResolver = Completer<PatientVaultScope?>();
+    var resolved = 0;
+    final opened = <String>[];
+    final controller = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: () {
+        resolved++;
+        if (resolved == 1) return firstResolver.future;
+        return Future.value(b);
+      },
+      openVaultLease: (scope) async {
+        opened.add(scope.databaseName);
+        return syntheticLease(scope);
+      },
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await controller.physicalShutdownComplete;
+      auth.dispose();
+    });
+
+    // Deliberately leave the first identity request unresolved. No timeout
+    // or retry is allowed to paper over a serialized resolver deadlock.
+    AuthEpoch.advance();
+    auth.changed();
+    await controller.reconcile();
+    expect(controller.activeScope?.databaseName, b.databaseName);
+    expect(opened, [b.databaseName]);
+
+    // A's delayed answer must be ignored after B is already active.
+    firstResolver.complete(a);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.activeScope?.databaseName, b.databaseName);
+    expect(opened, [b.databaseName]);
+  });
+
 }
