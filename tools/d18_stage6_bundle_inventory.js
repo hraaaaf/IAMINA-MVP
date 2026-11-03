@@ -3,11 +3,20 @@
 // Does not print match excerpts, source secrets, database contents or keys.
 'use strict';
 const fs=require('node:fs');
+const {execFileSync}=require('node:child_process');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const output=path.join(root,'frontend','build','web');
 const proof=path.join(root,'d18-stage6-security-proof');
 const failures=[];
+const checkedOutSha=execFileSync('git',['rev-parse','HEAD'],{
+  cwd:root,encoding:'utf8',
+}).trim();
+const expectedSha=process.env.D18_CODE_SHA||'';
+if(!/^[0-9a-f]{40}$/.test(expectedSha)||
+  expectedSha!==checkedOutSha) {
+  failures.push('D18_CHECKOUT_SHA_MISMATCH');
+}
 const forbiddenAssets=[
   'd18_unpublished_cipher_worker.js',
   'd18_unpublished_cipher_restore_worker.js',
@@ -85,7 +94,9 @@ const cspConfigured=configFiles.every(f=>{
     h.key?.toLowerCase()==='content-security-policy'));
 });
 const result={
-  commit:process.env.GITHUB_SHA||null,
+  commit:checkedOutSha,
+  expectedCodeSha:expectedSha,
+  exactCodeShaVerified:expectedSha===checkedOutSha,
   type:'precutover-normal-web-release-blocker-inventory',
   normalWebBuild:{
     indexHtmlPresent:fs.existsSync(index),

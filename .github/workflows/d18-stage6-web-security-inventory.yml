@@ -50,7 +50,7 @@ jobs:
           node-version: '22'
       - name: Inspect compiled bundle and document unclosed release blockers
         env:
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          D18_CODE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           node --check tools/d18_stage6_bundle_inventory.js
           node tools/d18_stage6_bundle_inventory.js
