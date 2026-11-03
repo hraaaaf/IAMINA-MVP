@@ -23,7 +23,17 @@ void main() {
     expect(state, contains('withdrawD7AiConsent('));
     expect(state, contains('revokeServer: api.withdrawConsent'));
     expect(state, contains('clearPending: evidence.clearWithdrawalPending'));
-    expect(state, contains('insertOnConflictUpdate('));
+    // D22: an existing profile is updated only for explicitly governed
+    // scalar fields. Legacy target values must not be overwritten by an
+    // upsert when the unit/provenance is unknown.
+    expect(state, contains('db.update(db.patientProfiles)'));
+    expect(state, contains('row.userId.equals(userId)'));
+    final save = state.substring(state.indexOf('void _saveProfile()'));
+    final updateScope =
+        save.substring(0, save.indexOf('bool remoteMirrorConfirmed'));
+    expect(updateScope, isNot(contains('insertOnConflictUpdate(')));
+    expect(updateScope, isNot(contains('targetRangeLow:')));
+    expect(updateScope, isNot(contains('targetRangeHigh:')));
     expect(state, contains('Widget build(BuildContext context) => _buildPresentation(context);'));
     expect(state, isNot(contains('Widget _buildMedicalSection(')));
     expect(state, isNot(contains('Widget _buildAccountSection(')));

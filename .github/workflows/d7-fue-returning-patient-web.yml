@@ -117,6 +117,45 @@ jobs:
             assert hashlib.sha256(raw).hexdigest()==c['sha256']
           assert seen==expected
           PY
+      # D22 has a separate bounded verdict and proof bundle. Running after
+      # D7 (even if D7's browser assertion fails) prevents a shared Profile
+      # regression from blocking collection of D22-only factual evidence.
+      - name: D22 scoped fail-closed Chrome F01 F03 and EN 3-viewports
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/d22_web_fail_closed_fue.py
+          python3 scripts/d22_web_fail_closed_fue.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib, struct
+          folder = Path("d22-web-real-chrome")
+          result = json.loads((folder / "proof.json").read_text())
+          assert result["result"] == "PASS_PARTIAL"
+          assert len(result["verified_scenarios"]) == 5
+          assert len(result["captures"]) == 3
+          expected = {"390x844", "768x1024", "1280x900"}
+          assert {c["viewport"] for c in result["captures"]} == expected
+          for item in result["captures"]:
+              data = (folder / item["file"]).read_bytes()
+              assert data.startswith(bytes.fromhex("89504e470d0a1a0a"))
+              width, height = struct.unpack(">II", data[16:24])
+              ew, eh = (int(v) for v in item["viewport"].split("x"))
+              assert width == ew and height >= eh
+              assert hashlib.sha256(data).hexdigest() == item["sha256"]
+          assert any("F02" in x for x in result["not_run"])
+          assert any("FR/AR" in x for x in result["not_run"])
+          PY
+      - name: Keep D22 real Chrome evidence separately from D7
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d22-web-fail-closed-chrome-partial-proof
+          path: |
+            d22-web-real-chrome/proof.json
+            d22-web-real-chrome/*.png
+          retention-days: 7
+          if-no-files-found: warn
       - name: Keep bounded synthetic-only FUE evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

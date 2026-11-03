@@ -1,5 +1,9 @@
 part of '../dashboard_screen.dart';
 
+// D22 fail-closed hides these legacy target-bound cards until the clinical
+// provenance and G7 migration gates are approved.
+// ignore_for_file: unused_element, unused_element_parameter
+
 // ── Metric Row ────────────────────────────────────────────────────────────────
 
 class _MetricRow extends StatelessWidget {

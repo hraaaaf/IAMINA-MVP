@@ -6,13 +6,14 @@ import '../../data/drift/database.dart';
 /// Centralizes all medical metric calculations (TIR, GMI, CV) to ensure
 /// consistency between the dashboard, AI summaries, and clinical reports.
 class ClinicalEngine {
-  /// Time In Range (TIR) — offline fallback.
-  /// Returns double to match /api/v1/kpis/ response type.
-  /// Standard ADA range: 70–180 mg/dL.
+  /// D22 P0: manual journal samples do NOT constitute CGM time in range.
+  /// Retain the legacy method signature solely for compile compatibility;
+  /// no caller may turn sample-count fractions into TIR.
+  @Deprecated('Requires verified time-weighted CGM measurements; no manual fallback')
   static double calcTIR(List<LogEntryData> logs, double low, double high) {
-    if (logs.isEmpty) return 0.0;
-    final inRange = logs.where((l) => l.bloodSugar >= low && l.bloodSugar <= high).length;
-    return double.parse(((inRange / logs.length) * 100).toStringAsFixed(1));
+    throw UnsupportedError(
+      'D22: CGM TIR requires verified source, window and metric contract',
+    );
   }
 
   /// Time Above Range (TAR) - High — offline fallback.

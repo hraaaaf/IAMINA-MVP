@@ -171,13 +171,17 @@ void main() {
     expect(source, isNot(contains('Icons.cloud_off_outlined')));
   });
 
-  test('Journal reserves red for hypoglycemia and uses target range for highs', () {
+  test('Journal never classifies legacy glucose values against unverified targets', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
     ).readAsStringSync();
 
-    expect(source, contains('if (val < 70)'));
-    expect(source, contains('else if (val < low || val > high)'));
-    expect(source, isNot(contains('val < 70 || val > 250')));
+    // Without trusted unit/source and individualized target authority,
+    // even an apparent "low" must not be colored as a verified judgement.
+    expect(source, contains('final color = AminaTheme.textPrimary(context);'));
+    expect(source, isNot(contains('if (val < 70)')));
+    expect(source, isNot(contains('else if (val < low || val > high)')));
+    expect(source, isNot(contains('profile?.targetRangeLow ?? 70.0')));
+    expect(source, isNot(contains('profile?.targetRangeHigh ?? 180.0')));
   });
 }

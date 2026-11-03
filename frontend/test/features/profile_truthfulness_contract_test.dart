@@ -23,23 +23,19 @@ void main() {
     expect(source, isNot(contains('?? 180.0')));
   });
 
-  test('D7 profile save accepts undeclared clinical facts but requires a valid range', () {
+  test('D22 profile saves declared fields without requiring unknown targets', () {
     final source = _read('lib/features/profile/profile_screen.dart');
 
     expect(source, contains('final diabetesType = _diabetesType;'));
     expect(source, contains('final treatment = _treatment;'));
-    expect(source, contains('final validRange ='));
-    expect(source, contains('low.isFinite'));
-    expect(source, contains('high.isFinite'));
-    expect(source, contains('low > 0'));
-    expect(source, contains('high > 0'));
-    expect(source, contains('low < high'));
-    expect(
-      source,
-      contains('if (!validRange)'),
-    );
     expect(source, contains('drift.Value(diabetesType)'));
     expect(source, contains('drift.Value(treatment)'));
+    final save = source.substring(source.indexOf('void _saveProfile()'));
+    final writeScope = save.substring(0, save.indexOf('bool remoteMirrorConfirmed'));
+    expect(writeScope, isNot(contains('targetRangeLow:')));
+    expect(writeScope, isNot(contains('targetRangeHigh:')));
+    expect(writeScope, contains('db.update(db.patientProfiles)'));
+    expect(source, contains('bool get _d22TargetsEditable => false;'));
   });
 
   test('profile persists the active locale and keeps FR EN AR choice available', () {

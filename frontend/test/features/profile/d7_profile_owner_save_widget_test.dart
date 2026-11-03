@@ -31,8 +31,8 @@ void main() {
         diabetesType: const drift.Value('type2'),
         treatment: const drift.Value('tablets'),
         unitPreference: const drift.Value('mg/dL'),
-        targetRangeLow: const drift.Value(84),
-        targetRangeHigh: const drift.Value(168),
+        targetRangeLow: const drift.Value(84.125),
+        targetRangeHigh: const drift.Value(168.75),
       ),
     );
     // Adversarial legacy row: a scoped write must not modify another ID,
@@ -109,8 +109,8 @@ void main() {
     expect(saved.diabetesType, 'type1');
     expect(saved.treatment, 'tablets'); // Legacy declaration untouched.
     expect(saved.unitPreference, 'mg/dL');
-    expect(saved.targetRangeLow, 84);
-    expect(saved.targetRangeHigh, 168);
+    expect(saved.targetRangeLow, 84.125);
+    expect(saved.targetRangeHigh, 168.75);
     final original = (await store.read())!;
     expect(original.codes, before.codes);
     expect(original.state, 'declared');
