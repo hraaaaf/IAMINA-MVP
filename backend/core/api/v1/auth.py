@@ -6,6 +6,7 @@ Firebase and never synthesize clinical or demographic facts.
 """
 
 import logging
+import os
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -132,10 +133,25 @@ def _open_session(request, user: User, *, method: str) -> None:
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 
 
+def _native_registration_allowed_in_environment() -> bool:
+    """Deny native account creation on hosted Preview unless explicitly opted in.
+
+    VERCEL_ENV is the hosting source of truth; IAMINA_ENV also protects
+    preview-like local/rehearsal runtimes. Production remains unchanged.
+    """
+    preview = (
+        os.environ.get("VERCEL_ENV", "").strip().lower() == "preview"
+        or os.environ.get("IAMINA_ENV", "").strip().lower() == "preview"
+    )
+    return not preview or os.environ.get("IAMINA_PREVIEW_ALLOW_REGISTRATION") == "true"
+
+
 @router.post("/auth/register", response=AuthResponse)
 @transaction.atomic
 def register_native(request, data: NativeRegisterRequest):
     """Create a sovereign Django identity without fabricating patient facts."""
+    if not _native_registration_allowed_in_environment():
+        raise HttpError(403, "Registration disabled in synthetic Preview")
     if User.objects.filter(email__iexact=data.email).exists():
         raise HttpError(409, "Account already exists")
 
