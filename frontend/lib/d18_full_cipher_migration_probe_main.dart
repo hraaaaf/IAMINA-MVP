@@ -449,12 +449,59 @@ Future<void> raw() async {
     check(!chars.contains(value),'PLAINTEXT_CONTENT');
   }
 }
+// P0-A actual clinical AppDatabase.forPatientVault constructor but with a
+// DISPOSABLE CI scope/row. No authentication, live patient, key or cutover.
+// Exercises runtime DriftWebOptions selection instead of just the forced
+// sharedIndexedDb source opening used by the earlier migration fixture.
+final _factoryScope=PatientVaultScope.deviceLocal(
+  'e2dbe28f-3eea-4410-86a7-274150a70018');
+const _factoryMarker='D18_P0A_CI_ONLY_REAL_FACTORY_SENTINEL_20261104';
+final _factoryFenceScope=PatientVaultScope.deviceLocal(
+  'e2dbe28f-3eea-4410-86a7-274150a80018');
+const _factoryFenceMarker='D18_CI_ONLY_VFS_VERSION_BUMP_20261104';
+Future<void> verifyRealPatientFactory({required bool reopen,
+    bool versionFixture=false}) async {
+  stage(versionFixture?'patient_factory_version_probe':
+    (reopen?'patient_factory_reopen':'patient_factory_create'));
+  final scope=versionFixture?_factoryFenceScope:_factoryScope;
+  final sentinel=versionFixture?_factoryFenceMarker:_factoryMarker;
+  final db=AppDatabase.forPatientVault(scope);
+  try {
+    final version=await db.customSelect('PRAGMA user_version').getSingle();
+    check(version.read<int>('user_version')==12,
+      'D18_P0A_FACTORY_NOT_V12');
+    if(!reopen) {
+      await db.customStatement(
+        'INSERT INTO patient_profiles(user_id,updated_at,diabetes_type) '
+        'VALUES(?,?,?)',[1,1700000000,sentinel]);
+    }
+    final rows=await db.customSelect(
+      'SELECT diabetes_type FROM patient_profiles WHERE user_id=1').get();
+    check(rows.length==1 &&
+      rows.single.read<String>('diabetes_type')==sentinel,
+      'D18_P0A_FACTORY_SYNTHETIC_ROW_LOST');
+    final integrity=await db.customSelect('PRAGMA integrity_check').getSingle();
+    check(integrity.data.values.single=='ok',
+      'D18_P0A_FACTORY_INTEGRITY_FAILED');
+    final orphans=await db.customSelect('PRAGMA foreign_key_check').get();
+    check(orphans.isEmpty,'D18_P0A_FACTORY_FK_FAILED');
+  } finally {await db.close();}
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final phase=Uri.base.queryParameters['phase']??'';
   try{
     switch(phase){
       case 'seed':await seed();break;
+      case 'patient_factory_create':
+        await verifyRealPatientFactory(reopen:false);break;
+      case 'patient_factory_reopen':
+        await verifyRealPatientFactory(reopen:true);break;
+      case 'patient_factory_version_seed':
+        await verifyRealPatientFactory(reopen:false,versionFixture:true);break;
+      case 'patient_factory_version_reopen':
+        await verifyRealPatientFactory(reopen:true,versionFixture:true);break;
       case 'abort_rollback':await abortRollback();break;
       case 'crash_uncommitted':await crashUncommitted();break;
       case 'crash_recover':await verifyCrashRecovery();break;
