@@ -274,6 +274,63 @@ const _candidateEnvelope='d18_ci_unpublished_envelope';
 const _candidatePass='CI synthetic-only local passphrase for D18';
 const _candidateMarker='D18_REAL_UNPUBLISHED_CIPHERTEXT_MARKER';
 
+// P0-B adversarial proof: a valid keyed v12 database with one mandatory
+// table deliberately removed must fail BEFORE exposing the remote SQL port.
+// An isolated synthetic scope prevents contamination of earlier CI fixtures.
+const _candidateDamagedPatient='e2dbe28f-3eea-4410-86a7-274150a50018';
+const _candidateDamagedPass='D18-CI-ONLY-DAMAGED-V12-TEST-PASSPHRASE';
+
+Future<void> verifyDamagedCiphertextRejected() async {
+  final scope=PatientVaultScope.deviceLocal(_candidateDamagedPatient);
+  final enrollment=await D18VaultKeyPolicy.createForEmptyVault(
+    scope:scope,passphrase:_candidateDamagedPass);
+  try {
+    final adapter=D18PreCutoverCipherAdapter(
+      guard:D18KeyedOpenGuard(
+        resolveAuthenticatedScope:() async=>scope,
+        readAuthEpoch:()=>31),
+      openVerifiedWorker:openD18UnpublishedCipherWorker);
+    stage('p0b_create_real_keyed_v12_fixture');
+    final vault=await adapter.openUnpublished(
+      scope:scope,keySession:enrollment.session,
+      intent:D18CipherVaultOpenIntent.createFresh);
+    try {
+      stage('p0b_simulate_schema_loss');
+      await vault.database.customStatement('DROP TABLE reminders');
+      final remains=await vault.database.customSelect(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name='reminders'").get();
+      verify(remains.isEmpty,'D18_P0B_SCHEMA_CORRUPTION_NOT_INJECTED');
+    } finally {await vault.close();}
+
+    stage('p0b_reopen_rejected_before_sql_port');
+    var rejected=false;
+    try {
+      final wrong=await adapter.openUnpublished(
+        scope:scope,keySession:enrollment.session,
+        intent:D18CipherVaultOpenIntent.reopenExisting);
+      await wrong.close();
+    } on StateError catch(error) {
+      rejected=error.toString().contains('D18_WORKER_OPEN_DENIED');
+    }
+    verify(rejected,'D18_P0B_DAMAGED_V12_REOPEN_ACCEPTED');
+
+    // Failed reopen must NOT auto-recreate or replace ciphertext.
+    stage('p0b_damaged_ciphertext_still_exists');
+    var overwriteRefused=false;
+    try {
+      final replacement=await adapter.openUnpublished(
+        scope:scope,keySession:enrollment.session,
+        intent:D18CipherVaultOpenIntent.createFresh);
+      await replacement.close();
+    } on StateError catch(error) {
+      overwriteRefused=error.toString().contains(
+        'D18_WORKER_CIPHERTEXT_ALREADY_EXISTS');
+    }
+    verify(overwriteRefused,'D18_P0B_DAMAGED_CIPHERTEXT_SILENTLY_REPLACED');
+  } finally {enrollment.session.lock();}
+}
+
 Future<void> verifyUnpublishedConnector(String phase) async {
   final scope=PatientVaultScope.deviceLocal(_candidatePatient);
   if (phase == 'candidate_physical_bytes') {
@@ -544,6 +601,9 @@ Future<void> verifySwitch(String phase) async {
 }
 
 Future<void> runPhase(String name) async {
+  if(name=='candidate_damaged_schema_denied') {
+    await verifyDamagedCiphertextRejected();return;
+  }
   if(name.startsWith('switch_')) {
     await verifySwitch(name);return;
   }
@@ -717,6 +777,7 @@ Future<void> main() async {
       'intent_wrong_key',
       'candidate_missing','candidate_create','candidate_create_exists',
       'candidate_wrong_key','candidate_reopen','candidate_physical_bytes',
+      'candidate_damaged_schema_denied',
       'switch_enroll','switch_reopen_b','switch_reopen_a','switch_epoch_race',
     }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
     stage('run_phase');
