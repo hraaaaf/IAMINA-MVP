@@ -94,6 +94,18 @@ if "D18_GUEST_SOURCE_LOCK_REQUIRED" not in host:
 if "defaultValue: false" not in (ROOT / "main.dart").read_text(encoding="utf-8"):
     contract_failures.append("main.dart:canary_disabled_by_default")
 
+# An explicitly synthetic bypass must never be wired into app/runtime code.
+synthetic_bypass_leaks = []
+for path in sorted(ROOT.rglob("*.dart")):
+    rel = path.relative_to(ROOT).as_posix()
+    if rel == "data/drift/d18_pre_cutover_atomic_promotion.dart" or (
+        path.name != "main.dart" and path.name.startswith(TEST_ENTRY_PREFIXES)
+    ):
+        continue
+    src = path.read_text(encoding="utf-8")
+    if re.search(r"\\ballowUnfencedSyntheticFixture\\s*:\\s*true\\b", src):
+        synthetic_bypass_leaks.append(rel)
+
 report = {
     "kind": "D18_STATIC_WEB_APP_SQLITE_SOURCE_INVENTORY_NOT_CUTOVER",
     "allowed": EXPECTED,
@@ -102,7 +114,8 @@ report = {
     "missing": missing,
     "old_cached_tabs": "NOT_COVERED",
     "contract_failures": contract_failures,
+    "synthetic_bypass_leaks": synthetic_bypass_leaks,
 }
 print(json.dumps(report, indent=2, sort_keys=True))
-if violations or missing or contract_failures:
+if violations or missing or contract_failures or synthetic_bypass_leaks:
     sys.exit("D18_REAL_SQLITE_ENTRYPOINT_INVENTORY_FAIL_CLOSED")

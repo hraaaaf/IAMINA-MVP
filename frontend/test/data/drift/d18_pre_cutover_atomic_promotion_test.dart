@@ -115,6 +115,17 @@ void main() {
     expect(h.store.changes, 2);
   });
 
+  test('legacy unfenced gate refuses activation even with prepared marker',
+      () async {
+    final h = _Harness();
+    final prepared = await h.makeGate().prepare(); // synthetic only
+    await expectLater(h.makeGate(allowUnfencedSyntheticFixture: false)
+        .activateForSyntheticTest(explicitSyntheticApproval: true),
+        throwsStateError);
+    expect(h.store.current, prepared);
+    expect(h.store.changes, 1);
+  });
+
   test('missing source refuses prepare, without creating marker', () async {
     final h = _Harness()..sourcePresent = false;
     await expectLater(h.makeGate().prepare(), throwsStateError);
