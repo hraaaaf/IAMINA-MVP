@@ -15,6 +15,11 @@ from core.incident_response import (
 )
 
 
+def test_incident_policy_review_expiry_fails_closed():
+    with pytest.raises(ValueError, match="incident policy is stale"):
+        POLICY.validate(today=POLICY.review_due_on.replace(year=POLICY.review_due_on.year + 1))
+
+
 def test_policy_is_current_complete_and_machine_readable():
     POLICY.validate(today=date(2026, 8, 2))
     payload = policy_payload(today=date(2026, 8, 2))
