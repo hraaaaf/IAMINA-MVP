@@ -108,3 +108,18 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - **AFTER / contrôle de conformité** : build release de l'application réelle avec Chromium, BEFORE sans paramètre et AFTER volet ouvert pour 390×844, 430×932, 768×1024 et 1280×900, captures, premiers frames et jalons; lire l'artefact et comparer visuellement. Un seul run indépendant de WebKit Linux, qui n'a aucun droit de certifier Safari iPhone.
 - **Human gate** : tests Safari sur iPhone réel et éventuelle preview Vercel nécessitent une autorisation explicite de déploiement. Aucune preview ni merge dans ce lot.
 - **État** : travaux préparés ; validation et score visuel non encore démontrés.
+
+
+### Protocole de vérification Safari iPhone (human gate, pas encore exécuté)
+
+**Prérequis :** validation explicite d'une preview Vercel de la branche PERF-WEB et d'un environnement de tests sans vrai dossier patient. Aucun mot de passe, token, nom, email ou contenu de patient ne doit être envoyé dans le bilan.
+
+- [ ] Sur iPhone Safari, ouvrir la preview autorisée sans paramètre : noter visuellement quand l'écran apparaît et quand il devient interactif. Le bouton « Chrono » doit être absent.
+- [ ] Ouvrir le même site en Safari avec `?startup_perf=1` (uniquement si le build a `IAMINA_STARTUP_TRACE=true`). Le bouton « ⏱ Chrono » doit apparaître sans masquer le contenu critique ; le déployer.
+- [ ] À l'instant où l'écran devient utilisable, toucher « Écran prêt », puis « Copier ». Envoyer exclusivement le JSON anonymisé. La mesure manuelle surestime la disponibilité réelle.
+- [ ] Répéter trois visites à froid dans des contextes isolés ; refaire trois visites chaudes avec le même contexte de navigateur. Pour un véritable retour utilisateur, utiliser uniquement un compte/test patient expressément autorisé.
+- [ ] Contrôler que `main_enter`, `auth_ready`, `legacy_probe_ready`, `scoped_probe_ready`, `lock_ready`, `vault_reconcile_ready`, `runapp_begin` et `first_flutter_frame_ms` sont chronologiquement cohérents. Si une phase manque, ne pas inventer sa durée.
+- [ ] Vérifier le verrouillage et l'absence de fuite de l'ancien coffre A lors du changement A→B uniquement dans une campagne d'isolation distincte et autorisée ; ce relevé ne certifie jamais l'isolation médicale.
+- [ ] Comparer les mêmes scénarios et le même iPhone avant/après un correctif ciblé : médiane du délai « écran utilisable », première frame, coût des segments, écran bloqué, retour après verrouillage.
+
+**Règle de sortie :** une seule cause dominante prouvée → un correctif → un seul run de validation pertinent → comparaison avant/après. Deux échecs équivalents déclenchent un changement de stratégie, pas une série de runs du même harness. Aucune preview, merge ou publication sans autorisation explicite.
