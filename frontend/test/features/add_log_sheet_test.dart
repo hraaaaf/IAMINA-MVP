@@ -510,8 +510,15 @@ void main() {
       await tester.enterText(note, 'Brouillon à abandonner');
       expect(await db.select(db.logEntries).get(), isEmpty);
 
-      await _tapFormItem(
-        tester, find.byKey(const Key('remove-meal-button')));
+      // The generic helper drags another 175px after ensureVisible, moving
+      // this top-of-section Remove action outside the hit-test viewport.
+      final removeMeal = find.byKey(const Key('remove-meal-button'));
+      tester.binding.focusManager.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(removeMeal);
+      await tester.pumpAndSettle();
+      await tester.tap(removeMeal);
+      await tester.pumpAndSettle();
       expect(find.byKey(const Key('meal-section')), findsNothing);
       await tester.tap(find.byKey(const Key('save-log-button')));
       await tester.pumpAndSettle();
