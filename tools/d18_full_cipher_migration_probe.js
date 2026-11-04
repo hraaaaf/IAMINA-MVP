@@ -9,6 +9,65 @@ const key=[...crypto.randomBytes(32)];
 const abortKey=[...crypto.randomBytes(32)];
 const crashKey=[...crypto.randomBytes(32)];
 const results=[];
+// P0-A diagnostic: inventory the ACTUAL browser storage created by pinned
+// Drift WasmDatabase.open(sharedIndexedDb), not a hand-written IDB fixture.
+// Read-only schema metadata; no keys, values, ciphertext, patients or secrets.
+async function inspectPhysicalDriftStorage(context) {
+  const page=await context.newPage();
+  try {
+    await page.route('**/d18_p0a_vfs_metadata.html',route=>route.fulfill({
+      status:200,contentType:'text/html',
+      body:'<!doctype html><title>D18 P0-A metadata-only synthetic</title>'
+    }));
+    await page.goto('http://127.0.0.1:7396/d18_p0a_vfs_metadata.html',
+      {waitUntil:'domcontentloaded',timeout:30000});
+    const info=await page.evaluate(async()=>{
+      if(typeof indexedDB.databases!=='function')return {
+        supported:false,idb:[],opfsSupported:false,opfsNames:[]
+      };
+      const discovered=await indexedDB.databases();
+      const idb=[];
+      for(const candidate of discovered.slice(0,32)){
+        if(!candidate.name||!Number.isInteger(candidate.version))continue;
+        const schema=await new Promise((resolve,reject)=>{
+          const request=indexedDB.open(candidate.name);
+          request.onupgradeneeded=()=>{
+            // Fail if metadata inspection would create a database.
+            request.transaction.abort();
+            reject(Error('D18_VFS_INVENTORY_OPENED_NEW_DATABASE'));
+          };
+          request.onsuccess=()=>{
+            const db=request.result;
+            const record={
+              name:db.name,version:db.version,
+              stores:Array.from(db.objectStoreNames),
+            };
+            db.close();
+            resolve(record);
+          };
+          request.onerror=()=>reject(request.error||Error('D18_VFS_IDB_OPEN'));
+          request.onblocked=()=>reject(Error('D18_VFS_IDB_BLOCKED'));
+        });
+        idb.push(schema);
+      }
+      const opfsNames=[];
+      const opfsSupported=typeof navigator.storage?.getDirectory==='function';
+      if(opfsSupported){
+        const root=await navigator.storage.getDirectory();
+        for await(const [name] of root.entries()){
+          if(opfsNames.length>=32)break;
+          opfsNames.push(name);
+        }
+      }
+      return {supported:true,idb,opfsSupported,opfsNames};
+    });
+    const pass=info.supported && info.idb.some(db=>db.stores.length>0);
+    results.push({phase:'real_drift_source_vfs_metadata',pass,
+      metadata:info});
+    if(!pass)throw Error('D18_P0A_REAL_DRIFT_VFS_NOT_OBSERVED');
+  } finally {await page.close();}
+}
+
 // CI-only cooperative source lock implementation. Not part of shipped app.
 // The clinical writer protocol must adopt this gate in D18 lot 2/3.
 function installSourceWriteGate() {
@@ -149,6 +208,7 @@ async function concurrentSourceLock(context) {
       headless:true,locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'seed');
+    await inspectPhysicalDriftStorage(ctx);
     await phase(ctx,'abort_rollback');
     await concurrentSourceLock(ctx);
     await phase(ctx,'crash_uncommitted');
@@ -181,10 +241,10 @@ async function concurrentSourceLock(context) {
     results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['seed','abort_rollback','hold_source_lock',
+  const expected=['seed','real_drift_source_vfs_metadata','abort_rollback','hold_source_lock',
     'compete_source_lock','crash_uncommitted',
     'crash_recover','migrate','verify','physical_bytes'];
-  if(results.length!==9||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
+  if(results.length!==10||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
     process.exitCode=1;
 })().catch(e=>{
   console.error('D18_FULL_VAULT_HARNESS_FATAL',e.name);
