@@ -129,3 +129,31 @@ Audit adversarial : la limitation du formulaire et le refus `AuthService.registe
 **Étape humaine ciblée sur Safari, compte A encore ouvert :** ouvrir `+ Ajouter` puis saisir une **mesure fictive** de glycémie `112 mg/dL` (jamais donnée réelle), sauvegarder et constater la ligne dans Journal ; aller dans Profil → section « zone de danger » → Déconnexion, confirmer et vérifier le retour Login ; ouvrir B `w01-b@example.invalid`, vérifier que la ligne `112 mg/dL` A est absente et que son profil est indépendant. Bonus de preuve : se déconnecter de B et reconnecter A puis vérifier réapparition de sa mesure. Cette mesure est nécessaire car les deux comptes ont zéro journal au départ : comparer deux écrans vides **ne démontre pas** l'isolation.
 
 **État :** login A **PASS** ; logout A, login B, prévention fuite locale et données cliniques hébergées **NON TESTÉS / NO-GO W01**. Aucun déploiement Vercel ni mutation Neon par l'agent sur cette phase ; marqueur de test éventuel uniquement avec action explicite utilisateur dans la Preview synthétique. La PR reste Draft sans merge.
+
+
+## W01 — Isolation A/B Safari confirmée, Neon en lecture seule (04/11/2026)
+
+**Décision W01 :** valider le parcours authentification, déconnexion, cloisonnement A/B et retour A en Web Preview synthétique, sans patients réels. **Succès local observable :** un marqueur glycémique **fictif 112 mg/dL** saisi dans le Journal du compte A, absent du compte B, retrouvé après retour à A sur le **même navigateur Safari**. L'utilisateur a explicitement confirmé l'exécution et la réussite des quatre étapes (ajout A, logout A, login B et absence A, logout B puis retour A avec marqueur). Cette preuve est une déclaration de test humain ; absence de captures indépendantes AFTER.
+
+**Corroboration API déployée et journal d'événements :** API Preview `dpl_9ryTimFJ6JwsfbW66NXno2gWYcZB`, runtime exact `53f22063677e4dfed88f2d701b2476cb2d816511` :
+- `2026-11-04T22:18:38.445Z POST /api/v1/auth/login?path=auth%2Flogin HTTP/1.1` **200** — connexion A corrélée au `last_login` Neon ID 15.
+- `2026-11-04T22:29:32.320Z POST /api/v1/auth/logout?path=auth%2Flogout HTTP/1.1` **200** — première déconnexion (A par chronologie).
+- `2026-11-04T22:30:26.624Z POST /api/v1/auth/login?path=auth%2Flogin HTTP/1.1` **200** — connexion B corrélée au `last_login` Neon ID 16.
+- `2026-11-04T22:32:00.067Z POST /api/v1/auth/logout?path=auth%2Flogout HTTP/1.1` **200** — seconde déconnexion (B par chronologie).
+- **Limite importante :** aucun **troisième** `POST /api/v1/auth/login` de retour à A dans les logs disponibles jusqu'à `2026-11-04T22:34:09Z`. Le nouveau login distant A n'est donc **pas** prouvé. Les réponses HTTP 200 au logout prouvent que l'endpoint a été appelé, mais ne certifient pas séparément l'invalidation de chaque ancien jeton.
+
+**Neon synthétique, interrogation read-only :** projet `noisy-truth-00115950`, branche `br-sweet-frog-b9ok6ptp`, DB `iamina925_empty`, rôle `iamina_preview_app`.
+- A `w01-a@example.invalid`, ID 15, `last_login=2026-11-04T22:18:38.367Z` (inchangé au contrôle après le test complet).
+- B `w01-b@example.invalid`, ID 16, `last_login=2026-11-04T22:30:26.517Z`, cohérent à 107 ms avec le `POST /auth/login` HTTP 200.
+- `core_basepatientprofile` : **1 ligne liée à A, 1 ligne liée à B**.
+- `diabetes_logentry`, `diabetes_labreport`, `core_patientmodule` : **0 ligne pour A, 0 ligne pour B**. Au total : `auth_user=2`, `core_basepatientprofile=2`, `core_observabilityevent=68`, `core_authabusebucket=71`, `diabetes_logentry=0`, `diabetes_labreport=0`.
+- **Conclusion cruciale :** la glycémie fictive de 112 mg/dL n'a **pas** été observée dans les tables métier serveur ; la séparation observée concerne le **coffre local IndexedDB/SQLite du navigateur**, sans preuve de synchronisation clinique ni de contrôle inter-comptes sur données métier distantes. Les profils Neon sont physiquement distincts, mais la lecture/écriture distante cross-patient reste non exercée avec données sentinelles.
+
+**Audit du code de cloisonnement sur SHA Web runtime `5cf30263cf2169ef1c8b268a628a63ca7da117ab` :**
+- `frontend/lib/data/drift/patient_vault_scope.dart` crée `amina_vault_v1_native_<userId>` ; pour A/B: `amina_vault_v1_native_15` et `amina_vault_v1_native_16`.
+- `AppDatabase.forPatientVault(scope)` ouvre un stockage physique séparé par portée, sans reprendre le stockage legacy non scopé.
+- `AuthService.signOut` supprime immédiatement le bearer et l'identifiant de compte locaux et change l'époque de session avant toute attente réseau, puis tente `POST /auth/logout`. Les tests `frontend/test/services/patient_vault_session_controller_test.dart` couvrent explicitement A→B→A et sentinelle glycémique locale ; `auth_service_local_first_test.dart` couvre sign-out et l'absence de restauration d'ancienne identité. Ces tests sont des preuves de code/suite, distinctes de Safari.
+
+**Verdict par critère :** **A login PASS (API+Neon)** ; **A logout API 200 PASS** ; **B login PASS (API+Neon)** ; **B logout API 200 PASS** ; **local vault A/B/A isolation PASS selon retour Safari + code/test** ; **re-auth finale A non prouvée par logs** ; **révocation bearer réelle et clinique distante cross-patient non certifiées**. W01 dans son ensemble demeure **PARTIEL / NO-GO** au regard des gates de sécurité/restauration/revue G2/G6/G7 ouverts. Aucun nouveau déploiement Vercel ni écriture Neon par l'agent.
+
+**Next exact :** confirmer par preuve traçable la troisième authentification A seulement si nécessaire à la certification session complète ; tester l'ancienne crédentialité après logout et l'isolement métier serveur au moyen de scénarios synthétiques autorisés sans toucher à Production ; revue G2/G6/G7 et closeout documentaires avant verdict GO global. Toute modification de code nécessitant une nouvelle Preview requiert un nouveau GO Vercel.
