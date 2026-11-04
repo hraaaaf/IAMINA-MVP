@@ -46,6 +46,11 @@ jobs:
         run: |
           flutter test test/data/drift/d18_full_cipher_archive_test.dart --reporter expanded
           flutter test test/data/drift/d18_streaming_cipher_archive_test.dart --reporter expanded
+      - name: P0-D Flutter Web Chrome 17 MiB streamed ciphertext codec (NOT browser storage)
+        working-directory: frontend
+        run: |
+          flutter test --platform chrome test/data/drift/d18_streaming_cipher_archive_test.dart --reporter expanded
+
       - name: P0-D streaming archive over 16 MiB and fail-closed quarantine (Node reference only)
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
