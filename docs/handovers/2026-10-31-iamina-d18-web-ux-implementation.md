@@ -1,3 +1,15 @@
+## D18 WEB — 2026-11-04 — Décision proposée : mode invité limité / compte requis (SANS CUTOVER)
+
+**Goal :** réduire le risque lié à la création de **nouveaux** coffres non enrôlés, sans fausse promesse sur les coffres historiques. Proposition utilisateur : mode invité restreint + invitation à la connexion après un chrono. **Recommandation :** découverte sans écriture de données médicales personnelles, compte stable vérifié à la première action clinique, sollicitation UX non destructive après ~5 minutes, puis accès hors ligne ultérieur seulement avec coffre sécurisé et déverrouillage local validés. **Ce n'est pas une barrière de sécurité P0-A** : un ancien onglet Web déjà hors ligne peut toujours écrire, indépendamment du chrono ou de l'authentification ajoutée dans une nouvelle version.
+
+**Réalité code vérifiée sur PR #1265 :** `isAuthenticated` recouvre aussi local enrollment et Firebase anonymous ; `hostedRemoteLoginRequired()` retourne false ; le parcours guest ouvre une base `PatientVaultScope.auditOnly` persistante. Un changement de mode invité doit donc modifier *réellement* les frontières storage/auth/route et protéger les dossiers historiques sans suppression ni attribution silencieuse. Pas d'implémentation clinique ni de déploiement autorisés par ce cadrage.
+
+**État sécurité physique vérifié :** SHA `d0389b7658f309d962266cdb687cb9f78039ac79`, Chromium [#41839588272](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41839588272) et WebKit [#41839588203](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41839588203) SUCCESS. Le vrai coffre Drift **synthétique** v1→v2 conserve `blocks`/`files`, mais un ancien ouvreur IDB sans version obtient encore `readwrite` et la factory Drift ne rouvre plus le coffre v2. Ce **PASS négatif** exclut la versionchange seule comme solution clinique. **P0-A SAFE-HOLD / D18 NO-GO.**
+
+**ADR de reprise :** `docs/decisions/D18_P0A_HISTORICAL_LEGACY_NO_AUTOMATIC_CUTOVER_2026-11-04.md` (section « Option de réduction de périmètre »). **Next :** établir une matrice Guest / compte certifié / ancien device-only et un protocole de récupération, puis BEFORE→mockup→implémentation derrière gate non clinique→AFTER→tests mobile, auth/offline et zéro-DB invité. Ne pas changer le comportement ni convertir les bases patients existantes sans validation stratégique et preuves. PR Draft #1265, pas de merge, pas de déploiement Vercel.
+
+---
+
 ## D18 WEB — 2026-11-04 — P0-A SAFE-HOLD / FENCING PHYSIQUE SYNTHÉTIQUE, NO-GO CLINIQUE
 
 **Décision : D18 — chiffrement local patient Web ; sous-lot P0-A (issue #1261, PR Draft #1265).** **Goal :** aucune écriture tardive d'un ancien client/offline ne doit être silencieusement abandonnée pendant ou après une migration plaintext→sqlite3mc. **Statut :** SAFE-HOLD recommandé : aucune promotion automatique autorisée tant qu'un vrai mécanisme de protection ou de réconciliation n'est pas prouvé sur le stockage physique réel.
