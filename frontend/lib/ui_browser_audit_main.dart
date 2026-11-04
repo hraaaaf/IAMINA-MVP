@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:js_interop';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,6 +11,7 @@ import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
+import 'data/models/ai_models.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
 import 'features/auth/consent_screen.dart';
@@ -44,6 +47,10 @@ import 'services/locale_preference_service.dart';
 import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
+
+// Synthetic Web audit status, exposed only by this isolated audit entrypoint.
+@JS('d14BrowserCert')
+external set _d14BrowserCert(JSString status);
 
 class _BrowserAuditCompanionService extends CompanionService {
   @override
@@ -161,12 +168,23 @@ class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (error) {
-    debugPrint('Browser audit Firebase init unavailable: $error');
+  // D14's isolated, synthetic photo surfaces do not use Firebase. In Flutter
+  // Web, Firebase.initializeApp can request Firebase scripts from a remote
+  // CDN before runApp. The D14 zero-off-origin test must exercise the actual
+  // widget without loading unrelated Firebase migrations or masking requests.
+  // This guard is restricted to the test-only browser audit entrypoint.
+  final d14NoFirebaseAudit = const <String>{
+    'meal-picker',
+    'd14-photo-cert',
+  }.contains(Uri.base.queryParameters['surface']);
+  if (!d14NoFirebaseAudit) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (error) {
+      debugPrint('Browser audit Firebase init unavailable: $error');
+    }
   }
 
   // Synthetic D3 browser fixture only; never used by production main.dart.
@@ -305,6 +323,10 @@ class _BrowserAuditApp extends StatelessWidget {
         GoRoute(
           path: '/meal-picker',
           builder: (context, state) => const _BrowserMealPickerSurface(),
+        ),
+        GoRoute(
+          path: '/d14-photo-cert',
+          builder: (context, state) => const _BrowserD14PhotoCertSurface(),
         ),
         GoRoute(
           path: '/medications',
@@ -458,6 +480,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'add-log' => '/add-log',
   'add-log-meal' => '/add-log-meal',
   'meal-picker' => '/meal-picker',
+  'd14-photo-cert' => '/d14-photo-cert',
   'medications' => '/medications',
   'reminders' => '/reminders',
   'companion' => '/companion',
@@ -472,6 +495,194 @@ String _pathForSurface(String surface) => switch (surface) {
   'next-action' => '/next-action',
   _ => '/dashboard',
 };
+
+
+/*
+ * D14 browser-only synthetic consent exercise, never imported by main.dart.
+ * The photo recognizer is an in-memory Future; there is no provider/API call.
+ * This view uses the same MealCapturePanel as patient Web, not a screenshot mock.
+ */
+class _BrowserD14PhotoCertSurface extends StatefulWidget {
+  const _BrowserD14PhotoCertSurface();
+
+  @override
+  State<_BrowserD14PhotoCertSurface> createState() =>
+      _BrowserD14PhotoCertSurfaceState();
+}
+
+class _BrowserD14PhotoCertSurfaceState extends State<_BrowserD14PhotoCertSurface> {
+  final _favorites = _BrowserMealFavoritesRepository();
+  final List<String> _selectedIds = <String>[];
+  final _pending = Completer<MealAnalysisResult?>();
+  final _secondPending = Completer<MealAnalysisResult?>();
+  late final String _scenario =
+      Uri.base.queryParameters['scenario'] ?? 'off';
+  bool _allowed = false;
+  int _recognitionCalls = 0;
+  bool _proposalSeenBeforeRevocation = false;
+  bool _mediaGrantActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _allowed = _scenario != 'off';
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_exercise()));
+  }
+
+  Future<MealAnalysisResult?> _recognize() {
+    _recognitionCalls++;
+    if (_scenario == 'revoke-pending' ||
+        _scenario == 'revoke-media-pending') return _pending.future;
+    if (_scenario == 'reconsent') {
+      return _recognitionCalls == 1 ? _pending.future : _secondPending.future;
+    }
+    return Future<MealAnalysisResult?>.value(
+      const MealAnalysisResult(
+        foods: <String>['œuf', 'pain complet'],
+        confidence: 'high',
+        fallback: false,
+      ),
+    );
+  }
+
+  bool _hasWidgetKey(Key key) {
+    var found = false;
+    void visit(Element e) {
+      if (e.widget.key == key) found = true;
+      e.visitChildren(visit);
+    }
+    context.visitChildElements(visit);
+    return found;
+  }
+
+  void _pressPhoto() {
+    OutlinedButton? target;
+    void visit(Element e) {
+      if (e.widget is OutlinedButton &&
+          e.widget.key == const Key('meal-photo-button')) {
+        target = e.widget as OutlinedButton;
+      }
+      e.visitChildren(visit);
+    }
+    context.visitChildElements(visit);
+    if (target == null || target!.onPressed == null) {
+      throw StateError('D14 photo button not mounted');
+    }
+    target!.onPressed!.call();
+  }
+
+  Future<void> _tick() =>
+      Future<void>.delayed(const Duration(milliseconds: 260));
+
+  void _publish(String step) {
+    _d14BrowserCert = jsonEncode(<String, Object?>{
+      'scenario': _scenario,
+      'step': step,
+      'allowed': _allowed,
+      'recognitionCalls': _recognitionCalls,
+      'proposalVisible': _hasWidgetKey(const Key('meal-photo-proposal')),
+      'proposalSeenBeforeRevocation': _proposalSeenBeforeRevocation,
+      'mediaGrantActive': _mediaGrantActive,
+      'selectedIds': _selectedIds,
+      'fixtureOnly': true,
+      'externalProviderCalls': 0,
+      'locale': Uri.base.queryParameters['locale'] == 'ar' ? 'ar' : 'fr',
+      'direction': Directionality.of(context) == TextDirection.rtl
+          ? 'rtl'
+          : 'ltr',
+    }).toJS;
+  }
+
+  Future<void> _exercise() async {
+    try {
+      await _tick();
+      if (!mounted) return;
+      _pressPhoto();
+      await _tick();
+      if (!mounted) return;
+      if (_scenario == 'revoke-pending') {
+        setState(() => _allowed = false);
+        await _tick();
+        _pending.complete(const MealAnalysisResult(
+            foods: <String>['œuf'], confidence: 'high', fallback: false));
+        await _tick();
+      } else if (_scenario == 'revoke-media-pending') {
+        // Global AI permission remains true. Only the owner-scoped raw-media
+        // grant is revoked while the recognition Future is still unresolved.
+        setState(() => _mediaGrantActive = false);
+        await _tick();
+        _pending.complete(const MealAnalysisResult(
+            foods: <String>['œuf'], confidence: 'high', fallback: false));
+        await _tick();
+      } else if (_scenario == 'revoke-proposal') {
+        _proposalSeenBeforeRevocation =
+            _hasWidgetKey(const Key('meal-photo-proposal'));
+        setState(() => _allowed = false);
+        await _tick();
+      } else if (_scenario == 'reconsent') {
+        setState(() => _allowed = false);
+        await _tick();
+        setState(() => _allowed = true);
+        await _tick();
+        _pressPhoto();
+        await _tick();
+        _pending.complete(const MealAnalysisResult(
+            foods: <String>['œuf'], confidence: 'high', fallback: false));
+        await _tick();
+        _secondPending.complete(const MealAnalysisResult(
+            foods: <String>['pain complet'], confidence: 'high', fallback: false));
+        await _tick();
+      }
+      if (!mounted) return;
+      _publish('done');
+    } catch (e) {
+      if (mounted) {
+        _d14BrowserCert = jsonEncode(<String, Object?>{
+          'step': 'error',
+          'error': '$e',
+          'scenario': _scenario,
+        }).toJS;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AminaTheme.bg(context),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 840),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Text(
+                  'D14 — Audit Web synthétique · aucune donnée patient',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                MealCapturePanel(
+                  selectedIds: _selectedIds,
+                  onChanged: (ids) => setState(() {
+                    _selectedIds
+                      ..clear()
+                      ..addAll(ids);
+                  }),
+                  canUsePhotoRecognition: _allowed,
+                  photoRecognition: _recognize,
+                  photoMediaConsentProbe: () async => _mediaGrantActive,
+                  favoritesRepository: _favorites,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 class _BrowserMealPickerSurface extends StatefulWidget {
   const _BrowserMealPickerSurface();

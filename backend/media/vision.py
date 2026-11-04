@@ -255,14 +255,21 @@ def analyze_meal_image(
     except (AIEgressDenied, AIProcessorPolicyDenied):
         raise
     except json.JSONDecodeError:
+        # A malformed model response may contain sensitive image-derived text.
+        # Log the failure class only, never any provider payload fragment.
         logger.warning(
-            "meal_vision: backend=%s returned non-JSON — raw: %s",
+            "meal_vision: backend=%s returned invalid JSON (content omitted)",
             selected.name,
-            raw_text[:300],
         )
         return _fallback()
-    except Exception:
-        logger.exception("meal_vision: backend=%s call failed", selected.name)
+    except Exception as exc:
+        # SDK exception messages can echo provider input/output. Do not
+        # record raw exception details or tracebacks in patient-data logs.
+        logger.warning(
+            "meal_vision: backend=%s failed (type=%s; details omitted)",
+            selected.name,
+            type(exc).__name__,
+        )
         return _fallback()
 
 

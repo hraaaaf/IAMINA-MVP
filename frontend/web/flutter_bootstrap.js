@@ -1,7 +1,14 @@
 {{flutter_js}}
 {{flutter_build_config}}
 
-_flutter.loader.load();
+// D14 Web privacy: Flutter's runtime font fallback defaults to Google's CDN
+// even when application fonts are bundled. Point the engine to packaged,
+// same-origin fallback glyphs. This changes no CSP, auth or D18 policy.
+_flutter.loader.load({
+  config: {
+    fontFallbackBaseUrl: new URL('iamina-font-fallback/', document.baseURI).href,
+  },
+});
 
 const IAMINA_HOSTED_REVIEW =
   window.location.hostname === 'iamina-review.vercel.app' ||

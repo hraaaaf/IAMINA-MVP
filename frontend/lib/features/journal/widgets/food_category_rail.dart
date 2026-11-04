@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../../core/data/meal_food_catalog.dart';
@@ -60,6 +61,30 @@ class FoodCategoryRail extends StatelessWidget {
     MealFoodCategory.other => '🍽️',
   };
 
+  // Web must never resolve emoji glyphs using a remote engine font fallback.
+  // Keep the same category semantics and chip size using bundled MaterialIcons.
+  IconData _webIcon(MealFoodCategory? category) => switch (category) {
+    null => Icons.auto_awesome_rounded,
+    MealFoodCategory.moroccanDish => Icons.ramen_dining_rounded,
+    MealFoodCategory.gulfDish => Icons.nightlight_round,
+    MealFoodCategory.breadGrain => Icons.bakery_dining_rounded,
+    MealFoodCategory.meatPoultry => Icons.kebab_dining_rounded,
+    MealFoodCategory.fishSeafood => Icons.set_meal_rounded,
+    MealFoodCategory.egg => Icons.egg_alt_rounded,
+    MealFoodCategory.dairy => Icons.local_drink_rounded,
+    MealFoodCategory.legume => Icons.grain_rounded,
+    MealFoodCategory.vegetable => Icons.eco_rounded,
+    MealFoodCategory.fruit => Icons.apple_rounded,
+    MealFoodCategory.nutSeed => Icons.spa_rounded,
+    MealFoodCategory.fatSauce => Icons.water_drop_rounded,
+    MealFoodCategory.drink => Icons.local_cafe_rounded,
+    MealFoodCategory.sweetDessert => Icons.cake_rounded,
+    MealFoodCategory.snackFastFood => Icons.lunch_dining_rounded,
+    MealFoodCategory.saladMeal => Icons.rice_bowl_rounded,
+    MealFoodCategory.soup => Icons.soup_kitchen_rounded,
+    MealFoodCategory.other => Icons.restaurant_rounded,
+  };
+
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context);
@@ -108,10 +133,18 @@ class FoodCategoryRail extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       ExcludeSemantics(
-                        child: Text(
-                          visual,
-                          style: const TextStyle(fontSize: 15),
-                        ),
+                        child: kIsWeb
+                            ? Icon(
+                                _webIcon(category),
+                                size: 17,
+                                color: active
+                                    ? Colors.white
+                                    : AminaTheme.textSecondary(context),
+                              )
+                            : Text(
+                                visual,
+                                style: const TextStyle(fontSize: 15),
+                              ),
                       ),
                       const SizedBox(width: 7),
                       Text(

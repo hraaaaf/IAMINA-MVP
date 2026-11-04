@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:amina/core/data/meal_food_catalog.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/ai_models.dart';
@@ -21,7 +24,7 @@ void main() {
   late AppDatabase db;
   setUp(() => db = AppDatabase(NativeDatabase.memory()));
   tearDown(() async => db.close());
-  Widget harness({Locale locale = const Locale('fr'),required List<String> selected,required ValueChanged<List<String>> onChanged,MealPhotoRecognition? photoRecognition,bool canUsePhoto = true,MealFoodFavoritesRepository? favoritesRepository,}) => MaterialApp(locale:locale,localizationsDelegates:AppLocalizations.localizationsDelegates,supportedLocales:AppLocalizations.supportedLocales,home:Scaffold(body:Provider<AppDatabase>.value(value:db,child:SingleChildScrollView(child:MealCapturePanel(selectedIds:selected,onChanged:onChanged,canUsePhotoRecognition:canUsePhoto,photoRecognition:photoRecognition,favoritesRepository:favoritesRepository)))));
+  Widget harness({Locale locale = const Locale('fr'),required List<String> selected,required ValueChanged<List<String>> onChanged,MealPhotoRecognition? photoRecognition,MealPhotoMediaConsentProbe? photoMediaConsentProbe,bool canUsePhoto = true,MealFoodFavoritesRepository? favoritesRepository,}) => MaterialApp(locale:locale,localizationsDelegates:AppLocalizations.localizationsDelegates,supportedLocales:AppLocalizations.supportedLocales,home:Scaffold(body:Provider<AppDatabase>.value(value:db,child:SingleChildScrollView(child:MealCapturePanel(selectedIds:selected,onChanged:onChanged,canUsePhotoRecognition:canUsePhoto,photoRecognition:photoRecognition,photoMediaConsentProbe:photoMediaConsentProbe,favoritesRepository:favoritesRepository)))));
 
   test('catalog v3 is broad, unique and Morocco + GCC aware', () {
     expect(mealFoodCatalogVersion, '3.19.0-palestine-core-b33');
@@ -32,9 +35,202 @@ void main() {
     expect(morocco.length, greaterThanOrEqualTo(40)); expect(gulf.length, greaterThanOrEqualTo(60)); expect(universal.length, greaterThanOrEqualTo(180));
     expect(mealFoodById('couscous_7_vegetables'), isNotNull); expect(mealFoodById('rfissa'), isNotNull); expect(mealFoodById('machboos_chicken'), isNotNull); expect(mealFoodById('harees'), isNotNull); expect(mealFoodById('balaleet'), isNotNull); expect(mealFoodById('karak_tea'), isNotNull);
   });
+  test('D14 real photo upload never constructs a disconnected auth client', () {
+    final source =
+        File('lib/features/journal/widgets/meal_capture_panel.dart')
+            .readAsStringSync();
+    expect(source, contains('context.read<ApiClient?>()'));
+    expect(source, contains('apiClient.canSyncClinicalData'));
+    expect(source, contains('return await apiClient.analyzeMealImage('));
+    expect(source, isNot(contains('ApiClient().analyzeMealImage(')));
+    expect(source, contains('hasActiveMealPhotoMediaConsent()'));
+    expect(source.split('hasActiveMealPhotoMediaConsent()').length - 1,
+        greaterThanOrEqualTo(2),
+        reason: 'Check media consent before gallery and after reading media');
+    expect(source, contains('bytes.fillRange(0, bytes.length, 0)'));
+    expect(source.indexOf('final apiClient = context.read<ApiClient?>();'),
+        lessThan(source.indexOf('ImagePicker().pickImage(')));
+  });
+
   test('regional and multilingual search ranks exact concepts first', () {expect(searchMealFoods('rfissa').first.id,'rfissa');expect(searchMealFoods('machboos').first.id,startsWith('machboos_'));expect(searchMealFoods('بيض').first.id,'egg');expect(searchMealFoods('oeuf').first.id,'egg');expect(searchMealFoods('kabsa').map((item)=>item.id),contains('kabsa_chicken'));expect(searchMealFoods('شاورما').map((item)=>item.id),contains('shawarma_chicken'));});
   test('every food has a non-generic visual cue and keeps a text label', () {for(final item in mealFoodCatalog){expect(item.visual,isNot('🍽️'),reason:'Missing visual for ${item.id}');expect(item.visual.trim(),isNotEmpty,reason:'Empty visual for ${item.id}');expect(item.pictogramKey,item.id);for(final locale in const <Locale>[Locale('fr'),Locale('en'),Locale('ar')]){final plain=item.plainLabelFor(locale);final visual=item.labelFor(locale);expect(plain.trim(),isNotEmpty,reason:'Missing text for ${item.id}');expect(visual,startsWith('${item.visual} '));expect(visual,contains(plain));}}});
   testWidgets('photo proposal never becomes meal data before explicit confirmation',(tester)async{var selected=<String>[];Future<MealAnalysisResult?> recognition()async=>const MealAnalysisResult(foods:<String>['pain complet','œuf'],confidence:'high',fallback:false);await tester.pumpWidget(harness(selected:selected,onChanged:(value)=>selected=value,photoRecognition:recognition,favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));await tester.tap(find.byKey(const Key('meal-photo-button')));await tester.pumpAndSettle();expect(find.byKey(const Key('meal-photo-proposal')),findsOneWidget);expect(selected,isEmpty);await tester.tap(find.byKey(const Key('meal-photo-candidate-whole_grain_bread')));await tester.pump();expect(selected,isEmpty);await tester.tap(find.byKey(const Key('meal-photo-confirm')));await tester.pumpAndSettle();expect(selected,contains('whole_grain_bread'));});
+  testWidgets('D14 disabled verified consent never invokes photo recognition', (tester) async {
+    var invoked = 0;
+    var selected = <String>[];
+    await tester.pumpWidget(harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: false,
+      photoRecognition: () async {
+        invoked++;
+        return const MealAnalysisResult(
+          foods: <String>['œuf'], confidence: 'high', fallback: false);
+      },
+      favoritesRepository: _MemoryFavoritesRepository(),
+    ));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pumpAndSettle();
+    expect(invoked, 0);
+    expect(selected, isEmpty);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+  });
+
+  testWidgets('D14 revocation during photo analysis discards late response', (tester) async {
+    final pending = Completer<MealAnalysisResult?>();
+    var selected = <String>[];
+    var invoked = 0;
+    Future<MealAnalysisResult?> recognize() {
+      invoked++;
+      return pending.future;
+    }
+    Widget build(bool allowed) => harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: allowed,
+      photoRecognition: recognize,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    );
+
+    await tester.pumpWidget(build(true));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    expect(invoked, 1);
+
+    await tester.pumpWidget(build(false));
+    await tester.pump();
+    pending.complete(const MealAnalysisResult(
+      foods: <String>['œuf'], confidence: 'high', fallback: false));
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+  });
+
+  testWidgets('D14 existing photo proposal disappears on permission revocation', (tester) async {
+    var selected = <String>[];
+    Widget build(bool allowed) => harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: allowed,
+      photoRecognition: () async => const MealAnalysisResult(
+        foods: <String>['œuf'], confidence: 'high', fallback: false),
+      favoritesRepository: _MemoryFavoritesRepository(),
+    );
+    await tester.pumpWidget(build(true));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+
+    await tester.pumpWidget(build(false));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+    expect(selected, isEmpty);
+  });
+
+  testWidgets('D14 media-only revoke during pending photo rejects late response',
+      (tester) async {
+    final pending = Completer<MealAnalysisResult?>();
+    var mediaGrantActive = true;
+    var selected = <String>[];
+    await tester.pumpWidget(harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      // Global AI consent stays true throughout; only the media grant changes.
+      canUsePhoto: true,
+      photoRecognition: () => pending.future,
+      photoMediaConsentProbe: () async => mediaGrantActive,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    ));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    mediaGrantActive = false;
+    pending.complete(const MealAnalysisResult(
+      foods: <String>['œuf'], confidence: 'high', fallback: false));
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+  });
+
+  testWidgets('D14 media-only revoke after proposal refuses human confirmation',
+      (tester) async {
+    var mediaGrantActive = true;
+    var selected = <String>[];
+    await tester.pumpWidget(harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: true,
+      photoRecognition: () async => const MealAnalysisResult(
+        foods: <String>['œuf'], confidence: 'high', fallback: false),
+      photoMediaConsentProbe: () async => mediaGrantActive,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    ));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('meal-photo-candidate-egg')));
+    await tester.pump();
+    expect(selected, isEmpty);
+    mediaGrantActive = false;
+    await tester.tap(find.byKey(const Key('meal-photo-confirm')));
+    await tester.pumpAndSettle();
+    expect(selected, isEmpty);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+  });
+
+  testWidgets('D14 reconsent starts clean and stale request does not end new busy state',
+      (tester) async {
+    final first = Completer<MealAnalysisResult?>();
+    final second = Completer<MealAnalysisResult?>();
+    var calls = 0;
+    var selected = <String>[];
+    Future<MealAnalysisResult?> recognize() =>
+        (++calls == 1 ? first : second).future;
+    Widget build(bool allowed) => harness(
+      selected: selected,
+      onChanged: (ids) => selected = ids,
+      canUsePhoto: allowed,
+      photoRecognition: recognize,
+      favoritesRepository: _MemoryFavoritesRepository(),
+    );
+
+    await tester.pumpWidget(build(true));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    expect(calls, 1);
+
+    await tester.pumpWidget(build(false));
+    await tester.pump();
+    await tester.pumpWidget(build(true));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('meal-photo-button')));
+    await tester.pump();
+    expect(calls, 2);
+
+    first.complete(const MealAnalysisResult(
+      foods: <String>['œuf'], confidence: 'high', fallback: false));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const Key('meal-photo-proposal')), findsNothing);
+
+    second.complete(const MealAnalysisResult(
+      foods: <String>['pain complet'], confidence: 'high', fallback: false));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+    expect(selected, isEmpty);
+  });
+
   testWidgets('Arabic search uses Arabic food labels and RTL',(tester)async{var selected=<String>[];await tester.pumpWidget(harness(locale:const Locale('ar'),selected:selected,onChanged:(value)=>selected=value,favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();await tester.enterText(find.byKey(const Key('meal-food-search')),'بيض');await tester.pump();final result=find.byKey(const Key('meal-search-egg'));expect(result,findsOneWidget);expect(Directionality.of(tester.element(result)),TextDirection.rtl);expect(find.descendant(of:result,matching:find.text('بيض')),findsWidgets);expect(find.text('Œuf'),findsNothing);});
   testWidgets('first use hides empty history and keeps capture actions immediately available',(tester)async{await tester.pumpWidget(harness(selected:const <String>[],onChanged:(_){},favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();expect(find.text('Récents'),findsNothing);expect(find.text('Habituels'),findsNothing);expect(find.byKey(const Key('meal-food-search')),findsOneWidget);expect(find.byKey(const Key('meal-category-rail')),findsOneWidget);expect(find.byKey(const Key('meal-photo-button')),findsOneWidget);});
   testWidgets('Gulf category browses regional dishes without typing',(tester)async{await tester.pumpWidget(harness(selected:const <String>[],onChanged:(_){},favoritesRepository:_MemoryFavoritesRepository()));await tester.pumpAndSettle();final rail=find.byKey(const Key('meal-category-rail'));await tester.drag(rail,const Offset(-500,0));await tester.pumpAndSettle();await tester.tap(find.byKey(const Key('meal-category-gulfDish')));await tester.pumpAndSettle();expect(find.text('Harees'),findsWidgets);expect(find.text('Cuisine du Golfe'),findsWidgets);expect(find.byKey(const Key('meal-search-rfissa')),findsNothing);});
