@@ -54,7 +54,7 @@ class RetentionRule:
 
 _POLICY_OWNER = "IAmina Privacy & Security"
 _EFFECTIVE = date(2026, 8, 2)
-_REVIEW_DUE = date(2026, 11, 2)
+_REVIEW_DUE = date(2027, 2, 4)
 
 RETENTION_RULES: tuple[RetentionRule, ...] = (
     RetentionRule(

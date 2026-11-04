@@ -70,7 +70,7 @@ PILOT_EMERGENCY_POLICY = EmergencyOperatingPolicy(
     mode=SELF_CARE_ONLY,
     policy_owner="IAmina Safety & Compliance",
     effective_on=date(2026, 8, 2),
-    review_due_on=date(2026, 11, 2),
+    review_due_on=date(2027, 2, 4),
     human_monitoring=False,
 )
 
