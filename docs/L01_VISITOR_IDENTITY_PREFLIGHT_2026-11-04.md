@@ -70,4 +70,22 @@ Utiliser **uniquement identités, mesures, photos et coffres synthétiques**, sa
 6. Prendre les décisions de fusion et de déploiement **séparément et explicitement** ; aucun merge ni Vercel autorisé dans ce preflight.
 
 **Chemin canonique :** L00 plan adopté → **L01 audit/implémentation sous gates** → L02, puis L03–L09.  
-**Closeout courant :** baseline documentaire seulement ; tests runtime et FUE **NOT RUN** ; aucune modification de code ni patient.
+**Closeout courant :** baseline documentaire + preuve Chrome bornée ajoutée ci-dessous ; **FUE V01–V16 non certifiée** ; aucune modification de code patient.
+
+## 5. Résultats navigateur ciblés — preuve supplémentaire sur PR #1272
+
+**Source vérifiée :** [PR Draft #1272](https://github.com/hraaaaf/IAMINA-MVP/pull/1272), HEAD `e2391fc0ca4acab9c8d64cdcf8942d6fbba1de06`, [run Chrome #41860217964 SUCCESS](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41860217964), [artefact JSON et PNGs](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41860217964/artifacts/13339751419). La preuve a été extraite et `proof.json` lu.
+
+| Preuve | Observation | Portée |
+|---|---|---|
+| Chrome réel, profil neuf, Flutter Web local | `real_web_boot = PASS` ; rechargement fonctionnel | Bootstrap réel uniquement, pas d'usage patient |
+| Trafic réseau CDP au démarrage et après reload | `api_requests_observed = []`, `profile_locale_request_count = 0` | **Succès borné** pour l'egress au bootstrap invité ; aucun parcours de navigation connecté |
+| IndexedDB dans ce Chrome vierge | `synthetic_fresh_browser_idb_names = ["amina"]` | **Anomalie de frontière à investiguer** : existence d'une base legacy ; contenu ou données médicales non démontrés |
+| BEFORE UI | PNGs 390×844, 430×932, 768×1024, 1280×900 ; « Set up IAmina here / Continue without an account » | Parcours d'enrôlement local **différent** du shell invité intégral D37-A ; aucun AFTER ni score visuel |
+| CI Web sur ce SHA | [#41860217686 SUCCESS](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41860217686) ; frontend analyse/tests/build vert | **977 tests PASS, 7 SKIPPED** ; ne certifie ni D18 ni D37 |
+
+**Verdict par scénario :** V06 **PARTIEL** (absence d'egress profil dans le parcours Chrome, pas de validation FR/AR complète) ; V01 **NON CONCLUANT** (une DB `amina` existe au démarrage, aucune preuve de contenu patient) ; V02–V05/V07–V16 **NOT RUN**. Les 16 cas FUE ne sont donc **pas PASS**. Les contrôles API directs, vieux service workers/PWA, Safari/WebKit et A→B→A restent ouverts.
+
+**Observation architecture bloquante :** `main.dart` appelle `AppDatabase.defaults()` pour inspecter le coffre legacy dans le but de **fail-closed app-lock**. Le nom IndexedDB observé est compatible avec ce chemin ; ceci reste une **hypothèse de cause**, pas une trace instrumentée de l'opération d'ouverture. Ne jamais retirer cette inspection avant une alternative sûre et testée sur vieux coffres. Le nouveau shell visiteur doit être dépourvu de provider patient et ne doit jamais lier les données legacy à un nouveau compte automatiquement.
+
+**Next L01 :** instrumenter l'origine exacte de `amina` sans mutation d'un coffre réel ; isoler cette sonde des écrans publics, définir mockup et cas FUE avant modification UI ; maintenir **D18 SAFE-HOLD / W01 NO-GO** et autorisations séparées merge/Vercel.
