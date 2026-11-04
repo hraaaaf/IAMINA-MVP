@@ -300,6 +300,9 @@ void main() {
     );
     await auth.initialize();
     expect(auth.isAuthenticated, isTrue);
+    // A valid patient vault requires the persisted device locator.
+    await auth.enrollLocalDevice();
+    expect(await auth.resolvePatientVaultScope(), isNotNull);
 
     final lock = AppLockService(
       authenticator: _FakeAuthenticator(),
