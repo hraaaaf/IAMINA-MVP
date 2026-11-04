@@ -95,8 +95,8 @@ void main() {
     final marker = D18CutoverMarker(
       sourceName: fixture.scope.databaseName,
       targetName: fixture.scope.databaseName + '_d18_cipher_v1',
-      logicalSha256: 'a' * 64,
-      ciphertextSha256: 'b' * 64,
+      logicalSha256: List.filled(64, 'a').join(),
+      ciphertextSha256: List.filled(64, 'b').join(),
       schemaVersion: 12,
       phase: D18CutoverPhase.prepared,
     );
@@ -122,8 +122,8 @@ void main() {
     final marker = D18CutoverMarker(
       sourceName: fixture.scope.databaseName,
       targetName: fixture.scope.databaseName + '_d18_cipher_v1',
-      logicalSha256: 'c' * 64,
-      ciphertextSha256: 'd' * 64,
+      logicalSha256: List.filled(64, 'c').join(),
+      ciphertextSha256: List.filled(64, 'd').join(),
       schemaVersion: 12,
       phase: D18CutoverPhase.ciphertextActive,
     );
