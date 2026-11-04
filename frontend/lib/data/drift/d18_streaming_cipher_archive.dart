@@ -38,7 +38,7 @@ final class _DigestSink implements Sink<hash.Digest> {
 /// Scope and envelope are never exposed in the public header.
 /// Validity of this archive is NOT sqlite3mc restoration or clinical proof.
 abstract final class D18StreamingCipherArchive {
-  static const format = 'iamina-d18-stream-v1';
+  static const format = 'iamina-d18-stream-v2';
   static const schemaVersion = 12;
   static const blockSize = 64 * 1024;
   static const maxRecordBytes = 150000;
@@ -107,7 +107,7 @@ abstract final class D18StreamingCipherArchive {
     return out;
   }
   static List<int> _aad(String scope,String kind,int seq) =>
-    utf8.encode('IAMINA-D18-STREAM-V1|$kind|$seq|$scope');
+    utf8.encode('IAMINA-D18-STREAM-V2|$kind|$seq|$scope');
 
   static Future<String> _seal(SecretKey key,List<int> prefix,String scope,
       String kind,int seq,List<int> bytes) async {
@@ -173,7 +173,7 @@ abstract final class D18StreamingCipherArchive {
     var count=0,total=0;
     try {
       yield utf8.encode(jsonEncode({
-        'format':format,'version':1,'kdf':'pbkdf2-sha256',
+        'format':format,'version':2,'kdf':'pbkdf2-sha256',
         'iterations':kdfIterations,'chunkSize':blockSize,
         'salt':base64Encode(salt),'noncePrefix':base64Encode(prefix),
       })+'\n');
@@ -262,7 +262,7 @@ abstract final class D18StreamingCipherArchive {
             'chunkSize','salt','noncePrefix'};
           if(record.keys.toSet().difference(fields).isNotEmpty ||
              fields.difference(record.keys.toSet()).isNotEmpty ||
-             record['format']!=format || record['version']!=1 ||
+             record['format']!=format || record['version']!=2 ||
              record['kdf']!='pbkdf2-sha256' ||
              record['iterations']!=kdfIterations ||
              record['chunkSize']!=blockSize ||
