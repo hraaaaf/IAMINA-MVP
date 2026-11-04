@@ -146,6 +146,44 @@ def test_revocation_takes_effect_before_next_egress(patient):
             assert_ai_egress_allowed(AUDIO)
 
 
+def test_d24_global_off_denies_existing_scopes_and_provider_calls(patient):
+    """An already-open request scope never freezes a consent grant."""
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+
+    from core.api.v1.account import withdraw_consent
+    from core.llm_gateway import GatewayLLM
+
+    provider = MagicMock()
+    with patch("core.llm_gateway.get_llm", return_value=provider):
+        gateway = GatewayLLM()
+        with ai_egress_scope(patient.id, "companion_chat", TEXT):
+            assert_ai_egress_allowed(TEXT)
+            status = withdraw_consent(SimpleNamespace(user=patient, META={}))
+            assert status["ai_consent_given"] is False
+            with pytest.raises(AIConsentRequired, match="AI consent"):
+                gateway.complete("Safe system", "Safe user")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="AI consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+    provider.complete.assert_not_called()
+
+
+def test_d24_reconsent_never_resurrects_revoked_media_grant(patient):
+    """A fresh global consent cannot reuse a prior photo permission."""
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+    from core.api.v1.account import withdraw_consent
+    withdraw_consent(SimpleNamespace(user=patient, META={}))
+    _grant_global_consent(patient)
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+
 def test_invalid_grant_pair_is_denied(patient):
     with pytest.raises(AIEgressDenied, match="not authorized"):
         grant_media_consent(patient.id, "companion_chat", IMAGE)
@@ -192,3 +230,82 @@ def test_endpoint_decorator_only_declares_scope_until_egress(patient):
         return req.user.id
 
     assert endpoint(request) == patient.id
+
+
+def test_d24_photo_provider_cannot_start_without_granular_grant(patient):
+    """A global AI notice is not permission to send a photograph."""
+    from llm.runtime import execute_external_provider_call
+
+    _grant_global_consent(patient)
+    operation = MagicMock(return_value="should never execute")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            execute_external_provider_call(
+                "gemini", IMAGE, "meal_vision", operation
+            )
+
+    operation.assert_not_called()
+
+
+def test_d24_open_photo_scope_checks_revocation_before_provider_start(patient):
+    """Revocation is checked on every dispatch, not on scope creation."""
+    from llm.runtime import execute_external_provider_call
+
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+    operation = MagicMock(return_value="should never execute")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        assert_ai_egress_allowed(IMAGE)
+        assert revoke_media_consent(patient.id, "meal_vision", IMAGE) is True
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            execute_external_provider_call(
+                "gemini", IMAGE, "meal_vision", operation
+            )
+
+    operation.assert_not_called()
+
+
+def test_d24_photo_grants_are_patient_scoped_and_do_not_cross_a_b_a(patient):
+    """A's image grant cannot unlock B, and A's revocation cannot lock B."""
+    other = User.objects.create_user(username="egress-other-patient")
+    BasePatientProfile.objects.create(
+        patient=other, date_of_birth=date(1992, 2, 2)
+    )
+    _grant_global_consent(patient)
+    _grant_global_consent(other)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+
+    with ai_egress_scope(other.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+    grant_media_consent(other.id, "meal_vision", IMAGE)
+    assert revoke_media_consent(patient.id, "meal_vision", IMAGE)
+
+    with ai_egress_scope(other.id, "meal_vision", IMAGE):
+        assert assert_ai_egress_allowed(IMAGE).patient_id == other.id
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+
+def test_d24_media_grant_does_not_override_pending_processor_approval(patient):
+    """Even consented synthetic image data never leaves via an unapproved vendor."""
+    from core.ai_processor_policy import AIProcessorPolicyDenied
+    from llm.runtime import execute_external_provider_call
+
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+    send_external = MagicMock(return_value="forbidden")
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        assert_ai_egress_allowed(IMAGE)  # Two-level patient consent is present.
+        with pytest.raises(AIProcessorPolicyDenied, match="not approved"):
+            execute_external_provider_call(
+                "gemini", IMAGE, "meal_vision", send_external
+            )
+
+    send_external.assert_not_called()
