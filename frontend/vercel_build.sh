@@ -40,7 +40,10 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
         echo "ERROR: Preview requires the exact IAMINA synthetic backend deployment URL" >&2
         exit 64
       fi
-      API_BASE_URL="${IAMINA_REVIEW_PREVIEW_API_BASE_URL%/}"
+      # Pin the browser bundle to the stable W01 Web alias. All /api/v1
+      # requests are now same-origin; the server-side OIDC bridge forwards
+      # them to the immutable synthetic API deployment above.
+      API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
       IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
       ;;
