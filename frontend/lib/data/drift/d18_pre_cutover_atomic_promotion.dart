@@ -115,6 +115,10 @@ final class D18PreCutoverAtomicPromotion {
   final int Function() readAuthEpoch;
   final bool Function() isKeyLocked;
   final bool Function() allPlaintextWritersQuiesced;
+  // No browser code can prove a pre-D18 cached tab is absent merely by
+  // acquiring Web Locks. The explicit override below is for synthetic tests
+  // ONLY; leaving it false rejects all promotion, even if locks look free.
+  final bool allowUnfencedSyntheticFixture;
   final bool Function() exclusiveOriginBarrierHeld;
   final Future<D18CutoverProof> Function() inspectUnderBarrier;
   final D18CutoverMarkerStore markerStore;
@@ -125,12 +129,16 @@ final class D18PreCutoverAtomicPromotion {
     required this.readAuthEpoch,
     required this.isKeyLocked,
     required this.allPlaintextWritersQuiesced,
+    this.allowUnfencedSyntheticFixture = false,
     required this.exclusiveOriginBarrierHeld,
     required this.inspectUnderBarrier,
     required this.markerStore,
   });
 
   void _checkImmediate(int epoch) {
+    if (!allowUnfencedSyntheticFixture) {
+      throw StateError('D18_OLD_CACHED_TABS_UNFENCED_NO_CUTOVER');
+    }
     if (readAuthEpoch() != epoch || isKeyLocked() ||
         !allPlaintextWritersQuiesced() || !exclusiveOriginBarrierHeld()) {
       throw StateError('D18_CUTOVER_AUTH_OR_WRITER_GATE_CLOSED');

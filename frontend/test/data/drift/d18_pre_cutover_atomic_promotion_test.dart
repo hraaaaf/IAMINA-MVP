@@ -64,7 +64,11 @@ final class _Harness {
     independentRecoveryArchiveVerified: archiveVerified,
   );
 
-  D18PreCutoverAtomicPromotion makeGate() => D18PreCutoverAtomicPromotion(
+  D18PreCutoverAtomicPromotion makeGate({
+    bool allowUnfencedSyntheticFixture = true,
+  }) => D18PreCutoverAtomicPromotion(
+    // Explicit test-only bypass; never supply this in a clinical runtime.
+    allowUnfencedSyntheticFixture: allowUnfencedSyntheticFixture,
     scope: scope,
     resolveAuthenticatedScope: () async => PatientVaultScope.nativeDjango(owner),
     readAuthEpoch: () => epoch,
@@ -81,6 +85,18 @@ final class _Harness {
 }
 
 void main() {
+  test('uncertified old clients refuse preparation even when locks appear free',
+      () async {
+    final h = _Harness();
+    // Both old gate callbacks claim success; neither can attest cached tabs.
+    expect(h.writersStopped, isTrue);
+    expect(h.barrierHeld, isTrue);
+    await expectLater(h.makeGate(allowUnfencedSyntheticFixture: false)
+        .prepare(), throwsStateError);
+    expect(h.store.current, isNull);
+    expect(h.store.changes, 0);
+  });
+
   test('prepare is pending and activation requires explicit synthetic flag',
       () async {
     final h = _Harness();
@@ -147,6 +163,7 @@ void main() {
       readAuthEpoch: () => 10,
       isKeyLocked: () => false,
       allPlaintextWritersQuiesced: () => true,
+      allowUnfencedSyntheticFixture: true, // synthetic audit denial only
       exclusiveOriginBarrierHeld: () => true,
       inspectUnderBarrier: () async => h.proof(),
       markerStore: h.store,
