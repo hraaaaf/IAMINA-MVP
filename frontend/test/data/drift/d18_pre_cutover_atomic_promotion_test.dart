@@ -195,6 +195,30 @@ void main() {
     expect(h.store.current, isNull);
   });
 
+  test('source barrier lost after proof cannot commit prepared marker',
+      () async {
+    final h = _Harness();
+    h.afterProof = () => h.barrierHeld = false;
+    await expectLater(h.makeGate().prepare(), throwsStateError);
+    expect(h.store.current, isNull);
+    expect(h.store.changes, 0);
+    // A verified point-in-time snapshot does not grant a durable write gate.
+  });
+
+  test('late plaintext writer after prepared proof blocks activation',
+      () async {
+    final h = _Harness();
+    final gate = h.makeGate();
+    final pending = await gate.prepare();
+    h.afterProof = () => h.writersStopped = false;
+    await expectLater(gate.activateForSyntheticTest(
+      explicitSyntheticApproval: true,
+    ), throwsStateError);
+    expect(h.store.current, pending);
+    expect(h.store.current!.phase, D18CutoverPhase.prepared);
+    expect(h.store.changes, 1);
+  });
+
   test('epoch change during verification cannot create pending marker',
       () async {
     final h = _Harness();
@@ -281,6 +305,34 @@ void main() {
     expect(persisted!.phase, D18CutoverPhase.ciphertextActive);
     expect(h.store.changes, 2);
     // Caller must inspect+reauthenticate; never infer failure == rollback.
+  });
+
+  test('lost prepare acknowledgement leaves a quarantined prepared marker; '
+      'replay never overwrites it', () async {
+    final h = _Harness()..store.loseAckAfterWrite = true;
+    await expectLater(h.makeGate().prepare(), throwsStateError);
+    final persisted = await h.makeGate().inspectMarker();
+    expect(persisted, isNotNull);
+    expect(persisted!.phase, D18CutoverPhase.prepared);
+    expect(h.store.changes, 1);
+    await expectLater(h.makeGate().prepare(), throwsStateError);
+    expect(h.store.current, same(persisted));
+    expect(h.store.changes, 1);
+    // In-memory synthetic CAS only: no browser durability claimed.
+  });
+
+  test('two synthetic migrators cannot both prepare the same vault', () async {
+    final h = _Harness();
+    final outcomes = await Future.wait(<Future<bool>>[
+      h.makeGate().prepare().then((_) => true,
+        onError: (Object _) => false),
+      h.makeGate().prepare().then((_) => true,
+        onError: (Object _) => false),
+    ]);
+    expect(outcomes.where((success) => success).length, 1);
+    expect(h.store.current!.phase, D18CutoverPhase.prepared);
+    expect(h.store.changes, 1);
+    // Real IndexedDB atomicity is covered by the separate Web probe.
   });
 
   test('existing active marker cannot be overwritten by prepare',
