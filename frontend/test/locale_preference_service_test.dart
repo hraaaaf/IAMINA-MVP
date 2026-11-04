@@ -2,10 +2,90 @@ import 'dart:io';
 
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/locale_preference_service.dart';
+import 'package:amina/services/api_client.dart';
+import 'package:chopper/chopper.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+// A client getter spy proves whether refresh even attempts to construct a
+// remote request. It never opens a network connection or patient storage.
+class _CountingApiClient extends ApiClient {
+  _CountingApiClient() : super(baseUrl: 'http://localhost:8000');
+  int clientAccesses = 0;
+
+  @override
+  ChopperClient get client {
+    clientAccesses++;
+    throw StateError('Synthetic test: network must never be used');
+  }
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('guest refresh preserves local Arabic without even accessing API client',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'iamina.ui_language': 'ar',
+      'iamina.locale_explicitly_selected': 'true',
+    });
+    final api = _CountingApiClient();
+    final service = LocalePreferenceService(
+      api,
+      systemLocale: const Locale('fr'),
+    );
+    addTearDown(service.dispose);
+
+    await service.refresh();
+    expect(api.clientAccesses, 0);
+    expect(service.locale.languageCode, 'ar');
+    expect(service.resolutionSource, LocaleResolutionSource.explicitLocal);
+  });
+
+  test('remote locale access tracks revocable verified-session permission',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    var verifiedAccount = false;
+    final api = _CountingApiClient();
+    final service = LocalePreferenceService(
+      api,
+      canFetchRemoteAccountLocale: () => verifiedAccount,
+      systemLocale: const Locale('fr'),
+    );
+    addTearDown(service.dispose);
+
+    await service.refresh();
+    expect(api.clientAccesses, 0, reason: 'guest before sign-in');
+
+    verifiedAccount = true;
+    await service.refresh();
+    expect(api.clientAccesses, 1, reason: 'verified session may try remote');
+
+    verifiedAccount = false;
+    await service.refresh();
+    expect(api.clientAccesses, 1, reason: 'logout must block new requests');
+    expect(service.locale.languageCode, 'fr');
+  });
+
+  test('audit locale cannot access remote client even if callback allows it',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final api = _CountingApiClient();
+    final service = LocalePreferenceService(
+      api,
+      auditLocale: const Locale('ar'),
+      canFetchRemoteAccountLocale: () => true,
+      systemLocale: const Locale('fr'),
+    );
+    addTearDown(service.dispose);
+
+    await service.refresh();
+    expect(api.clientAccesses, 0);
+    expect(service.resolutionSource, LocaleResolutionSource.audit);
+    expect(service.locale.languageCode, 'ar');
+  });
+
   test('remote account locale is denied by default for guests and audit', () {
     // D37-A: a missing verified remote identity can never authorize a fetch.
     for (final audit in [false, true]) {
