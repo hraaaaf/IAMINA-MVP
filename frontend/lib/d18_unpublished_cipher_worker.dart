@@ -163,6 +163,30 @@ Future<void> _serve(web.MessageEvent event) async {
       if (version.length != 1 || version.single['user_version'] != 12) {
         throw StateError('D18_CIPHERTEXT_SCHEMA_VERSION_REJECTED');
       }
+      // Before exposing Drift SQL to the caller, reject an authenticated
+      // but incomplete/damaged physical ciphertext. PRAGMA key alone is not
+      // sufficient, and version 12 may survive partial corruption.
+      stage = 'verify_reopened_cipher_integrity';
+      final integrity = await db.runSelect('PRAGMA integrity_check', const []);
+      if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+        throw StateError('D18_CIPHERTEXT_INTEGRITY_REJECTED');
+      }
+      stage = 'verify_reopened_cipher_foreign_keys';
+      final violations = await db.runSelect('PRAGMA foreign_key_check', const []);
+      if (violations.isNotEmpty) {
+        throw StateError('D18_CIPHERTEXT_FK_REJECTED');
+      }
+      stage = 'verify_reopened_cipher_tables';
+      final tables = await db.runSelect(
+        "SELECT name FROM sqlite_master WHERE type='table'", const []);
+      final names = tables.map((row) => row['name']).toSet();
+      if (!names.containsAll(const [
+        'patient_profiles', 'log_entries', 'chat_messages',
+        'medication_events', 'reminders',
+        'patient_treatment_declarations_v1',
+      ])) {
+        throw StateError('D18_CIPHERTEXT_SCHEMA_INCOMPLETE');
+      }
     }
     stage = 'create_drift_server';
     final liveServer = DriftServer(db, closeConnectionAfterShutdown: true);
