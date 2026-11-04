@@ -450,16 +450,19 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               onTap: () => setState(() => _unit = 'mmol/L'),
             ),
             if (_unit == null)
-              Text(
-                _preferencesCopy(context,
-                  fr: 'Choisissez l’unité indiquée sur votre lecteur avant de continuer.',
-                  en: 'Choose the unit shown on your meter before continuing.',
-                  ar: 'اختر الوحدة المعروضة على جهاز القياس قبل المتابعة.',
-                ),
-                key: const Key('onboarding-unit-required-hint'),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AminaTheme.textSecondary(context),
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  _preferencesCopy(context,
+                    fr: 'Choisissez l’unité indiquée sur votre lecteur avant de continuer.',
+                    en: 'Choose the unit shown on your meter before continuing.',
+                    ar: 'اختر الوحدة المعروضة على جهاز القياس قبل المتابعة.',
+                  ),
+                  key: const Key('onboarding-unit-required-hint'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AminaTheme.textSecondary(context),
+                  ),
                 ),
               ),
           ],

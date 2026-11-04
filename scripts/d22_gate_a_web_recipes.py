@@ -276,6 +276,18 @@ def main():
                         country.click()
                         country.press_sequentially(COPY["country"], delay=110)
                         page.get_by_role("button", name=COPY["country"]).click(timeout=18000)
+                        # D8: explicitly choose the meter unit before Start.
+                        # Country selection alone must never auto-select mg/dL.
+                        start_before_unit = page.get_by_role(
+                            "button", name=COPY["start"], exact=True
+                        )
+                        if start_before_unit.count() > 0:
+                            assert not start_before_unit.first.is_enabled(), (
+                                "D8 regression: Start enabled without a chosen unit"
+                            )
+                        page.get_by_role(
+                            "checkbox", name="mg/dL", exact=True
+                        ).click(timeout=18000)
                         page.get_by_role(
                             "button", name=COPY["start"], exact=True
                         ).click(timeout=18000)
