@@ -20,6 +20,7 @@ import 'services/medical_vault_protected_state.dart';
 import 'services/locale_preference_service.dart';
 import 'services/patient_vault_session_controller.dart';
 import 'services/patient_vault_app_host.dart';
+import 'services/startup_perf_trace.dart';
 
 
 Future<bool> _hasProtectedLocalState({
@@ -39,7 +40,9 @@ Future<bool> _hasProtectedLocalState({
 }
 
 Future<void> main() async {
+  StartupPerfTrace.mark('main_enter');
   WidgetsFlutterBinding.ensureInitialized();
+  StartupPerfTrace.mark('binding_ready');
 
   if (kFirebaseMigrationEnabled) {
     try {
@@ -51,9 +54,11 @@ Future<void> main() async {
     }
   }
 
+  StartupPerfTrace.mark('firebase_stage_ready');
   final auditAllowed = AuditAccessPolicy.isAllowed(Uri.base);
   final authService = AuthService();
   await authService.initialize();
+  StartupPerfTrace.mark('auth_ready');
   if (auditAllowed) authService.enterAuditSession();
 
   // The historical mixed-owner DB is inspected solely to keep device-lock
@@ -67,6 +72,7 @@ Future<void> main() async {
   } finally {
     await legacy.close();
   }
+  StartupPerfTrace.mark('legacy_probe_ready');
 
   // A missing app-lock credential must not be treated as a fresh install
   // merely because the quarantined pre-D7 database is empty. Inspect ONLY
@@ -89,12 +95,14 @@ Future<void> main() async {
     }
   }
 
+  StartupPerfTrace.mark('scoped_probe_ready');
   final appLockService = AppLockService(
     authService: authService,
     protectedLocalStateProbe: () async =>
         legacyProtected || currentVaultProtected,
   );
   await appLockService.initialize();
+  StartupPerfTrace.mark('lock_ready');
   // Switching A to B must revoke the previous device unlock immediately.
   authService.addListener(appLockService.lock);
 
@@ -111,10 +119,13 @@ Future<void> main() async {
         ? AuditAccessPolicy.requestedLocale(Uri.base)
         : null,
   )..refresh();
+  StartupPerfTrace.mark('locale_refresh_started');
 
   final vaultController = PatientVaultSessionController.forAuth(authService);
   await vaultController.reconcile();
+  StartupPerfTrace.mark('vault_reconcile_ready');
 
+  StartupPerfTrace.mark('runapp_begin');
   runApp(PatientVaultAppHost(
     auth: authService,
     api: apiClient,
@@ -123,6 +134,7 @@ Future<void> main() async {
     controller: vaultController,
     auditAllowed: auditAllowed,
   ));
+  StartupPerfTrace.mark('runapp_return');
 }
 
 class AminaApp extends StatefulWidget {

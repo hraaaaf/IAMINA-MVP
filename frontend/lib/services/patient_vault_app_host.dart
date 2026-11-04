@@ -18,6 +18,7 @@ import 'modules_provider.dart';
 import 'offline_demo_audit_seed.dart';
 import 'patient_vault_session_controller.dart';
 import 'sync_service.dart';
+import 'startup_perf_trace.dart';
 
 /// Each subtree holds ONLY ONE physical patient vault and its own consent,
 /// profile stream, sync queue and router. No legacy 'amina' database is
@@ -70,6 +71,14 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   late final AppRouterHolder _guestRouter;
   _VaultBindings? _bindings;
   int _generation = 0;
+  final Set<String> _firstScreenMilestones = <String>{};
+
+  void _markPaintOnce(String phase) {
+    if (!StartupPerfTrace.enabled || !_firstScreenMilestones.add(phase)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) StartupPerfTrace.mark(phase);
+    });
+  }
 
   @override
   void initState() {
@@ -85,7 +94,10 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     unawaited(_bindCurrentVault());
   }
 
-  void _onLockChanged() => _maybeStartSync();
+  void _onLockChanged() {
+    if (widget.appLock.isUnlocked) StartupPerfTrace.mark('unlock_event');
+    _maybeStartSync();
+  }
 
   void _maybeStartSync() {
     final current = _bindings;
@@ -132,6 +144,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     if (db == _bindings?.db) return;
     final epoch = AuthService.authEpoch;
     final generation = ++_generation;
+    StartupPerfTrace.mark('vault_binding_begin');
     final evidence = ConsentEvidenceStore.forPatientVault(scope);
     bool hasVerifiedEvidence = false;
     bool withdrawalPending = false;
@@ -192,6 +205,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         return;
       }
       setState(() => _bindings = bundle);
+      StartupPerfTrace.mark('vault_binding_ready');
       _maybeStartSync();
     } catch (_) {
       // Any inaccessible/migrating vault must stay fail-closed. No legacy
@@ -238,6 +252,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     if (bundle != null &&
         widget.controller.activeDatabase == bundle.db &&
         bundle.authEpoch == AuthService.authEpoch) {
+      _markPaintOnce('patient_shell_post_frame');
       return MultiProvider(
         key: ValueKey('d7-patient-vault-${bundle.scope.databaseName}'),
         providers: [
@@ -269,6 +284,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     }
 
     if (!widget.controller.isResolving && !widget.auth.isAuthenticated) {
+      _markPaintOnce('guest_shell_post_frame');
       return MultiProvider(
         providers: [
           Provider<AppDatabase>.value(value: _guestDatabase),
@@ -288,6 +304,7 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
 
     // A verified local patient namespace is unavailable or being switched.
     // Never show the previous patient's screen, even for one new route.
+    _markPaintOnce('pending_shell_post_frame');
     return MaterialApp(
       home: Scaffold(
         body: Center(

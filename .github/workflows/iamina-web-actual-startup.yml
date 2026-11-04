@@ -1,0 +1,76 @@
+name: IAMINA PERF-WEB — real Flutter startup trace opt-in
+
+on:
+  push:
+    branches: [perf/iamina-web-startup-20261103]
+    paths:
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/services/startup_perf_trace*.dart'
+      - 'frontend/web/index.html'
+      - 'frontend/web/iamina_startup_perf.js'
+      - 'frontend/test/startup_perf_trace_contract_test.dart'
+      - 'scripts/iamina_web_actual_startup_ci.py'
+      - '.github/workflows/iamina-web-actual-startup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iamina-perf-web-real-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-startup:
+    name: Actual Flutter Web guest startup + opt-in diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Analyze, safety contract, and compile real Flutter app
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter test --reporter expanded test/startup_perf_trace_contract_test.dart
+          flutter analyze --no-fatal-infos \
+            lib/main.dart \
+            lib/services/patient_vault_app_host.dart \
+            lib/services/startup_perf_trace.dart \
+            lib/services/startup_perf_trace_stub.dart \
+            lib/services/startup_perf_trace_web.dart
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_STARTUP_TRACE=true \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+            --dart-define=API_BASE_URL=http://127.0.0.1:9
+          test -s build/web/main.dart.js
+          test -s build/web/iamina_startup_perf.js
+      - name: Install Chromium and validate diagnostic script syntax
+        run: |
+          set -euo pipefail
+          node --check frontend/web/iamina_startup_perf.js
+          python3 -m py_compile scripts/iamina_web_actual_startup_ci.py
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+      - name: BEFORE and AFTER on 390, 430, 768, 1280 viewports
+        run: |
+          set -euo pipefail
+          python3 scripts/iamina_web_actual_startup_ci.py
+      - name: Keep bounded evidence, responsive captures and marks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-perf-web-actual-startup-${{ github.run_id }}
+          path: perf_web_actual_startup/
+          retention-days: 7
+          if-no-files-found: warn

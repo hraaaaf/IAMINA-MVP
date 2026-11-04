@@ -32,6 +32,16 @@
 <body>
   <!-- Local-only WebAuthn verifier. It performs no network calls. -->
   <script src="iamina_app_lock.js"></script>
+  <!-- Load local timing UI only if explicitly requested. Normal visits do not
+       request an additional script or show an overlay. -->
+  <script>
+    if (new URLSearchParams(location.search).get("startup_perf") === "1") {
+      const perfScript = document.createElement("script");
+      perfScript.src = "iamina_startup_perf.js";
+      perfScript.async = false;
+      document.head.appendChild(perfScript);
+    }
+  </script>
   <!-- Flutter bootstrap. Offline app-shell behavior is qualified separately. -->
   <script src="flutter_bootstrap.js" async></script>
 </body>

@@ -95,3 +95,16 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - **CI :** [#41741895614](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41741895614), IN_PROGRESS au premier contrôle ; aucune sélection effective du backend ne peut être déclarée avant la lecture de l'artefact.
 - **Limites :** Linux Playwright WebKit n'est pas Safari iPhone ; 300 lignes et IDs synthétiques, aucun dossier médical/credential réel. Ne pas imputer le problème à un appareil réel sans répétition.
 - **Next exact :** lire la CI, vérifier si l'observateur s'exécute et enregistrer le mode exact. Si `inMemory`, prouver la limitation et maintenir l'échec du test de persistance ; si `sharedIndexedDb`, analyser les transactions/fermetures WebKit. Corriger et retester seulement après attribution, puis mettre à jour Notion.
+
+
+## Pivot PERF-WEB — instrumentation du vrai démarrage (reprise autorisée)
+
+- **Décision / Goal** : remplacer le banc synthétique WebKit à répétition par un diagnostic direct du chemin critique de démarrage Flutter Web et du premier écran utilisateur.
+- **Succès observable** : jalons entre navigation, auth, sondage de coffre legacy + coffre courant, app lock, reconcile, runApp et premier écran hôte. Le premier frame Flutter ne suffit pas à certifier un écran utilisable.
+- **BEFORE** : pas d'accès aux durées des initialisations dans le vrai build ; les tests précédents mesuraient des fixtures ou le premier frame public. Le précédent run public #41730039062 12/12 premiers frames n'est pas une preuve du retour patient Safari.
+- **Mockup** : petit bouton « ⏱ Chrono » en bas à droite, volet blanc 342px max avec « Écran prêt », « Copier », « Actualiser », « Fermer » et horodatages numériques sans aucune donnée personnelle. Identique visuellement sur 390, 430, 768, 1280px ; caché sans paramètre URL.
+- **Isolation** : drapeau de compilation IAMINA_STARTUP_TRACE=true ET paramètre startup_perf=1 pour les jalons Dart. Le script du volet n'est même pas chargé sans startup_perf=1. Aucune donnée patient, identifiant, token, URL complète, requête réseau ou stockage durable n'est exporté. Le jalon « écran prêt » reste manuel et surestime le temps de disponibilité.
+- **Implémentation envisagée / en validation** : nouveaux fichiers du tracer et volet ; modifications purement additives dans main.dart et l'hôte patient. Ne jamais supprimer ni raccourcir les contrôles fail-closed pour gagner du temps artificiellement.
+- **AFTER / contrôle de conformité** : build release de l'application réelle avec Chromium, BEFORE sans paramètre et AFTER volet ouvert pour 390×844, 430×932, 768×1024 et 1280×900, captures, premiers frames et jalons; lire l'artefact et comparer visuellement. Un seul run indépendant de WebKit Linux, qui n'a aucun droit de certifier Safari iPhone.
+- **Human gate** : tests Safari sur iPhone réel et éventuelle preview Vercel nécessitent une autorisation explicite de déploiement. Aucune preview ni merge dans ce lot.
+- **État** : travaux préparés ; validation et score visuel non encore démontrés.
