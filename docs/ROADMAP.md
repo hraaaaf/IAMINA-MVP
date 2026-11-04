@@ -27,7 +27,7 @@ Ces identifiants correspondent **aux numéros 33 à 38 donnés par le propriéta
 | **D37** | Connexion sans compte limitée | **Exploration sans inscription**, puis écran connexion/inscription **avant toute lecture/écriture DB ou fetch métier** ; aucune persistance de santé en visiteur ; préserver le chemin historique | Arbitrage immédiat du parcours invité + identité ; Gate L01 |
 | **D38** | « Application setting » fermé par défaut | Accordéon fermé au rendu initial, état et clavier/accessibilité testés ; renommer/repositionner selon D36 | Priorité à la mise en place D36 ; maquette BEFORE/AFTER |
 
-**Point UX à fixer avec le propriétaire en premier :** surfaces invitées exactes (éducation, découverte, simulation fictive ; pas de journal personnel). Une proposition ne vaut pas activation.
+**Point UX à fixer avec le propriétaire en premier :** accès à l'interface de l'app dès l'entrée (shell complet et navigation possible), mais écrans vides/fictifs sans aucune lecture ou écriture de DB ni fetch métier en mode invité ; toute action nécessitant des données ou un service conduit immédiatement à connexion/inscription. Une proposition ne vaut pas activation.
 
 ## 2. Roadmap EXÉCUTABLE — ordre unique par risque, dépendances et valeur
 
@@ -140,7 +140,7 @@ Le numéro de décision ne définit **jamais** l'ordre de travaux. Seules les tr
 
 **Décisions à arbitrer avec l'utilisateur, une par une** (proposition initiale, alternative et conséquence notées avant validation) :
 
-1. **O1 / D37 — visiteur :** quels écrans sont effectivement autorisés sans compte ? Proposition : Accueil découverte, éducation, simulateurs fictifs, pas de données patient. Choix **A** démo guidée entièrement statique ; **B** accès à l'interface entière mais protection de chaque commande clinique (plus de risques de contournement UX). **Recommandation A**. La nouvelle formulation « dès DB/fetch » est acquise comme direction ; seule la liste d'écrans reste à figer.
+1. **O1 / D37 — visiteur :** quel périmètre est navigable sans compte ? **A** : visiter toute l'interface et ses rubriques en mode lecture statique (états vides et exemples fictifs), avec connexion/inscription AVANT toute lecture/écriture DB, appel API ou fetch métier — **RECOMMANDÉ, plus fidèle à l'orientation utilisateur mais exige un audit de tous les fetchs automatiques au montage des écrans**. **B** : quelques écrans de découverte seulement, plus simple techniquement mais moins démonstratif. Aucune donnée patient affichée ni créée dans les deux cas. La règle « dès DB/fetch » est acquise comme direction ; on valide maintenant la navigation invitée.
 2. **O2 / D30/D9/D18 — anciennes données :** voie de récupération manuelle après connexion, rétention de l'ancien coffre et refus de liaison automatique. Sans preuve de migration sûre, pas de blocage brutal des utilisateurs locaux existants.
 3. **O3 / D10/D24/D26 — compte et consentements :** identifiant stable, verrou local/offline, IA OFF effectif, droit d'effacer, API patient.
 4. **O4 / D36/D38 — Paramètres :** hiérarchie/maquette, catégories, accordéon fermé initialement.
