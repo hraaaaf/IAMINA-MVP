@@ -283,6 +283,34 @@ void main() {
     // Caller must inspect+reauthenticate; never infer failure == rollback.
   });
 
+  test('lost prepare acknowledgement leaves a quarantined prepared marker; '
+      'replay never overwrites it', () async {
+    final h = _Harness()..store.loseAckAfterWrite = true;
+    await expectLater(h.makeGate().prepare(), throwsStateError);
+    final persisted = await h.makeGate().inspectMarker();
+    expect(persisted, isNotNull);
+    expect(persisted!.phase, D18CutoverPhase.prepared);
+    expect(h.store.changes, 1);
+    await expectLater(h.makeGate().prepare(), throwsStateError);
+    expect(h.store.current, same(persisted));
+    expect(h.store.changes, 1);
+    // In-memory synthetic CAS only: no browser durability claimed.
+  });
+
+  test('two synthetic migrators cannot both prepare the same vault', () async {
+    final h = _Harness();
+    final outcomes = await Future.wait(<Future<bool>>[
+      h.makeGate().prepare().then((_) => true,
+        onError: (Object _) => false),
+      h.makeGate().prepare().then((_) => true,
+        onError: (Object _) => false),
+    ]);
+    expect(outcomes.where((success) => success).length, 1);
+    expect(h.store.current!.phase, D18CutoverPhase.prepared);
+    expect(h.store.changes, 1);
+    // Real IndexedDB atomicity is covered by the separate Web probe.
+  });
+
   test('existing active marker cannot be overwritten by prepare',
       () async {
     final h = _Harness();
