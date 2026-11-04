@@ -99,6 +99,25 @@ void main() {
     expect(serviceSource, contains('return true;'));
   });
 
+
+  test('D10 Web opt-out remains fail-closed pending D18 vault certification', () {
+    final service = File('lib/services/app_lock_service.dart').readAsStringSync();
+    final setup = File('lib/features/auth/app_lock_setup_screen.dart')
+        .readAsStringSync();
+    final profile = File('lib/features/profile/profile_screen.dart')
+        .readAsStringSync();
+    final presentation = File('lib/features/profile/profile_screen_presentation.dart')
+        .readAsStringSync();
+    expect(service, contains('bool get canOptOutOfAppLock => !kIsWeb;'));
+    expect(service, contains('final chosenNoLock = canOptOutOfAppLock &&'));
+    expect(service, contains('final allowed = canOptOutOfAppLock &&'));
+    expect(service.split("AppLockException('web_encrypted_vault_required')").length - 1, 2);
+    expect(setup, contains('if (context.read<AppLockService>().canOptOutOfAppLock) ...['));
+    expect(setup, contains('après certification du stockage médical chiffré'));
+    expect(profile, contains('(disabling && !lock.canOptOutOfAppLock)'));
+    expect(presentation, contains('(enabled && !lock.canOptOutOfAppLock)'));
+  });
+
   test('WebAuthn bridge requires local user verification and exact binding', () {
     final source = File('web/iamina_app_lock.js').readAsStringSync();
 
