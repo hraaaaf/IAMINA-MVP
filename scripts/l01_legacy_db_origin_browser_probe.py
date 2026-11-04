@@ -108,8 +108,7 @@ def run():
 
                 def phase(name):
                     cdp("Page.navigate", {"url": f"{ORIGIN}/?phase={name}"})
-                    limit = time.monotonic() + 35
-                    mounted = False
+                    limit = time.monotonic() + 50
                     last = {}
                     while time.monotonic() < limit:
                         response = cdp("Runtime.evaluate", {
@@ -117,45 +116,33 @@ def run():
                               mounted: !!document.querySelector(
                                 'flutter-view, flt-glass-pane, flt-scene-host'
                               ),
-                              title: document.title,
+                              marker: document.documentElement?.getAttribute(
+                                'data-l01-phase-result'
+                              ) || '',
                               url: location.origin + location.pathname + location.search,
                               ready: document.readyState,
-                              bootstrap: !!document.querySelector(
-                                'script[src*=flutter_bootstrap]'
-                              ),
-                              canvas: !!document.querySelector('canvas'),
-                              bodyChars: (document.body?.innerText || '').length,
                             }))()""",
                             "returnByValue": True,
                         })
                         info = response.get("result", {}).get("value") or {}
                         last = info
-                        # The synthetic Flutter entrypoint mounts its view
-                        # but does not set the production app's HTML title.
-                        # The preceding failed runs proved mounted=True,
-                        # ready=complete, title=''. Do not gate a CI probe
-                        # on unrelated SEO/title metadata.
-                        mounted = bool(info.get("mounted")) and (
-                            info.get("ready") == "complete")
-                        if mounted:
+                        if (info.get("mounted") and
+                            info.get("ready") == "complete" and
+                            info.get("url", "").endswith(f"?phase={name}") and
+                            str(info.get("marker", "")).startswith("IAMINA_L01_")):
                             break
                         time.sleep(0.3)
-                    if not mounted:
+                    else:
                         raise RuntimeError(
-                            f"Flutter did not mount in {name}, "
+                            f"Flutter synthetic phase did not complete in {name}; "
                             f"last={last!r}, runtimeErrors={runtime_errors[-3:]!r}"
                         )
-                    # Allow deferred Drift worker/IndexedDB operations to settle
-                    # after the actual Flutter app has mounted.
-                    time.sleep(1.5)
+                    # The phase-specific DOM marker is emitted after awaited
+                    # database operations; no arbitrary sleep is used as proof.
                     names = cdp("IndexedDB.requestDatabaseNames", {
                         "securityOrigin": ORIGIN,
                     }).get("databaseNames", [])
-                    title = cdp("Runtime.evaluate", {
-                        "expression": "document.title",
-                        "returnByValue": True,
-                    }).get("result", {}).get("value", "")
-                    return {"names": names, "title": title}
+                    return {"names": names, "title": last["marker"]}
 
                 before = phase("control")
                 proof["steps"].append({
