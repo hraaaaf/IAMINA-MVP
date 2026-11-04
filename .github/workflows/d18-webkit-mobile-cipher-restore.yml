@@ -11,6 +11,7 @@ on:
       - 'tools/d18_dart_idb_marker_bridge_probe.js'
       - 'tools/d18_source_writer_barrier_probe.js'
       - 'tools/d18_real_source_interlock_probe.js'
+      - 'tools/d18_stale_tab_write_bypass_probe.js'
       - 'tools/d18_source_lock_dart_browser_probe.js'
       - 'tools/fixtures/d18_source_lock_browser_test.html'
       - 'frontend/lib/d18_source_lock_probe_main.dart'
@@ -102,6 +103,12 @@ jobs:
           node --check frontend/web/d18_source_interlock.js
           node --check tools/d18_real_source_interlock_probe.js
           D18_SOURCE_INTERLOCK_BROWSER=webkit node tools/d18_real_source_interlock_probe.js
+      - name: D18 negative old tab writes under exclusive locks (webkit CI only)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_stale_tab_write_bypass_probe.js
+          D18_STALE_BROWSER=webkit node tools/d18_stale_tab_write_bypass_probe.js
       - name: Verify isolated Dart source bridge to Web Lock (webkit CI-only)
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
