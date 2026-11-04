@@ -6,7 +6,6 @@ const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
 const crypto=require('node:crypto');
-const readline=require('node:readline');
 const {once}=require('node:events');
 const {finished}=require('node:stream/promises');
 const SIZE=17*1024*1024+107;
@@ -36,6 +35,26 @@ function unprotect(key,prefix,kind,seq,encoded,expectedScope){
   decipher.setAAD(aad(kind,seq,expectedScope));
   decipher.setAuthTag(bytes.subarray(-16));
   return Buffer.concat([decipher.update(bytes.subarray(0,-16)),decipher.final()]);
+}
+// Bounded parser: readline's unbounded line buffering would allow an
+// attacker to exhaust memory with a single malformed multi-GB record.
+async function* boundedLines(file){
+  let pending=Buffer.alloc(0);
+  for await(const chunk of fs.createReadStream(file,{highWaterMark:BLOCK})){
+    let start=0;
+    while(true){
+      const end=chunk.indexOf(10,start);
+      if(end<0)break;
+      const fragment=chunk.subarray(start,end);
+      assert(pending.length+fragment.length<=150000,'OVERSIZED_RECORD');
+      yield Buffer.concat([pending,fragment]).toString('utf8');
+      pending=Buffer.alloc(0);start=end+1;
+    }
+    const remaining=chunk.subarray(start);
+    assert(pending.length+remaining.length<=150000,'OVERSIZED_RECORD');
+    pending=Buffer.concat([pending,remaining]);
+  }
+  assert(pending.length===0,'UNTERMINATED_LAST_FRAME');
 }
 async function writeLine(stream,obj){
   if(!stream.write(JSON.stringify(obj)+'\n'))await once(stream,'drain');
@@ -83,10 +102,7 @@ async function restore(archive,stage,destination,expectedScope,password,
   let key,hash=crypto.createHash('sha256'),prefix;
   let total=0,count=0,foundFinal=false,header=false;
   try{
-    const lines=readline.createInterface({
-      input:fs.createReadStream(archive,{highWaterMark:BLOCK}),
-      crlfDelay:Infinity});
-    for await(const line of lines){
+    for await(const line of boundedLines(archive)){
       assert(line.length<150000,'OVERSIZED_RECORD');
       const record=JSON.parse(line);
       if(!header){
@@ -107,8 +123,13 @@ async function restore(archive,stage,destination,expectedScope,password,
         const bytes=unprotect(key,prefix,'chunk',count,record.sealed,
           expectedScope);
         assert(bytes.length>0&&bytes.length<=BLOCK,'BAD_CHUNK_SIZE');
-        fs.writeSync(fd,bytes);
+        for(let offset=0;offset<bytes.length;){
+          const n=fs.writeSync(fd,bytes,offset,bytes.length-offset);
+          assert(n>0,'STALLED_PARTIAL_WRITE');
+          offset+=n;
+        }
         hash.update(bytes);total+=bytes.length;count++;
+        assert(total<=512*1024*1024,'MAX_STREAM_CAP_EXCEEDED');
         if(count===interruptAfter)throw Error('D18_P0D_SIMULATED_CRASH');
       }else if(record.kind==='final'){
         const manifest=JSON.parse(unprotect(key,prefix,'final',count,
@@ -130,14 +151,10 @@ async function restore(archive,stage,destination,expectedScope,password,
   fs.unlinkSync(stage);
   return {total,count};
 }
-function digest(file){
-  return new Promise(async(resolve,reject)=>{
-    const hash=crypto.createHash('sha256');
-    try{
-      for await(const b of fs.createReadStream(file))hash.update(b);
-      resolve(hash.digest('hex'));
-    }catch(e){reject(e);}
-  });
+async function digest(file){
+  const hash=crypto.createHash('sha256');
+  for await(const b of fs.createReadStream(file))hash.update(b);
+  return hash.digest('hex');
 }
 async function mustReject(name,work){
   let rejected=false;
