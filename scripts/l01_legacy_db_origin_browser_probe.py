@@ -53,7 +53,9 @@ def run():
         "steps": [],
     }
 
-    with tempfile.TemporaryDirectory(prefix="iamina-l01-legacy-origin-") as tmp:
+    with tempfile.TemporaryDirectory(
+        prefix="iamina-l01-legacy-origin-", ignore_cleanup_errors=True
+    ) as tmp:
         with Path(tmp, "chrome.log").open("w", encoding="utf-8") as logfile:
             p = subprocess.Popen(
                 [
@@ -167,6 +169,13 @@ def run():
                     "PASS_CAUSAL_SYNTHETIC_CONTROL"
                     if "amina" not in before and "amina" in after
                     and not api_paths else "FAIL"
+                )
+                # Persist real observations *before* closing Chrome and
+                # cleaning its private profile; cleanup must never hide proof.
+                ARTIFACT_DIR.mkdir(exist_ok=True)
+                (ARTIFACT_DIR / "phase-observations.json").write_text(
+                    json.dumps(proof, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
                 )
                 if proof["result"] != "PASS_CAUSAL_SYNTHETIC_CONTROL":
                     raise RuntimeError("Legacy open vs control did not isolate amina")
