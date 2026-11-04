@@ -94,3 +94,20 @@ Audit adversarial : la limitation du formulaire et le refus `AuthService.registe
 **Test humain minimal à faire maintenant** : ouvrir en Safari avec session SSO Vercel `https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app/api/v1/health` et communiquer seulement la réponse visible (200 JSON / 403 / 502 / 503 / SSO login). Aucun identifiant, cookie, jeton ou patient. Si HTTP 200 : poursuivre tests A/logout/B et empreinte Neon ; sinon diagnostiquer runtime Web puis gate Trusted Sources API. Ne pas annoncer « corrigé » en l'absence de preuve.
 
 **Verdict : W01 NO-GO — build et CI verts mais chaîne Web→API→Neon non certifiée.** La tête documentaire ultérieure peut être différente du SHA déployé ; toujours distinguer les deux.
+
+
+## W01 — Health same-origin Safari 200, logs croisés — 04/11/2026
+
+**Goal testé :** établir si l'alias **Web Preview** peut transmettre `GET /api/v1/health` à l'API Preview protégée, sans navigateur cross-origin ni modification Production.
+
+**Preuve humaine :** l'utilisateur a ouvert dans Safari `https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app/api/v1/health` et confirmé le JSON `status=ok`, `db=ok` (le cache reste `unavailable`). La provenance précise de cette URL est le lien Web same-origin fourni en test ; ceci n'est pas une authentification de patient.
+
+**Contre-épreuve Vercel :** journal du déploiement API Preview `dpl_9ryTimFJ6JwsfbW66NXno2gWYcZB` : `2026-11-04T22:08:25.433Z GET /api/v1/health`, HTTP **200**, URL Django enregistrée `/api/v1/health?utm_source=chatgpt.com&path=health`, domaine API immuable `iamina-certified-hmmwtj2iu-achraf-benmoussa-s-projects.vercel.app`. Le paramètre `path=health` est cohérent avec le paramètre capturé par le rewrite du proxy, mais n'est pas à lui seul une preuve d'identité de la base. La recherche de logs du Web `dpl_FbthU6wWtg6iuXwy6hdjoPbetJXq` sur `/api/v1/health` ne renvoie aucune ligne de console ; un proxy sans logging n'a pas nécessairement de ligne dans cette interface.
+
+**Déploiement audité :** Web `dpl_FbthU6wWtg6iuXwy6hdjoPbetJXq`, **READY**, SHA runtime `5cf30263cf2169ef1c8b268a628a63ca7da117ab`. API **READY**, runtime `53f22063677e4dfed88f2d701b2476cb2d816511`. Tête documentaire PR au moment du contrôle `7aa89ae65a8e7f99a339b728f9d7ecd7fa4faf4b`, Draft. CI générale précédente sur SHA runtime vert ; CI sur tête documentaire `#41921702472` SUCCESS, W01 static `#41921702400` SUCCESS ; autres workflows en cours à l'instant du contrôle, ne pas extrapoler.
+
+**Post-login non exécuté :** aucun `POST /api/v1/auth/login` n'est visible dans les logs API ni Web de la fenêtre `2026-11-04 21:24–22:09 UTC`. Les deux comptes synthétiques A/B restent actifs en Neon sandbox, dernières connexions respectives `2026-11-01T02:19:58Z` et `2026-11-01T00:28:46Z`; pas de preuve d'un nouveau login. Contrôle read-only Neon : `auth_user=2`, `core_basepatientprofile=2`, `core_observabilityevent=66`, `core_authabusebucket=69`, identiques à la baseline précédente. Aucune mutation Neon dans ce diagnostic.
+
+**Nuance de sécurité :** `Trusted Sources` du projet API reste non configurable via la méthode testée (`404 Deployment Protection Trusted Sources not found`), **mais cette erreur administrative n'empêche manifestement pas le GET health via le relais actuel**. Ne pas en déduire que les POST authentifiés réussissent, ni que le contrôle Production est certifié. Le `DATABASE_URL` de Preview possède un identifiant de variable distinct du `DATABASE_URL` Production, mais sa valeur est sensible/masquée ; **empreinte runtime API→branche Neon sandbox non certifiée**.
+
+**Décision :** connectivity gate `GET health` **PASS avec preuve user + log API**, le lot W01 complet demeure **NO-GO**. **Next exact :** sur ce même alias Web, un login du seul compte **synthétique A** puis observation de l'écran (ne pas communiquer mot de passe, cookies ou jetons). Si refus, corréler immédiatement `POST /api/v1/auth/login` dans les logs Web et API et distinguer Django 401 / 403 SSO / 5xx / transport. Si login A réussi, faire logout puis B, isolation et vérification de la DB runtime avant toute certification.
