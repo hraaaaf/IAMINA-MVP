@@ -106,6 +106,41 @@ for path in sorted(ROOT.rglob("*.dart")):
     if re.search(r"\ballowUnfencedSyntheticFixture\s*:\s*true\b", src):
         synthetic_bypass_leaks.append(rel)
 
+# A test-only marker/connector is not a real clinical fencing mechanism.
+# Block new production wiring even when a caller leaves synthetic override false:
+# a stale offline bundle remains able to modify the legacy source.
+PROHIBITED_RUNTIME_REFS = re.compile(
+    r"\\b(?:D18PreCutoverAtomicPromotion|D18PreCutoverIndexedDbMarkerStore|"
+    r"D18PreCutoverCipherAdapter|D18PreCutoverSessionCoordinator|"
+    r"openD18UnpublishedCipherWorker|"
+    r"D18CutoverPhase\\s*\\.\\s*ciphertextActive)\\b"
+)
+runtime_cutover_links = []
+for path in sorted(ROOT.rglob("*.dart")):
+    rel = path.relative_to(ROOT).as_posix()
+    if path.name.endswith(".g.dart") or "/generated/" in rel:
+        continue
+    # Test-only entrypoints and D18 PRE-CUTOVER definitions are not product
+    # providers. Any import/wiring by patient-facing code must be reviewed.
+    if (
+        (path.name.startswith(TEST_ENTRY_PREFIXES) and
+         path.name != "main.dart")
+        or rel.startswith("data/drift/d18_")
+    ):
+        continue
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        executable = line.split("//", 1)[0].strip()
+        if not executable or executable.startswith(("*", "///")):
+            continue
+        if PROHIBITED_RUNTIME_REFS.search(executable) or (
+            "import " in executable
+            and re.search(
+                r"['\"][^'\"]*d18_(?:pre_cutover_|unpublished_cipher_)",
+                executable,
+            )
+        ):
+            runtime_cutover_links.append({"path": rel, "line": i})
+
 report = {
     "kind": "D18_STATIC_WEB_APP_SQLITE_SOURCE_INVENTORY_NOT_CUTOVER",
     "allowed": EXPECTED,
@@ -115,7 +150,9 @@ report = {
     "old_cached_tabs": "NOT_COVERED",
     "contract_failures": contract_failures,
     "synthetic_bypass_leaks": synthetic_bypass_leaks,
+    "runtime_cutover_links": runtime_cutover_links,
 }
 print(json.dumps(report, indent=2, sort_keys=True))
-if violations or missing or contract_failures or synthetic_bypass_leaks:
+if (violations or missing or contract_failures or synthetic_bypass_leaks
+        or runtime_cutover_links):
     sys.exit("D18_REAL_SQLITE_ENTRYPOINT_INVENTORY_FAIL_CLOSED")
