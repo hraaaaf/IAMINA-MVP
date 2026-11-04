@@ -103,7 +103,7 @@ for path in sorted(ROOT.rglob("*.dart")):
     ):
         continue
     src = path.read_text(encoding="utf-8")
-    if re.search(r"\\ballowUnfencedSyntheticFixture\\s*:\\s*true\\b", src):
+    if re.search(r"\ballowUnfencedSyntheticFixture\s*:\s*true\b", src):
         synthetic_bypass_leaks.append(rel)
 
 report = {
