@@ -96,11 +96,22 @@ async function investigateVersionOnlyFence(context) {
           reject(Error('D18_P0A_VERSION_FIXTURE_MISSING'))};
       });
       window.__p0aOld=db;
-      return db.version===1 &&
+      const schema=db.version===1 &&
         db.objectStoreNames.contains('blocks') &&
         db.objectStoreNames.contains('files');
+      const tx=db.transaction(['blocks','files'],'readonly');
+      const blocks=tx.objectStore('blocks').count();
+      const files=tx.objectStore('files').count();
+      const value=req=>new Promise((ok,bad)=>{
+        req.onsuccess=()=>ok(req.result);
+        req.onerror=()=>bad(req.error);
+      });
+      const [blockCount,fileCount]=await Promise.all([
+        value(blocks),value(files)]);
+      return {schema,blockCount,fileCount};
     },name);
-    if(!baseline)throw Error('D18_VFS_VERSION_BASELINE_NOT_REAL_DRIFT');
+    if(!baseline.schema||baseline.blockCount<1||baseline.fileCount<1)
+      throw Error('D18_VFS_VERSION_BASELINE_NOT_REAL_DRIFT');
     await upgrader.evaluate(name=>{
       const state={blocked:false,upgraded:false,ready:false,version:0,
         storeNames:[],error:null};
@@ -182,11 +193,81 @@ async function investigateVersionOnlyFence(context) {
       oldUnversionedWriteAccess:unversionedWriterStillAllowed,
       independentPatientVaultVersionUntouched:independentVaultIntact,
       physicalStores:['blocks','files'],
+      baselinePhysicalRecordCounts:{blocks:baseline.blockCount,
+        files:baseline.fileCount},
       WARNING:'VERSION_ONLY_UPGRADE_IS_NOT_OLD_CLIENT_FENCING'});
   } finally {
     await upgrader.close().catch(()=>{});
     await older.close().catch(()=>{});
   }
+}
+
+// A2 negative outcome is expected for this PINNED legacy Drift version:
+// a no-op IDB version bump leaves blocks/files physically present, but the
+// unchanged AppDatabase.forPatientVault factory can no longer reopen them.
+// Fail-closed requires verifying physical store counts, NOT pretending that
+// inaccessible records have been fully restored or authenticated via SQLite.
+async function verifyVersionOnlyReopenIsUnsafe(context) {
+  const name='amina_vault_v1_device_e2dbe28f3eea441086a7274150a80018';
+  const original=results.find(x=>
+    x.phase==='real_drift_vfs_version_only_not_fencing_unversioned');
+  if(!original||!original.pass) {
+    throw Error('D18_P0A_VERSION_BASELINE_PROOF_MISSING');
+  }
+  const page=await context.newPage();
+  try {
+    await page.goto('http://127.0.0.1:7396/?phase=patient_factory_version_reopen',
+      {waitUntil:'domcontentloaded',timeout:45000});
+    await page.waitForFunction(()=>
+      document.title==='D18_FULL_PASS:patient_factory_version_reopen' ||
+      document.title==='D18_FULL_FAIL:patient_factory_version_reopen',
+      null,{timeout:45000});
+    const factoryRejected=(await page.title())===
+      'D18_FULL_FAIL:patient_factory_version_reopen';
+    if(!factoryRejected) {
+      throw Error('D18_P0A_PINNED_FACTORY_BEHAVIOR_CHANGED_REVIEW_REQUIRED');
+    }
+  } finally {await page.close();}
+  const evidence=await context.newPage();
+  try {
+    await evidence.goto('http://127.0.0.1:7396/d18_ci_vfs_version_only.html',
+      {waitUntil:'domcontentloaded',timeout:45000});
+    const physical=await evidence.evaluate(async name=>{
+      const db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open(name,2);
+        req.onsuccess=()=>resolve(req.result);
+        req.onerror=()=>reject(req.error);
+        req.onupgradeneeded=()=>{req.transaction.abort();
+          reject(Error('D18_P0A_PHYSICAL_SOURCE_ABSENT'))};
+      });
+      try {
+        if(db.version!==2||!db.objectStoreNames.contains('blocks')||
+           !db.objectStoreNames.contains('files'))return null;
+        const tx=db.transaction(['blocks','files'],'readonly');
+        const requests=[
+          tx.objectStore('blocks').count(),
+          tx.objectStore('files').count(),
+        ];
+        return await Promise.all(requests.map(req=>new Promise((ok,bad)=>{
+          req.onsuccess=()=>ok(req.result);
+          req.onerror=()=>bad(req.error);
+        })));
+      } finally {db.close();}
+    },name);
+    const expected=original.baselinePhysicalRecordCounts;
+    const countsMatch=Array.isArray(physical) && physical.length===2 &&
+      physical[0]===expected.blocks && physical[1]===expected.files &&
+      physical[0]>0 && physical[1]>0;
+    if(!countsMatch) {
+      throw Error('D18_P0A_VERSION_ONLY_PHYSICAL_COUNTS_CHANGED');
+    }
+    results.push({
+      phase:'patient_factory_version_reopen_denied_source_still_present',
+      pass:true,factoryReopenDenied:true,physicalStores:['blocks','files'],
+      physicalRecordCountsPreserved:true,
+      WARNING:'VERSION_BUMP_STRANDS_PINNED_DRIFT_VFS_DO_NOT_CUTOVER',
+    });
+  } finally {await evidence.close();}
 }
 
 // CI-only cooperative source lock implementation. Not part of shipped app.
@@ -344,7 +425,7 @@ async function concurrentSourceLock(context) {
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'crash_recover');
     await phase(ctx,'patient_factory_reopen');
-    await phase(ctx,'patient_factory_version_reopen');
+    await verifyVersionOnlyReopenIsUnsafe(ctx);
     await phase(ctx,'migrate');
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{
@@ -372,7 +453,8 @@ async function concurrentSourceLock(context) {
     'real_drift_vfs_version_only_not_fencing_unversioned','abort_rollback','hold_source_lock',
     'compete_source_lock','crash_uncommitted',
     'crash_recover','patient_factory_reopen',
-    'patient_factory_version_reopen','migrate','verify','physical_bytes'];
+    'patient_factory_version_reopen_denied_source_still_present',
+    'migrate','verify','physical_bytes'];
   if(results.length!==15||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
     process.exitCode=1;
 })().catch(e=>{
