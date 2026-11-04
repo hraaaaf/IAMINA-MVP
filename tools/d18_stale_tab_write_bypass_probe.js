@@ -83,13 +83,49 @@ async function main(){
         });
         try{
           const tx=db.transaction('rows','readonly');
-          return await new Promise((resolve,reject)=>{
+          const copied = await new Promise((resolve,reject)=>{
             const r=tx.objectStore('rows').get(734);
-            r.onsuccess=()=>resolve(r.result==='SYNTHETIC_ONLY');
+            r.onsuccess=()=>resolve(r.result);
             r.onerror=()=>reject(r.error);
           });
+          // Model only the captured logical source row; no ciphertext,
+          // no clinical snapshot and no migration pointer is created.
+          window.__candidateCopyBeforeStaleWrite=copied;
+          return copied==='SYNTHETIC_ONLY';
         }finally{db.close();}
       }),true);
+    // The original tab survives a candidate copy and can still change the
+    // physical source without participating in any new Web Locks.
+    check('legacy_write_after_candidate_copy_commits',
+      await stale.evaluate(async ()=>{
+        const tx=window.__oldSource.transaction('rows','readwrite');
+        tx.objectStore('rows').put('SYNTHETIC_LATE_OFFLINE_WRITE',734);
+        return new Promise((resolve,reject)=>{
+          tx.oncomplete=()=>resolve(true);
+          tx.onerror=()=>reject(tx.error);
+          tx.onabort=()=>reject(tx.error);
+        });
+      }),true);
+    check('candidate_copy_is_stale_while_locks_held',
+      await migrator.evaluate(async ()=>{
+        const db=await new Promise((resolve,reject)=>{
+          const r=indexedDB.open('d18-legacy-synthetic-source',1);
+          r.onsuccess=()=>resolve(r.result);
+          r.onerror=()=>reject(r.error);
+        });
+        try{
+          const tx=db.transaction('rows','readonly');
+          const current=await new Promise((resolve,reject)=>{
+            const r=tx.objectStore('rows').get(734);
+            r.onsuccess=()=>resolve(r.result);
+            r.onerror=()=>reject(r.error);
+          });
+          return window.__candidateCopyBeforeStaleWrite==='SYNTHETIC_ONLY' &&
+              current==='SYNTHETIC_LATE_OFFLINE_WRITE' &&
+              current!==window.__candidateCopyBeforeStaleWrite;
+        }finally{db.close();}
+      }),true);
+    // A point-in-time recheck cannot prevent another legacy write later.
     check('locks_still_held_after_uncooperative_write',await both(),true);
     await migrator.evaluate(()=>window.__releaseMigration());
     await stale.evaluate(()=>window.__oldSource.close());
@@ -107,5 +143,5 @@ async function main(){
   }
   console.log(JSON.stringify({kind:'D18_STALE_TAB_BYPASS_NEGATIVE_NO_CUTOVER',
     engine:browserName,sha:process.env.GITHUB_SHA||null,checks}));
-  if(checks.length!==6||checks.some(c=>!c.pass))process.exitCode=1;
+  if(checks.length!==8||checks.some(c=>!c.pass))process.exitCode=1;
 })().catch(e=>{console.error('D18_STALE_TAB_FATAL',e.name);process.exitCode=1;});
