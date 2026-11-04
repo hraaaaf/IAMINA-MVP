@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
-const proxy = require('./index.js');
+const proxy = require('../api/index.js');
 const ENV = {
   VERCEL_ENV: 'preview',
   VERCEL_PROJECT_ID: 'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI',

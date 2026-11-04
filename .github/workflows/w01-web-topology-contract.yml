@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'frontend/vercel.json'
+      - 'frontend/api/index.js'
+      - 'frontend/test_node/w01_proxy.test.js'
       - 'backend/vercel.json'
       - 'vercel.json'
       - 'frontend/vercel_build.sh'
@@ -24,6 +26,8 @@ on:
     branches: [main]
     paths:
       - 'frontend/vercel.json'
+      - 'frontend/api/index.js'
+      - 'frontend/test_node/w01_proxy.test.js'
       - 'backend/vercel.json'
       - 'vercel.json'
       - 'frontend/vercel_build.sh'
@@ -50,6 +54,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: W01 static topology and Git-deployment disablement guard
         run: python scripts/check_web_topology_contract.py
+      - name: W01 synthetic Preview same-origin OIDC proxy unit tests
+        run: node --test frontend/test_node/w01_proxy.test.js
       - name: W01 adverse-regression tests
         run: python -m unittest discover -s scripts/tests -p test_w01_web_topology_contract.py -v
       - name: Keep sanitized cloud inventory fail-closed without production action

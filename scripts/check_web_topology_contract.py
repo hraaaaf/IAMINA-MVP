@@ -37,7 +37,12 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
     if front.get("outputDirectory") != "build/web":
         problems.append("frontend: static SPA outputDirectory must be build/web")
     if front.get("functions"):
-        problems.append("frontend: Vercel functions must not be embedded in static SPA project")
+        problems.append("frontend: static SPA manifest must not define function overrides")
+    rewrites = front.get("rewrites", [])
+    expected_api = {"source": "/api/v1/:path*", "destination": "/api/index.js?forward=:path*"}
+    if (len(rewrites) != 2 or rewrites[0] != expected_api
+            or rewrites[1] != {"source": "/(.*)", "destination": "/index.html"}):
+        problems.append("frontend: Preview same-origin API relay must precede SPA fallback")
     if "api/index.py" not in back.get("functions", {}):
         problems.append("backend: expected Django WSGI api/index.py function absent")
     if back.get("outputDirectory") == "build/web":
@@ -50,9 +55,17 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
         entry = (root / "backend/api/index.py").read_text(encoding="utf-8")
         if "from amina.wsgi import application" not in entry or "app = application" not in entry:
             problems.append("backend: Django WSGI entrypoint contract drift")
+        proxy = (root / "frontend/api/index.js").read_text(encoding="utf-8")
+        for must in ("VERCEL_ENV !== 'preview'", "VERCEL_PROJECT_ID !== EXPECTED_PROJECT",
+                     "x-vercel-oidc-token", "x-vercel-trusted-oidc-idp-token",
+                     "IAMINA_REVIEW_PREVIEW_API_BASE_URL", "redirect: 'manual'"):
+            if must not in proxy:
+                problems.append("frontend: synthetic OIDC API bridge security contract missing " + must)
         build = (root / "frontend/vercel_build.sh").read_text(encoding="utf-8")
         if 'VERCEL_PROJECT_ID' not in build or 'API_BASE_URL' not in build:
             problems.append("frontend: project gate or API origin define missing")
+        if 'API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"' not in build:
+            problems.append("frontend: Preview browser API must be same-origin W01 alias")
         if "DATABASE_URL" in build or "NEON_DATABASE_URL" in build:
             problems.append("frontend: SQL credentials must never appear in web build")
     except FileNotFoundError as exc:
