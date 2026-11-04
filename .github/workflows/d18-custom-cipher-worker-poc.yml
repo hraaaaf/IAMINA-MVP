@@ -78,6 +78,44 @@ jobs:
         run: flutter pub get
       - name: Inventory all real Web SQLite opening code paths (static fail-closed)
         run: python3 tools/d18_source_sqlite_entrypoint_inventory.py
+      - name: Adversarial mutation — transitive clinical import MUST fail inventory
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import subprocess
+
+          shell = Path('frontend/lib/main.dart')
+          fixture = Path('frontend/lib/services/d18_p0a_graph_mutation_ci.dart')
+          original = shell.read_text(encoding='utf-8')
+          if fixture.exists():
+              raise SystemExit('D18_GRAPH_MUTATION_FIXTURE_ALREADY_EXISTS')
+          try:
+              # This indirection bypasses a shallow main.dart import-name scan.
+              fixture.write_text(
+                  "export '../data/drift/d18_pre_cutover_atomic_promotion.dart';\n",
+                  encoding='utf-8',
+              )
+              shell.write_text(
+                  "import 'services/d18_p0a_graph_mutation_ci.dart';\n"
+                  + original,
+                  encoding='utf-8',
+              )
+              p = subprocess.run(
+                  ['python3', 'tools/d18_source_sqlite_entrypoint_inventory.py'],
+                  capture_output=True, text=True, check=False,
+              )
+              if p.returncode == 0:
+                  raise SystemExit('D18_MUTATION_UNSAFE_IMPORT_ACCEPTED')
+              report = json.loads(p.stdout)
+              expected = 'data/drift/d18_pre_cutover_atomic_promotion.dart'
+              if expected not in report['reachable_experimental_migration_modules']:
+                  raise SystemExit('D18_MUTATION_WRONG_FAILURE_REASON')
+              print('D18_TRANSITIVE_PRODUCTION_IMPORT_MUTATION_DENIED')
+          finally:
+              shell.write_text(original, encoding='utf-8')
+              fixture.unlink(missing_ok=True)
+          PY
       - name: Verify D18 optional async lease integration into real patient controller (NOT ENABLED)
         working-directory: frontend
         run: |
