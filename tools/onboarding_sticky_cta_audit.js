@@ -240,6 +240,12 @@ async function chooseCountry(page, width, height) {
           throw new Error('Expected five-step progress on ' + width + 'x' +
             height + ', got ' + JSON.stringify(stepEvidence));
         }
+        const beforeUnitAction = page.getByRole('button', {name: 'Commencer', exact: true});
+        if (width < 900 && await beforeUnitAction.count() &&
+            await beforeUnitAction.first().isEnabled()) {
+          throw new Error('D8: first-use CTA enabled without a chosen unit');
+        }
+        await choose(page, 'mg/dL');
         const action = page.getByRole('button', {name: 'Commencer', exact: true});
         await action.first().waitFor({state:'visible', timeout: 15000});
         const count = await action.count();

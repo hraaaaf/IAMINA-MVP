@@ -130,6 +130,11 @@ void main() {
         expect(next, findsNothing); // No redundant desktop scroll CTA.
       }
       expectRevealed('Quelle unité préférez-vous pour les mesures ?');
+      final mmol = find.text('mmol/L');
+      await tester.ensureVisible(mmol);
+      await tester.pumpAndSettle();
+      await tester.tap(mmol);
+      await tester.pumpAndSettle();
 
       // No implicit completion, clinical change, or navigation on scroll.
       if (size.width < 900) {

@@ -150,6 +150,8 @@ async function mustBeInViewport(page,label,size,name) {
           if(continueLink)throw new Error('Redundant continuation on RTL desktop');
           await screenshot(page,'arabic-units-desktop',size);
         }
+        // D8: confirm the meter unit; a country alone is never sufficient.
+        await choose(page,'mmol/L');
         phase='final_start_cta';
         let start=await locate(page,'ابدأ');
         if(!start)throw new Error('Missing Arabic start CTA');

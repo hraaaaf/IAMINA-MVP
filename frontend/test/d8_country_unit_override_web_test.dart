@@ -164,10 +164,23 @@ void main() {
 
       final mmol = find.text('mmol/L');
       expect(mmol, findsOneWidget);
+      // No country default can silently certify mg/dL for a new patient.
+      expect(find.byKey(const Key('onboarding-unit-required-hint')),
+          findsOneWidget);
+      expect(await db.getProfileForLocalUserId(1), isNull);
+      if (scenario.viewport.width < 900) {
+        final start = find.byKey(const Key('onboarding-sticky-start'));
+        expect(start, findsOneWidget);
+        expect(tester.widget<FilledButton>(start).onPressed, isNull);
+      } else {
+        expect(find.widgetWithText(FilledButton, 'Commencer'), findsNothing);
+      }
       await tester.ensureVisible(mmol);
       await tester.pumpAndSettle();
       await tester.tap(mmol);
       await tester.pumpAndSettle();
+      expect(find.byKey(const Key('onboarding-unit-required-hint')),
+          findsNothing);
       if (scenario.language == 'ar') {
         expect(Directionality.of(tester.element(mmol)), TextDirection.rtl);
       }

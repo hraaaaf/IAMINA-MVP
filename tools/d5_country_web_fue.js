@@ -160,8 +160,10 @@ async function scenario(page,locale,size,kind,owner) {
       // Click an actual accessible Flutter control, never call widget callbacks.
       await confirm.click({timeout:4500});await snooze(450);
       if(await visible(page,l.confirm))throw Error('Proposal not cleared after confirmation');
-      await startState(page,l,width,true);
+      await startState(page,l,width,false); // D8: unit still unconfirmed.
       item.images.push(await capture(page,locale,size,kind,'after-confirm'));
+      await click(page,'mg/dL');
+      await startState(page,l,width,true);
       await click(page,l.start);
       await waitFor(page,'D5_FUE_DASHBOARD');
       item.images.push(await capture(page,locale,size,kind,'saved'));
@@ -172,6 +174,8 @@ async function scenario(page,locale,size,kind,owner) {
       await startState(page,l,width,false);
       item.images.push(await capture(page,locale,size,kind,'country-empty'));
       await countrySelect(page,l,'FR');
+      await startState(page,l,width,false);
+      await click(page,'mmol/L');
       await startState(page,l,width,true);
       item.images.push(await capture(page,locale,size,kind,'manual-selected'));
       await click(page,l.start);
@@ -416,7 +420,8 @@ async function keyboardJourney(browser,locale,size){
     await snooze(300);
     if(await visible(page,l.confirm))
       throw Error('Enter did not explicitly confirm suggested country');
-    await startState(page,l,width,true);
+    // D8: country-only confirmation never enables the first-use action.
+    await startState(page,l,width,false);
     item.images.push(await capture(page,locale,size,'keyboard','confirmed'));
     item.pass=true;
   }catch(e){
