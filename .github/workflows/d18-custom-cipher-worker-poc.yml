@@ -49,6 +49,7 @@ on:
       - 'frontend/test/services/patient_vault_session_controller_test.dart'
       - 'frontend/lib/data/drift/d18_pre_cutover_atomic_promotion.dart'
       - 'frontend/test/data/drift/d18_pre_cutover_atomic_promotion_test.dart'
+      - 'frontend/test/data/drift/d18_historical_plaintext_no_cutover_test.dart'
       - 'frontend/lib/main.dart'
   workflow_dispatch:
 
@@ -93,8 +94,10 @@ jobs:
         run: |
           flutter analyze --no-fatal-infos \
             lib/data/drift/d18_pre_cutover_atomic_promotion.dart \
-            test/data/drift/d18_pre_cutover_atomic_promotion_test.dart
-          flutter test test/data/drift/d18_pre_cutover_atomic_promotion_test.dart
+            test/data/drift/d18_pre_cutover_atomic_promotion_test.dart \
+            test/data/drift/d18_historical_plaintext_no_cutover_test.dart
+          flutter test test/data/drift/d18_pre_cutover_atomic_promotion_test.dart \
+            test/data/drift/d18_historical_plaintext_no_cutover_test.dart
       - name: Reject test-only cipher fixtures leaking into application runtime
         run: |
           python3 - <<'PY'
