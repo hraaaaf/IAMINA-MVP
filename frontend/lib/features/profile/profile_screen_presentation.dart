@@ -468,7 +468,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required Key key,
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return Material(
       color: AminaVisualLanguage.controlSurface(context),
@@ -492,7 +492,8 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, size: 19),
+              if (onTap != null)
+                const Icon(Icons.chevron_right_rounded, size: 19),
             ],
           ),
         ),
@@ -562,7 +563,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                       ar: enabled ? 'إيقاف قفل التطبيق' : 'تفعيل قفل التطبيق'),
               onTap: (lock.recoveryRequired || _savingLockPreference ||
                       (enabled && !lock.canOptOutOfAppLock))
-                  ? () {}
+                  ? null
                   : _changeAppLockPreference,
             );
           },

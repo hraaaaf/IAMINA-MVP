@@ -116,6 +116,8 @@ void main() {
     expect(setup, contains('après certification du stockage médical chiffré'));
     expect(profile, contains('(disabling && !lock.canOptOutOfAppLock)'));
     expect(presentation, contains('(enabled && !lock.canOptOutOfAppLock)'));
+    expect(presentation, contains('required VoidCallback? onTap'));
+    expect(presentation, contains('if (onTap != null)'));
   });
 
   test('WebAuthn bridge requires local user verification and exact binding', () {
