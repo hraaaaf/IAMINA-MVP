@@ -6,6 +6,7 @@ on:
       - '.github/workflows/d18-full-cipher-archive-poc.yml'
       - 'frontend/lib/data/drift/d18_full_cipher_archive.dart'
       - 'frontend/test/data/drift/d18_full_cipher_archive_test.dart'
+      - 'tools/d18_streaming_archive_reference.cjs'
       - 'frontend/lib/data/drift/d18_vault_key_policy.dart'
       - 'frontend/pubspec.yaml'
       - 'frontend/pubspec.lock'
@@ -42,3 +43,9 @@ jobs:
         working-directory: frontend
         run: |
           flutter test test/data/drift/d18_full_cipher_archive_test.dart --reporter expanded
+      - name: P0-D streaming archive over 16 MiB and fail-closed quarantine (Node reference only)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_streaming_archive_reference.cjs
+          node tools/d18_streaming_archive_reference.cjs
