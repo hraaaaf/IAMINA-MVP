@@ -29,3 +29,9 @@
 - Sept autres workflows de certification UI associés au même HEAD : SUCCESS ; ce résultat ne constitue pas une recette manuelle Chrome/Safari du parcours D15.
 - Nouveau test `add_log_sheet_test.dart` : candidat photo synthétique, confirmation explicite, zéro écriture avant Save, saisie utilisateur des grammes/note, véritable `save-log-button`, une ligne Drift et insuline null. Callback de reconnaissance injectable uniquement pour les tests ; consentement photo requis via profil, aucune reconnaissance réelle ni transfert patient activé.
 - **Verdict D15.1 : preuve automatisée verte sur HEAD cité.** Ne pas confondre avec D15 globale : D13/D14/D24 et revue humaine toujours gates, D14 PAUSED. PR #1257 reste DRAFT, pas de merge ni déploiement.
+
+## Closeout D15.1 — CI HEAD documentaire — 04/11/2026
+- HEAD `aa7a9fcb6be0e003f903c1edb96d945f40f558a9` : 9/9 workflows COMPLETED SUCCESS.
+- CI `#41811529830` SUCCESS ; rehearsal synthétique `#41811529772` SUCCESS ; 7 autres certifications SUCCESS.
+- **D15.1 clôturé pour le périmètre automatisé uniquement** (photo synthétique confirmée, Save Drift réel ; FR/AR mobile/desktop manuel). Aucune validation de reconnaissance photo réelle, consentement/egress en production, ou recette utilisateur.
+- **D15 globale NON clôturée** : D13/D14/D24 et revue humaine restent des gates. PR #1257 DRAFT ; aucun merge dans main, aucun déploiement Vercel.
