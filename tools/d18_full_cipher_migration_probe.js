@@ -68,6 +68,109 @@ async function inspectPhysicalDriftStorage(context) {
   } finally {await page.close();}
 }
 
+// P0-A actual-vault VFS test: a schema version bump (WITHOUT touching the
+// internal blocks/files stores) is insufficient if an old bundle calls
+// indexedDB.open(dbName) without a pinned version. The experiment stays on a
+// SECOND disposable v12 vault, never on the clinical/historical source.
+async function investigateVersionOnlyFence(context) {
+  const name='amina_vault_v1_device_e2dbe28f3eea441086a7274150a80018';
+  const url='http://127.0.0.1:7396/d18_ci_vfs_version_only.html';
+  const older=await context.newPage(),upgrader=await context.newPage();
+  try {
+    await older.route('**/d18_ci_vfs_version_only.html',r=>r.fulfill({
+      status:200,contentType:'text/html',
+      body:'<!doctype html><title>D18 P0-A disposable VFS</title>'
+    }));
+    await upgrader.route('**/d18_ci_vfs_version_only.html',r=>r.fulfill({
+      status:200,contentType:'text/html',
+      body:'<!doctype html><title>D18 P0-A disposable VFS</title>'
+    }));
+    await older.goto(url,{waitUntil:'domcontentloaded'});
+    await upgrader.goto(url,{waitUntil:'domcontentloaded'});
+    const baseline=await older.evaluate(async name=>{
+      const db=await new Promise((resolve,reject)=>{
+        const q=indexedDB.open(name,1);
+        q.onsuccess=()=>resolve(q.result);
+        q.onerror=()=>reject(q.error);
+        q.onupgradeneeded=()=>{q.transaction.abort();
+          reject(Error('D18_P0A_VERSION_FIXTURE_MISSING'))};
+      });
+      window.__p0aOld=db;
+      return db.version===1 &&
+        db.objectStoreNames.contains('blocks') &&
+        db.objectStoreNames.contains('files');
+    },name);
+    if(!baseline)throw Error('D18_VFS_VERSION_BASELINE_NOT_REAL_DRIFT');
+    await upgrader.evaluate(name=>{
+      const state={blocked:false,upgraded:false,ready:false,version:0,
+        storeNames:[],error:null};
+      window.__p0aUpgrade=state;
+      const q=indexedDB.open(name,2);
+      q.onblocked=()=>{state.blocked=true};
+      q.onupgradeneeded=()=>{state.upgraded=true};
+      q.onsuccess=()=>{
+        state.version=q.result.version;
+        state.storeNames=Array.from(q.result.objectStoreNames);
+        q.result.close();
+        state.ready=true;
+      };
+      q.onerror=()=>{state.error=q.error?.name||'UNKNOWN'};
+    },name);
+    await upgrader.waitForFunction(()=>window.__p0aUpgrade.blocked,
+      null,{timeout:15000});
+    const blocked=await upgrader.evaluate(()=>
+      window.__p0aUpgrade.blocked && !window.__p0aUpgrade.ready &&
+      !window.__p0aUpgrade.upgraded);
+    if(!blocked)throw Error('D18_VFS_UPGRADE_IGNORED_OLD_OPEN_CONNECTION');
+    // Version-only upgrades may NOT run while the pinned legacy connection
+    // is still open. Never force-close, delete or overwrite its physical data.
+    await older.evaluate(()=>window.__p0aOld.close());
+    await upgrader.waitForFunction(()=>window.__p0aUpgrade.ready ||
+      window.__p0aUpgrade.error!==null,null,{timeout:15000});
+    const upgraded=await upgrader.evaluate(()=>{
+      const x=window.__p0aUpgrade;
+      return x.error===null && x.upgraded && x.version===2 &&
+        x.storeNames.length===2 &&
+        x.storeNames.includes('blocks') && x.storeNames.includes('files');
+    });
+    if(!upgraded)throw Error('D18_VFS_VERSION_UPGRADE_DAMAGED_SCHEMA');
+    const v1Denied=await older.evaluate(name=>new Promise(resolve=>{
+      const q=indexedDB.open(name,1);
+      q.onsuccess=()=>{q.result.close();resolve(false)};
+      q.onerror=()=>resolve(q.error?.name==='VersionError');
+    }),name);
+    if(!v1Denied)throw Error('D18_VFS_PINNED_VERSION_ONE_NOT_FENCED');
+    const unversionedWriterStillAllowed=await older.evaluate(
+      name=>new Promise((resolve,reject)=>{
+        const q=indexedDB.open(name);
+        q.onsuccess=()=>{
+          const db=q.result;
+          try{
+            if(db.version!==2)throw Error('BAD_REOPEN_VERSION');
+            // No writes made: this only proves a readwrite transaction
+            // *could* be created by an unversioned stale script.
+            const tx=db.transaction('blocks','readwrite');
+            tx.abort();
+            db.close();
+            resolve(true);
+          }catch(err){db.close();reject(err)}
+        };
+        q.onerror=()=>reject(q.error);
+      }),name);
+    if(!unversionedWriterStillAllowed) {
+      throw Error('D18_VFS_EXPECTED_NEGATIVE_REOPEN_NOT_REPRODUCED');
+    }
+    results.push({phase:'real_drift_vfs_version_only_not_fencing_unversioned',
+      pass:true,dbVersion:2,blocked,oldPinnedV1Denied:v1Denied,
+      oldUnversionedWriteAccess:unversionedWriterStillAllowed,
+      physicalStores:['blocks','files'],
+      WARNING:'VERSION_ONLY_UPGRADE_IS_NOT_OLD_CLIENT_FENCING'});
+  } finally {
+    await upgrader.close().catch(()=>{});
+    await older.close().catch(()=>{});
+  }
+}
+
 // CI-only cooperative source lock implementation. Not part of shipped app.
 // The clinical writer protocol must adopt this gate in D18 lot 2/3.
 function installSourceWriteGate() {
@@ -209,7 +312,9 @@ async function concurrentSourceLock(context) {
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'seed');
     await phase(ctx,'patient_factory_create');
+    await phase(ctx,'patient_factory_version_seed');
     await inspectPhysicalDriftStorage(ctx);
+    await investigateVersionOnlyFence(ctx);
     await phase(ctx,'abort_rollback');
     await concurrentSourceLock(ctx);
     await phase(ctx,'crash_uncommitted');
@@ -221,6 +326,7 @@ async function concurrentSourceLock(context) {
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'crash_recover');
     await phase(ctx,'patient_factory_reopen');
+    await phase(ctx,'patient_factory_version_reopen');
     await phase(ctx,'migrate');
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{
@@ -244,11 +350,12 @@ async function concurrentSourceLock(context) {
   },null,2));
   console.log(JSON.stringify(results));
   const expected=['seed','patient_factory_create',
-    'real_drift_source_vfs_metadata','abort_rollback','hold_source_lock',
+    'patient_factory_version_seed','real_drift_source_vfs_metadata',
+    'real_drift_vfs_version_only_not_fencing_unversioned','abort_rollback','hold_source_lock',
     'compete_source_lock','crash_uncommitted',
     'crash_recover','patient_factory_reopen',
-    'migrate','verify','physical_bytes'];
-  if(results.length!==12||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
+    'patient_factory_version_reopen','migrate','verify','physical_bytes'];
+  if(results.length!==15||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
     process.exitCode=1;
 })().catch(e=>{
   console.error('D18_FULL_VAULT_HARNESS_FATAL',e.name);
