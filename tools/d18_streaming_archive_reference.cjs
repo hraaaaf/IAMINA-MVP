@@ -151,6 +151,29 @@ async function restore(archive,stage,destination,expectedScope,password,
   fs.unlinkSync(stage);
   return {total,count};
 }
+// Adversarial archive mutations use the same bounded record parser, so the
+// test does not accidentally benchmark an in-memory copy of the whole file.
+async function mutateArchive(input,output,mode){
+  const out=fs.createWriteStream(output,{flags:'wx',mode:0o600});
+  let n=0,changed=false;
+  try{
+    for await(let line of boundedLines(input)){
+      const record=JSON.parse(line);
+      if(mode==='missing_manifest'&&record.kind==='final'){
+        changed=true;break;
+      }
+      if(mode==='bad_tag'&&record.kind==='chunk'&&n===2){
+        const old=record.sealed;
+        const pos=old.length-4;
+        record.sealed=old.slice(0,pos)+(old[pos]==='A'?'B':'A')+
+          old.slice(pos+1);
+        line=JSON.stringify(record);changed=true;
+      }
+      await writeLine(out,JSON.parse(line));n++;
+    }
+    assert(changed,'TEST_MUTATION_DID_NOT_APPLY');
+  }finally{out.end();await finished(out);}
+}
 async function digest(file){
   const hash=crypto.createHash('sha256');
   for await(const b of fs.createReadStream(file))hash.update(b);
@@ -180,6 +203,20 @@ async function mustReject(name,work){
     await mustReject('wrong_scope',()=>restore(archive,
       path.join(dir,'badscope.partial'),path.join(dir,'badscope.cipher'),
       'amina_vault_v1_native_812',pass));
+    const tampered=path.join(dir,'tampered.stream');
+    await mutateArchive(archive,tampered,'bad_tag');
+    await mustReject('tampered_middle_chunk',()=>restore(tampered,
+      path.join(dir,'tampered.partial'),path.join(dir,'tampered.cipher'),
+      scope,pass));
+    assert(!fs.existsSync(path.join(dir,'tampered.cipher')),
+      'TAMPERED_FILE_PROMOTED');
+    const truncated=path.join(dir,'truncated.stream');
+    await mutateArchive(archive,truncated,'missing_manifest');
+    await mustReject('missing_authenticated_final_manifest',()=>restore(
+      truncated,path.join(dir,'truncated.partial'),
+      path.join(dir,'truncated.cipher'),scope,pass));
+    assert(!fs.existsSync(path.join(dir,'truncated.cipher')),
+      'TRUNCATED_FILE_PROMOTED');
     await mustReject('crash_quarantined',()=>restore(archive,
       path.join(dir,'crash.partial'),path.join(dir,'crash.cipher'),
       scope,pass,{interruptAfter:2}));
