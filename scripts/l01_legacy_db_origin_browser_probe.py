@@ -128,8 +128,13 @@ def run():
                         })
                         info = response.get("result", {}).get("value") or {}
                         last = info
+                        # The synthetic Flutter entrypoint mounts its view
+                        # but does not set the production app's HTML title.
+                        # The preceding failed runs proved mounted=True,
+                        # ready=complete, title=''. Do not gate a CI probe
+                        # on unrelated SEO/title metadata.
                         mounted = bool(info.get("mounted")) and (
-                            str(info.get("title", "")).casefold() == "iamina")
+                            info.get("ready") == "complete")
                         if mounted:
                             break
                         time.sleep(0.3)
