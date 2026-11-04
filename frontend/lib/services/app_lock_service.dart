@@ -143,6 +143,19 @@ class AppLockService extends ChangeNotifier {
 
   Future<AppLockCapability> capability() => _authenticator.capability();
 
+  // A platform assertion can finish after logout or an A→B account switch.
+  // Revalidate the authenticated owner and epoch on both sides of awaits.
+  Future<void> _requireSameAuthenticatedVault(int epoch, String? owner) async {
+    final auth = _authService;
+    if (auth == null) return;
+    if (epoch != AuthService.authEpoch || !auth.isAuthenticated ||
+        owner == null ||
+        (await auth.resolvePatientVaultScope())?.databaseName != owner ||
+        epoch != AuthService.authEpoch) {
+      throw const AppLockException('patient_changed_during_lock_verification');
+    }
+  }
+
   Future<void> recoverWithVerifiedRemoteAccount() async {
     if (!_initialized) {
       throw StateError('App lock requires initialized state');
@@ -183,8 +196,17 @@ class AppLockService extends ChangeNotifier {
     if (owner == null) {
       throw const AppLockException('patient_vault_identity_required');
     }
-    // Persist owner first. A partial write cannot authorize a skip.
+    final epoch = AuthService.authEpoch;
+    await _requireSameAuthenticatedVault(epoch, owner);
+    // A local preference is not an authentication assertion. Never let a
+    // pending preference write survive a revoked or replaced session.
     await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
+    try {
+      await _requireSameAuthenticatedVault(epoch, owner);
+    } catch (_) {
+      await _storage.delete(key: _ownerChoiceKey(owner));
+      rethrow;
+    }
     _explicitlySkipped = true;
     _unlocked = false;
     notifyListeners();
@@ -216,11 +238,15 @@ class AppLockService extends ChangeNotifier {
     // Keep the anti-rollback counter current before changing protection.
     final updated = credential.copyWith(signCount: proof.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
+    await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
-    _credential = updated;
-    if (epoch != AuthService.authEpoch) {
-      throw const AppLockException('patient_changed_during_lock_verification');
+    try {
+      await _requireSameAuthenticatedVault(epoch, owner);
+    } catch (_) {
+      await _storage.delete(key: _ownerChoiceKey(owner));
+      rethrow;
     }
+    _credential = updated;
     _explicitlySkipped = true;
     _unlocked = false;
     notifyListeners();
@@ -286,7 +312,11 @@ class AppLockService extends ChangeNotifier {
     if (_recoveryRequired) {
       throw const AppLockException('recovery_required');
     }
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final capability = await _authenticator.capability();
+    await _requireSameAuthenticatedVault(epoch, owner);
     if (capability == AppLockCapability.insecureContext) {
       throw const AppLockException('insecure_context');
     }
@@ -295,8 +325,10 @@ class AppLockService extends ChangeNotifier {
     }
 
     final credential = await _authenticator.enroll();
+    await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _credentialKey, value: credential.encode());
     await _storage.write(key: _requiredKey, value: _requiredValue);
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = credential;
     _explicitlySkipped = false;
@@ -319,9 +351,14 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('app_lock_not_configured');
     }
 
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final assertion = await _authenticator.unlock(credential);
+    await _requireSameAuthenticatedVault(epoch, owner);
     final updated = credential.copyWith(signCount: assertion.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = updated;
     _unlocked = true;
