@@ -101,9 +101,12 @@ def run():
 
                     root = page.locator("#iamina-startup-perf-tool")
                     assert root.count() == 1
+                    # Mark readiness from the collapsed tool before opening
+                    # details, avoiding the original panel-opening bias.
+                    root.locator("#readyQuick").click()
+                    page.screenshot(path=str(OUT / ("compact_%d.png" % width)))
                     root.locator("#toggle").click()
                     assert root.locator("#panel").get_attribute("open") is not None
-                    root.locator("#ready").click()
                     reading = timings(page)
                     names = {item["name"] for item in reading["milestones"]}
                     missing = REQUIRED - names

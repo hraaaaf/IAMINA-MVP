@@ -123,3 +123,11 @@ Instrumenter les étapes de pré-runApp sur un environnement de test entièremen
 - [ ] Comparer les mêmes scénarios et le même iPhone avant/après un correctif ciblé : médiane du délai « écran utilisable », première frame, coût des segments, écran bloqué, retour après verrouillage.
 
 **Règle de sortie :** une seule cause dominante prouvée → un correctif → un seul run de validation pertinent → comparaison avant/après. Deux échecs équivalents déclenchent un changement de stratégie, pas une série de runs du même harness. Aucune preview, merge ou publication sans autorisation explicite.
+
+
+### Première preuve réelle et correction UX du marquage manuel
+
+- [Run #41744628945](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41744628945) : **SUCCESS** sur code c645ac2d0f9b490e6cb91222a0070bf2d41df7c2. Analyse/compilation Flutter, contrat, JS et navigateur Chromium tous verts ; 4/4 viewports 390/430/768/1280 et 8 captures BEFORE/AFTER, sans donnée patient. [Artefact #13282548588](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41744628945/artifacts/13282548588), preuve JSON inspectée.
+- **Chiffres du parcours invité local en Chromium :** `guest_shell_post_frame` 537,516,512,466 ms → médiane **514 ms** ; intervalle `auth_ready` → `legacy_probe_ready` 149,142,147,126 ms → médiane **144,5 ms**. Quatre viewports ne sont PAS quatre répétitions statistiquement indépendantes ; ces médianes sont descriptives, pas une estimation iPhone Safari.
+- **Comparaison visuelle vérifiée :** UI normale inchangée ; panneau de diagnostic intentionnellement ouvert recouvre le CTA sur mobile. Ce n'est pas un défaut de l'UI normale, mais le bouton « Écran prêt » placé dans le panneau ralentissait artificiellement le repère manuel de 0,4–0,5 s. **Correctif UX** : petit bouton rapide « ✓ Écran prêt » visible en mode replié, suivi du bouton « ⏱ Chrono » pour ouvrir/coller les données après le marquage, sans masquer le parcours avant la mesure.
+- **Vérification suivante :** test Chromium réel sur les 4 viewports, captures BEFORE / COMPACT / AFTER et inspection du score visuel. Aucun déploiement Vercel/merge. Encore aucun Safari iPhone, retour patient local ou preuve de gain de performance.

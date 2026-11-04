@@ -47,6 +47,7 @@
       '#panel[open]{display:block;}h2{font:700 16px Arial,sans-serif;margin:0 0 6px;}',
       'p{font:12px/1.4 Arial,sans-serif;margin:0 0 8px;}',
       '#actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}',
+      '#quick{display:flex;gap:6px;justify-content:flex-end;}#readyQuick{background:#e6f7f2;color:#0e5746;border-color:#19866c;}',
       'pre{font:11px/1.45 monospace;background:#f3f6f7;border-radius:8px;padding:9px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;user-select:text;-webkit-user-select:text;}',
       '#status{font:12px Arial,sans-serif;margin-top:6px;min-height:16px;}</style>',
       '<section id="panel" role="dialog" aria-label="Mesure du démarrage IAMINA">',
@@ -55,7 +56,8 @@
       '<div id="actions"><button id="ready">Écran prêt</button><button id="copy">Copier</button>',
       '<button id="refresh">Actualiser</button><button id="close">Fermer</button></div>',
       '<pre id="result" tabindex="0"></pre><p id="status" role="status" aria-live="polite"></p></section>',
-      '<button id="toggle" aria-label="Ouvrir les chronos IAMINA" aria-expanded="false">⏱ Chrono</button>'
+      '<div id="quick"><button id="readyQuick" aria-label="Marquer le moment où l’écran est utilisable">✓ Écran prêt</button>',
+      '<button id="toggle" aria-label="Ouvrir les chronos IAMINA" aria-expanded="false">⏱ Chrono</button></div>'
     ].join('');
     document.body.appendChild(holder);
     var panel = sh.getElementById('panel');
@@ -79,13 +81,15 @@
     });
     sh.getElementById('close').addEventListener('click', close);
     sh.getElementById('refresh').addEventListener('click', refresh);
-    sh.getElementById('ready').addEventListener('click', function () {
+    function markUsable() {
       if (!performance.getEntriesByName(prefix + 'user_marked_usable', 'mark').length) {
         performance.mark(prefix + 'user_marked_usable');
       }
-      refresh();
+      if (panel.hasAttribute('open')) refresh();
       status.textContent = 'Écran prêt : repère manuel enregistré.';
-    });
+    }
+    sh.getElementById('readyQuick').addEventListener('click', markUsable);
+    sh.getElementById('ready').addEventListener('click', markUsable);
     sh.getElementById('copy').addEventListener('click', function () {
       if (!navigator.clipboard || !navigator.clipboard.writeText) {
         status.textContent = 'Sélectionnez les chiffres pour les copier.';
