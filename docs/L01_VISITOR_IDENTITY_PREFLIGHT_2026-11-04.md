@@ -124,3 +124,17 @@ Utiliser **uniquement identités, mesures, photos et coffres synthétiques**, sa
 **Frontière 2 — UI visiteur :** coque Web/PWA statique sans `AppDatabase`, `ModulesProvider` patient, `SyncService` ou appel API métier, mais conservant l'écran/verrou de sécurité nécessaire aux installations existantes ; première action clinique ⇒ connexion puis autorisation explicite. Ne pas faire passer une session locale anonyme pour un compte distant vérifié.
 
 **Gates :** le développement de ces frontières reste **NO-GO clinique D18/W01** tant que tests anciens coffres/sessions et revue sécurité indépendants sont manquants. Aucune migration, merge, Vercel Preview/Production ou accès patient autorisé. **Next exact :** instrumenter les ouvertures IndexedDB en CI synthétique et mesurer la non-mutation d'un vieux schéma avant toute modification runtime de la sonde.
+
+## 7. LEG-02 — migration implicite CONFIRMÉE ; inventaire non ouvrant en cours (04/11/2026)
+
+**Preuve :** [Chrome #41878395113](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41878395113), [CI #41878395116](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41878395116), [artefact #13347712866](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41878395113/artifacts/13347712866). Sur coffre synthétique v11 avec une mesure fictive, l'appel de présence `hasProtectedMedicalVaultRows(AppDatabase.defaults())` conduit à `IAMINA_L01_PROBED_V12_ROWS_1_PROTECTED_true`. **Migration v11→v12 démontrée** ; conservation d'une mesure témoin, mais **absence de mutation non prouvée**. Ne pas confondre CI verte et sécurité.
+
+**Nouvelle expérience isolée :** `scripts/l01_legacy_db_origin_browser_probe.py` enregistre désormais, **après création de la fixture v11 et avant la sonde**, `IndexedDB.requestDatabaseNames` via CDP, sans `AppDatabase.defaults()` et sans `indexedDB.open()` supplémentaires. Le champ `non_opening_legacy_name_inventory_before_probe` doit identifier `amina` ; la comparaison v11→v12 reste dans une phase séparée. Cette preuve montre uniquement la **présence** de la base, jamais l'absence de données OPFS/SQLite, ni l'intégrité du coffre, ni la compatibilité Safari. Le protocole n'est pas encore un détecteur applicatif prêt à livrer.
+
+**Décision cible (non implémentée dans le runtime) :**
+- détecter les installations legacy sans créer ni migrer la DB ; distinguer `absent`, `present`, `unknown` ;
+- `present` et `unknown` ⇒ **fail-closed/recovery**, jamais compte visiteur assimilé à un nouveau patient ; l'absence de nom IndexedDB seule ne suffit pas à déclarer une installation neuve ;
+- préserver l'anti-rollback et toute donnée historique ; ne pas utiliser un `Provider<AppDatabase>` pour un shell visiteur ;
+- prouver les chemins LEG-03–LEG-07, anciens navigateurs/OPFS, sauvegardes synthétiques et empreintes avant/après avant changement du bootstrap `main.dart`.
+
+**Next exact :** lire la nouvelle preuve JSON d'inventaire non ouvrant, puis construire un détecteur Web fail-closed dans un module isolé avec tests d'erreurs/indisponibilité et fixtures v11, **sans brancher ce détecteur sur le bootstrap patient avant revue D18**.
