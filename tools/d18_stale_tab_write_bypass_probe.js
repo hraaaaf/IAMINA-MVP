@@ -127,6 +127,11 @@ async function main(){
       }),true);
     // A point-in-time recheck cannot prevent another legacy write later.
     check('locks_still_held_after_uncooperative_write',await both(),true);
+    // Emulate REAL network loss; offline capability is not just a phase name.
+    await ctx.setOffline(true);
+    check('legacy_page_network_is_offline',
+      await stale.evaluate(()=>navigator.onLine===false),true);
+    check('exclusive_web_locks_still_held_offline',await both(),true);
     // A cached legacy bundle can close its connection and later reopen
     // without ever obtaining/acknowledging a Web Lock. This models resume.
     check('offline_legacy_reopens_and_commits_under_exclusive_locks',
@@ -163,6 +168,11 @@ async function main(){
           return row==='SYNTHETIC_RESUMED_OFFLINE_WRITE';
         }finally{db.close();}
       }),true);
+    // Restoring network connectivity still cannot retroactively fence an old
+    // client; check a THIRD write after the migrator has re-read source.
+    await ctx.setOffline(false);
+    check('legacy_page_network_restored',
+      await stale.evaluate(()=>navigator.onLine===true),true);
     check('third_legacy_write_after_fresh_recheck_commits',
       await stale.evaluate(async ()=>{
         const tx=window.__oldSource.transaction('rows','readwrite');
@@ -212,5 +222,5 @@ async function main(){
   }
   console.log(JSON.stringify({kind:'D18_STALE_TAB_BYPASS_NEGATIVE_NO_CUTOVER',
     engine:browserName,sha:process.env.GITHUB_SHA||null,checks}));
-  if(checks.length!==13||checks.some(c=>!c.pass))process.exitCode=1;
+  if(checks.length!==16||checks.some(c=>!c.pass))process.exitCode=1;
 })().catch(e=>{console.error('D18_STALE_TAB_FATAL',e.name);process.exitCode=1;});
