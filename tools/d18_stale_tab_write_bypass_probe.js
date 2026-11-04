@@ -127,8 +127,77 @@ async function main(){
       }),true);
     // A point-in-time recheck cannot prevent another legacy write later.
     check('locks_still_held_after_uncooperative_write',await both(),true);
+    // A cached legacy bundle can close its connection and later reopen
+    // without ever obtaining/acknowledging a Web Lock. This models resume.
+    check('offline_legacy_reopens_and_commits_under_exclusive_locks',
+      await stale.evaluate(async ()=>{
+        window.__oldSource.close();
+        window.__oldSource=await new Promise((resolve,reject)=>{
+          const req=indexedDB.open('d18-legacy-synthetic-source',1);
+          req.onsuccess=()=>resolve(req.result);
+          req.onerror=()=>reject(req.error);
+        });
+        const tx=window.__oldSource.transaction('rows','readwrite');
+        tx.objectStore('rows').put('SYNTHETIC_RESUMED_OFFLINE_WRITE',735);
+        return new Promise((resolve,reject)=>{
+          tx.oncomplete=()=>resolve(true);
+          tx.onerror=()=>reject(tx.error);
+          tx.onabort=()=>reject(tx.error);
+        });
+      }),true);
+    // Even a fresh source recheck is not a future-write exclusion proof.
+    check('fresh_recheck_sees_resumed_write',
+      await migrator.evaluate(async ()=>{
+        const db=await new Promise((resolve,reject)=>{
+          const r=indexedDB.open('d18-legacy-synthetic-source',1);
+          r.onsuccess=()=>resolve(r.result);
+          r.onerror=()=>reject(r.error);
+        });
+        try{
+          const tx=db.transaction('rows','readonly');
+          const row=await new Promise((resolve,reject)=>{
+            const r=tx.objectStore('rows').get(735);
+            r.onsuccess=()=>resolve(r.result);
+            r.onerror=()=>reject(r.error);
+          });
+          return row==='SYNTHETIC_RESUMED_OFFLINE_WRITE';
+        }finally{db.close();}
+      }),true);
+    check('third_legacy_write_after_fresh_recheck_commits',
+      await stale.evaluate(async ()=>{
+        const tx=window.__oldSource.transaction('rows','readwrite');
+        tx.objectStore('rows').put('SYNTHETIC_AFTER_RECHECK',736);
+        return new Promise((resolve,reject)=>{
+          tx.oncomplete=()=>resolve(true);
+          tx.onerror=()=>reject(tx.error);
+          tx.onabort=()=>reject(tx.error);
+        });
+      }),true);
+    check('exclusive_locks_still_cannot_fence_restarted_legacy_writer',
+      await both(),true);
+    // No cutover marker, deletion, pointer promotion or patient data touched.
     await migrator.evaluate(()=>window.__releaseMigration());
     await stale.evaluate(()=>window.__oldSource.close());
+    check('legacy_source_intact_after_barrier_release',
+      await migrator.evaluate(async ()=>{
+        const db=await new Promise((resolve,reject)=>{
+          const r=indexedDB.open('d18-legacy-synthetic-source',1);
+          r.onsuccess=()=>resolve(r.result);
+          r.onerror=()=>reject(r.error);
+        });
+        try{
+          const tx=db.transaction('rows','readonly');
+          const rows=await Promise.all([734,735,736].map(k=>
+            new Promise((resolve,reject)=>{
+              const r=tx.objectStore('rows').get(k);
+              r.onsuccess=()=>resolve(r.result);
+              r.onerror=()=>reject(r.error);
+            })));
+          return rows[0]==='SYNTHETIC_LATE_OFFLINE_WRITE' &&
+            rows[1]==='SYNTHETIC_RESUMED_OFFLINE_WRITE' &&
+            rows[2]==='SYNTHETIC_AFTER_RECHECK';
+        }finally{db.close();}
+      }),true);
   }finally{
     await browser?.close().catch(()=>{});
     await new Promise(resolve=>server.close(resolve));
@@ -143,5 +212,5 @@ async function main(){
   }
   console.log(JSON.stringify({kind:'D18_STALE_TAB_BYPASS_NEGATIVE_NO_CUTOVER',
     engine:browserName,sha:process.env.GITHUB_SHA||null,checks}));
-  if(checks.length!==8||checks.some(c=>!c.pass))process.exitCode=1;
+  if(checks.length!==13||checks.some(c=>!c.pass))process.exitCode=1;
 })().catch(e=>{console.error('D18_STALE_TAB_FATAL',e.name);process.exitCode=1;});
