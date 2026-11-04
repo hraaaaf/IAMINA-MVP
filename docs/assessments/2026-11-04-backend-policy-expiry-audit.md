@@ -33,3 +33,14 @@ For each of the three policy owners, record: accountable reviewer identity/role,
 
 ## Additional regression proof after review
 Add negative tests using explicit `today` beyond `review_due_on` to prove fail-closed behavior persists. Verify PII-rejection tests reach the identifier guard when the policy is valid. Keep CI jobs non-skipped and require both SQLite and PostgreSQL SUCCESS.
+
+## Authorized renewal — 2026-11-04
+The project owner explicitly approved the **2027-02-04** next review due date for the three policy families in the conversation. This approval authorizes the date changes; it is **not** independent evidence of operational policy effectiveness.
+
+- Incident response: `POLICY.review_due_on` 2026-11-02 → **2027-02-04**.
+- Emergency SELF_CARE_ONLY: `PILOT_EMERGENCY_POLICY.review_due_on` 2026-11-02 → **2027-02-04**; mode, disclosures and monitoring claim unchanged.
+- Retention: shared `_REVIEW_DUE` 2026-11-02 → **2027-02-04**, covering six datasets; no retention durations, deletion actions or legal-hold flags changed.
+- Added explicit future-expiry fail-closed regression tests for the three policy families. Existing tests still cover direct-identifier rejection, emergency disclosures and retention/deletion behavior.
+- CI runs associated with the latest code commit must demonstrate SQLite and PostgreSQL backend success before closing. No Vercel deployment is authorized.
+
+Historical pre-approval audit text above describes the state **before** this owner authorization; the approved next-review date is now recorded here.
