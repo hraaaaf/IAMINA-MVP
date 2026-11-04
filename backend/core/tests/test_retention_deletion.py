@@ -18,6 +18,15 @@ from core.retention_policy import (
 )
 
 
+def test_all_retention_rule_review_expiries_fail_closed():
+    from core.retention_policy import RETENTION_RULES
+
+    assert len(RETENTION_RULES) == 6
+    for rule in RETENTION_RULES:
+        with pytest.raises(ValueError, match=f"retention rule stale for {rule.dataset}"):
+            rule.validate(today=rule.review_due_on.replace(year=rule.review_due_on.year + 1))
+
+
 def test_retention_schedule_is_current_unique_and_machine_readable():
     rules = validated_retention_schedule(today=django_timezone.localdate())
     assert len({rule.dataset for rule in rules}) == len(rules)
