@@ -195,6 +195,30 @@ void main() {
     expect(h.store.current, isNull);
   });
 
+  test('source barrier lost after proof cannot commit prepared marker',
+      () async {
+    final h = _Harness();
+    h.afterProof = () => h.barrierHeld = false;
+    await expectLater(h.makeGate().prepare(), throwsStateError);
+    expect(h.store.current, isNull);
+    expect(h.store.changes, 0);
+    // A verified point-in-time snapshot does not grant a durable write gate.
+  });
+
+  test('late plaintext writer after prepared proof blocks activation',
+      () async {
+    final h = _Harness();
+    final gate = h.makeGate();
+    final pending = await gate.prepare();
+    h.afterProof = () => h.writersStopped = false;
+    await expectLater(gate.activateForSyntheticTest(
+      explicitSyntheticApproval: true,
+    ), throwsStateError);
+    expect(h.store.current, pending);
+    expect(h.store.current!.phase, D18CutoverPhase.prepared);
+    expect(h.store.changes, 1);
+  });
+
   test('epoch change during verification cannot create pending marker',
       () async {
     final h = _Harness();
