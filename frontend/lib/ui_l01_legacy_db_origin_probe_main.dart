@@ -11,6 +11,9 @@ import 'services/medical_vault_protected_state.dart';
 
 const _fakeUuid = 'iamina-l01-legacy-v11-synthetic-only';
 
+void _report(String status) => html.document.documentElement
+    ?.setAttribute('data-l01-phase-result', status);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -19,7 +22,7 @@ Future<void> main() async {
   // v11 phases: a deliberately synthetic old schema in THIS disposable Chrome.
   final phase = Uri.base.queryParameters['phase'];
   if (phase == 'control') {
-    html.document.title = 'IAMINA_L01_CONTROL';
+    _report('IAMINA_L01_CONTROL');
   } else if (phase == 'legacy_probe' ||
       phase == 'seed_legacy_v11' ||
       phase == 'probe_legacy_v11') {
@@ -47,7 +50,7 @@ Future<void> main() async {
           );
         }
         await legacy.customStatement('PRAGMA user_version = 11');
-        html.document.title = 'IAMINA_L01_V11_SEEDED';
+        _report('IAMINA_L01_V11_SEEDED');
       } else if (phase == 'probe_legacy_v11') {
         // This is intentionally the production presence-only API, which could
         // invoke Drift migrations simply by opening the historical vault.
@@ -60,10 +63,10 @@ Future<void> main() async {
               ..where((row) => row.clientUuid.equals(_fakeUuid)))
             .get();
         html.document.title =
-            'IAMINA_L01_PROBED_V${version}_ROWS_${fakeRows.length}_PROTECTED_${protected}';
+            'IAMINA_L01_PROBED_V${version}_ROWS_${fakeRows.length}_PROTECTED_${protected}');
       } else {
         await hasProtectedMedicalVaultRows(legacy);
-        html.document.title = 'IAMINA_L01_PROBE_DONE';
+        _report('IAMINA_L01_PROBE_DONE');
       }
     } finally {
       await legacy.close();
