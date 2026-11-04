@@ -1,0 +1,547 @@
+// D18 synthetic only: dynamic per-vault secret and SQLite in a dedicated worker.
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, experimental_member_use
+import 'dart:html' as html;
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
+import 'package:drift/drift.dart' show Migrator;
+import 'package:drift/remote.dart';
+import 'package:drift/wasm.dart';
+import 'package:drift/src/web/channel_new.dart';
+import 'package:flutter/widgets.dart';
+import 'package:web/web.dart' as web;
+import 'data/drift/database.dart';
+import 'data/drift/patient_vault_scope.dart';
+import 'data/drift/d18_keyed_open_guard.dart';
+import 'data/drift/d18_pre_cutover_cipher_adapter.dart';
+import 'data/drift/d18_unpublished_cipher_connector_web.dart';
+import 'data/drift/d18_vault_key_policy.dart';
+
+const _patientA = 'e2dbe28f-3eea-4410-86a7-274150a00018';
+const _patientB = 'e2dbe28f-3eea-4410-86a7-274150b00018';
+const _table = 'd18_ci_real_keyed_worker';
+const _marker = 'D18_CI_DYNAMIC_REAL_SQLITE_WORKER_20261102';
+const _tableB = 'd18_ci_second_vault';
+const _markerB = 'D18_CI_SYNTHETIC_SECOND_VAULT_20261102';
+const _patientD = 'e2dbe28f-3eea-4410-86a7-274150d00018';
+const _tableD = 'd18_ci_physical_cipher_guard';
+const _markerD = 'D18_CI_PHYSICAL_CIPHERTEXT_PRESERVED_20261103';
+
+void stage(String value) =>
+    html.document.documentElement?.dataset['d18DynamicStage'] = value;
+
+void verify(bool ok, String code) {
+  if (!ok) throw StateError(code);
+}
+
+// LOT 2/3 PRE-CUTOVER: real sqlite3mc worker + real D18VaultKeyPolicy
+// + scope/epoch guard + real AppDatabase v12 schema; disposable C ONLY.
+// This is not a clinical connector, never switch forPatientVault to this POC.
+const _guardedC = 'e2dbe28f-3eea-4410-86a7-274150c00018';
+
+final class _GuardedSqlCandidate {
+  final web.Worker worker;
+  final web.MessagePort control, sql;
+  final AppDatabase database;
+  const _GuardedSqlCandidate(this.worker,this.control,this.sql,this.database);
+  Future<void> close() async {
+    try {await database.close();}
+    finally {
+      control.close();
+      sql.close();
+      worker.terminate();
+    }
+  }
+}
+
+// Browser storage may contain only the authenticated PUBLIC key envelope, never
+// the passphrase, offline recovery code, or unwrapped data key. CI fixture only.
+const _guardedEnvelopeStorageKey='d18_ci_only_public_vault_envelope';
+const _guardedPassphrase='D18-CI-only-synthetic-2026-verified-policy';
+const _guardedMarker='D18_CI_GUARDED_V12_PERSISTED_20261103';
+
+// After a full browser-process restart, an incorrect passphrase must never
+// release a data key; this phase does not even construct the SQLite worker.
+// The subsequent guarded_reopen phase proves ciphertext remains intact.
+Future<void> verifyGuardedWrongPassphrase() async {
+  stage('guarded_wrong_passphrase_load_public_envelope');
+  final envelope=html.window.localStorage[_guardedEnvelopeStorageKey];
+  verify(envelope!=null && envelope.isNotEmpty &&
+      !envelope.contains(_guardedPassphrase),
+      'D18_GUARDED_PUBLIC_ENVELOPE_UNAVAILABLE_OR_UNSAFE');
+  final scope=PatientVaultScope.deviceLocal(_guardedC);
+  D18VaultKeySession? unlocked;
+  var rejected=false;
+  stage('guarded_wrong_passphrase_unwrap_rejected');
+  try {
+    unlocked=await D18VaultKeyPolicy.unlockWithPassphrase(
+      scope:scope,publicEnvelopeJson:envelope!,
+      passphrase:_guardedPassphrase+'-INCORRECT');
+  } catch (_) {
+    rejected=true;
+  } finally {
+    unlocked?.lock();
+  }
+  verify(rejected && unlocked==null,
+      'D18_GUARDED_WRONG_PASSPHRASE_ACCEPTED');
+  stage('guarded_wrong_passphrase_public_envelope_preserved');
+  verify(html.window.localStorage[_guardedEnvelopeStorageKey]==envelope,
+      'D18_GUARDED_WRONG_PASSWORD_CORRUPTED_ENVELOPE');
+}
+
+Future<void> verifyGuardedWebOpen({bool reopen=false}) async {
+  final scope=PatientVaultScope.deviceLocal(_guardedC);
+  stage(reopen ? 'guarded_policy_unlock_after_restart' : 'guarded_policy_enroll');
+  final enrolled=reopen ? null : await D18VaultKeyPolicy.createForEmptyVault(
+    scope:scope,passphrase:_guardedPassphrase);
+  final envelope=reopen
+      ? html.window.localStorage[_guardedEnvelopeStorageKey]
+      : enrolled!.publicEnvelopeJson;
+  verify(envelope!=null && envelope.isNotEmpty,
+      'D18_GUARDED_PUBLIC_ENVELOPE_UNAVAILABLE');
+  final session=reopen ? await D18VaultKeyPolicy.unlockWithPassphrase(
+    scope:scope,publicEnvelopeJson:envelope!,passphrase:_guardedPassphrase)
+      : enrolled!.session;
+  try {
+    final guard=D18KeyedOpenGuard(
+      resolveAuthenticatedScope:() async => scope,
+      readAuthEpoch:()=>1);
+    stage('guarded_cross_patient_reject');
+    final wrong=PatientVaultScope.deviceLocal(_patientB);
+    var invoked=false;
+    try {
+      await guard.openUnpublished<_GuardedSqlCandidate>(
+        requestedScope:wrong,
+        keySession:session,
+        createUnpublished:(key) async {
+          invoked=true;
+          throw StateError('MUST_NOT_ENTER_WORKER');
+        },
+        discardUnpublished:(v)=>v.close());
+      throw StateError('D18_GUARD_CROSS_SCOPE_ACCEPTED');
+    } catch(e) {
+      verify(!invoked && e is StateError,
+        'D18_GUARD_OPENED_WRONG_PATIENT');
+    }
+    stage('guarded_real_worker_open');
+    final candidate=await guard.openUnpublished<_GuardedSqlCandidate>(
+      requestedScope:scope,
+      keySession:session,
+      createUnpublished:(bytes) async {
+        final worker=web.Worker('d18_dynamic_cipher_sqlite_worker.js'.toJS);
+        final control=web.MessageChannel(),sql=web.MessageChannel();
+        var transferred=false;
+        try {
+          final own=Uint8List.fromList(bytes);
+          final buffer=own.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
+          final packet=JSObject()
+            ..setProperty('type'.toJS,'D18_CI_DYNAMIC_SQL_OPEN'.toJS)
+            ..setProperty('name'.toJS,(scope.databaseName+'_d18_ci_dynamic').toJS)
+            ..setProperty('key'.toJS,buffer);
+          final response=web.EventStreamProviders.messageEvent
+            .forTarget(control.port1).first.timeout(const Duration(seconds:25));
+          control.port1.start();
+          worker.postMessage(packet,<JSObject>[control.port2,sql.port2,buffer].toJS);
+          transferred=true;
+          own.fillRange(0,own.length,0);
+          final status=((await response).data as JSString).toDart;
+          verify(status=='READY','D18_GUARDED_WORKER_NOT_READY');
+          final conn=await connectToRemoteAndInitialize(
+            sql.port1.channel(explicitClose:true));
+          final database=AppDatabase.testPatientVault(conn,scope);
+          try {
+            // Drift may have already bootstrapped the real v12 schema when
+            // AppDatabase opened the remote connection. Never re-run onCreate
+            // or overwrite an existing encrypted database in that case.
+            // If the pre-opened CI worker instead left an EMPTY v1 store,
+            // create the real schema inside a transaction and verify it.
+            stage('guarded_v12_read_initial_version');
+            final initialRows=await database.customSelect('PRAGMA user_version').get();
+            if (initialRows.length!=1) {
+              stage('guarded_v12_initial_version_no_row');
+              throw StateError('D18_GUARDED_INITIAL_VERSION_UNAVAILABLE');
+            }
+            final rawVersion=initialRows.single.data['user_version'];
+            if (rawVersion is! int) {
+              stage('guarded_v12_initial_version_invalid_type');
+              throw StateError('D18_GUARDED_INITIAL_VERSION_INVALID');
+            }
+            // enableMigrations:false on the CI worker leaves a brand-new
+            // sqlite3mc database at PRAGMA user_version=0, not necessarily 1.
+            // Both 0 and 1 are allowed ONLY with no user tables; v12 must
+            // already have the complete real Drift schema. Never overwrite.
+            stage(rawVersion==12 ? 'guarded_v12_auto_initialized' :
+              rawVersion==0 ? 'guarded_v12_fresh_version_zero' :
+              rawVersion==1 ? 'guarded_v12_worker_version_one' :
+              'guarded_v12_unexpected_initial_version');
+            verify(rawVersion==0||rawVersion==1||rawVersion==12,
+                'D18_GUARDED_UNEXPECTED_INITIAL_VERSION');
+            final existing=await database.customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name NOT LIKE 'sqlite_%'").get();
+            if (rawVersion==0||rawVersion==1) {
+              stage('guarded_v12_check_empty');
+              verify(existing.isEmpty,'D18_GUARDED_NONEMPTY_CIPHER_DB');
+              stage('guarded_v12_begin_transaction');
+              await database.transaction(() async {
+                stage('guarded_v12_create_all');
+                await database.migration.onCreate(Migrator(database));
+                stage('guarded_v12_set_user_version');
+                await database.customStatement('PRAGMA user_version=12');
+                stage('guarded_v12_integrity_check');
+                final check=await database.customSelect(
+                    'PRAGMA integrity_check').getSingle();
+                verify(check.data.values.single=='ok',
+                    'D18_GUARDED_MIGRATION_INTEGRITY_FAILED');
+                stage('guarded_v12_foreign_key_check');
+                final fks=await database.customSelect(
+                    'PRAGMA foreign_key_check').get();
+                verify(fks.isEmpty,'D18_GUARDED_MIGRATION_FK_FAILED');
+              });
+              stage('guarded_v12_migration_committed');
+            } else {
+              stage('guarded_v12_verify_existing_schema');
+              final tableNames=existing.map((r)=>r.read<String>('name')).toSet();
+              verify(tableNames.containsAll(const {
+                'patient_profiles','log_entries','chat_messages',
+                'medication_events','reminders',
+                'patient_treatment_declarations_v1',
+              }), 'D18_GUARDED_V12_TABLES_MISSING');
+            }
+          } catch(_) {
+            await database.close();
+            rethrow;
+          }
+          return _GuardedSqlCandidate(worker,control.port1,sql.port1,database);
+        } catch(_) {
+          control.port1.close();
+          sql.port1.close();
+          worker.terminate();
+          rethrow;
+        } finally {
+          verify(transferred,'D18_GUARDED_WORKER_KEY_NOT_TRANSFERRED');
+        }
+      },
+      discardUnpublished:(c)=>c.close());
+    try {
+      stage('guarded_schema_version');
+      final version=await candidate.database.customSelect('PRAGMA user_version')
+        .getSingle();
+      verify(version.read<int>('user_version')==12,
+        'D18_GUARDED_REAL_DRIFT_SCHEMA_NOT_V12');
+      final rows=await candidate.database.customSelect(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name='patient_profiles'").get();
+      verify(rows.length==1,'D18_GUARDED_PATIENT_TABLE_MISSING');
+      final declaration=await candidate.database.customSelect(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name='patient_treatment_declarations_v1'").get();
+      verify(declaration.length==1,'D18_GUARDED_DECLARATION_TABLE_MISSING');
+      stage('guarded_session_key_preserved');
+      verify(!session.isLocked,'D18_GUARDED_SESSION_KEY_LOST');
+      if(!reopen) {
+        stage('guarded_write_real_patient_table');
+        await candidate.database.customStatement(
+          'INSERT INTO patient_profiles(user_id,updated_at,diabetes_type) '
+          'VALUES(?,?,?)',[1,1700000000,_guardedMarker]);
+      }
+      stage('guarded_read_real_patient_table');
+      final markerRows=await candidate.database.customSelect(
+        'SELECT diabetes_type FROM patient_profiles WHERE user_id=1').get();
+      verify(markerRows.length==1 &&
+          markerRows.single.read<String>('diabetes_type')==_guardedMarker,
+          'D18_GUARDED_KEYED_V12_ROW_NOT_PERSISTED');
+      stage('guarded_validate_fks');
+      final foreignKeys=await candidate.database.customSelect(
+          'PRAGMA foreign_key_check').get();
+      verify(foreignKeys.isEmpty,'D18_GUARDED_KEYED_V12_FOREIGN_KEY_ERROR');
+    } finally {await candidate.close();}
+    if(!reopen) {
+      // Store only the public authenticated envelope *after* the candidate DB
+      // has closed successfully. The original offline recovery code is NEVER
+      // persisted by the browser, even in this synthetic CI harness.
+      html.window.localStorage[_guardedEnvelopeStorageKey]=envelope!;
+      stage('guarded_only_public_envelope_persisted');
+      verify(html.window.localStorage[_guardedEnvelopeStorageKey]==envelope,
+          'D18_GUARDED_PUBLIC_ENVELOPE_NOT_SAVED');
+    }
+  } finally {session.lock();}
+}
+
+
+const _candidatePatient='e2dbe28f-3eea-4410-86a7-274150e00018';
+const _candidateEnvelope='d18_ci_unpublished_envelope';
+const _candidatePass='CI synthetic-only local passphrase for D18';
+const _candidateMarker='D18_REAL_UNPUBLISHED_CIPHERTEXT_MARKER';
+
+Future<void> verifyUnpublishedConnector(String phase) async {
+  final scope=PatientVaultScope.deviceLocal(_candidatePatient);
+  if (phase == 'candidate_physical_bytes') {
+    stage('candidate_physical_ciphertext_export');
+    final destination=D18PreCutoverCipherAdapter.destinationFor(scope);
+    final probe=await WasmDatabase.probe(
+      sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
+      driftWorkerUri:Uri.parse('d18_cipher_worker_correct.js'),
+      databaseName:destination);
+    final matches=probe.existingDatabases.where((e)=>e.$2==destination).toList();
+    verify(matches.length==1,'D18_CANDIDATE_CIPHERTEXT_MISSING');
+    final bytes=await probe.exportDatabase(matches.single);
+    verify(bytes!=null && bytes.length>100,'D18_CANDIDATE_BYTES_MISSING');
+    final raw=bytes!;
+    verify(String.fromCharCodes(raw.take(16)) != 'SQLite format 3\u0000',
+      'D18_CANDIDATE_PLAINTEXT_SQLITE_HEADER');
+    final marker=_candidateMarker.codeUnits;
+    for(var i=0;i<=raw.length-marker.length;i++){
+      var found=true;
+      for(var j=0;j<marker.length;j++){
+        if(raw[i+j]!=marker[j]){found=false;break;}
+      }
+      verify(!found,'D18_CANDIDATE_PLAINTEXT_PATIENT_MARKER');
+    }
+    return;
+  }
+  final before=html.window.localStorage[_candidateEnvelope];
+  final enroll = phase != 'candidate_reopen';
+  final registration=enroll
+    ? await D18VaultKeyPolicy.createForEmptyVault(
+        scope:scope,passphrase:_candidatePass)
+    : null;
+  final session=registration?.session ??
+      await D18VaultKeyPolicy.unlockWithPassphrase(
+        scope:scope,publicEnvelopeJson:before??'',
+        passphrase:_candidatePass);
+  try {
+    final adapter=D18PreCutoverCipherAdapter(
+      guard:D18KeyedOpenGuard(
+        resolveAuthenticatedScope:() async=>scope,readAuthEpoch:()=>11),
+      openVerifiedWorker:openD18UnpublishedCipherWorker);
+    final intent=phase=='candidate_create'||phase=='candidate_create_exists'
+        ? D18CipherVaultOpenIntent.createFresh
+        : D18CipherVaultOpenIntent.reopenExisting;
+    if(phase=='candidate_missing'||phase=='candidate_create_exists'||
+        phase=='candidate_wrong_key'){
+      var rejected=false;
+      try {
+        final unexpected=await adapter.openUnpublished(
+          scope:scope,keySession:session,intent:intent);
+        await unexpected.close();
+      } on StateError catch(error) {
+        final required = phase == 'candidate_missing'
+            ? 'D18_WORKER_MISSING_CIPHERTEXT'
+            : phase == 'candidate_create_exists'
+                ? 'D18_WORKER_CIPHERTEXT_ALREADY_EXISTS'
+                : 'D18_WORKER_KEY_REJECTED';
+        verify(error.toString().contains(required),
+            'D18_CANDIDATE_DENIED_FOR_UNEXPECTED_REASON');
+        rejected=true;
+      }
+      verify(rejected,'D18_UNPUBLISHED_UNSAFE_OPEN_ACCEPTED');
+      verify(html.window.localStorage[_candidateEnvelope]==before,
+          'D18_UNPUBLISHED_PUBLIC_ENVELOPE_CHANGED');
+      return;
+    }
+    final vault=await adapter.openUnpublished(
+      scope:scope,keySession:session,intent:intent);
+    try {
+      if(phase=='candidate_create') {
+        await vault.database.customStatement(
+          'INSERT INTO patient_profiles(user_id,updated_at,diabetes_type) '
+          'VALUES(?,?,?)',[1,1700000000,_candidateMarker]);
+      }
+      final rows=await vault.database.customSelect(
+        'SELECT diabetes_type FROM patient_profiles WHERE user_id=1').get();
+      verify(rows.length==1 &&
+        rows.single.read<String>('diabetes_type')==_candidateMarker,
+        'D18_UNPUBLISHED_PATIENT_DATA_LOST');
+    }finally {await vault.close();}
+    if(phase=='candidate_create') {
+      html.window.localStorage[_candidateEnvelope]=registration!.publicEnvelopeJson;
+    }else{
+      verify(html.window.localStorage[_candidateEnvelope]==before,
+        'D18_UNPUBLISHED_ENVELOPE_REPLACED');
+    }
+  }finally{session.lock();}
+}
+
+Future<void> runPhase(String name) async {
+  if(name.startsWith('candidate_')) {
+    await verifyUnpublishedConnector(name);return;
+  }
+  if(name=='guarded_wrong_passphrase') {
+    await verifyGuardedWrongPassphrase();return;
+  }
+  if(name=='guarded_open'||name=='guarded_reopen') {
+    await verifyGuardedWebOpen(reopen:name=='guarded_reopen');return;
+  }
+  stage('resolve_scope');
+  final scope = PatientVaultScope.deviceLocal(
+    const {'isolate_b', 'create_b', 'read_b'}.contains(name)
+        ? _patientB
+        : name.startsWith('intent_') ? _patientD : _patientA,
+  );
+  final dbName = scope.databaseName + '_d18_ci_dynamic';
+  final jsKey = globalContext.getProperty('__D18_DYNAMIC_CI_KEY'.toJS);
+  verify(jsKey is JSUint8Array, 'D18_DYNAMIC_MISSING_SYNTHETIC_KEY');
+  final ephemeral = Uint8List.fromList((jsKey as JSUint8Array).toDart);
+  verify(ephemeral.length == 32, 'D18_DYNAMIC_BAD_KEY_SIZE');
+
+  if (name == 'physical_bytes') {
+    final probe = await WasmDatabase.probe(
+      sqlite3Uri: Uri.parse('d18_sqlite3mc.wasm'),
+      driftWorkerUri: Uri.parse('d18_cipher_worker_correct.js'),
+      databaseName: dbName,
+    );
+    final entries = probe.existingDatabases.where((e) => e.$2 == dbName).toList();
+    verify(entries.length == 1, 'D18_DYNAMIC_MISSING_DB');
+    final bytes = await probe.exportDatabase(entries.single);
+    verify(bytes != null && bytes.length > 100, 'D18_DYNAMIC_NO_BYTES');
+    final raw = bytes!;
+    verify(String.fromCharCodes(raw.take(16)) != 'SQLite format 3\u0000',
+        'D18_DYNAMIC_PLAINTEXT_HEADER');
+    final needle = _marker.codeUnits;
+    for (var i = 0; i <= raw.length - needle.length; i++) {
+      var found = true;
+      for (var j = 0; j < needle.length; j++) {
+        if (raw[i + j] != needle[j]) {
+          found = false;
+          break;
+        }
+      }
+      verify(!found, 'D18_DYNAMIC_PLAINTEXT_SENTINEL');
+    }
+    return;
+  }
+
+  stage('create_worker');
+  final worker = web.Worker('d18_dynamic_cipher_sqlite_worker.js'.toJS);
+  final control = web.MessageChannel();
+  final sql = web.MessageChannel();
+  AppDatabase? database;
+  try {
+    final keyArrayBuffer = ephemeral.toJS.getProperty('buffer'.toJS) as JSArrayBuffer;
+    final intentMode=name.startsWith('intent_');
+    final message = JSObject()
+      ..setProperty('type'.toJS, (intentMode
+          ? 'D18_CI_DYNAMIC_SQL_OPEN_INTENT'
+          : 'D18_CI_DYNAMIC_SQL_OPEN').toJS)
+      ..setProperty('name'.toJS, dbName.toJS)
+      ..setProperty('key'.toJS, keyArrayBuffer);
+    if(intentMode) {
+      final intent=name=='intent_create'||name=='intent_create_exists'
+          ? 'createFresh' : 'reopenExisting';
+      message.setProperty('intent'.toJS,intent.toJS);
+    }
+    // The control port uses addEventListener via EventStreamProviders.
+    // It will NOT dispatch messages until MessagePort.start() is called.
+    // Subscribe before posting to avoid losing an immediate worker response.
+    final readyEvent = web.EventStreamProviders.messageEvent
+        .forTarget(control.port1)
+        .first.timeout(const Duration(seconds: 25));
+    control.port1.start();
+    stage('send_worker_open');
+    worker.postMessage(message,
+        <JSObject>[control.port2, sql.port2, keyArrayBuffer].toJS);
+    ephemeral.fillRange(0, ephemeral.length, 0);
+    stage('await_worker_ready');
+    final statusEvent = await readyEvent;
+    final status = (statusEvent.data as JSString).toDart;
+    control.port1.close();
+    if (name == 'wrong_key' || name == 'intent_wrong_key') {
+      // On an existing physical ciphertext, wrong-key reopen must reject
+      // without constructing a replacement vault or exposing SQL access.
+      verify(status == 'KEY_REJECTED', 'D18_DYNAMIC_BAD_KEY_ACCEPTED');
+      return;
+    }
+    if (name == 'intent_reopen_missing') {
+      verify(status == 'MISSING_CIPHERTEXT',
+          'D18_INTENT_MISSING_DB_RECREATED');
+      return;
+    }
+    if (name == 'intent_create_exists') {
+      verify(status == 'CIPHERTEXT_ALREADY_EXISTS',
+          'D18_INTENT_EXISTING_CIPHERTEXT_OVERWRITTEN');
+      return;
+    }
+    if (name == 'lock_denied') {
+      verify(status == 'LOCK_UNAVAILABLE', 'D18_DYNAMIC_SAME_VAULT_LOCK_BYPASS');
+      return;
+    }
+    stage('worker_ack_' + status);
+    verify(status == 'READY', 'D18_DYNAMIC_OPEN_REJECTED');
+    final connection = await connectToRemoteAndInitialize(
+      sql.port1.channel(explicitClose: true),
+    );
+    stage('remote_connected');
+    database = AppDatabase.testPatientVault(connection, scope);
+    await database.customSelect('SELECT count(*) FROM sqlite_master').getSingle();
+    if (name == 'intent_create') {
+      await database.customStatement(
+        'CREATE TABLE "$_tableD" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)');
+      await database.customStatement(
+        'INSERT INTO "$_tableD" (id, marker) VALUES (?, ?)',[1,_markerD]);
+    } else if (name == 'intent_reopen') {
+      final row=await database.customSelect(
+        'SELECT marker FROM "$_tableD" WHERE id=1').getSingle();
+      verify(row.read<String>('marker')==_markerD,
+        'D18_INTENT_REOPEN_CIPHERTEXT_DATA_LOST');
+    } else if (name == 'create') {
+      await database.customStatement(
+          'CREATE TABLE "$_table" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)');
+      await database.customStatement(
+          'INSERT INTO "$_table" (id, marker) VALUES (?, ?)', [1, _marker]);
+    } else if (name == 'read') {
+      final row = await database.customSelect(
+          'SELECT marker FROM "$_table" WHERE id = 1').getSingle();
+      verify(row.read<String>('marker') == _marker, 'D18_DYNAMIC_RESTART_LOST');
+    } else if (name == 'create_b') {
+      await database.customStatement(
+          'CREATE TABLE "$_tableB" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)');
+      await database.customStatement(
+          'INSERT INTO "$_tableB" (id, marker) VALUES (?, ?)', [1, _markerB]);
+    } else if (name == 'read_b') {
+      final row = await database.customSelect(
+          'SELECT marker FROM "$_tableB" WHERE id = 1').getSingle();
+      verify(row.read<String>('marker') == _markerB,
+          'D18_DYNAMIC_B_RESTART_LOST');
+      final rows = await database.customSelect(
+          "SELECT name FROM sqlite_master WHERE name = '$_table'").get();
+      verify(rows.isEmpty, 'D18_DYNAMIC_B_SAW_A');
+    } else if (name == 'isolate_b') {
+      final rows = await database.customSelect(
+          "SELECT name FROM sqlite_master WHERE name = '$_table'").get();
+      verify(rows.isEmpty, 'D18_DYNAMIC_PATIENT_CROSSOVER');
+    } else {
+      throw StateError('D18_DYNAMIC_UNKNOWN_PHASE');
+    }
+  } finally {
+    if (database != null) await database.close();
+    control.port1.close();
+    sql.port1.close();
+    worker.terminate();
+  }
+}
+
+Future<void> main() async {
+  stage('main_entered');
+  WidgetsFlutterBinding.ensureInitialized();
+  final name = Uri.base.queryParameters['phase'] ?? '';
+  try {
+    verify(const {
+      'create', 'read', 'wrong_key', 'isolate_b', 'physical_bytes',
+      'lock_denied', 'create_b', 'read_b', 'guarded_open', 'guarded_reopen',
+      'guarded_wrong_passphrase', 'intent_reopen_missing',
+      'intent_create', 'intent_create_exists', 'intent_reopen',
+      'intent_wrong_key',
+      'candidate_missing','candidate_create','candidate_create_exists',
+      'candidate_wrong_key','candidate_reopen','candidate_physical_bytes',
+    }.contains(name), 'D18_DYNAMIC_INVALID_PHASE');
+    stage('run_phase');
+    await runPhase(name);
+    html.document.title = 'D18_DYNAMIC_SQL_PASS:$name';
+  } catch (e) {
+    html.document.documentElement?.dataset['d18DynamicError'] =
+        e.runtimeType.toString();
+    html.document.title = 'D18_DYNAMIC_SQL_FAIL:$name';
+  }
+  runApp(const SizedBox.shrink());
+}

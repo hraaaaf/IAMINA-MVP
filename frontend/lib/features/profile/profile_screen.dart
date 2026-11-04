@@ -14,6 +14,7 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
+import '../../data/drift/patient_vault_scope.dart';
 import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../services/auth_service.dart';
 import '../../services/app_lock_service.dart';
@@ -25,6 +26,8 @@ import '../../services/locale_preference_service.dart';
 import '../../services/sync_service.dart';
 import 'medical_treatment_declaration_v1.dart';
 import 'medical_treatment_multi_selector.dart';
+import 'd18_profile_panel.dart';
+import 'd18_backup_section.dart';
 
 part 'profile_screen_presentation.dart';
 
@@ -106,6 +109,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // a separately governed clinical-sync capability is explicitly enabled.
   bool get _canResolveRemoteTreatmentConflict =>
       context.read<ApiClient?>()?.canSyncClinicalData ?? false;
+
+  // Keep persistence and patient-vault resolution in the state layer.
+  // Presentation must remain free of context.read<AppDatabase>().
+  AppDatabase? get _d18WebVault {
+    if (!kIsWeb) return null;
+    final db = context.read<AppDatabase>();
+    final scope = db.patientVaultScope;
+    if (scope == null ||
+        scope.databaseName == PatientVaultScope.auditOnly().databaseName) {
+      return null;
+    }
+    return db;
+  }
 
   void _setPresentationState(VoidCallback fn) => setState(fn);
 

@@ -1,0 +1,223 @@
+name: D18 experimental encrypted Drift Web worker POC
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-custom-cipher-worker-poc.yml'
+      - 'frontend/lib/d18_cipher_worker_*.dart'
+      - 'tools/d18_cipher_worker_probe.js'
+      - 'tools/d18_session_handoff_probe.js'
+      - 'tools/d18_dynamic_cipher_sqlite_probe.js'
+      - 'tools/d18_unpublished_lock_probe.js'
+      - 'tools/d18_full_cipher_migration_probe.js'
+      - 'frontend/lib/d18_full_cipher_migration_probe_main.dart'
+      - 'tools/fixtures/d18_dynamic_worker_lock_gate.js'
+      - 'tools/d18_web_locks_probe.js'
+      - 'tools/fixtures/d18_web_locks_gate.js'
+      - 'tools/fixtures/d18_web_locks_worker.js'
+      - 'tools/fixtures/d18_web_locks_test.html'
+      - 'frontend/lib/d18_dynamic_cipher_*.dart'
+      - 'frontend/lib/d18_unpublished_cipher_worker.dart'
+      - 'frontend/d18_crypto/worker_lock_gate.js'
+      - 'tools/fixtures/d18_session_handshake_probe_worker.js'
+      - 'frontend/lib/data/drift/**'
+      - 'frontend/lib/main.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d18-cipher-poc-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-drift-cipher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve locked Flutter packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Reject test-only cipher fixtures leaking into application runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('frontend/lib')
+          fixtures = {
+              'd18_cipher_worker_setup.dart',
+              'd18_cipher_worker_correct.dart',
+              'd18_cipher_worker_wrong.dart',
+              'd18_cipher_worker_probe_main.dart',
+              'd18_dynamic_cipher_sqlite_worker.dart',
+              'd18_dynamic_cipher_sqlite_probe_main.dart',
+              'd18_full_cipher_migration_probe_main.dart',
+              'd18_unpublished_cipher_worker.dart',
+          }
+          forbidden = (
+              'd18_cipher_worker_setup.dart',
+              'd18_cipher_worker_correct.dart',
+              'd18_cipher_worker_wrong.dart',
+              'd18_cipher_worker_correct.js',
+              'd18_cipher_worker_wrong.js',
+              'd18_sqlite3mc.wasm',
+              'D18-CI-ONLY-MC-',
+              'd18_session_handshake_probe_worker.js',
+              'd18_dynamic_cipher_sqlite_worker.js',
+              'd18_dynamic_worker_lock_gate.js',
+          )
+          leaks = []
+          for file in root.rglob('*.dart'):
+              if file.name in fixtures:
+                  continue
+              data = file.read_text(encoding='utf-8')
+              if any(needle in data for needle in forbidden):
+                  leaks.append(file.as_posix())
+          if leaks:
+              raise SystemExit(
+                  'D18_TEST_FIXTURE_LEAK_IN_APP: ' + ', '.join(leaks)
+              )
+          print('D18 test-only worker fixtures isolated from application Dart code')
+          PY
+      - name: Acquire sqlite3mc WASM pinned to sqlite3 2.9.4
+        working-directory: frontend
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            -o web/d18_sqlite3mc.wasm \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm
+          echo "5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  web/d18_sqlite3mc.wasm" | sha256sum -c -
+      - name: Compile custom Dart workers (test only)
+        working-directory: frontend
+        run: |
+          dart compile js -O4 -o web/d18_cipher_worker_correct.js lib/d18_cipher_worker_correct.dart
+          dart compile js -O4 -o web/d18_cipher_worker_wrong.js lib/d18_cipher_worker_wrong.dart
+      - name: Compile and analyze real dynamic sqlite3mc worker (test only)
+        working-directory: frontend
+        run: |
+          dart compile js -O4 -o web/d18_dynamic_cipher_sqlite_worker.js lib/d18_dynamic_cipher_sqlite_worker.dart
+          dart compile js -O4 -o web/d18_unpublished_cipher_worker.js lib/d18_unpublished_cipher_worker.dart
+          flutter analyze --no-fatal-infos             lib/d18_dynamic_cipher_sqlite_worker.dart             lib/d18_dynamic_cipher_sqlite_probe_main.dart             lib/d18_unpublished_cipher_worker.dart             lib/data/drift/d18_unpublished_cipher_connector_web.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dynamic_cipher_sqlite_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Stage CI-only exclusive Web Lock gate for dynamic sqlite3mc worker
+        run: |
+          node --check tools/fixtures/d18_dynamic_worker_lock_gate.js
+          node --check frontend/d18_crypto/worker_lock_gate.js
+          if test -e frontend/build/web/d18_dynamic_worker_lock_gate.js; then
+            echo 'D18 worker Web Locks gate leaked into production Flutter build'
+            exit 1
+          fi
+          cp tools/fixtures/d18_dynamic_worker_lock_gate.js frontend/build/web/d18_dynamic_worker_lock_gate.js
+          cp frontend/d18_crypto/worker_lock_gate.js frontend/build/web/d18_unpublished_worker_lock_gate.js
+      - name: Real Chromium per-vault dynamic sqlite3mc key test
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dynamic-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_dynamic_cipher_sqlite_probe.js
+          # D18 step 2: independent real-worker tab/lock isolation, 10 strict checks.
+          node --check tools/d18_unpublished_lock_probe.js
+          node tools/d18_unpublished_lock_probe.js
+          # CI injected the fixture for this browser POC. Remove it from the
+          # build output before compiling the next standalone Web entrypoint;
+          # Flutter may retain unrelated files between successive builds.
+          rm frontend/build/web/d18_dynamic_worker_lock_gate.js
+          rm frontend/build/web/d18_unpublished_worker_lock_gate.js
+      - name: Analyze and build standalone Flutter Web probe
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/d18_cipher_worker_setup.dart \
+            lib/d18_cipher_worker_probe_main.dart \
+            lib/d18_cipher_worker_correct.dart \
+            lib/d18_cipher_worker_wrong.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_cipher_worker_probe_main.dart
+      - name: Real Chromium cross-process cipher test
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-mc-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_cipher_worker_probe.js
+          # The fixture must NEVER be bundled in a normal production Web build.
+          if test -e frontend/build/web/d18_session_handshake_probe_worker.js; then
+            echo 'D18 key-port test worker leaked into Flutter build'; exit 1
+          fi
+          cp tools/fixtures/d18_session_handshake_probe_worker.js frontend/build/web/d18_session_handshake_probe_worker.js
+          node tools/d18_session_handoff_probe.js
+      - name: Real Chromium same-vault cross-tab Web Locks arbitration (synthetic)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_web_locks_probe.js
+          node --check tools/fixtures/d18_web_locks_gate.js
+          node --check tools/fixtures/d18_web_locks_worker.js
+          for fixture in d18_web_locks_worker.js d18_web_locks_test.html; do
+            if test -e "frontend/build/web/$fixture"; then
+              echo "D18 lock test fixture leaked into Flutter build: $fixture"
+              exit 1
+            fi
+          done
+          cp tools/fixtures/d18_web_locks_worker.js frontend/build/web/d18_web_locks_worker.js
+          cp tools/fixtures/d18_web_locks_test.html frontend/build/web/d18_web_locks_test.html
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-locks-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/d18_web_locks_test.html > /dev/null
+          node tools/d18_web_locks_probe.js
+      - name: Build and analyze synthetic whole-schema keyed migration proof
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/d18_full_cipher_migration_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_full_cipher_migration_probe_main.dart
+      - name: Real Chromium all-schema source-to-keyed destination proof
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_full_cipher_migration_probe.js
+          if test -e frontend/web/d18_dynamic_worker_lock_gate.js; then
+            echo 'D18 synthetic Web Locks helper leaked into source Web assets'
+            exit 1
+          fi
+          if test -e frontend/build/web/d18_dynamic_worker_lock_gate.js; then
+            echo 'D18 synthetic Web Locks helper leaked into compiled Flutter build'
+            exit 1
+          fi
+          cp tools/fixtures/d18_dynamic_worker_lock_gate.js frontend/build/web/d18_dynamic_worker_lock_gate.js
+          python3 -m http.server 7396 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-full-migration-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
+          node tools/d18_full_cipher_migration_probe.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-worker-poc-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            d18-cipher-poc-proof/
+            d18-keyport-proof/
+            d18-dynamic-sql-proof/
+            d18-unpublished-lock-proof/
+            d18-web-locks-proof/
+            d18-full-vault-proof/
+          if-no-files-found: warn
+          retention-days: 14
