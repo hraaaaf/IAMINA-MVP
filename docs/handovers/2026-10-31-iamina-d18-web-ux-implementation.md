@@ -1,3 +1,19 @@
+## D18 WEB — 2026-11-04 — P0-A SAFE-HOLD / FENCING PHYSIQUE SYNTHÉTIQUE, NO-GO CLINIQUE
+
+**Décision : D18 — chiffrement local patient Web ; sous-lot P0-A (issue #1261, PR Draft #1265).** **Goal :** aucune écriture tardive d'un ancien client/offline ne doit être silencieusement abandonnée pendant ou après une migration plaintext→sqlite3mc. **Statut :** SAFE-HOLD recommandé : aucune promotion automatique autorisée tant qu'un vrai mécanisme de protection ou de réconciliation n'est pas prouvé sur le stockage physique réel.
+
+**Preuve initiale sur code `17611ea5` :** 16/16 tests négatifs Chromium/WebKit et garde statique des imports d'app SUCCESS (Worker #41815331493, WebKit #41815331666). Les anciens clients ouvrent/réouvrent IndexedDB et écrivent malgré Web Locks et recheck source. **Cela prouve le risque, pas sa correction.**
+
+**Durcissement sous PR #1265 :** analyse transitive import/export/conditional du graphe Dart clinique, échec sur modules pré-cutover atteignables ou import local impossible ; CI mutation adversariale qui injecte temporairement un export indirect et exige un refus précis ; quatre tests Dart `frontend/test/data/drift/d18_historical_plaintext_no_cutover_test.dart` qui refusent PREPARED/ACTIVE malgré consentement synthétique et garantissent zéro écriture de marker. Sur SHA de code `5cb66df2`, les étapes CI `Inventory all real Web SQLite opening code paths`, `Adversarial mutation`, `Verify D18 atomic cutover contract` ont été vues **SUCCESS**. Ne pas confondre les workflows de l'ancien SHA avec ceux du dernier incrément.
+
+**Hypothèse additionnelle 2026-11-04 (NON CLINIQUE) :** IndexedDB `versionchange` est une transaction exclusive qui peut bloquer jusqu'à fermeture de l'ancien handle puis renommer un store tout en gardant ses données. Son modèle physique a été testé sur une **base artificielle `rows`** séparée : 8 assertions ajoutées aux 16 négatives existantes ; WebKit [#41823567078](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41823567078) **24/24 SUCCESS**, run Chromium [#41823567049](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41823567049) **EN COURS au contrôle documentaire**. Ce scénario ne prouve absolument pas que `drift_flutter 0.2.8` + `drift 2.31.0` + `sqlite3 2.9.4` partagent les mêmes object stores ni qu'OPFS puisse être mis en quarantaine. **Interdit de renommer/effacer les stores internes d'une base réelle sans preuve indépendante.** À considérer uniquement comme une option de recherche.
+
+**Documents de décision et preuves :** [ADR P0-A SAFE-HOLD](https://github.com/hraaaaf/IAMINA-MVP/blob/feat/iamina-d18-p0a-legacy-offline-gate-20261104/docs/decisions/D18_P0A_HISTORICAL_LEGACY_NO_AUTOMATIC_CUTOVER_2026-11-04.md) ; [PR Draft #1265](https://github.com/hraaaaf/IAMINA-MVP/pull/1265) ; [issue #1261](https://github.com/hraaaaf/IAMINA-MVP/issues/1261) ; [Notion D18](https://app.notion.com/p/40d77c663362812381dfe50543c8471f).
+
+**Invariants :** source historique conservée, 0 activation du chiffrage clinique, 0 migration patient, 0 merge, 0 déploiement Vercel. P0-A clinique toujours NON CERTIFIÉ, D18 NO-GO. **Next exact :** lire le verdict Chromium, inventorier la VFS IndexedDB/OPFS réelle par navigateur et la capacité de récupération sous un protocole de fencing durable ; tests multi-coffres, crash/restart, tous objets SQLite et audit indépendant. Si l'ancienne VFS ne peut être protégée, conserver SAFE-HOLD sans promettre une migration automatique.
+
+---
+
 ## D18 WEB — 2026-11-04 — WORKER CRASH PREFLIGHT : RETEST VERT, CAUSE RACINE NON IDENTIFIÉE
 
 **Décision : D18 — chiffrement du stockage patient Web**. **Goal de ce sous-lot :** isoler sans relâcher les exigences l'échec intermittent du POC de migration synthétique à l'étape de préflight de source SQLite. **Succès observable du retest :** `Real Chromium all-schema source-to-keyed destination proof` SUCCESS, y compris les phases `crash_uncommitted` et `crash_recover` ; **preuve :** logs du run GitHub exact.
