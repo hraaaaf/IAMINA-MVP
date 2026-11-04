@@ -60,10 +60,12 @@ async function phase(context,step){
       title:document.title,
       stage:document.documentElement.dataset.d18FullStage||null,
       error:document.documentElement.dataset.d18FullError||null,
+      failureClass:document.documentElement.dataset.d18FullFailureClass||null,
     }));
     const pass=output.title==='D18_FULL_PASS:'+step;
     results.push({phase:step,pass,...(!pass?{
-      stage:output.stage,error:output.error,errors}: {})});
+      stage:output.stage,error:output.error,
+      failureClass:output.failureClass,errors}: {})});
     if(!pass)throw Error('D18_FULL_'+step+'_FAILED');
   }finally{await page.close();}
 }

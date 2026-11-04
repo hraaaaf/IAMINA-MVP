@@ -11,6 +11,25 @@ on:
       - 'tools/d18_unpublished_lock_probe.js'
       - 'tools/d18_full_cipher_migration_probe.js'
       - 'tools/d18_candidate_cipher_migration_probe.js'
+      - 'tools/d18_cutover_idb_marker_probe.js'
+      - 'tools/d18_dart_idb_marker_bridge_probe.js'
+      - 'tools/d18_source_writer_barrier_probe.js'
+      - 'tools/d18_real_source_interlock_probe.js'
+      - 'tools/d18_stale_tab_write_bypass_probe.js'
+      - 'tools/d18_source_lock_dart_browser_probe.js'
+      - 'tools/fixtures/d18_source_lock_browser_test.html'
+      - 'tools/d18_source_sqlite_entrypoint_inventory.py'
+      - 'frontend/lib/d18_source_lock_probe_main.dart'
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'tools/d18_source_sqlite_entrypoint_inventory.py'
+      - 'frontend/web/d18_source_interlock.js'
+      - 'frontend/web/index.html'
+      - 'frontend/lib/data/drift/d18_source_lock_*.dart'
+      - 'tools/fixtures/d18_marker_idb_bridge.js'
+      - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
+      - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
       - 'frontend/lib/d18_candidate_full_cipher_migration_probe_main.dart'
       - 'frontend/lib/d18_full_cipher_migration_probe_main.dart'
       - 'tools/fixtures/d18_dynamic_worker_lock_gate.js'
@@ -25,6 +44,11 @@ on:
       - 'frontend/d18_crypto/worker_lock_gate.js'
       - 'tools/fixtures/d18_session_handshake_probe_worker.js'
       - 'frontend/lib/data/drift/**'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/test/services/d18_async_patient_vault_lease_test.dart'
+      - 'frontend/test/services/patient_vault_session_controller_test.dart'
+      - 'frontend/lib/data/drift/d18_pre_cutover_atomic_promotion.dart'
+      - 'frontend/test/data/drift/d18_pre_cutover_atomic_promotion_test.dart'
       - 'frontend/lib/main.dart'
   workflow_dispatch:
 
@@ -51,6 +75,26 @@ jobs:
       - name: Resolve locked Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Inventory all real Web SQLite opening code paths (static fail-closed)
+        run: python3 tools/d18_source_sqlite_entrypoint_inventory.py
+      - name: Verify D18 optional async lease integration into real patient controller (NOT ENABLED)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos             lib/services/patient_vault_session_controller.dart             test/services/d18_async_patient_vault_lease_test.dart             test/services/patient_vault_session_controller_test.dart
+          flutter test test/services/patient_vault_session_controller_test.dart test/services/d18_async_patient_vault_lease_test.dart
+          flutter analyze --no-fatal-infos lib/main.dart lib/data/drift/d18_source_lock_gate.dart lib/data/drift/d18_source_lock_web.dart
+      - name: Verify D18 unpublished async session lifecycle (pre-cutover only)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos             lib/data/drift/d18_pre_cutover_cipher_adapter.dart             lib/data/drift/d18_pre_cutover_session_coordinator.dart             test/data/drift/d18_pre_cutover_session_coordinator_test.dart
+          flutter test test/data/drift/d18_pre_cutover_session_coordinator_test.dart
+      - name: Verify D18 atomic cutover contract (synthetic / no runtime)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/data/drift/d18_pre_cutover_atomic_promotion.dart \
+            test/data/drift/d18_pre_cutover_atomic_promotion_test.dart
+          flutter test test/data/drift/d18_pre_cutover_atomic_promotion_test.dart
       - name: Reject test-only cipher fixtures leaking into application runtime
         run: |
           python3 - <<'PY'
@@ -123,6 +167,40 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: D18 REAL SOURCE SCRIPT cooperative canary (chromium, NOT CUTOVER)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check frontend/web/d18_source_interlock.js
+          node --check tools/d18_real_source_interlock_probe.js
+          D18_SOURCE_INTERLOCK_BROWSER=chromium node tools/d18_real_source_interlock_probe.js
+      - name: D18 negative old tab writes under exclusive locks (chromium CI only)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_stale_tab_write_bypass_probe.js
+          D18_STALE_BROWSER=chromium node tools/d18_stale_tab_write_bypass_probe.js
+      - name: Verify isolated Dart source bridge to Web Lock (chromium CI-only)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          (cd frontend && flutter analyze --no-fatal-infos lib/d18_source_lock_probe_main.dart)
+          (cd frontend && mkdir -p build/d18-source-gate-probe && dart compile js -O4 -o build/d18-source-gate-probe/d18_source_lock_probe.js lib/d18_source_lock_probe_main.dart)
+          cp frontend/web/d18_source_interlock.js frontend/build/d18-source-gate-probe/d18_source_interlock.js
+          cp tools/fixtures/d18_source_lock_browser_test.html frontend/build/d18-source-gate-probe/index.html
+          test ! -e frontend/build/d18-source-gate-probe/flutter_bootstrap.js
+          python3 -m http.server 7409 --bind 127.0.0.1 --directory frontend/build/d18-source-gate-probe > /tmp/d18-source-dart-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 8 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7409/ > /dev/null
+          node --check tools/d18_source_lock_dart_browser_probe.js
+          D18_DART_SOURCE_BROWSER=chromium node tools/d18_source_lock_dart_browser_probe.js
+      - name: D18 synthetic IndexedDB atomic marker CAS — Chromium
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_cutover_idb_marker_probe.js
+          D18_MARKER_BROWSER=chromium node tools/d18_cutover_idb_marker_probe.js
       - name: Stage CI-only exclusive Web Lock gate for dynamic sqlite3mc worker
         run: |
           node --check tools/fixtures/d18_dynamic_worker_lock_gate.js
@@ -169,7 +247,18 @@ jobs:
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
-          node tools/d18_candidate_cipher_migration_probe.js
+          # D18 source persistence stress: 20 independent fresh Chromium
+          # profiles with a new synthetic key each time. This is NOT a
+          # retry: the first failure aborts the whole job, preserving logs.
+          set -euo pipefail
+          for sample in $(seq 1 20); do
+            echo "D18 stage3 independent durability stress $sample/20"
+            node tools/d18_candidate_cipher_migration_probe.js
+          done
+          # Two independent negative controls. Expected failures are strict
+          # assertions, not retries or alternate migration paths.
+          D18_NEGATIVE_MODE=missing_source node tools/d18_candidate_cipher_migration_probe.js
+          D18_NEGATIVE_MODE=missing_trigger node tools/d18_candidate_cipher_migration_probe.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
       - name: Analyze and build standalone Flutter Web probe
         working-directory: frontend
@@ -239,6 +328,28 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7396/ > /dev/null
           node tools/d18_full_cipher_migration_probe.js
+      - name: Build D18 Flutter Dart bridge to IndexedDB (pre-cutover CI only)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart lib/d18_dart_marker_bridge_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dart_marker_bridge_probe_main.dart
+      - name: Exercise Flutter Dart IndexedDB bridge — Chromium
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/fixtures/d18_marker_idb_bridge.js
+          node --check tools/d18_dart_idb_marker_bridge_probe.js
+          python3 -m http.server 7397 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dart-idb-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7397/ > /dev/null
+          D18_DART_IDB_BROWSER=chromium node tools/d18_dart_idb_marker_bridge_probe.js
+      - name: D18 synthetic legacy + patient source lease — chromium (21 checks)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_source_writer_barrier_probe.js
+          D18_SOURCE_BARRIER_BROWSER=chromium node tools/d18_source_writer_barrier_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -251,5 +362,8 @@ jobs:
             d18-web-locks-proof/
             d18-full-vault-proof/
             d18-candidate-migration-proof/
+            d18-idb-marker-proof/report-chromium.json
+            d18-dart-idb-marker-proof/report-chromium.json
+            d18-source-barrier-proof/report-chromium.json
           if-no-files-found: warn
           retention-days: 14

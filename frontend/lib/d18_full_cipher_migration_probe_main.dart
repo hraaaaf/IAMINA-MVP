@@ -207,14 +207,23 @@ Future<void> abortRollback() async {
 // Never perform this against real patients. Do not invoke ROLLBACK/close on
 // the crashed worker: only the restarted storage engine can recover the journal.
 Future<void> crashUncommitted() async {
-  stage('crash_source_preflight');
+  // Deliberately keep every preflight gate strict. Separate stages make a
+  // transient IndexedDB reopen failure distinguishable from SQLite integrity,
+  // a missing logical source marker, and an unclean-worker crash.
+  stage('crash_source_open');
   final source=await openSource();
   try {
+    stage('crash_source_integrity');
     await integrity(source);
+    stage('crash_source_snapshot');
     final before=await snapshot(source);
+    stage('crash_source_schema');
     check(before.schema.any((s)=>s['name']=='d18_child_trigger'),
       'CRASH_SOURCE_UNSEEDED');
-  } finally { await source.close(); }
+  } finally {
+    stage('crash_source_close');
+    await source.close();
+  }
   final doomed=await openDestination(databaseName:crashName);
   stage('crash_transaction_open');
   await doomed.q.runCustom('BEGIN IMMEDIATE',[]);
@@ -458,6 +467,18 @@ Future<void> main() async {
     }
     html.document.title='D18_FULL_PASS:'+phase;
   }catch(e){
+    // Only a fixed diagnostic classification leaves this disposable CI page.
+    // No SQL statements, decrypted rows, keys or raw exception messages.
+    final message=e.toString().toLowerCase();
+    final kind=message.contains('database is locked')||
+      message.contains('sqlite_busy') ? 'SQLITE_BUSY' :
+      message.contains('database disk image is malformed')||
+      message.contains('sqlite_corrupt') ? 'SQLITE_CORRUPT' :
+      message.contains('no such table') ? 'MISSING_TABLE' :
+      message.contains('transaction') ? 'TRANSACTION' :
+      message.contains('indexeddb') ? 'INDEXEDDB' :
+      'OTHER';
+    html.document.documentElement?.dataset['d18FullFailureClass']=kind;
     html.document.documentElement?.dataset['d18FullError']=e.runtimeType.toString();
     html.document.title='D18_FULL_FAIL:'+phase;
   }

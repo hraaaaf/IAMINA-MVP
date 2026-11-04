@@ -33,14 +33,27 @@ final class NoMigrations implements QueryExecutorUser {
   Future<void> beforeOpen(QueryExecutor e,OpeningDetails d) async {}
 }
 Future<QueryExecutor> openSource() async {
+  // This is a REOPEN-only synthetic migration. Never silently create an
+  // empty plaintext source on failed persistence across page lifetimes.
+  stage('source_probe_before_reopen');
+  final existing = await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('sqlite3.wasm'),
+    driftWorkerUri:Uri.parse('drift_worker.js'),
+    databaseName:srcName);
+  check(existing.existingDatabases.any((entry)=>entry.$2==srcName),
+    'D18_SOURCE_MISSING_BEFORE_REOPEN');
+  stage('source_open_wasm_indexeddb');
   final opened=await WasmDatabase.open(
     databaseName:srcName,sqlite3Uri:Uri.parse('sqlite3.wasm'),
     driftWorkerUri:Uri.parse('drift_worker.js'),
     moveExistingIndexedDbToOpfs:false);
+  stage('source_implementation_preflight');
   check(opened.chosenImplementation.name=='sharedIndexedDb',
     'UNSUPPORTED_SOURCE_STORAGE');
   final q=opened.resolvedExecutor;
+  stage('source_ensure_open_no_migrations');
   await q.ensureOpen(const NoMigrations());
+  stage('source_open_ready');
   return q;
 }
 final class Encrypted {
@@ -131,6 +144,15 @@ Future<void> seed() async {
     check((await db.customSelect('PRAGMA foreign_key_check').get()).isEmpty,
       'BAD_SEED_FOREIGN_KEY');
   }finally{await db.close();}
+  // Require seed durability after closing its connection. A subsequent
+  // migration page must not generate a fresh empty SQLite source.
+  stage('seed_probe_persisted_source');
+  final persisted=await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('sqlite3.wasm'),
+    driftWorkerUri:Uri.parse('drift_worker.js'),
+    databaseName:srcName);
+  check(persisted.existingDatabases.any((entry)=>entry.$2==srcName),
+    'D18_SEED_NOT_PERSISTED');
 }
 final class Snap {
   final List<Map<String,Object?>> schema,seq;
@@ -345,17 +367,32 @@ Future<void> migrateWithSourceGateHeld() async {
   var locked=false;
   late final Snap original;
   try{
-    // Acquire source SQLite write reservation BEFORE enumerating any rows.
-    // Any concurrent writer on the same physical SQLite DB must wait/fail.
-    // Fail closed if lock cannot be acquired.
+    // Strict preflight: no retries, no re-seed, no skipped assertions.
+    stage('preflight_begin_immediate');
     await src.runCustom('BEGIN IMMEDIATE',[]);
     locked=true;
+    stage('preflight_integrity_under_lock');
     await integrity(src);
+    stage('preflight_snapshot_under_lock');
     original=await snapshot(src);
-    check(original.schema.any((x)=>x['name']=='d18_child_trigger')&&
-      original.schema.any((x)=>x['name']=='d18_parent_view')&&
-      original.schema.any((x)=>x['name']=='d18_parent_label_idx'),
-      'MISSING_DYNAMIC_SCHEMA');
+    // Fail closed on *which* synthetic schema invariant is missing.
+    // Avoid logging any SQL, patient-like values, or full schema contents.
+    stage('preflight_check_source_version');
+    check(original.version==12, 'D18_SOURCE_VERSION_NOT_12');
+    stage('preflight_check_source_table');
+    check(original.schema.any((x)=>x['name']=='d18_parent')&&
+      original.schema.any((x)=>x['name']=='d18_child'),
+      'D18_SOURCE_SYNTHETIC_TABLES_MISSING');
+    stage('preflight_check_source_index');
+    check(original.schema.any((x)=>x['name']=='d18_parent_label_idx'),
+      'D18_SOURCE_SYNTHETIC_INDEX_MISSING');
+    stage('preflight_check_source_view');
+    check(original.schema.any((x)=>x['name']=='d18_parent_view'),
+      'D18_SOURCE_SYNTHETIC_VIEW_MISSING');
+    stage('preflight_check_source_trigger');
+    check(original.schema.any((x)=>x['name']=='d18_child_trigger'),
+      'D18_SOURCE_SYNTHETIC_TRIGGER_MISSING');
+    stage('preflight_schema_validated');
     stage('ensure_new_destination');
     final probe=await WasmDatabase.probe(
       sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
@@ -450,20 +487,98 @@ Future<void> raw() async {
     check(!chars.contains(value),'PLAINTEXT_CONTENT');
   }
 }
+// CI negative control: never create a plaintext source or ciphertext target
+// when a migration preflight fails, even if this browser has no prior vault.
+Future<void> assertNoCipherDestination() async {
+  stage('negative_assert_no_cipher_destination');
+  final probe=await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('d18_sqlite3mc.wasm'),
+    driftWorkerUri:Uri.parse('d18_cipher_worker_correct.js'),
+    databaseName:dstName);
+  check(!probe.existingDatabases.any((entry)=>entry.$2==dstName),
+    'D18_NEGATIVE_CREATED_CIPHERTEXT');
+}
+Future<void> assertMissingSourceUntouched() async {
+  stage('negative_assert_missing_source_untouched');
+  final source=await WasmDatabase.probe(
+    sqlite3Uri:Uri.parse('sqlite3.wasm'),
+    driftWorkerUri:Uri.parse('drift_worker.js'),
+    databaseName:srcName);
+  check(!source.existingDatabases.any((entry)=>entry.$2==srcName),
+    'D18_NEGATIVE_CREATED_PLAINTEXT_SOURCE');
+  await assertNoCipherDestination();
+}
+Future<void> seedWithMissingTrigger() async {
+  // Deliberately corrupt only a disposable synthetic schema object after
+  // seeding. No original patient data exists or may be supplied here.
+  await seed();
+  stage('negative_drop_synthetic_trigger');
+  final q=await openSource();
+  try {
+    await q.runCustom('DROP TRIGGER "d18_child_trigger"',[]);
+    await integrity(q);
+    final s=await snapshot(q);
+    check(!s.schema.any((row)=>row['name']=='d18_child_trigger'),
+      'D18_NEGATIVE_TRIGGER_STILL_PRESENT');
+  } finally {await q.close();}
+}
+Future<void> assertMissingTriggerUntouched() async {
+  stage('negative_assert_incomplete_source_untouched');
+  final q=await openSource();
+  try {
+    await integrity(q);
+    final snap=await snapshot(q);
+    check(snap.version==12 && 
+      !snap.schema.any((row)=>row['name']=='d18_child_trigger') &&
+      snap.schema.any((row)=>row['name']=='d18_parent') &&
+      snap.schema.any((row)=>row['name']=='d18_child') &&
+      snap.schema.any((row)=>row['name']=='d18_parent_label_idx') &&
+      snap.schema.any((row)=>row['name']=='d18_parent_view'),
+      'D18_NEGATIVE_INCOMPLETE_SCHEMA_CHANGED');
+    final parents=snap.data['d18_parent'];
+    final children=snap.data['d18_child'];
+    check(parents!=null && parents.length==1 &&
+      parents.single['id']==3 && parents.single['label']==marker &&
+      children!=null && children.length==1 &&
+      children.single['id']==5 && children.single['parent_id']==3 &&
+      snap.seq.any((row)=>row['name']=='d18_parent' && row['seq']==100),
+      'D18_NEGATIVE_SOURCE_CONTENT_CHANGED');
+  } finally {await q.close();}
+  await assertNoCipherDestination();
+}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final phase=Uri.base.queryParameters['phase']??'';
   try{
     switch(phase){
       case 'seed':await seed();break;
+      case 'seed_missing_trigger':await seedWithMissingTrigger();break;
       case 'migrate':await migrate();break;
+      case 'assert_missing_source_untouched':
+        await assertMissingSourceUntouched();break;
+      case 'assert_missing_trigger_untouched':
+        await assertMissingTriggerUntouched();break;
       case 'verify':await verify();break;
       case 'physical_bytes':await raw();break;
       default:throw StateError('INVALID_PHASE');
     }
     html.document.title='D18_CANDIDATE_MIGRATION_PASS:'+phase;
   }catch(e){
-    html.document.documentElement?.dataset['d18FullError']=e.runtimeType.toString();
+    // A safe whitelist of synthetic failure codes, never raw exception text:
+    // SQL errors can expose user-supplied content in future implementations.
+    const safeCodes=<String>[
+      'D18_SOURCE_MISSING_BEFORE_REOPEN',
+      'D18_SEED_NOT_PERSISTED',
+      'D18_SOURCE_VERSION_NOT_12',
+      'D18_SOURCE_SYNTHETIC_TABLES_MISSING',
+      'D18_SOURCE_SYNTHETIC_INDEX_MISSING',
+      'D18_SOURCE_SYNTHETIC_VIEW_MISSING',
+      'D18_SOURCE_SYNTHETIC_TRIGGER_MISSING',
+    ];
+    final message=e.toString();
+    final code=safeCodes.where((s)=>message.contains(s)).firstOrNull
+        ?? 'D18_CI_UNCLASSIFIED_ERROR';
+    html.document.documentElement?.dataset['d18FullError']=code;
     html.document.title='D18_CANDIDATE_MIGRATION_FAIL:'+phase;
   }
   runApp(const SizedBox.shrink());

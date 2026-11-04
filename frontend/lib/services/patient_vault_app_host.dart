@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../core/theme/app_theme.dart';
 import '../data/drift/database.dart';
+import '../data/drift/d18_source_lock_lease.dart';
 import '../data/drift/patient_vault_scope.dart';
 import '../main.dart' show AminaApp;
 import '../routes/app_router.dart';
@@ -50,6 +51,11 @@ class PatientVaultAppHost extends StatefulWidget {
   final LocalePreferenceService locale;
   final PatientVaultSessionController controller;
   final bool auditAllowed;
+  // Pre-opened from main() under the opt-in D18 source lock. Optional for
+  // pre-existing tests that do not enable the canary.
+  final AppDatabase? guestDatabase;
+  final D18SourceLockLease? guestSourceLock;
+  final bool d18SourceBarrierCanary;
 
   const PatientVaultAppHost({
     super.key,
@@ -59,6 +65,9 @@ class PatientVaultAppHost extends StatefulWidget {
     required this.locale,
     required this.controller,
     required this.auditAllowed,
+    this.guestDatabase,
+    this.guestSourceLock,
+    this.d18SourceBarrierCanary = false,
   });
 
   @override
@@ -74,11 +83,14 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
   @override
   void initState() {
     super.initState();
-    // Guest login only: this synthetic audit namespace is never a clinical
-    // account, nor can it access quarantined pre-D7 'amina' rows.
-    _guestDatabase = AppDatabase.forPatientVault(
-      PatientVaultScope.auditOnly(),
-    );
+    // Never silently open an unguarded SQLite writer in D18 canary mode.
+    if (widget.d18SourceBarrierCanary &&
+        (widget.guestSourceLock == null || widget.guestDatabase == null)) {
+      throw StateError('D18_GUEST_SOURCE_LOCK_REQUIRED');
+    }
+    // Guest login only. Never interpret this synthetic audit DB as a patient.
+    _guestDatabase = widget.guestDatabase ??
+        AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
     _guestRouter = createAppRouterHolder(authService: widget.auth);
     widget.controller.addListener(_onVaultChanged);
     widget.appLock.addListener(_onLockChanged);
@@ -202,8 +214,15 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
     final b = _bindings;
     if (b != null) b.dispose();
     _guestRouter.dispose();
-    unawaited(_guestDatabase.close());
+    // Drift must be physically closed BEFORE unlocking source; on failure
+    // retain the lock until page teardown (never allow a concurrent cutover).
+    unawaited(_closeGuestSource().catchError((Object _) {}));
     super.dispose();
+  }
+
+  Future<void> _closeGuestSource() async {
+    await _guestDatabase.close();
+    await widget.guestSourceLock?.close();
   }
 
   Widget _buildAuditLockPreview() => MultiProvider(

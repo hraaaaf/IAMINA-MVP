@@ -22,6 +22,8 @@ async function phase(ctx,name){
       stage:document.documentElement.dataset.d18CipherStage||null,
       backend:document.documentElement.dataset.d18CipherBackend||null,
       error:document.documentElement.dataset.d18CipherError||null}));
+    // The real probe must fail if the commit is not durable. Do not reseed,
+    // retry, or convert an intermittent missing marker into a success.
     const pass=r.title==='D18_CIPHER_PASS:'+name;
     steps.push({phase:name,pass,backend:r.backend,
       ...(!pass?{stage:r.stage,error:r.error}:{})});

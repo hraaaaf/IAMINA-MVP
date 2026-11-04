@@ -8,6 +8,9 @@ import 'core/localization/app_shell_localized_copy.dart';
 import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
+import 'data/drift/d18_source_lock_gate.dart';
+import 'data/drift/d18_source_lock_lease.dart';
+import 'data/drift/patient_vault_scope.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
@@ -56,16 +59,30 @@ Future<void> main() async {
   await authService.initialize();
   if (auditAllowed) authService.enterAuditSession();
 
+  // Explicitly opt-in source interlock CANARY. No encrypted cutover is enabled.
+  const d18SourceCanary = bool.fromEnvironment(
+    'IAMINA_D18_SOURCE_INTERLOCK_CANARY', defaultValue: false,
+  );
+
   // The historical mixed-owner DB is inspected solely to keep device-lock
   // recovery fail-closed. Never pass it to any patient-facing Provider.
-  final legacy = AppDatabase.defaults();
+  final legacyLock = d18SourceCanary
+      ? await D18SourceLockGate.legacy() : null;
   bool legacyProtected = true;
+  var legacyPhysicallyClosed = false;
   try {
-    legacyProtected = await _hasProtectedLocalState(
-      db: legacy, authService: authService, auditAllowed: auditAllowed,
-    );
+    final legacy = AppDatabase.defaults();
+    try {
+      legacyProtected = await _hasProtectedLocalState(
+        db: legacy, authService: authService, auditAllowed: auditAllowed,
+      );
+    } finally {
+      await legacy.close();
+      legacyPhysicallyClosed = true;
+    }
   } finally {
-    await legacy.close();
+    // A failed close is uncertain: retain the source lock until tab teardown.
+    if (legacyPhysicallyClosed) await legacyLock?.close();
   }
 
   // A missing app-lock credential must not be treated as a fresh install
@@ -74,10 +91,13 @@ Future<void> main() async {
   var currentVaultProtected = false;
   if (!auditAllowed && !legacyProtected) {
     AppDatabase? protectedStateProbe;
+    D18SourceLockLease? protectedStateLock;
     try {
       final scope = await authService.resolvePatientVaultScope() ??
           await authService.dormantDeviceVaultForProtectedStateProbe();
       if (scope != null) {
+        protectedStateLock = d18SourceCanary
+            ? await D18SourceLockGate.patient(scope) : null;
         protectedStateProbe = AppDatabase.forPatientVault(scope);
         currentVaultProtected = await hasProtectedMedicalVaultRows(protectedStateProbe);
       }
@@ -85,7 +105,9 @@ Future<void> main() async {
       // An inaccessible vault is not proof of a clean fresh installation.
       currentVaultProtected = true;
     } finally {
+      // If close throws, NEVER free the lock over a possibly live DB.
       await protectedStateProbe?.close();
+      await protectedStateLock?.close();
     }
   }
 
@@ -112,8 +134,23 @@ Future<void> main() async {
         : null,
   )..refresh();
 
-  final vaultController = PatientVaultSessionController.forAuth(authService);
+  final vaultController = PatientVaultSessionController.forAuth(
+    authService, d18SourceBarrierCanary: d18SourceCanary,
+  );
   await vaultController.reconcile();
+
+  // Every persistent SQLite opener is covered in the opt-in CANARY,
+  // including the synthetic guest/audit writer. Acquire before constructing
+  // its Drift DB; never expose an unlocked guest database on failure.
+  final guestSourceLock = d18SourceCanary
+      ? await D18SourceLockGate.auditGuest() : null;
+  late final AppDatabase guestDatabase;
+  try {
+    guestDatabase = AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
+  } catch (_) {
+    await guestSourceLock?.close();
+    rethrow;
+  }
 
   runApp(PatientVaultAppHost(
     auth: authService,
@@ -122,6 +159,9 @@ Future<void> main() async {
     locale: localePreferenceService,
     controller: vaultController,
     auditAllowed: auditAllowed,
+    guestDatabase: guestDatabase,
+    guestSourceLock: guestSourceLock,
+    d18SourceBarrierCanary: d18SourceCanary,
   ));
 }
 

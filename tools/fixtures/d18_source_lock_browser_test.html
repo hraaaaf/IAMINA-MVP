@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>D18_SOURCE_BRIDGE_TEST</title>
+</head>
+<body>
+  <!-- CI-ONLY: compile the actual Dart source-lock gate without Flutter's UI
+       bootstrap, which is unrelated to the source lock and broke Chromium
+       with an environment-specific locale exception. Never ship this page. -->
+  <script src="d18_source_interlock.js"></script>
+  <script defer src="d18_source_lock_probe.js"></script>
+</body>
+</html>

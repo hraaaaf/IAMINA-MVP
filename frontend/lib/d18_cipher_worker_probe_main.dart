@@ -115,13 +115,28 @@ Future<void> migrationPhase(String phase) async {
     await db.customSelect('SELECT count(*) FROM sqlite_master').getSingle();
     if (isWrongKey) throw StateError('D18_MIG_BAD_KEY_ACCEPTED');
     if (phase == 'migration_seed_plain') {
-      await db.customStatement(
-        'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
-      );
-      await db.customStatement(
-        'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
-        [1, migrationMarker],
-      );
+      // Both schema and sentinel MUST commit as one physical SQLite change.
+      // No acceptance based only on a successful CREATE/INSERT statement.
+      stage('migration_seed_atomic_transaction');
+      // db was opened and checked immediately above; Dart promotes it
+      // to non-null here. Keep the physical transaction and readback strict.
+      final sourceDb = db;
+      await sourceDb.transaction(() async {
+        await sourceDb.customStatement(
+          'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
+        );
+        await sourceDb.customStatement(
+          'INSERT INTO "$migrationTable" (id, marker) VALUES (?, ?)',
+          [1, migrationMarker],
+        );
+      });
+      stage('migration_seed_verify_committed_marker');
+      final persisted = await sourceDb.customSelect(
+        'SELECT marker FROM "$migrationTable" WHERE id = 1').getSingle();
+      verify(persisted.read<String>('marker') == migrationMarker,
+          'D18_MIG_SEED_COMMIT_MARKER_MISSING');
+      // Cross-tab and independent-process durability are still proven
+      // separately by the mandatory before/after restart phases.
     } else if (phase == 'migration_source_before_shutdown' ||
                phase == 'migration_source_after_restart') {
       stage(phase + '_query_integrity');

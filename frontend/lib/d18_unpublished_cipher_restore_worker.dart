@@ -203,9 +203,13 @@ Future<void> _serve(web.MessageEvent event) async {
       enableMigrations: false,
       setup: (raw) {
         final cipher = raw.select('PRAGMA cipher');
+        // Fail closed if the pinned sqlite3mc WASM changes its cipher
+        // default unexpectedly. This proof does not rely on merely finding
+        // a non-empty PRAGMA or silently selecting a legacy weak cipher.
+        // The clinical codec format must separately version its parameters.
         if (cipher.length != 1 ||
-            cipher.first.values.first is! String) {
-          throw StateError('D18_CI_DYNAMIC_CIPHER_MISSING');
+            cipher.first.values.first != 'chacha20') {
+          throw StateError('D18_CI_UNEXPECTED_CIPHER_SCHEME');
         }
         raw.execute("PRAGMA key = '$secret'");
         // This query distinguishes a wrong key from a successful lazy open.

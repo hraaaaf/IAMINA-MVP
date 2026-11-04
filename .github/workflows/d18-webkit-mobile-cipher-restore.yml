@@ -7,6 +7,24 @@ on:
       - 'frontend/lib/d18_full_cipher_restore_probe_main.dart'
       - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
       - 'tools/d18_physical_cipher_restore_probe.js'
+      - 'tools/d18_cutover_idb_marker_probe.js'
+      - 'tools/d18_dart_idb_marker_bridge_probe.js'
+      - 'tools/d18_source_writer_barrier_probe.js'
+      - 'tools/d18_real_source_interlock_probe.js'
+      - 'tools/d18_stale_tab_write_bypass_probe.js'
+      - 'tools/d18_source_lock_dart_browser_probe.js'
+      - 'tools/fixtures/d18_source_lock_browser_test.html'
+      - 'frontend/lib/d18_source_lock_probe_main.dart'
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'tools/d18_source_sqlite_entrypoint_inventory.py'
+      - 'frontend/web/d18_source_interlock.js'
+      - 'frontend/web/index.html'
+      - 'frontend/lib/data/drift/d18_source_lock_*.dart'
+      - 'tools/fixtures/d18_marker_idb_bridge.js'
+      - 'frontend/lib/d18_dart_marker_bridge_probe_main.dart'
+      - 'frontend/lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart'
       - 'frontend/lib/data/drift/d18_full_cipher_archive.dart'
       - 'frontend/lib/d18_unpublished_cipher_worker.dart'
       - 'frontend/lib/data/drift/d18_unpublished_cipher_connector_web.dart'
@@ -78,6 +96,40 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps webkit
+      - name: D18 REAL SOURCE SCRIPT cooperative canary (webkit, NOT CUTOVER)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check frontend/web/d18_source_interlock.js
+          node --check tools/d18_real_source_interlock_probe.js
+          D18_SOURCE_INTERLOCK_BROWSER=webkit node tools/d18_real_source_interlock_probe.js
+      - name: D18 negative old tab writes under exclusive locks (webkit CI only)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_stale_tab_write_bypass_probe.js
+          D18_STALE_BROWSER=webkit node tools/d18_stale_tab_write_bypass_probe.js
+      - name: Verify isolated Dart source bridge to Web Lock (webkit CI-only)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          (cd frontend && flutter analyze --no-fatal-infos lib/d18_source_lock_probe_main.dart)
+          (cd frontend && mkdir -p build/d18-source-gate-probe && dart compile js -O4 -o build/d18-source-gate-probe/d18_source_lock_probe.js lib/d18_source_lock_probe_main.dart)
+          cp frontend/web/d18_source_interlock.js frontend/build/d18-source-gate-probe/d18_source_interlock.js
+          cp tools/fixtures/d18_source_lock_browser_test.html frontend/build/d18-source-gate-probe/index.html
+          test ! -e frontend/build/d18-source-gate-probe/flutter_bootstrap.js
+          python3 -m http.server 7409 --bind 127.0.0.1 --directory frontend/build/d18-source-gate-probe > /tmp/d18-source-dart-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 8 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7409/ > /dev/null
+          node --check tools/d18_source_lock_dart_browser_probe.js
+          D18_DART_SOURCE_BROWSER=webkit node tools/d18_source_lock_dart_browser_probe.js
+      - name: D18 synthetic IndexedDB atomic marker CAS — WebKit Linux
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_cutover_idb_marker_probe.js
+          D18_MARKER_BROWSER=webkit node tools/d18_cutover_idb_marker_probe.js
       - name: WebKit 390px fresh-profile file restore and no-overwrite proof
         env:
           GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -96,10 +148,36 @@ jobs:
             --silent http://127.0.0.1:7398/ > /dev/null
           D18_TEST_BROWSER=webkit node tools/d18_physical_cipher_restore_probe.js
           rm frontend/build/web/d18_unpublished_worker_lock_gate.js
+      - name: Build D18 Flutter Dart bridge to IndexedDB (pre-cutover CI only)
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/data/drift/d18_pre_cutover_idb_marker_store_web.dart lib/d18_dart_marker_bridge_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d18_dart_marker_bridge_probe_main.dart
+      - name: Exercise Flutter Dart IndexedDB bridge — WebKit Linux
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/fixtures/d18_marker_idb_bridge.js
+          node --check tools/d18_dart_idb_marker_bridge_probe.js
+          python3 -m http.server 7397 --bind 127.0.0.1 --directory frontend/build/web > /tmp/d18-dart-idb-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused --silent http://127.0.0.1:7397/ > /dev/null
+          D18_DART_IDB_BROWSER=webkit node tools/d18_dart_idb_marker_bridge_probe.js
+      - name: D18 synthetic legacy + patient source lease — webkit (21 checks)
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --check tools/d18_source_writer_barrier_probe.js
+          D18_SOURCE_BARRIER_BROWSER=webkit node tools/d18_source_writer_barrier_probe.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: d18-webkit-mobile-restore-${{ github.event.pull_request.head.sha || github.sha }}
-          path: d18-physical-restore-proof/report.json
+          path: |
+            d18-physical-restore-proof/report.json
+            d18-idb-marker-proof/report-webkit.json
+            d18-dart-idb-marker-proof/report-webkit.json
+            d18-source-barrier-proof/report-webkit.json
           if-no-files-found: warn
           retention-days: 14

@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>D18 CI-only CSP negative canary</title>
+  <!-- This EXTERNAL script runs naturally in the page execution context.
+       The file is copied into the temporary CI build AFTER Flutter builds. -->
+  <script src="/d18_csp_attack_canary.js" defer></script>
+</head>
+<body><p>D18 synthetic CSP test. No patient data.</p></body>
+</html>

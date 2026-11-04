@@ -1,0 +1,134 @@
+name: D18 strict candidate CSP + full encrypted SQLite browser recovery
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d18-csp-security-poc.yml'
+      - 'tools/d18_csp_preview_server.py'
+      - 'tools/d18_csp_negative_probe.js'
+      - 'tools/fixtures/d18_csp_attack_canary.js'
+      - 'tools/fixtures/d18_csp_canary.html'
+      - 'frontend/lib/d18_full_cipher_restore_probe_main.dart'
+      - 'frontend/lib/d18_unpublished_cipher_restore_worker.dart'
+      - 'tools/d18_physical_cipher_restore_probe.js'
+      - 'frontend/lib/data/drift/d18_full_cipher_archive.dart'
+      - 'frontend/lib/d18_unpublished_cipher_worker.dart'
+      - 'frontend/lib/data/drift/d18_unpublished_cipher_connector_web.dart'
+      - 'frontend/d18_crypto/worker_lock_gate.js'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d18-csp-poc-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sealed-physical-restore:
+    name: CSP candidate - ${{ matrix.browser }} encrypted restore 390px
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve pinned Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Reject compiled CI-only workers committed into normal Web assets
+        run: |
+          for worker in d18_unpublished_cipher_worker.js d18_unpublished_cipher_restore_worker.js d18_cipher_worker_correct.js; do
+            if test -e "frontend/web/$worker"; then
+              echo "D18 TEST ONLY WORKER IN SHIPPED ASSETS: $worker"
+              exit 1
+            fi
+          done
+      - name: Compile encrypted source and isolated restore workers
+        working-directory: frontend
+        run: |
+          dart compile js -O4 -o web/d18_unpublished_cipher_worker.js lib/d18_unpublished_cipher_worker.dart
+          dart compile js -O4 -o web/d18_unpublished_cipher_restore_worker.js lib/d18_unpublished_cipher_restore_worker.dart
+          dart compile js -O4 -o web/d18_cipher_worker_correct.js lib/d18_cipher_worker_correct.dart
+      - name: Verify pinned sqlite3mc binary SHA256
+        working-directory: frontend
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            -o web/d18_sqlite3mc.wasm \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm
+          echo "5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  web/d18_sqlite3mc.wasm" | sha256sum -c -
+      - name: Analyze Dart source, guard, archive and restore probe
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/d18_full_cipher_restore_probe_main.dart \
+            lib/d18_unpublished_cipher_restore_worker.dart \
+            lib/data/drift/d18_full_cipher_archive.dart
+      - name: Build standalone PRE-CUTOVER Flutter web proof
+        working-directory: frontend
+        run: |
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/d18_full_cipher_restore_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright ${{ matrix.browser }}
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify restrictive CSP with full encrypted SQLite restoration
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          D18_TEST_BROWSER: ${{ matrix.browser }}
+          D18_CSP_ASSERT: '1'
+        run: |
+          python3 -m py_compile tools/d18_csp_preview_server.py
+          node --check tools/d18_physical_cipher_restore_probe.js
+          node --check tools/d18_csp_negative_probe.js
+          node --check tools/fixtures/d18_csp_attack_canary.js
+          if test -e frontend/build/web/d18_csp_attack_canary.js ||
+             test -e frontend/build/web/d18_csp_canary.html; then
+            echo 'D18 attack canary leaked into normal Flutter build'; exit 1
+          fi
+          cp tools/fixtures/d18_csp_attack_canary.js frontend/build/web/d18_csp_attack_canary.js
+          cp tools/fixtures/d18_csp_canary.html frontend/build/web/d18_csp_canary.html
+          if test -e frontend/build/web/d18_unpublished_worker_lock_gate.js; then
+            echo 'D18 lock test helper leaked into normal Web build'
+            exit 1
+          fi
+          cp frontend/d18_crypto/worker_lock_gate.js frontend/build/web/d18_unpublished_worker_lock_gate.js
+          python3 tools/d18_csp_preview_server.py \
+            --directory frontend/build/web --port 7398 > /tmp/d18-csp-http.log 2>&1 &
+          SERVER_PID=$!
+          python3 -m http.server 7399 --bind 127.0.0.1 \
+            --directory frontend/build/web > /tmp/d18-unprotected-control-http.log 2>&1 &
+          CONTROL_PID=$!
+          trap 'kill "$SERVER_PID" "$CONTROL_PID" 2>/dev/null || true' EXIT
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused \
+            --silent http://127.0.0.1:7398/ > /dev/null
+          curl --fail --retry 6 --retry-delay 1 --retry-connrefused \
+            --silent http://127.0.0.1:7399/ > /dev/null
+          node tools/d18_physical_cipher_restore_probe.js
+          node tools/d18_csp_negative_probe.js
+          rm frontend/build/web/d18_unpublished_worker_lock_gate.js
+          rm frontend/build/web/d18_csp_attack_canary.js
+          rm frontend/build/web/d18_csp_canary.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d18-csp-${{ matrix.browser }}-restore-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            d18-physical-restore-proof/report.json
+            d18-csp-negative-proof/report.json
+          if-no-files-found: warn
+          retention-days: 14
