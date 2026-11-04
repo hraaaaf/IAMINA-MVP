@@ -165,6 +165,21 @@ def run():
                     "phase": "seed_synthetic_legacy_v11",
                     "status": seeded["title"],
                 })
+                # Non-opening candidate: Chrome DevTools enumerates existing
+                # IndexedDB names without calling AppDatabase.defaults() or
+                # indexedDB.open(). This is a *presence* observation only.
+                # It cannot certify absence of legacy OPFS/SQLite storage.
+                inventory_before_probe = cdp(
+                    "IndexedDB.requestDatabaseNames",
+                    {"securityOrigin": ORIGIN},
+                ).get("databaseNames", [])
+                proof["steps"].append({
+                    "phase": "non_opening_legacy_name_inventory_before_probe",
+                    "indexeddb_names": inventory_before_probe,
+                    "legacy_amina_detected": "amina" in inventory_before_probe,
+                    "app_database_opened_by_inventory": False,
+                    "clinical_safety": "NOT_CERTIFIED",
+                })
                 probed = phase("probe_legacy_v11")
                 proof["steps"].append({
                     "phase": "presence_only_probe_on_synthetic_v11",
@@ -173,7 +188,8 @@ def run():
                 proof["observed_business_api_paths"] = sorted(set(api_paths))
 
                 causal = "amina" not in before["names"] and "amina" in after["names"]
-                fixture = seeded["title"] == "IAMINA_L01_V11_SEEDED"
+                fixture = (seeded["title"] == "IAMINA_L01_V11_SEEDED"
+                           and "amina" in inventory_before_probe)
                 v11_result = probed["title"]
                 # This is an observational experiment: schema mutation is an
                 # important finding, not proof that clinical storage is safe.
