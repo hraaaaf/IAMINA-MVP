@@ -88,7 +88,7 @@ class IncidentResponsePolicy:
 POLICY = IncidentResponsePolicy(
     owner="IAmina Safety & Security",
     effective_on=date(2026, 8, 2),
-    review_due_on=date(2026, 11, 2),
+    review_due_on=date(2027, 2, 4),
     required_roles=(
         "incident_commander",
         "clinical_safety_lead",
