@@ -75,3 +75,22 @@ Audit adversarial : la limitation du formulaire et le refus `AuthService.registe
 **Code candidat :** `frontend/api/index.js`, `frontend/vercel.json`, `frontend/vercel_build.sh`, `frontend/test_node/w01_proxy.test.js` + CI W01 et garde statique. Premier commit `4a8c2cd8e38c5b6ac0c8a4dfb1ddd480c459824d` ; HEAD final de branche postérieur. **5 tests Node sur 5 PASS localement**, mais pas de preuve hosted et pas de CI finale au moment de cette rédaction. Les tests Node sont placés hors du répertoire des fonctions publiées.
 
 **Gate de sécurité et d'exécution :** OIDC activé/confirmé pour Web Preview et API Trusted Sources explicitement limitée au couple projet+environnement Preview→Preview ; autorisation de déploiement Vercel Preview distincte requise avant tout déploiement. Les déploiements existants Web/API sont toujours sur runtime `53f22063`, donc **le correctif n'est pas accessible sur Safari**. Pas de Production, merge ni écriture Neon. Tests nécessaires après GO : CI finale, résultat réel `POST /api/v1/auth/login`, A/logout/B, refus cross-patient, fingerprint, G2/G6/G7. **W01 NO-GO.**
+
+
+## W01 — GO OIDC + déploiement Preview de diagnostic, 04/11/2026
+
+**Décision autorisée :** « Green » confirme le GO pour sécuriser le trajet OIDC Web Preview → API Preview et déployer **Web Preview uniquement** après la CI, sans toucher à Production, Neon Production ni merger PR #1273.
+
+**Goal exact :** un login compte A puis B depuis Safari Web sur API/Neon strictement synthétiques. **Succès attendu :** `GET /api/v1/health` sur le **domaine Web Preview** retourne HTTP 200/DB ok via le relais, puis login A/logout/login B et isolation patient validés. **Preuves actuelles :** le relais est testé en CI, mais aucun HTTP hébergé du relais ni login réussi n'a été capturé.
+
+**CI sur SHA code `5cf30263cf2169ef1c8b268a628a63ca7da117ab` :** 13 workflows retournés `COMPLETED/SUCCESS` à la dernière vérification, notamment [CI générale #41919533856](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41919533856) et [W01 architecture #41919533832](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41919533832). Les 3 jobs applicatifs de CI et les 2 jobs W01 ont réellement été exécutés.
+
+**Config OIDC du Web Vercel** `prj_AYaUi32KTDHak8I7dmdQpDrqd8SI` : mise à jour `oidcTokenConfig={enabled:true,issuerMode:team}` acceptée par l'API Vercel ; SSO du site Preview encore actif. Cette préférence est **au niveau projet** et non un secret transmis au frontend ; aucun deploy Production n'a été lancé, mais ne pas qualifier cette modification de « zéro configuration projet partagée ».
+
+**Trusted Sources API Vercel** `prj_Pn9FnyconF3h2w9gOU74iV98kJoU` : tentative d'ajouter Web IAMINA avec `from=preview → to=preview` et tentative d'initialisation minimale ont **toutes deux échoué** : `404 Deployment Protection Trusted Sources not found`. Autorisation cross-project **non établie**. Ne pas désactiver SSO, ni exposer un bypass secret au navigateur, ni appeler l'API Production. Il faut vérifier la disponibilité de Trusted Sources dans le compte Vercel/accès Security du projet, éventuellement avec assistance humaine autorisée.
+
+**Vercel Web Preview de diagnostic :** `dpl_FbthU6wWtg6iuXwy6hdjoPbetJXq`, **READY**, target Preview, Git SHA exact `5cf30263cf2169ef1c8b268a628a63ca7da117ab`. URL immuable `https://iamina-review-477cq6obv-achraf-benmoussa-s-projects.vercel.app` ; URL Safari recommandée (alias branch) `https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app/`. API Preview `dpl_9ryTimFJ6JwsfbW66NXno2gWYcZB` reste READY sur `53f22063`. Aucun déploiement Production/API nouveau, aucune écriture Neon.
+
+**Test humain minimal à faire maintenant** : ouvrir en Safari avec session SSO Vercel `https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app/api/v1/health` et communiquer seulement la réponse visible (200 JSON / 403 / 502 / 503 / SSO login). Aucun identifiant, cookie, jeton ou patient. Si HTTP 200 : poursuivre tests A/logout/B et empreinte Neon ; sinon diagnostiquer runtime Web puis gate Trusted Sources API. Ne pas annoncer « corrigé » en l'absence de preuve.
+
+**Verdict : W01 NO-GO — build et CI verts mais chaîne Web→API→Neon non certifiée.** La tête documentaire ultérieure peut être différente du SHA déployé ; toujours distinguer les deux.
