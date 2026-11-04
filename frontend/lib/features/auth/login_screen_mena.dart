@@ -9,7 +9,8 @@ import '../../core/localization/auth_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool syntheticLoginOnly;
+  const LoginScreen({super.key, this.syntheticLoginOnly = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -222,6 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onForgotPassword: _handleForgotPassword,
                         onDemo: () => _handleLogin(isDemo: true),
                         onSignup: _handleSignup,
+                        syntheticLoginOnly: widget.syntheticLoginOnly,
                       ),
                       const SizedBox(height: 22),
                       _Footer(),
@@ -331,7 +333,8 @@ class _LoginCard extends StatelessWidget {
   final VoidCallback onForgotPassword;
   final VoidCallback onDemo;
   final VoidCallback onSignup;
-  const _LoginCard({required this.emailCtrl, required this.passwordCtrl, required this.obscure, required this.onToggleObscure, required this.error, required this.isLoading, required this.onSubmit, required this.onForgotPassword, required this.onDemo, required this.onSignup});
+  final bool syntheticLoginOnly;
+  const _LoginCard({required this.emailCtrl, required this.passwordCtrl, required this.obscure, required this.onToggleObscure, required this.error, required this.isLoading, required this.onSubmit, required this.onForgotPassword, required this.onDemo, required this.onSignup, required this.syntheticLoginOnly});
 
   @override
   Widget build(BuildContext context) {
@@ -373,7 +376,7 @@ class _LoginCard extends StatelessWidget {
             onSubmit: (_) => onSubmit(),
           ),
           const SizedBox(height: 4),
-          Align(
+          if (!syntheticLoginOnly) Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: onForgotPassword,
@@ -395,10 +398,12 @@ class _LoginCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           _PrimaryLoginButton(isLoading: isLoading, label: l10n.signIn, onTap: () => onSubmit()),
-          const SizedBox(height: 16),
-          _DemoButton(isLoading: isLoading, onTap: onDemo),
-          const SizedBox(height: 14),
-          _SignupRow(isLoading: isLoading, onTap: onSignup),
+          if (!syntheticLoginOnly) ...[
+            const SizedBox(height: 16),
+            _DemoButton(isLoading: isLoading, onTap: onDemo),
+            const SizedBox(height: 14),
+            _SignupRow(isLoading: isLoading, onTap: onSignup),
+          ],
         ],
       ),
     );

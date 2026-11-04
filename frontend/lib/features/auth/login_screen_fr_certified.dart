@@ -10,7 +10,8 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool syntheticLoginOnly;
+  const LoginScreen({super.key, this.syntheticLoginOnly = false});
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -284,6 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onForgotPassword: _handleForgotPassword,
                         onDemo: () => _handleLogin(isDemo: true),
                         onSignup: _handleSignup,
+                        syntheticLoginOnly: widget.syntheticLoginOnly,
                         welcome: fr ? 'Bienvenue' : l10n.welcome,
                         subtitle: fr
                             ? 'Connectez-vous pour accéder à votre compagnon intelligent du diabète'
@@ -489,6 +491,7 @@ class _LoginCard extends StatelessWidget {
   final VoidCallback onForgotPassword;
   final VoidCallback onDemo;
   final VoidCallback onSignup;
+  final bool syntheticLoginOnly;
   final String welcome;
   final String subtitle;
   final String demoLabel;
@@ -503,6 +506,7 @@ class _LoginCard extends StatelessWidget {
     required this.onForgotPassword,
     required this.onDemo,
     required this.onSignup,
+    required this.syntheticLoginOnly,
     required this.welcome,
     required this.subtitle,
     required this.demoLabel,
@@ -592,7 +596,7 @@ class _LoginCard extends StatelessWidget {
             ),
             onSubmit: (_) => onSubmit(),
           ),
-          Align(
+          if (!syntheticLoginOnly) Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: onForgotPassword,
@@ -646,12 +650,14 @@ class _LoginCard extends StatelessWidget {
             label: l10n.signIn,
             onTap: () => onSubmit(),
           ),
-          const SizedBox(height: 6),
-          _DividerOr(label: l10n.or),
-          const SizedBox(height: 6),
-          _DemoButton(isLoading: isLoading, label: demoLabel, onTap: onDemo),
-          const SizedBox(height: 8),
-          _SignupRow(isLoading: isLoading, onTap: onSignup),
+          if (!syntheticLoginOnly) ...[
+            const SizedBox(height: 6),
+            _DividerOr(label: l10n.or),
+            const SizedBox(height: 6),
+            _DemoButton(isLoading: isLoading, label: demoLabel, onTap: onDemo),
+            const SizedBox(height: 8),
+            _SignupRow(isLoading: isLoading, onTap: onSignup),
+          ],
         ],
       ),
     );

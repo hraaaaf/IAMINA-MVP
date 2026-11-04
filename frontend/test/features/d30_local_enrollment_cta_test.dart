@@ -84,7 +84,12 @@ void main() {
 
     final remote = find.byKey(const Key('d30-choose-account'));
     expect(remote, findsOneWidget);
-    expect(find.text('Se connecter ou créer un compte'), findsOneWidget);
+    expect(
+      find.text(kRemoteAccountEnrollmentEnabled
+          ? 'Se connecter ou créer un compte'
+          : 'Se connecter avec un compte existant'),
+      findsOneWidget,
+    );
     await tester.ensureVisible(remote);
     await tester.pumpAndSettle();
     await tester.tap(remote);

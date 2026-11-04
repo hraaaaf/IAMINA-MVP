@@ -5,7 +5,7 @@ import 'local_device_enrollment_screen.dart' as local;
 import 'login_screen_fr_certified.dart' as certified_fr;
 import 'login_screen_mena.dart' as mena;
 
-/// Both journeys remain available when remote accounts are enabled.
+/// Both journeys remain available when remote account sign-in is enabled.
 /// Selecting a local vault must never create a synthetic remote identity.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,9 +19,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_accountMode || !kRemoteAccountEnrollmentEnabled) {
+    if (!_accountMode || !kRemoteAccountSignInEnabled) {
       return local.LocalDeviceEnrollmentScreen(
-        onChooseAccount: kRemoteAccountEnrollmentEnabled
+        onChooseAccount: kRemoteAccountSignInEnabled
             ? () => setState(() => _accountMode = true)
             : null,
       );
@@ -52,8 +52,12 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         Expanded(
           child: locale == 'fr'
-              ? const certified_fr.LoginScreen()
-              : const mena.LoginScreen(),
+              ? certified_fr.LoginScreen(
+                  syntheticLoginOnly: !kRemoteAccountEnrollmentEnabled,
+                )
+              : mena.LoginScreen(
+                  syntheticLoginOnly: !kRemoteAccountEnrollmentEnabled,
+                ),
         ),
       ],
     );

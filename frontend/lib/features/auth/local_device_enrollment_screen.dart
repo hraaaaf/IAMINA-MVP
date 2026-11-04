@@ -263,9 +263,15 @@ class _LocalDeviceEnrollmentScreenState
                                 onPressed: _isLoading ? null : widget.onChooseAccount,
                                 icon: const Icon(Icons.person_outline_rounded),
                                 label: Text(switch (Localizations.localeOf(context).languageCode) {
-                                  'fr' => 'Se connecter ou créer un compte',
-                                  'ar' => 'تسجيل الدخول أو إنشاء حساب',
-                                  _ => 'Sign in or create an account',
+                                  'fr' => kRemoteAccountEnrollmentEnabled
+                                       ? 'Se connecter ou créer un compte'
+                                       : 'Se connecter avec un compte existant',
+                                  'ar' => kRemoteAccountEnrollmentEnabled
+                                       ? 'تسجيل الدخول أو إنشاء حساب'
+                                       : 'تسجيل الدخول بحساب موجود',
+                                  _ => kRemoteAccountEnrollmentEnabled
+                                       ? 'Sign in or create an account'
+                                       : 'Sign in with an existing account',
                                 }),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(52),

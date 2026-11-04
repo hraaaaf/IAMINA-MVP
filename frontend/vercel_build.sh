@@ -42,11 +42,13 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       fi
       API_BASE_URL="${IAMINA_REVIEW_PREVIEW_API_BASE_URL%/}"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+      IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
       ;;
     production)
       # Existing production routing remains unchanged.
       API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
+      IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
       ;;
     *)
       echo "ERROR: refusing IAMINA Web build for unknown Vercel environment" >&2
@@ -67,7 +69,8 @@ if [ -n "${API_BASE_URL:-}" ]; then
   echo "Building IAMINA web with configured backend: $API_BASE_URL"
   flutter build web --release --no-web-resources-cdn \
     --dart-define=API_BASE_URL="$API_BASE_URL" \
-    --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"
+    --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}" \
+    --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN="${IAMINA_REMOTE_ACCOUNT_SIGN_IN:-false}"
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
   flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_OFFLINE_DEMO=true

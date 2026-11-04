@@ -27,6 +27,13 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+// Sign-in to existing synthetic accounts is independent of account creation.
+// Production retains its existing behavior through this default.
+const bool kRemoteAccountSignInEnabled = bool.fromEnvironment(
+  'IAMINA_REMOTE_ACCOUNT_SIGN_IN',
+  defaultValue: kRemoteAccountEnrollmentEnabled,
+);
+
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
