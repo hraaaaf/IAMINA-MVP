@@ -4,11 +4,19 @@
 
 **Dépôt :** `hraaaaf/IAMINA-MVP`. **Base de l'audit D8 :** `main@9ba0f737e184e1c65ca83a4db14b3b22f220c0ae` (29/10/2026). **Cible exclusive :** Flutter Web/PWA. **Aucun déploiement Vercel** sans autorisation explicite.
 
+## 04/11/2026 — RELEASE D8 WEB PRODUCTION — STATUT ACTUEL
+
+**Goal D8 ratifié :** aucun défaut pays/IP. Le premier onboarding Web demande explicitement au patient de choisir `mg/dL` ou `mmol/L`; profil existant non écrasé, mesures/targets historiques non convertis. Cette décision **remplace** l'idée initiale « suggestion selon pays » présentée dans les anciens audits ci-dessous. **g/L et calculs médicaux D32 hors scope.**
+
+**Preuves :** [PR #1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269) squash MERGED `main@92f61c34522950c62f90c82dbcbc522c9cdd9c4a`; exact PR HEAD 9/9 SUCCESS, postmerge [CI #41837872070](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41837872070) + 2 UI 3/3 SUCCESS (971 tests Flutter PASS, 7 SKIPPED sur SHA runtime) ; Preview Safari iPhone **5/5 OK déclaré par le propriétaire** ; Vercel `iamina-review`, deployment production **`dpl_CkvF3r9mUMvZe6Mpwp4e5grRoZ7c`** READY, Git SHA `92f61c34`, alias [iamina-review.vercel.app](https://iamina-review.vercel.app) vérifié attaché à ce déploiement et 4 assets PWA HTTP 200. Le backend `iamina-certified` est inchangé.
+
+**Canonique D8 détaillé :** [`docs/assessments/2026-11-04-d8-web-explicit-unit-first-use.md`](assessments/2026-11-04-d8-web-explicit-unit-first-use.md). Anciennes sections de ce miroir conservées comme historique daté ; toute mention `D8 OPEN` / `mapping pays→unité` antérieure à ce closeout ne représente pas la décision approuvée. **Chantier B livré borné : 3/17 ≈17,6 %** après D8, sans certifier D22 ni D32. **Next :** revoir ordre / gates du prochain lot dans Notion B avant de reprendre D10.
+
 ## Périmètre / ordre strict B (17 décisions)
 
 1. **D7** — Type de diabète et traitements modifiables
 2. **D22** — Unité avant objectifs glycémiques
-3. **D8** — Unité suggérée selon pays mais modifiable
+3. **D8** — Unité de glycémie **choisie explicitement** par le patient ; aucune suggestion ni présélection pays/IP (**D8 Web LIVRÉE le 04/11/2026**)
 4. **D10** — Récupération et verrouillage facultatif
 5. **D9** — Retour patient existant sans onboarding imposé
 6. **D24** — Désactivation IA effective côté API
@@ -32,7 +40,7 @@
 | --- | --- | --- | --- |
 | **D7** | **OPEN / FUE_NO_GO** ; tests limités et documentation fusionnés, pas D7 produit | [#1164](https://github.com/hraaaaf/IAMINA-MVP/pull/1164), [#1172](https://github.com/hraaaaf/IAMINA-MVP/pull/1172) ; verdict D30 du chantier A et FUE patients/profils encore à vérifier | Après clôture D30, prouver les parcours réels D7 Web (types, traitements, persistance, FR/AR RTL, A/B, offline) |
 | **D22** | **OPEN / FUE_NO_GO** ; préflight uniquement terminé | [#1173](https://github.com/hraaaaf/IAMINA-MVP/pull/1173), [#1174](https://github.com/hraaaaf/IAMINA-MVP/pull/1174), [#1175](https://github.com/hraaaaf/IAMINA-MVP/pull/1175) : préflight tests/docs fusionnés et exact-SHA CI/postmerge verts, **sans correctif produit** ; D19 clinique [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) sous autorité A, décisions G1–G7 sans approbation | Contrat clinique et privacy/RTL validés, puis correction Web des unités/objectifs avec FUE complète |
-| **D8** | **AUDIT PRÉPARATOIRE SEULEMENT ; OPEN** | Dépend de D5 (A) et D22 (B) ; [issues #964](https://github.com/hraaaaf/IAMINA-MVP/issues/964) et [#965](https://github.com/hraaaaf/IAMINA-MVP/issues/965) ouvertes | Ne pas activer de mapping pays→unité avant politique et contrats approuvés |
+| **D8** | **WEB PROD LIVRÉE (04/11/2026)** ; politique approuvée différente de l'audit historique | [PR #1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269) MERGED, `main@92f61c34`, [CI #41837872070](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41837872070) + UI postmerge **3/3 SUCCESS**, Preview Safari utilisateur **5/5 OK**, Vercel `dpl_CkvF3r9mUMvZe6Mpwp4e5grRoZ7c` READY, domaine `iamina-review.vercel.app` pointant vers ce déploiement, 4 assets PWA HTTP 200 | D8 clôturée Web borné ; conventions `g/L`, objectifs/conversions cliniques D32 hors-scope ; passer à la prochaine décision selon ordre Notion B |
 | **D10…D25** | Non examinées dans ce sous-lot | Respecter l'ordre et les dépendances propres détaillées dans Notion B | Auditer à tour de rôle après gates, sans anticipation de clôture |
 
 **Événement externe observé :** PR D30 [#1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169) du chantier A **MERGED** à `main@9ba0f737e184e1c65ca83a4db14b3b22f220c0ae`. **Cela ne prouve pas que D30 est complètement certifiée** (postmerge, sécurité/privacy, FUE et statuts canoniques doivent être contrôlés par A). Aucune mutation D30 par le chantier B.
