@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:amina/core/data/meal_food_catalog.dart';
 import 'package:amina/core/data/nutrition_catalog.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/add_log_view.dart';
 import 'package:amina/l10n/app_localizations.dart';
@@ -19,6 +20,7 @@ Widget _sheet(
   AppDatabase db, {
   Locale locale = const Locale('fr'),
   AddLogSheet sheet = const AddLogSheet(),
+  PatientProfileData? profile,
 }) {
   return MaterialApp(
     locale: locale,
@@ -28,7 +30,7 @@ Widget _sheet(
       body: MultiProvider(
         providers: [
           Provider<AppDatabase>.value(value: db),
-          Provider<PatientProfileData?>.value(value: null),
+          Provider<PatientProfileData?>.value(value: profile),
         ],
         child: sheet,
       ),
@@ -529,6 +531,79 @@ void main() {
       expect(decodeMealItemIds(rows.single.mealItemsJson), isEmpty);
       expect(decodeMealPortionSelections(rows.single.mealPortionsJson), isEmpty);
       expect(rows.single.insulinUnits, isNull);
+    });
+  });
+
+  group('D15 photo confirmation through real Save (synthetic only)', () {
+    testWidgets('confirmed photo candidate remains local until one explicit Save', (tester) async {
+      _wide(tester);
+      final profile = PatientProfileData(
+        userId: 1,
+        preferredLanguage: 'fr',
+        updatedAt: DateTime.utc(2026, 11, 4),
+        targetRangeLow: 70,
+        targetRangeHigh: 180,
+        unitPreference: 'mg/dL',
+        aiConsentGivenAt: DateTime.utc(2026, 11, 4),
+      );
+      await tester.pumpWidget(_sheet(
+        db,
+        profile: profile,
+        sheet: AddLogSheet(
+          photoRecognition: () async => const MealAnalysisResult(
+            foods: ['pain complet'],
+            confidence: 'high',
+            fallback: false,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await _tapOptionalMeal(tester);
+      final photo = find.byKey(const Key('meal-photo-button'));
+      await tester.ensureVisible(photo);
+      await tester.tap(photo);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      final candidate = find.byKey(
+        const Key('meal-photo-candidate-whole_grain_bread'),
+      );
+      await tester.ensureVisible(candidate);
+      await tester.tap(candidate);
+      await tester.pumpAndSettle();
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      final confirm = find.byKey(const Key('meal-photo-confirm'));
+      await tester.ensureVisible(confirm);
+      await tester.tap(confirm);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('meal-selected-whole_grain_bread')), findsOneWidget);
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      final grams = find.byKey(const Key('nutrition-grams-whole_grain_bread'));
+      await tester.ensureVisible(grams);
+      await tester.enterText(grams, '75');
+      await tester.enterText(
+        find.byKey(const Key('meal-note-input')),
+        'Pain confirmé / خبز — test synthétique',
+      );
+      expect(await db.select(db.logEntries).get(), isEmpty);
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      final rows = await db.select(db.logEntries).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.bloodSugar, 126);
+      expect(rows.single.mealDescription, 'Pain confirmé / خبز — test synthétique');
+      expect(decodeMealItemIds(rows.single.mealItemsJson), ['whole_grain_bread']);
+      final portions = decodeMealPortionSelections(rows.single.mealPortionsJson);
+      expect(portions, hasLength(1));
+      expect(portions.single.foodId, 'whole_grain_bread');
+      expect(portions.single.grams, 75.0);
+      expect(rows.single.insulinUnits, isNull);
+      expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
     });
   });
 

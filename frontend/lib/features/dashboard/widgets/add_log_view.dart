@@ -459,6 +459,7 @@ class AddLogMealCapture extends StatelessWidget {
   final Map<String, MealPortionSelection> mealPortionSelections;
   final TextEditingController mealNoteController;
   final bool canUsePhotoRecognition;
+  final MealPhotoRecognition? photoRecognition;
   final bool voiceRecording;
   final bool voiceTranscribing;
   final Future<void> Function() onVoiceToggle;
@@ -479,6 +480,7 @@ class AddLogMealCapture extends StatelessWidget {
     required this.mealPortionSelections,
     required this.mealNoteController,
     required this.canUsePhotoRecognition,
+    this.photoRecognition,
     required this.voiceRecording,
     required this.voiceTranscribing,
     required this.onVoiceToggle,
@@ -558,6 +560,7 @@ class AddLogMealCapture extends StatelessWidget {
           MealCapturePanel(
             selectedIds: selectedMealItemIds,
             canUsePhotoRecognition: canUsePhotoRecognition,
+            photoRecognition: photoRecognition,
             onChanged: onSelectedMealItemIdsChanged,
           ),
           if (selectedMealItemIds.isNotEmpty) ...<Widget>[
