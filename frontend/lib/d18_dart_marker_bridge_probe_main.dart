@@ -27,6 +27,8 @@ D18PreCutoverAtomicPromotion contract()=>D18PreCutoverAtomicPromotion(
   resolveAuthenticatedScope:() async=>scope,readAuthEpoch:()=>1,
   isKeyLocked:()=>false,allPlaintextWritersQuiesced:()=>true,
   exclusiveOriginBarrierHeld:()=>true,
+  // Explicit test fixture ONLY; live marker promotion stays denied by default.
+  allowUnfencedSyntheticFixture:true,
   inspectUnderBarrier:() async=>proof(),
 );
 void check(bool ok,String code){
