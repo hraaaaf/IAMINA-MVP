@@ -13,6 +13,15 @@ from core.emergency_operating_mode import (
 )
 
 
+def test_emergency_policy_review_expiry_fails_closed():
+    with pytest.raises(ValueError, match="emergency policy is stale"):
+        PILOT_EMERGENCY_POLICY.validate(
+            today=PILOT_EMERGENCY_POLICY.review_due_on.replace(
+                year=PILOT_EMERGENCY_POLICY.review_due_on.year + 1
+            )
+        )
+
+
 def test_pilot_defaults_to_explicit_self_care_only_mode():
     PILOT_EMERGENCY_POLICY.validate(today=date(2026, 8, 2))
     assert PILOT_EMERGENCY_POLICY.mode == SELF_CARE_ONLY
