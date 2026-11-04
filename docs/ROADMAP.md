@@ -1,7 +1,7 @@
 # IAMINA — ROADMAP CANONIQUE UNIQUE · Web/PWA · D1–D38
 
 **Édition :** 2026-11-04 · **Statut : PROPOSITION À ARBITRER PAR ONBOARDING avec le propriétaire, PAS une certification ni une autorisation de déployer.**
-**Source unique du plan prospectif :** ce document, \`docs/ROADMAP.md\`. Notion « 01 — ROADMAP CANONIQUE » sert de miroir et de parcours de décision. Les autres roadmaps, registres A/B, W00–W14, handovers et notes de release sont des **sources de preuve ou archives**, jamais un deuxième ordre de travail. Ancienne version archivée dans [roadmap-web-v2-2026-11-04.md](archive/roadmap-web-v2-2026-11-04.md).
+**Source unique du plan prospectif :** ce document, `docs/ROADMAP.md`. Notion « 01 — ROADMAP CANONIQUE » sert de miroir et de parcours de décision. Les autres roadmaps, registres A/B, W00–W14, handovers et notes de release sont des **sources de preuve ou archives**, jamais un deuxième ordre de travail. Ancienne version archivée dans [roadmap-web-v2-2026-11-04.md](archive/roadmap-web-v2-2026-11-04.md).
 
 ## 0. Doctrine immédiatement applicable
 
