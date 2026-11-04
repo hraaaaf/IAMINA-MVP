@@ -276,6 +276,7 @@ class AppLockService extends ChangeNotifier {
       await _storage.delete(key: _ownerChoiceKey(owner));
       await _storage.delete(key: _choiceKey);
       await _storage.delete(key: _choiceOwnerKey);
+      await _requireSameAuthenticatedVault(epoch, owner);
       _credential = updated;
       _explicitlySkipped = false;
       _unlocked = true;
@@ -288,6 +289,7 @@ class AppLockService extends ChangeNotifier {
     await _storage.delete(key: _ownerChoiceKey(owner));
     await _storage.delete(key: _choiceKey);
     await _storage.delete(key: _choiceOwnerKey);
+    await _requireSameAuthenticatedVault(epoch, owner);
     _explicitlySkipped = false;
     notifyListeners();
     try {
@@ -298,6 +300,12 @@ class AppLockService extends ChangeNotifier {
       if (!_configured && !_required && !_recoveryRequired &&
           epoch == AuthService.authEpoch) {
         await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
+        try {
+          await _requireSameAuthenticatedVault(epoch, owner);
+        } catch (_) {
+          await _storage.delete(key: _ownerChoiceKey(owner));
+          rethrow;
+        }
         _explicitlySkipped = true;
         notifyListeners();
       }

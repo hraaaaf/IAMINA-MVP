@@ -433,6 +433,41 @@ void main() {
   });
 
 
+
+  test('D10 pending re-enable cannot open account after logout', () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      fail('Local session transition must not call HTTP');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final authenticator = _FakeAuthenticator();
+    final lock = AppLockService(authService: auth, authenticator: authenticator);
+    await lock.initialize();
+    await lock.configure();
+    await lock.disableForCurrentVault();
+    expect(lock.isExplicitlySkipped, isTrue);
+    expect(lock.isUnlocked, isFalse);
+
+    final assertion = Completer<AppLockAssertion>();
+    final started = Completer<void>();
+    authenticator.pendingUnlock = assertion;
+    authenticator.unlockStarted = started;
+    final pending = lock.enableForCurrentVault();
+    await started.future;
+    await auth.signOut();
+    assertion.complete(const AppLockAssertion(signCount: 10));
+
+    await expectLater(pending,
+        throwsA(isA<AppLockException>().having(
+          (error) => error.code, 'code',
+          'patient_changed_during_lock_verification')));
+    expect(lock.isUnlocked, isFalse);
+    expect(lock.isExplicitlySkipped, isFalse);
+    lock.dispose();
+    auth.dispose();
+  });
+
   test('D10 pending unlock cannot reopen vault after logout', () async {
     seedStorage({_credentialKey: _credential.encode(), _requiredKey: 'required'});
     final auth = AuthService(httpClient: MockClient((request) async {
