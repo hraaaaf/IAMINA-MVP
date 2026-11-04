@@ -181,6 +181,8 @@ async function verifyActualWorkerLock(ctx) {
     await verify(ctx,'candidate_missing',secrets.a);
     await verify(ctx,'candidate_create',secrets.a);
     await verify(ctx,'candidate_create_exists',secrets.a);
+    await verify(ctx,'candidate_damaged_schema_denied',secrets.a);
+    await verify(ctx,'candidate_orphan_fk_denied',secrets.a);
     await verify(ctx,'switch_enroll',secrets.a);
     // Physical existence is checked under the worker's real Web Lock.
     // No sqlite3mc connection must be opened for a rejected intent.
@@ -229,7 +231,8 @@ async function verifyActualWorkerLock(ctx) {
   },null,2));
   console.log(JSON.stringify(results));
   const expected=['guarded_open','candidate_missing','candidate_create',
-    'candidate_create_exists','switch_enroll',
+    'candidate_create_exists','candidate_damaged_schema_denied',
+    'candidate_orphan_fk_denied','switch_enroll',
     'intent_reopen_missing','intent_create','intent_create_exists',
     'intent_wrong_key', phases[0][0], 'intent_reopen',
     'candidate_wrong_key','candidate_reopen','switch_reopen_b',
