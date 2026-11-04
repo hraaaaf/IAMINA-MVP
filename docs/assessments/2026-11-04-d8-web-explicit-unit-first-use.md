@@ -43,3 +43,27 @@ Pas de dialogue ou de navigation nouvelle, les deux chips de l'onboarding exista
 - **D22 navigateur #41823209474 RED** sur `a3b49a3a` : script `scripts/d22_gate_a_web_recipes.py` clique `Start` directement après le pays, sans choisir d'unité ; le CTA désormais bloqué explique le timeout. Correction attendue : vérifier le CTA inactif, sélectionner `mg/dL` en tant que patient synthétique puis poursuivre le test D22. Aucune modification d'oracle ni d'unité clinique.
 
 **Validation finale :** ces deux corrections contractuelles et le raffinement du texte nécessitent une **nouvelle CI exacte** avant closeout. Aucun merge, aucune Preview/production Vercel.
+
+## 04/11/2026 — Qualification exacte du code c6801a4c — 9/9 workflows SUCCESS
+
+**HEAD de code vérifié :** `c6801a4cf4ad59cf18bae17951f19e968ae93c54`. Ne pas confondre avec le HEAD documentaire qui suit.
+
+**GitHub Actions au SHA exact : 9/9 COMPLETED/SUCCESS, zéro workflow actif.**
+- [CI générale #41824721814](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721814) SUCCESS : logs du job frontend `126556485478`, **971 Flutter tests PASS / 7 SKIPPED / 0 FAILED**, y compris les 4 nouveaux tests D8 : pas d'unités réécrites par IP/pays ; FR390, AR RTL390 et FR desktop ; `flutter build web --release --no-web-resources-cdn` réussi. Backend SQLite/PostgreSQL SKIPPED car non modifiés.
+- [D5 Chrome #41824721861](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721861) SUCCESS : artefact `13319795192` avec `result.json` lu, **25/25 PASS / 0 erreurs**, `head=c6801a4c...`. Scénarios pays proposé par IP, absence IP, pays explicitement confirmé, clavier, offline et A→B→A sur app Flutter/IndexedDB de test.
+- [D22 Gate A #41824721836](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721836) SUCCESS après actualisation du test navigateur qui choisit l'unité explicitement avant Start ; aucun oracle clinique assoupli.
+- [Onboarding sticky CTA Chrome #41824721827](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721827) SUCCESS, tests et captures FR/AR 390×844 / 768×1024 / 1280×900.
+- [First-use mobile visual #41824721821](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721821), [Auth visual #41824721808](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721808), [TD-014 app-lock #41824721843](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721843), [UI global #41824722005](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824722005), [UI screenshot #41824721863](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41824721863) : tous SUCCESS.
+
+### Comparaison visuelle finale inspectée sur le code c6801a4c
+
+Couples de captures au **même viewport** : FR390×844, AR RTL390×844, FR768×1024, FR1280×900. Avant : D5 Chrome du 31/10, SHA `b3e41405`, artifact `13025221192` (**référence historique, pas `main@8bcc6a16` exact**). Après : D5 Chrome du 04/11, SHA exact `c6801a4c`, artifact `13319795192`, images réellement extraites et inspectées.
+
+**Constat AFTER** : aucune unité cochée après pays, consigne sous les deux chips sur sa propre ligne en 390/768/1280 ; bouton mobile/tablette `Commencer` grisé et désactivé avant choix ; CTA desktop non visible avant choix ; orientation AR RTL correcte et textes non tronqués aux viewports inspectés. Après choix manuel de `mmol/L`, CTA disponible et préférence persistée dans profil (tests Flutter/Chrome). **Score visuel de revue du candidat : 9,2/10 (évaluation subjective sur ces images)**. Limites : baseline historique pas au même SHA immédiatement précédent, capture après choix AR/FR 390 encore à revoir lors de recette Safari, vraie Preview hébergée non testée.
+
+### Verdict et human gate
+
+**D8 — code Web et préflight automatisé techniquement QUALIFIÉS sur c6801a4c ; D8 décision produit PAS encore CLOSED/DEPLOYED.** La décision produit validée est le **choix explicite du patient**, non un mapping géographique ; les conventions cliniques D32, `g/L`, conversion de cibles, egress et ancien historique médical n'ont pas été modifiés.
+
+PR [#1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269) **OPEN/DRAFT, non mergée**. Le propriétaire n'a **pas** autorisé un déploiement Vercel ou un merge par son « Okay go » (ce GO portait sur implémentation). Aucune publication, aucune migration réelle, aucune mesure de patient. **Next exact :** recette humaine iPhone Safari/AR RTL d'abord seulement après autorisation distincte de Preview Vercel ; si FUE + reviews conformes, demander GO de merge séparé, post-merge CI, closeout.
+
