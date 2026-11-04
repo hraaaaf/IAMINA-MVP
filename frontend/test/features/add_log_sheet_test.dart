@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:amina/core/data/meal_food_catalog.dart';
+import 'package:amina/core/data/nutrition_catalog.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/add_log_view.dart';
 import 'package:amina/l10n/app_localizations.dart';
@@ -17,6 +20,7 @@ Widget _sheet(
   AppDatabase db, {
   Locale locale = const Locale('fr'),
   AddLogSheet sheet = const AddLogSheet(),
+  PatientProfileData? profile,
 }) {
   return MaterialApp(
     locale: locale,
@@ -26,7 +30,7 @@ Widget _sheet(
       body: MultiProvider(
         providers: [
           Provider<AppDatabase>.value(value: db),
-          Provider<PatientProfileData?>.value(value: null),
+          Provider<PatientProfileData?>.value(value: profile),
         ],
         child: sheet,
       ),
@@ -55,6 +59,19 @@ Future<void> _tapFormItem(WidgetTester tester, Finder target) async {
     find.byType(SingleChildScrollView).first,
     const Offset(0, -175),
   );
+  await tester.pumpAndSettle();
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapCatalogResult(WidgetTester tester, Finder target) async {
+  // Keep the result in the visible center; the generic -175 drag can
+  // move a search result above the viewport on 390px screens.
+  tester.binding.focusManager.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+  // Widget tests run in fake async: awaiting an animated Scrollable.ensureVisible
+  // before pumping deadlocks the test. WidgetTester drives the scroll safely.
+  await tester.ensureVisible(target);
   await tester.pumpAndSettle();
   await tester.tap(target);
   await tester.pumpAndSettle();
@@ -395,6 +412,198 @@ void main() {
       expect(find.textContaining('Dose critique'), findsNothing);
       expect(find.textContaining('Analyse IAmina'), findsNothing);
       expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
+    });
+  });
+
+  group('D15 real AddLogSheet Save — one local meal draft', () {
+    for (final locale in const <Locale>[Locale('fr'), Locale('ar')]) {
+      for (final viewport in const <String>['390x844', '1440x1000']) {
+        testWidgets(
+          'manual catalog + measured grams + multilingual note save exactly once '
+          '${locale.languageCode} ${viewport}',
+          (tester) async {
+            // Stage markers make a hung widget interaction diagnosable in CI.
+            void stage(String name) =>
+                print('D15_STAGE=${locale.languageCode}:$viewport:$name');
+            stage('start');
+            if (viewport == '390x844') {
+              _narrow(tester);
+            } else {
+              _wide(tester);
+            }
+            await tester.pumpWidget(_sheet(db, locale: locale));
+            await tester.pumpAndSettle();
+
+            await tester.enterText(
+              find.byKey(const Key('glucose-input')), '126');
+            stage('glucose_entered');
+            await _tapOptionalMeal(tester);
+            stage('meal_opened');
+            await tester.enterText(
+              find.byKey(const Key('meal-food-search')),
+              locale.languageCode == 'ar' ? 'بيض' : 'oeuf',
+            );
+            await tester.pumpAndSettle();
+
+            stage('search_entered');
+            final egg = find.byKey(const Key('meal-search-egg'));
+            expect(egg, findsOneWidget);
+            stage('egg_visible');
+            await _tapCatalogResult(tester, egg);
+            stage('egg_selected');
+            expect(find.byKey(const Key('meal-selected-egg')), findsOneWidget);
+
+            final grams = find.byKey(const Key('nutrition-grams-egg'));
+            expect(grams, findsOneWidget);
+            await tester.ensureVisible(grams);
+            await tester.enterText(grams, '75');
+            stage('grams_entered');
+            const noteText = 'Œuf / بيض — 75 g déclarés, test synthétique';
+            final note = find.byKey(const Key('meal-note-input'));
+            await tester.ensureVisible(note);
+            await tester.enterText(note, noteText);
+            stage('note_entered');
+            await tester.pumpAndSettle();
+
+            // Changing any draft field must not insert an event.
+            expect(await db.select(db.logEntries).get(), isEmpty);
+            stage('before_save');
+            await tester.tap(find.byKey(const Key('save-log-button')));
+            stage('save_tapped');
+            await tester.pumpAndSettle();
+
+            final rows = await db.select(db.logEntries).get();
+            expect(rows, hasLength(1), reason: 'One explicit Save = one Drift row');
+            final saved = rows.single;
+            expect(saved.bloodSugar, 126);
+            expect(saved.mealDescription, noteText);
+            expect(decodeMealItemIds(saved.mealItemsJson), <String>['egg']);
+            final portions = decodeMealPortionSelections(saved.mealPortionsJson);
+            expect(portions, hasLength(1));
+            expect(portions.single.foodId, 'egg');
+            expect(portions.single.grams, 75.0);
+            expect(saved.insulinUnits, isNull);
+            expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
+            stage('done');
+          },
+          timeout: const Timeout(Duration(seconds: 40)),
+        );
+      }
+    }
+
+    testWidgets('discard meal draft clears items, note and grams before Save',
+        (tester) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('glucose-input')), '126');
+      await _tapOptionalMeal(tester);
+      await tester.enterText(
+        find.byKey(const Key('meal-food-search')), 'oeuf');
+      await tester.pumpAndSettle();
+      await _tapCatalogResult(
+        tester, find.byKey(const Key('meal-search-egg')));
+      final grams = find.byKey(const Key('nutrition-grams-egg'));
+      await tester.ensureVisible(grams);
+      await tester.enterText(grams, '75');
+      final note = find.byKey(const Key('meal-note-input'));
+      await tester.ensureVisible(note);
+      await tester.enterText(note, 'Brouillon à abandonner');
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      // The generic helper drags another 175px after ensureVisible, moving
+      // this top-of-section Remove action outside the hit-test viewport.
+      final removeMeal = find.byKey(const Key('remove-meal-button'));
+      tester.binding.focusManager.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(removeMeal);
+      await tester.pumpAndSettle();
+      await tester.tap(removeMeal);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('meal-section')), findsNothing);
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      final rows = await db.select(db.logEntries).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.mealDescription, isNull);
+      expect(decodeMealItemIds(rows.single.mealItemsJson), isEmpty);
+      expect(decodeMealPortionSelections(rows.single.mealPortionsJson), isEmpty);
+      expect(rows.single.insulinUnits, isNull);
+    });
+  });
+
+  group('D15 photo confirmation through real Save (synthetic only)', () {
+    testWidgets('confirmed photo candidate remains local until one explicit Save', (tester) async {
+      _wide(tester);
+      final profile = PatientProfileData(
+        userId: 1,
+        preferredLanguage: 'fr',
+        updatedAt: DateTime.utc(2026, 11, 4),
+        targetRangeLow: 70,
+        targetRangeHigh: 180,
+        unitPreference: 'mg/dL',
+        aiConsentGivenAt: DateTime.utc(2026, 11, 4),
+      );
+      await tester.pumpWidget(_sheet(
+        db,
+        profile: profile,
+        sheet: AddLogSheet(
+          photoRecognition: () async => const MealAnalysisResult(
+            foods: ['pain complet'],
+            confidence: 'high',
+            fallback: false,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await _tapOptionalMeal(tester);
+      final photo = find.byKey(const Key('meal-photo-button'));
+      await tester.ensureVisible(photo);
+      await tester.tap(photo);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('meal-photo-proposal')), findsOneWidget);
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      final candidate = find.byKey(
+        const Key('meal-photo-candidate-whole_grain_bread'),
+      );
+      await tester.ensureVisible(candidate);
+      await tester.tap(candidate);
+      await tester.pumpAndSettle();
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      final confirm = find.byKey(const Key('meal-photo-confirm'));
+      await tester.ensureVisible(confirm);
+      await tester.tap(confirm);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('meal-selected-whole_grain_bread')), findsOneWidget);
+      expect(await db.select(db.logEntries).get(), isEmpty);
+
+      final grams = find.byKey(const Key('nutrition-grams-whole_grain_bread'));
+      await tester.ensureVisible(grams);
+      await tester.enterText(grams, '75');
+      await tester.enterText(
+        find.byKey(const Key('meal-note-input')),
+        'Pain confirmé / خبز — test synthétique',
+      );
+      expect(await db.select(db.logEntries).get(), isEmpty);
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      final rows = await db.select(db.logEntries).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.bloodSugar, 126);
+      expect(rows.single.mealDescription, 'Pain confirmé / خبز — test synthétique');
+      expect(decodeMealItemIds(rows.single.mealItemsJson), ['whole_grain_bread']);
+      final portions = decodeMealPortionSelections(rows.single.mealPortionsJson);
+      expect(portions, hasLength(1));
+      expect(portions.single.foodId, 'whole_grain_bread');
+      expect(portions.single.grams, 75.0);
+      expect(rows.single.insulinUnits, isNull);
+      expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
     });
   });
 
