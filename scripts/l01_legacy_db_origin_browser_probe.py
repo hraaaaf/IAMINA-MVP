@@ -72,6 +72,7 @@ def run():
                 ws.settimeout(35)
                 next_id = 0
                 api_paths = []
+                runtime_errors = []
 
                 def cdp(method, params=None):
                     nonlocal next_id
@@ -86,6 +87,12 @@ def run():
                             path = urllib.parse.urlsplit(raw_url).path
                             if path.startswith("/api/"):
                                 api_paths.append(path)
+                        if event.get("method") == "Runtime.exceptionThrown":
+                            details = event.get("params", {}).get(
+                                "exceptionDetails", {})
+                            runtime_errors.append(
+                                str(details.get("text", "JS exception"))[:350]
+                            )
                         if event.get("id") == ident:
                             if "error" in event:
                                 raise RuntimeError(
@@ -99,8 +106,9 @@ def run():
 
                 def phase(name):
                     cdp("Page.navigate", {"url": f"{ORIGIN}/?phase={name}"})
-                    limit = time.monotonic() + 100
+                    limit = time.monotonic() + 35
                     mounted = False
+                    last = {}
                     while time.monotonic() < limit:
                         response = cdp("Runtime.evaluate", {
                             "expression": """(() => ({
@@ -108,17 +116,28 @@ def run():
                                 'flutter-view, flt-glass-pane, flt-scene-host'
                               ),
                               title: document.title,
+                              url: location.origin + location.pathname + location.search,
+                              ready: document.readyState,
+                              bootstrap: !!document.querySelector(
+                                'script[src*=flutter_bootstrap]'
+                              ),
+                              canvas: !!document.querySelector('canvas'),
+                              bodyChars: (document.body?.innerText || '').length,
                             }))()""",
                             "returnByValue": True,
                         })
                         info = response.get("result", {}).get("value") or {}
+                        last = info
                         mounted = bool(info.get("mounted")) and (
                             str(info.get("title", "")).casefold() == "iamina")
                         if mounted:
                             break
                         time.sleep(0.3)
                     if not mounted:
-                        raise RuntimeError(f"Flutter did not mount in {name}")
+                        raise RuntimeError(
+                            f"Flutter did not mount in {name}, "
+                            f"last={last!r}, runtimeErrors={runtime_errors[-3:]!r}"
+                        )
                     # Allow deferred Drift worker/IndexedDB operations to settle
                     # after the actual Flutter app has mounted.
                     time.sleep(1.5)
@@ -156,6 +175,15 @@ def run():
                 except subprocess.TimeoutExpired:
                     p.kill()
                     p.wait(timeout=8)
+                # Diagnostic-only synthetic Chrome process log. Never a
+                # user's profile; truncate to bounded size.
+                log_path = Path(tmp, "chrome.log")
+                if log_path.exists():
+                    ARTIFACT_DIR.mkdir(exist_ok=True)
+                    (ARTIFACT_DIR / "chrome-log-tail.txt").write_text(
+                        log_path.read_text(encoding="utf-8", errors="replace")[-10000:],
+                        encoding="utf-8",
+                    )
 
 
 if __name__ == "__main__":
@@ -164,6 +192,7 @@ if __name__ == "__main__":
         outcome = run()
     except Exception as exc:
         outcome["failure_class"] = type(exc).__name__
+        outcome["diagnostic"] = str(exc)[:1700]
         raise
     finally:
         ARTIFACT_DIR.mkdir(exist_ok=True)
