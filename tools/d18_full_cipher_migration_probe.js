@@ -230,6 +230,10 @@ async function verifyVersionOnlyReopenIsUnsafe(context) {
   } finally {await page.close();}
   const evidence=await context.newPage();
   try {
+    await evidence.route('**/d18_ci_vfs_version_only.html',r=>r.fulfill({
+      status:200,contentType:'text/html',
+      body:'<!doctype html><title>D18 P0-A read-only VFS recovery</title>'
+    }));
     await evidence.goto('http://127.0.0.1:7396/d18_ci_vfs_version_only.html',
       {waitUntil:'domcontentloaded',timeout:45000});
     const physical=await evidence.evaluate(async name=>{
