@@ -1,6 +1,6 @@
 # IAMINA — ROADMAP CANONIQUE UNIQUE · Web/PWA · D1–D38
 
-**Édition :** 2026-11-04 (arbitrages O1–O10 intégrés) · **Statut : 11 CHOIX PRODUIT EXPLICITEMENT VALIDÉS pendant l'onboarding ; ROADMAP CANDIDATE à ADOPTER, NON FUSIONNÉE, NON CERTIFIÉE et AUCUNE AUTORISATION DE DÉPLOYER.**
+**Édition :** 2026-11-04 (arbitrages O1–O10 intégrés, adoption explicite du plan) · **Statut : PLAN WEB/PWA D1–D38 ADOPTÉ PAR LE PROPRIÉTAIRE le 04/11/2026 ; 11 CHOIX PRODUIT VALIDÉS ; PR DRAFT NON FUSIONNÉE, LOGICIEL NON CERTIFIÉ, AUCUNE AUTORISATION DE MERGE NI DE DÉPLOYER.**
 **Source unique du plan prospectif :** ce document, `docs/ROADMAP.md`. Notion « 01 — ROADMAP CANONIQUE » sert de miroir et de parcours de décision. Les autres roadmaps, registres A/B, W00–W14, handovers et notes de release sont des **sources de preuve ou archives**, jamais un deuxième ordre de travail. Ancienne version archivée dans [roadmap-web-v2-2026-11-04.md](archive/roadmap-web-v2-2026-11-04.md).
 
 ## 0. Doctrine immédiatement applicable
@@ -153,7 +153,7 @@ Le numéro de décision ne définit **jamais** l'ordre de travaux. Seules les tr
 
 **Règle de statut :** ACCEPTÉ=arbitrage produit décidé ; LIVRÉ exige preuve de code+tests+comportement+release autorisée ; CERTIFIÉ exige contrôles indépendants et traces. **Ni le nombre de choix ni la CI documentaire ne constituent un pourcentage de chantier certifié.**
 
-**Suite L00 après cette réconciliation :** vérifier index D1–D38, cohérence des 10 lots et des gates, diff limité au Markdown, CI exact HEAD, miroir Notion et PR Draft ; présenter le plan pour **adoption explicite**. **Aucun merge ni déploiement Vercel autorisé.**
+**Clôture documentaire L00 :** index D1–D38 unique, lots L00–L09, 11 liens d'arbitrage, diff Markdown seul, CI SHA exact et miroir Notion ont été vérifiés lors de la réconciliation du 04/11/2026. **Adoption du plan par le propriétaire : OUI (réponse explicite « Go », 04/11/2026).** Cela **n'autorise pas** la fusion de la PR #1270, le déploiement Vercel Preview/Production ou la manipulation de données de patients ; les blocages D18, W01 et D32 persistent. **Next L01 (préparation autorisée sans patient) :** établir la baseline réelle router/mount/DB/fetch de la Web/PWA et des anciennes VFS ; matrice invité/compte vérifié/legacy ; tests négatifs à écrire sur fixtures synthétiques, y compris vieux onglet/offline et isolation A→B→A. **Aucune migration, suppression, nouvelle ouverture patient ni activation sans preuve et revue dédiée.**
 
 ## 5. Preuves de départ, liens et limites
 
