@@ -35,3 +35,7 @@
 - CI `#41811529830` SUCCESS ; rehearsal synthétique `#41811529772` SUCCESS ; 7 autres certifications SUCCESS.
 - **D15.1 clôturé pour le périmètre automatisé uniquement** (photo synthétique confirmée, Save Drift réel ; FR/AR mobile/desktop manuel). Aucune validation de reconnaissance photo réelle, consentement/egress en production, ou recette utilisateur.
 - **D15 globale NON clôturée** : D13/D14/D24 et revue humaine restent des gates. PR #1257 DRAFT ; aucun merge dans main, aucun déploiement Vercel.
+
+## Closeout CI — preuve finale
+- `aa7a9fcb6be0e003f903c1edb96d945f40f558a9` : 9 workflows GitHub SUCCESS, dont CI `#41811529830` et rehearsal `#41811529772`.
+- D15.1 : validation automatisée uniquement ; D15 globale reste Draft avec gates D13/D14/D24. Pas de déploiement.
