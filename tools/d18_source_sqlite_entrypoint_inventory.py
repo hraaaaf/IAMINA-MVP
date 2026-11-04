@@ -110,10 +110,10 @@ for path in sorted(ROOT.rglob("*.dart")):
 # Block new production wiring even when a caller leaves synthetic override false:
 # a stale offline bundle remains able to modify the legacy source.
 PROHIBITED_RUNTIME_REFS = re.compile(
-    r"\\b(?:D18PreCutoverAtomicPromotion|D18PreCutoverIndexedDbMarkerStore|"
+    r"\b(?:D18PreCutoverAtomicPromotion|D18PreCutoverIndexedDbMarkerStore|"
     r"D18PreCutoverCipherAdapter|D18PreCutoverSessionCoordinator|"
     r"openD18UnpublishedCipherWorker|"
-    r"D18CutoverPhase\\s*\\.\\s*ciphertextActive)\\b"
+    r"D18CutoverPhase\s*\.\s*ciphertextActive)\b"
 )
 runtime_cutover_links = []
 for path in sorted(ROOT.rglob("*.dart")):
