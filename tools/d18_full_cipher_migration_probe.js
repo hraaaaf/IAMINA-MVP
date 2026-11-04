@@ -160,9 +160,27 @@ async function investigateVersionOnlyFence(context) {
     if(!unversionedWriterStillAllowed) {
       throw Error('D18_VFS_EXPECTED_NEGATIVE_REOPEN_NOT_REPRODUCED');
     }
+    // The version bump is scoped to the disposable A8 vault only:
+    // a DIFFERENT patient A7 must retain its original IDB version and stores.
+    const independentVaultIntact=await upgrader.evaluate(async name=>{
+      const db=await new Promise((resolve,reject)=>{
+        const q=indexedDB.open(name);
+        q.onsuccess=()=>resolve(q.result);
+        q.onerror=()=>reject(q.error);
+      });
+      try {
+        return db.version===1 && db.objectStoreNames.length===2 &&
+          db.objectStoreNames.contains('blocks') &&
+          db.objectStoreNames.contains('files');
+      } finally {db.close()}
+    },'amina_vault_v1_device_e2dbe28f3eea441086a7274150a70018');
+    if(!independentVaultIntact) {
+      throw Error('D18_VFS_OTHER_PATIENT_DB_AFFECTED');
+    }
     results.push({phase:'real_drift_vfs_version_only_not_fencing_unversioned',
       pass:true,dbVersion:2,blocked,oldPinnedV1Denied:v1Denied,
       oldUnversionedWriteAccess:unversionedWriterStillAllowed,
+      independentPatientVaultVersionUntouched:independentVaultIntact,
       physicalStores:['blocks','files'],
       WARNING:'VERSION_ONLY_UPGRADE_IS_NOT_OLD_CLIENT_FENCING'});
   } finally {
