@@ -115,6 +115,18 @@ PROHIBITED_RUNTIME_REFS = re.compile(
     r"openD18UnpublishedCipherWorker|"
     r"D18CutoverPhase\s*\.\s*ciphertextActive)\b"
 )
+# Guard the guard: a malformed regex that silently matches nothing is
+# itself a safety regression. Use controlled, synthetic source tokens.
+for sample in (
+    "final x = D18PreCutoverAtomicPromotion(",
+    "D18CutoverPhase.ciphertextActive",
+    "openD18UnpublishedCipherWorker(scope, intent, destination, key)",
+):
+    if not PROHIBITED_RUNTIME_REFS.search(sample):
+        sys.exit("D18_CUTOVER_STATIC_GUARD_SELFTEST_FAIL")
+if PROHIBITED_RUNTIME_REFS.search("D18SourceLockGate.patient(scope)"):
+    sys.exit("D18_CUTOVER_STATIC_GUARD_FALSE_POSITIVE")
+
 runtime_cutover_links = []
 for path in sorted(ROOT.rglob("*.dart")):
     rel = path.relative_to(ROOT).as_posix()
