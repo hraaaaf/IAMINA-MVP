@@ -89,3 +89,38 @@ Utiliser **uniquement identités, mesures, photos et coffres synthétiques**, sa
 **Observation architecture bloquante :** `main.dart` appelle `AppDatabase.defaults()` pour inspecter le coffre legacy dans le but de **fail-closed app-lock**. Le nom IndexedDB observé est compatible avec ce chemin ; ceci reste une **hypothèse de cause**, pas une trace instrumentée de l'opération d'ouverture. Ne jamais retirer cette inspection avant une alternative sûre et testée sur vieux coffres. Le nouveau shell visiteur doit être dépourvu de provider patient et ne doit jamais lier les données legacy à un nouveau compte automatiquement.
 
 **Next L01 :** instrumenter l'origine exacte de `amina` sans mutation d'un coffre réel ; isoler cette sonde des écrans publics, définir mockup et cas FUE avant modification UI ; maintenir **D18 SAFE-HOLD / W01 NO-GO** et autorisations séparées merge/Vercel.
+
+
+## 6. D18 — analyse ciblée de l'origine d'IndexedDB `amina` (04/11/2026)
+
+**Décision d'ingénierie : NE PAS SUPPRIMER la sonde legacy et NE PAS ouvrir le shell public via une DB d'audit.** La correction la plus simple (supprimer `AppDatabase.defaults()`) serait imprudente : le mécanisme est utilisé comme garde d'anti-rollback du verrou local. Toute refonte nécessite un protocole non destructif et des tests sur coffres synthétiques de versions anciennes.
+
+### Constat code + comportement
+
+1. `frontend/lib/main.dart` L61–69 : **à chaque démarrage**, crée `AppDatabase.defaults()`, appelle `_hasProtectedLocalState(...)` puis ferme le handle. La sonde est exécutée avant `runApp` ; la fermeture du handle n'efface pas un IndexedDB créé.
+2. `frontend/lib/data/drift/database.dart` L119–129 : `AppDatabase.defaults()` ouvre le stockage Drift Web **nommé exactement `amina`**, sans scope patient. Il s'agit du nom historique, distinct de `amina_vault_v1_audit` et des coffres nommés par propriétaire.
+3. `main.dart` L25–39, `medical_vault_protected_state.dart` L4–25 : si la fonction de politique ne conclut pas à une session locale déjà protégée, la sonde **effectue des SELECT** sur `patientProfiles`, `logEntries`, `chatMessages`, `medicationEvents`, `reminders` et les déclarations. **Une requête Drift déclenche potentiellement l'ouverture et la gestion du schéma** `database.dart` L157–212 (`onCreate` / `onUpgrade`). Une sonde dite « présence seulement » n'est donc **pas garantie strictement read-only** sur un vieux schéma ; ce risque est à démontrer ou réfuter avant activation publique.
+4. [Chrome L01 #41860217964](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41860217964), `proof.json` : sur profil navigateur neuf, IndexedDB énumère `["amina"]` après boot, et **0 requête `/api/`** observée au boot/reload. **Attribution :** la concordance du nom et du chemin d'exécution rend cette sonde la **cause la plus probable**, mais l'artefact n'enregistre pas l'événement `indexedDB.open` dans le worker : ne pas annoncer une causalité instrumentée ni une écriture clinique.
+5. `frontend/lib/services/patient_vault_app_host.dart` L69–85 et L270–285 : un **autre** chemin crée `AppDatabase.forPatientVault(PatientVaultScope.auditOnly())` et injecte ce handle au non-authentifié. Ce handle a un nom **différent** et n'explique pas directement la présence de `amina` ; il reste incompatible avec la cible D37-A d'un vrai shell invité **sans provider clinique**.
+
+**Conclusion vérifiée :** `amina` apparaît au bootstrap d'un navigateur vierge, et le code ouvre par conception le stockage historique au démarrage ; **aucune fuite ni donnée patient ni mutation de schéma n'est démontrée dans ce run**. **Risque à traiter :** double frontière (legacy anti-rollback et DB d'audit invitée) et éventuelle migration involontaire lors d'un SELECT. La CI #41860217686 reste verte pour le correctif de locale, mais ne résout pas ces risques.
+
+### Prochain protocole de preuve — tout synthétique, aucun patient
+
+| ID | Scénario | Preuve exigée | Statut |
+|---|---|---|---|
+| LEG-01 | Chrome vierge : inspecter IndexedDB **avant** tout bootstrap puis après la sonde | Nom, moment d'apparition et attribution au chemin d'ouverture ; **aucune API métier** | NOT RUN |
+| LEG-02 | Ancienne base `amina` synthétique avec tables/valeurs/hachages de contrôle | Inspection ne change **aucun** octet/ligne/schema_version ni journal de migrations, ou test FAIL | NOT RUN |
+| LEG-03 | Ancien coffre protégé / clé de lock absente | Doit rester **locked/recovery_required**, jamais interprété comme un premier usage | NOT RUN |
+| LEG-04 | Ancien coffre ambigu/corrompu ou IndexedDB bloqué | **Fail closed** sans effacer, réinitialiser ni s'approprier un coffre | NOT RUN |
+| LEG-05 | Chrome/Safari/WebKit privé, mode offline, ancienne PWA et onglet A→B→A | Détection compatible ou échec fermé, aucune identité déduite de la DB `amina` | NOT RUN |
+| LEG-06 | Vrai visiteur après détection protégée | Shell statique séparé, **aucun** `Provider<AppDatabase>`, requête, sauvegarde médicale ou adoption legacy | NOT RUN |
+| LEG-07 | Audit QA explicite | DB synthétique `amina_vault_v1_audit` isolée ; jamais offerte à un visiteur ordinaire | NOT RUN |
+
+### Architecture cible proposée, non implémentée
+
+**Frontière 1 — détection d'un historique :** présence/métadonnées **sans ouverture-migration**, si la plateforme le permet ; toute absence de preuve ou incohérence doit maintenir le verrou / récupération. Évaluer précisément Safari/IndexedDB/OPFS avant de choisir la technique. Le read-only doit être vérifié avec des empreintes synthétiques avant/après ; ne jamais inférer l'identité à partir de `amina`.
+
+**Frontière 2 — UI visiteur :** coque Web/PWA statique sans `AppDatabase`, `ModulesProvider` patient, `SyncService` ou appel API métier, mais conservant l'écran/verrou de sécurité nécessaire aux installations existantes ; première action clinique ⇒ connexion puis autorisation explicite. Ne pas faire passer une session locale anonyme pour un compte distant vérifié.
+
+**Gates :** le développement de ces frontières reste **NO-GO clinique D18/W01** tant que tests anciens coffres/sessions et revue sécurité indépendants sont manquants. Aucune migration, merge, Vercel Preview/Production ou accès patient autorisé. **Next exact :** instrumenter les ouvertures IndexedDB en CI synthétique et mesurer la non-mutation d'un vieux schéma avant toute modification runtime de la sonde.
