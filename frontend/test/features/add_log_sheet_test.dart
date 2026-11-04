@@ -67,11 +67,9 @@ Future<void> _tapCatalogResult(WidgetTester tester, Finder target) async {
   // move a search result above the viewport on 390px screens.
   tester.binding.focusManager.primaryFocus?.unfocus();
   await tester.pumpAndSettle();
-  await Scrollable.ensureVisible(
-    tester.element(target),
-    alignment: 0.45,
-    duration: const Duration(milliseconds: 100),
-  );
+  // Widget tests run in fake async: awaiting an animated Scrollable.ensureVisible
+  // before pumping deadlocks the test. WidgetTester drives the scroll safely.
+  await tester.ensureVisible(target);
   await tester.pumpAndSettle();
   await tester.tap(target);
   await tester.pumpAndSettle();
