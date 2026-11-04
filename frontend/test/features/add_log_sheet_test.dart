@@ -422,6 +422,10 @@ void main() {
           'manual catalog + measured grams + multilingual note save exactly once '
           '${locale.languageCode} ${viewport}',
           (tester) async {
+            // Stage markers make a hung widget interaction diagnosable in CI.
+            void stage(String name) =>
+                print('D15_STAGE=${locale.languageCode}:$viewport:$name');
+            stage('start');
             if (viewport == '390x844') {
               _narrow(tester);
             } else {
@@ -432,31 +436,40 @@ void main() {
 
             await tester.enterText(
               find.byKey(const Key('glucose-input')), '126');
+            stage('glucose_entered');
             await _tapOptionalMeal(tester);
+            stage('meal_opened');
             await tester.enterText(
               find.byKey(const Key('meal-food-search')),
               locale.languageCode == 'ar' ? 'بيض' : 'oeuf',
             );
             await tester.pumpAndSettle();
 
+            stage('search_entered');
             final egg = find.byKey(const Key('meal-search-egg'));
             expect(egg, findsOneWidget);
+            stage('egg_visible');
             await _tapCatalogResult(tester, egg);
+            stage('egg_selected');
             expect(find.byKey(const Key('meal-selected-egg')), findsOneWidget);
 
             final grams = find.byKey(const Key('nutrition-grams-egg'));
             expect(grams, findsOneWidget);
             await tester.ensureVisible(grams);
             await tester.enterText(grams, '75');
+            stage('grams_entered');
             const noteText = 'Œuf / بيض — 75 g déclarés, test synthétique';
             final note = find.byKey(const Key('meal-note-input'));
             await tester.ensureVisible(note);
             await tester.enterText(note, noteText);
+            stage('note_entered');
             await tester.pumpAndSettle();
 
             // Changing any draft field must not insert an event.
             expect(await db.select(db.logEntries).get(), isEmpty);
+            stage('before_save');
             await tester.tap(find.byKey(const Key('save-log-button')));
+            stage('save_tapped');
             await tester.pumpAndSettle();
 
             final rows = await db.select(db.logEntries).get();
@@ -471,7 +484,9 @@ void main() {
             expect(portions.single.grams, 75.0);
             expect(saved.insulinUnits, isNull);
             expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
+            stage('done');
           },
+          timeout: const Timeout(Duration(seconds: 40)),
         );
       }
     }
