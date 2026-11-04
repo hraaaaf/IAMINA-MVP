@@ -208,6 +208,7 @@ async function concurrentSourceLock(context) {
       headless:true,locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'seed');
+    await phase(ctx,'patient_factory_create');
     await inspectPhysicalDriftStorage(ctx);
     await phase(ctx,'abort_rollback');
     await concurrentSourceLock(ctx);
@@ -219,6 +220,7 @@ async function concurrentSourceLock(context) {
       headless:true,locale:'fr-FR',
       args:['--no-sandbox','--disable-dev-shm-usage']});
     await phase(ctx,'crash_recover');
+    await phase(ctx,'patient_factory_reopen');
     await phase(ctx,'migrate');
     await ctx.close();ctx=null;
     ctx=await chromium.launchPersistentContext(profile,{
@@ -241,10 +243,12 @@ async function concurrentSourceLock(context) {
     results,
   },null,2));
   console.log(JSON.stringify(results));
-  const expected=['seed','real_drift_source_vfs_metadata','abort_rollback','hold_source_lock',
+  const expected=['seed','patient_factory_create',
+    'real_drift_source_vfs_metadata','abort_rollback','hold_source_lock',
     'compete_source_lock','crash_uncommitted',
-    'crash_recover','migrate','verify','physical_bytes'];
-  if(results.length!==10||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
+    'crash_recover','patient_factory_reopen',
+    'migrate','verify','physical_bytes'];
+  if(results.length!==12||results.some((v,i)=>!v.pass||v.phase!==expected[i]))
     process.exitCode=1;
 })().catch(e=>{
   console.error('D18_FULL_VAULT_HARNESS_FATAL',e.name);
