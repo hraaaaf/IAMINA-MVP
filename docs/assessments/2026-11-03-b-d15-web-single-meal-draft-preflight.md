@@ -23,3 +23,9 @@
 - Comparaison GitHub actuelle : D15 diverged, ahead 6 / behind 1. Fichiers D15 et Backend modifiés distincts ; absence de conflit de chemins ne garantit pas automatiquement un merge propre. `mergeable=false` signalé par GitHub au contrôle.
 - La photo est encore une proposition simulée suivie d'un insert Drift manuel : **pas de preuve** photo confirmée → vrai `AddLogSheet` Save. D15.1 = preuve partielle ciblée, pas D15 globale.
 - Next exact : synchroniser prudemment PR #1257 avec main sans perdre les tests D15 ; relancer CI Flutter + Backend ; ensuite combler le test photo confirmée → Save réel si compatible avec D14 PAUSED et sans activer de transfert média. Ne pas merger ni déployer D15 tant que D13/D14/D24 et validation humaine ne sont pas levés.
+
+## Validation CI après photo→Save — 04/11/2026
+- HEAD testé : `00450da80a0b04c3b1e4160ab52f2ab252a2ea06` ; CI `#41809869976` COMPLETED SUCCESS, jobs Frontend analyze/tests/PWA, Backend ruff+pytest et PostgreSQL SUCCESS ; rehearsal synthétique `#41809869791` SUCCESS.
+- Sept autres workflows de certification UI associés au même HEAD : SUCCESS ; ce résultat ne constitue pas une recette manuelle Chrome/Safari du parcours D15.
+- Nouveau test `add_log_sheet_test.dart` : candidat photo synthétique, confirmation explicite, zéro écriture avant Save, saisie utilisateur des grammes/note, véritable `save-log-button`, une ligne Drift et insuline null. Callback de reconnaissance injectable uniquement pour les tests ; consentement photo requis via profil, aucune reconnaissance réelle ni transfert patient activé.
+- **Verdict D15.1 : preuve automatisée verte sur HEAD cité.** Ne pas confondre avec D15 globale : D13/D14/D24 et revue humaine toujours gates, D14 PAUSED. PR #1257 reste DRAFT, pas de merge ni déploiement.
