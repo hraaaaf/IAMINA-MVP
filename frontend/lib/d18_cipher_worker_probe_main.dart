@@ -118,8 +118,9 @@ Future<void> migrationPhase(String phase) async {
       // Both schema and sentinel MUST commit as one physical SQLite change.
       // No acceptance based only on a successful CREATE/INSERT statement.
       stage('migration_seed_atomic_transaction');
+      // db was opened and checked immediately above; Dart promotes it
+      // to non-null here. Keep the physical transaction and readback strict.
       final sourceDb = db;
-      if (sourceDb == null) throw StateError('D18_MIG_SOURCE_NOT_OPEN');
       await sourceDb.transaction(() async {
         await sourceDb.customStatement(
           'CREATE TABLE "$migrationTable" (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
