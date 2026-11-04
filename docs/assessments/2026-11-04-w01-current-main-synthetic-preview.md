@@ -36,3 +36,32 @@
 ### W01 — garde serveur contre inscription directe en Preview (candidat non déployé)
 
 Audit adversarial : la limitation du formulaire et le refus `AuthService.registerWithEmail` ne suffisent pas, car `POST /api/v1/auth/register` reste accessible directement. Correctif backend proposé sur la même branche : rejet 403 **avant toute requête ou création d'utilisateur** lorsque `VERCEL_ENV=preview` ou `IAMINA_ENV=preview`, sauf opt-in explicite serveur `IAMINA_PREVIEW_ALLOW_REGISTRATION=true` pour tests positifs distincts. En Production, comportement inchangé. Tests négatifs et non-régression ajoutés. **Pas encore prouvé sur l'API déployée** : le SHA runtime existant `d7d650a` n'inclut pas cette protection ; elle dépend d'un déploiement Preview autorisé, puis d'un HTTP 403 observé. Ne pas prétendre qu'une Preview en cours refuse déjà l'inscription.
+
+
+## W01 — Validation partielle des déploiements sur SHA 53f22063 — 04/11/2026
+
+**GO explicite** donné au déploiement Vercel Preview Web+API uniquement. **Runtime exact (les deux services) :** `53f22063677e4dfed88f2d701b2476cb2d816511`. PR Draft #1273 conservée, aucun merge ni déploiement Production.
+
+**Preuve CI :** [GitHub Actions #41907096322](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41907096322) SUCCESS avec exécution effective des jobs `Backend — ruff + pytest`, `Backend — PostgreSQL source-of-truth` et `Frontend — analyze + tests + PWA build` (tous SUCCESS, aucun de ces trois jobs SKIPPED). Les autres workflows du SHA étaient terminés SUCCESS à la vérification.
+
+**Déploiements finaux Preview :**
+- API `iamina-certified` `dpl_9ryTimFJ6JwsfbW66NXno2gWYcZB` : **READY**, `https://iamina-certified-hmmwtj2iu-achraf-benmoussa-s-projects.vercel.app`. GET `/api/v1/health` = **HTTP 200** avec JSON `status=ok`, `db=ok`, `cache=unavailable`. `db=ok` n'est pas un fingerprint Neon.
+- Web `iamina-review` `dpl_A9uyN2wAcc1joMBVBLzv2xeM2GDo` : **READY**, URL immuable `https://iamina-review-i9gfvhyzj-achraf-benmoussa-s-projects.vercel.app`; **URL recommandée pour le test navigateur**, alias de branche stable `https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app/`. GET Web immuable et alias = **HTTP 200**, HTML d'amorçage Flutter.
+- Bundle Web `main.dart.js` sur l'alias : **HTTP 200**, 5 012 304 caractères décodés. Contient l'URL exacte de l'API finale et le texte FR « Se connecter avec un compte existant » ; ne contient ni l'URL API précédente `iamina-certified-3gqy8a21h` ni l'alias stable `https://iamina-certified.vercel.app`. Preuve de compilation seulement : pas une capture écran ni preuve de clic/login.
+- Paramètre Web `IAMINA_REVIEW_PREVIEW_API_BASE_URL` ID `JE9CVjqNmNIC75HI` limité à la branche W01 et pointé sur l'API finale.
+- Corrections API CORS/CSRF limitées à Preview branche W01 : `CORS_ALLOWED_ORIGINS` ID `7M70as7ulBORDTvY`, `CSRF_TRUSTED_ORIGINS` ID `9kdr7qm4PtxA61AX`; elles autorisent l'alias Web stable de branche et la **première** URL immuable Web `iamina-review-4985w4l2f`, mais **pas** la nouvelle URL immuable `iamina-review-i9gfvhyzj`. Pour tout E2E navigateur, impérativement utiliser l'alias stable ; ne pas déclarer que CORS/CSRF fonctionnent sans mesure navigateur.
+
+**Neon, lecture seule :** projet sandbox `noisy-truth-00115950`, branche `br-sweet-frog-b9ok6ptp`, deux comptes `w01-a@example.invalid` ID 15 et `w01-b@example.invalid` ID 16 (existence vérifiée ; mots de passe non vérifiés). Avant/après les vérifications HTTP : `auth_user=2`, `core_basepatientprofile=2`, `core_observabilityevent=66`, `core_authabusebucket=69`. Ces quatre compteurs n'ont pas varié, mais le critère « 39 tables métier à zéro » reste non prouvé et incorrect sans baseline exacte ; la base n'est pas vide.
+
+**Production :** dernières entrées de déploiement Vercel Production inchangées (Web `dpl_CkvF3r9mUMvZe6Mpwp4e5grRoZ7c` `92f61c3` ; API `dpl_9Ur3Qprx46kwGArAX4FfKHLS2cLL` `9570e4c`). Aucune mutation Production n'a été demandée.
+
+**Tests manuels nécessaires sur l'alias stable Web :**
+- [ ] Sur iPhone Safari, voir le choix « Se connecter avec un compte existant » et conserver « Continuer sans compte ».
+- [ ] Choisir connexion, vérifier les champs email/mot de passe, absence des actions Inscription/Démo/Reset dans cette Preview.
+- [ ] Login compte A puis logout, login compte B, vérifier séparation du coffre patient et absence de données A.
+- [ ] Vérifier Network vers **l'API finale exacte**, CORS/CSRF et réponses réelles.
+- [ ] Vérifier refus backend HTTP 403 à `POST /api/v1/auth/register` sans mutation, origine Web autorisée, accès non authentifié 401/403.
+- [ ] Fingerprint non secret de Neon du **runtime API**, tests G2/G6/G7, revue indépendante.
+- [ ] Comparer rendu AFTER vs BEFORE iPhone 390 px, tablette 768 px et desktop 1280 px ; score visuel seulement après captures.
+
+**Verdict : W01 PARTIEL / NO-GO certification.** Déploiements et health prouvés, **E2E Web→API→Neon et isolation complète NON certifiés**. La branche de Production Neon nommée `production` avait encore `protected=false` au dernier audit read-only : G2 ouvert. Aucun nouveau déploiement, merge ou changement Production sans autorisation.
