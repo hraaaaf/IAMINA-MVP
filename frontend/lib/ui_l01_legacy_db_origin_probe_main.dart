@@ -62,7 +62,7 @@ Future<void> main() async {
         final fakeRows = await (legacy.select(legacy.logEntries)
               ..where((row) => row.clientUuid.equals(_fakeUuid)))
             .get();
-        html.document.title =
+        _report(
             'IAMINA_L01_PROBED_V${version}_ROWS_${fakeRows.length}_PROTECTED_${protected}');
       } else {
         await hasProtectedMedicalVaultRows(legacy);
