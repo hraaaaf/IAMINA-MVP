@@ -52,7 +52,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   String? _treatment; // existing optional legacy scalar; never inferred
   D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
   bool _treatmentTouched = false;
-  String _unit = 'mg/dL';
+  // D8: new patients choose their meter unit explicitly.
+  // Existing preferences are read unchanged in preferencesOnly.
+  String? _unit;
   bool _saving = false;
   bool _preferencesInitialized = false;
   bool _countrySuggestionRequested = false;
@@ -168,7 +170,10 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   Future<void> _finish() async {
-    if (_language == null || _country == null || _countrySuggestedByIp) return;
+    if (_language == null ||
+        _country == null ||
+        _countrySuggestedByIp ||
+        (!widget.preferencesOnly && _unit == null)) return;
     setState(() => _saving = true);
 
     try {
@@ -202,7 +207,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         updatedAt: DateTime.now(),
         diabetesType: drift.Value(_diabetesType),
         treatment: drift.Value(_treatment),
-        unitPreference: drift.Value(_unit),
+        unitPreference: drift.Value(_unit!),
         // D22 Gate A: legacy SQL defaults remain untrusted until
         // a separate, governed provenance migration is approved.
       );
@@ -444,6 +449,22 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               selected: _unit == 'mmol/L',
               onTap: () => setState(() => _unit = 'mmol/L'),
             ),
+            if (_unit == null)
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  _preferencesCopy(context,
+                    fr: 'Choisissez l’unité indiquée sur votre lecteur avant de continuer.',
+                    en: 'Choose the unit shown on your meter before continuing.',
+                    ar: 'اختر الوحدة المعروضة على جهاز القياس قبل المتابعة.',
+                  ),
+                  key: const Key('onboarding-unit-required-hint'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AminaTheme.textSecondary(context),
+                  ),
+                ),
+              ),
           ],
         ),
     ];
@@ -458,9 +479,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             treatment: _treatmentTouched ? d7StateCode(_declaredTreatments.state) : null,
           );
 
-    // Language and country are the only first-use prerequisites.
-    // The five-step medical questionnaire stays available, never mandatory.
-    final ready = _language != null && _country != null && !_countrySuggestedByIp;
+    // D8: confirmed country and explicit unit are required for first use.
+    // Diagnosis/treatments remain optional, and preferencesOnly is unchanged.
+    final hasCountry =
+        _language != null && _country != null && !_countrySuggestedByIp;
+    final ready = hasCountry && (widget.preferencesOnly || _unit != null);
 
     final assistantLabel = widget.preferencesOnly
         ? _preferencesCopy(
@@ -499,7 +522,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
     return Scaffold(
       backgroundColor: AminaTheme.surfaceMuted,
-      bottomNavigationBar: compact && ready
+      bottomNavigationBar: compact && hasCountry
           ? SafeArea(
               top: false,
               child: Container(

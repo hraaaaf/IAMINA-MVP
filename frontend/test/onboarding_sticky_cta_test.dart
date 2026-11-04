@@ -100,6 +100,7 @@ void main() {
     expect(find.text('Quel ton préférez-vous ?'), findsNothing);
     await select('Diabète Type 2');
     await select('Médicaments oraux pris');
+    await select('mg/dL'); // Explicit first-use unit required by D8.
 
     final start = find.byKey(const Key('onboarding-sticky-start'));
     expect(start, findsOneWidget);
@@ -172,6 +173,13 @@ void main() {
     expect(find.text('Diabète Type 2'), findsOneWidget);
     final start = find.byKey(const Key('onboarding-sticky-start'));
     expect(start, findsOneWidget);
+    expect(tester.widget<FilledButton>(start).onPressed, isNull);
+    expect(await db.getProfileForLocalUserId(1), isNull);
+    await tester.ensureVisible(find.text('mmol/L'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('mmol/L'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(start).onPressed, isNotNull);
     await tester.tap(start);
     await tester.pumpAndSettle();
 

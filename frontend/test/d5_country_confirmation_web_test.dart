@@ -268,7 +268,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('onboarding-confirm-suggested-country')),
         findsNothing);
-    await tester.tap(find.byKey(const Key('onboarding-sticky-start')));
+    final start = find.byKey(const Key('onboarding-sticky-start'));
+    expect(tester.widget<FilledButton>(start).onPressed, isNull);
+    await tester.ensureVisible(find.text('mg/dL'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('mg/dL'));
+    await tester.pumpAndSettle();
+    await tester.tap(start);
     await tester.pumpAndSettle();
     expect(preferences.persistedCountryCount, 1);
     expect(preferences.persistedCountry, 'MA');

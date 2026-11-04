@@ -133,6 +133,11 @@ void main() {
       }
       rtlTitle('ما وحدة القياس التي تفضلها؟',
         revealed: size.width < 900);
+      final mmol = find.text('mmol/L');
+      await tester.ensureVisible(mmol);
+      await tester.pumpAndSettle();
+      await tester.tap(mmol);
+      await tester.pumpAndSettle();
       expect(find.text('ابدأ'), findsOneWidget);
       if (size.width >= 900) {
         // Desktop intentionally avoids forced scrolling between answers.
