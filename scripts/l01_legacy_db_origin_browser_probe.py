@@ -148,27 +148,69 @@ def run():
                     # Allow deferred Drift worker/IndexedDB operations to settle
                     # after the actual Flutter app has mounted.
                     time.sleep(1.5)
-                    return cdp("IndexedDB.requestDatabaseNames", {
+                    names = cdp("IndexedDB.requestDatabaseNames", {
                         "securityOrigin": ORIGIN,
                     }).get("databaseNames", [])
+                    title = cdp("Runtime.evaluate", {
+                        "expression": "document.title",
+                        "returnByValue": True,
+                    }).get("result", {}).get("value", "")
+                    return {"names": names, "title": title}
 
                 before = phase("control")
                 proof["steps"].append({
                     "phase": "control_no_database_code",
-                    "indexeddb_names": before,
-                    "has_amina": "amina" in before,
+                    "indexeddb_names": before["names"],
+                    "has_amina": "amina" in before["names"],
                 })
                 after = phase("legacy_probe")
                 proof["steps"].append({
                     "phase": "AppDatabase_defaults_then_protected_rows_select",
-                    "indexeddb_names": after,
-                    "has_amina": "amina" in after,
+                    "indexeddb_names": after["names"],
+                    "has_amina": "amina" in after["names"],
+                })
+
+                # The next two phases use ONLY a self-created old-schema fixture
+                # on this ephemeral Chrome profile. The v11 profile intentionally
+                # contains a fake glucose row and no real patient identity.
+                seeded = phase("seed_legacy_v11")
+                proof["steps"].append({
+                    "phase": "seed_synthetic_legacy_v11",
+                    "status": seeded["title"],
+                })
+                probed = phase("probe_legacy_v11")
+                proof["steps"].append({
+                    "phase": "presence_only_probe_on_synthetic_v11",
+                    "status": probed["title"],
                 })
                 proof["observed_business_api_paths"] = sorted(set(api_paths))
+
+                causal = "amina" not in before["names"] and "amina" in after["names"]
+                fixture = seeded["title"] == "IAMINA_L01_V11_SEEDED"
+                v11_result = probed["title"]
+                # This is an observational experiment: schema mutation is an
+                # important finding, not proof that clinical storage is safe.
+                migration_seen = v11_result.startswith(
+                    "IAMINA_L01_PROBED_V12_ROWS_1_PROTECTED_true"
+                )
+                unchanged_version = v11_result.startswith(
+                    "IAMINA_L01_PROBED_V11_ROWS_1_PROTECTED_true"
+                )
+                proof["legacy_v11_inspection"] = {
+                    "valid_fixture": fixture,
+                    "schema_migration_observed": migration_seen,
+                    "schema_unchanged_observed": unchanged_version,
+                    "sentinel_row_after_probe": 1 if migration_seen or unchanged_version else "UNKNOWN",
+                    "clinical_safety": "NOT_CERTIFIED",
+                    "old_database_byte_integrity": "NOT_TESTED",
+                    "older_versions_or_opfs": "NOT_TESTED",
+                }
                 proof["result"] = (
-                    "PASS_CAUSAL_SYNTHETIC_CONTROL"
-                    if "amina" not in before and "amina" in after
-                    and not api_paths else "FAIL"
+                    "PASS_SYNTHETIC_CAUSALITY_AND_SCHEMA_MIGRATION_OBSERVED"
+                    if causal and fixture and migration_seen and not api_paths else
+                    "PASS_SYNTHETIC_CAUSALITY_NO_VERSION_CHANGE_OBSERVED"
+                    if causal and fixture and unchanged_version and not api_paths else
+                    "FAIL"
                 )
                 # Persist real observations *before* closing Chrome and
                 # cleaning its private profile; cleanup must never hide proof.
@@ -177,8 +219,11 @@ def run():
                     json.dumps(proof, indent=2, ensure_ascii=False),
                     encoding="utf-8",
                 )
-                if proof["result"] != "PASS_CAUSAL_SYNTHETIC_CONTROL":
-                    raise RuntimeError("Legacy open vs control did not isolate amina")
+                if not proof["result"].startswith("PASS_SYNTHETIC_CAUSALITY"):
+                    raise RuntimeError(
+                        "Synthetic legacy v11 verification inconclusive; "
+                        f"observations={proof['steps'][-2:]}"
+                    )
                 return proof
             finally:
                 if ws:
