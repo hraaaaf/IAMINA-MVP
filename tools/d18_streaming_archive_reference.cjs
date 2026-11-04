@@ -96,7 +96,8 @@ async function seal(source,archive){
   return {total,count};
 }
 async function restore(archive,stage,destination,expectedScope,password,
-                       {interruptAfter=Infinity}={}){
+                       {interruptAfter=Infinity,maxRestoredBytes=512*1024*1024,
+                        isCancelled=()=>false}={}){
   // 'wx' quarantines all partial/unverified content. No prior file overwrite.
   const fd=fs.openSync(stage,'wx',0o600);
   let key,hash=crypto.createHash('sha256'),prefix;
@@ -123,13 +124,16 @@ async function restore(archive,stage,destination,expectedScope,password,
         const bytes=unprotect(key,prefix,'chunk',count,record.sealed,
           expectedScope);
         assert(bytes.length>0&&bytes.length<=BLOCK,'BAD_CHUNK_SIZE');
+        assert(!isCancelled(),'USER_CANCELLED');
+        assert(Number.isSafeInteger(maxRestoredBytes)&&maxRestoredBytes>0 &&
+          total+bytes.length<=maxRestoredBytes,'RESTORE_QUOTA_EXCEEDED');
         for(let offset=0;offset<bytes.length;){
           const n=fs.writeSync(fd,bytes,offset,bytes.length-offset);
           assert(n>0,'STALLED_PARTIAL_WRITE');
           offset+=n;
         }
         hash.update(bytes);total+=bytes.length;count++;
-        assert(total<=512*1024*1024,'MAX_STREAM_CAP_EXCEEDED');
+
         if(count===interruptAfter)throw Error('D18_P0D_SIMULATED_CRASH');
       }else if(record.kind==='final'){
         const manifest=JSON.parse(unprotect(key,prefix,'final',count,
@@ -226,6 +230,24 @@ async function mustReject(name,work){
     await mustReject('refuse_partial_overwrite',()=>restore(archive,
       path.join(dir,'crash.partial'),path.join(dir,'crash.cipher'),
       scope,pass));
+    const cancelledPath=path.join(dir,'cancelled.partial');
+    await mustReject('explicit_user_cancel_quarantines',()=>restore(
+      archive,cancelledPath,path.join(dir,'cancelled.cipher'),scope,pass,
+      {isCancelled:()=>true}));
+    assert(fs.existsSync(cancelledPath) &&
+      fs.statSync(cancelledPath).size===0 &&
+      !fs.existsSync(path.join(dir,'cancelled.cipher')),
+      'CANCELLED_ARCHIVE_PUBLISHED');
+    results.push({phase:'cancelled_destination_not_promoted',pass:true});
+    const quotaPath=path.join(dir,'quota.partial');
+    await mustReject('quota_exceeded_quarantines',()=>restore(
+      archive,quotaPath,path.join(dir,'quota.cipher'),scope,pass,
+      {maxRestoredBytes:2*BLOCK+1024}));
+    assert(fs.existsSync(quotaPath) &&
+      fs.statSync(quotaPath).size===2*BLOCK &&
+      !fs.existsSync(path.join(dir,'quota.cipher')),
+      'QUOTA_ARCHIVE_PUBLISHED');
+    results.push({phase:'quota_destination_not_promoted',pass:true});
     const recovered=await restore(archive,stage,dest,scope,pass);
     assert(recovered.total===SIZE &&
       await digest(source)===await digest(dest),'ROUNDTRIP_MISMATCH');
