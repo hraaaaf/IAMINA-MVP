@@ -70,6 +70,17 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
     monkeypatch.setattr(HybridBearerAuth, "authenticate", observe_auth)
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
+    # Runtime Ninja routing diagnostics: no credentials, bodies, or patient facts.
+    from diabetes.api.v1.logs import router as logs_router
+    from django.urls import resolve
+    callbacks = [
+        (str(path), [type(cb).__name__ for cb in (op.auth_callbacks or [])])
+        for path, view in logs_router.path_operations.items()
+        for op in view.operations
+    ]
+    match = resolve("/api/v1/logs")
+    print("W01_HTTP_AUTH_ROUTER", callbacks)
+    print("W01_HTTP_RESOLVED", match.url_name, match.route)
     assert observed, "HTTP clinical route never dispatched HybridBearerAuth"
     assert observed[:2] == [a.pk, b.pk], "HybridBearerAuth route rejected signed bearers"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
