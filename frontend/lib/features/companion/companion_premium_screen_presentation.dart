@@ -163,7 +163,7 @@ class _BrandHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: AminaVisualLanguage.cardShadowLight,
           ),
-          child: Image.asset('assets/images/logo_amina.png', fit: BoxFit.contain),
+          child: Image.asset('assets/images/iamina_logo_mark.png', fit: BoxFit.contain),
         ),
         const SizedBox(width: 12),
         Expanded(

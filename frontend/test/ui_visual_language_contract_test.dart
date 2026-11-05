@@ -46,7 +46,7 @@ void main() {
   });
 
   test('active premium patient surfaces use one canonical mobile chrome', () {
-    const logo = "assets/images/logo_amina.png";
+    const logo = "assets/images/iamina_logo_mark.png";
     final dashboardEntry = _read(
       'lib/features/dashboard/dashboard_companion_entry_screen.dart',
     );

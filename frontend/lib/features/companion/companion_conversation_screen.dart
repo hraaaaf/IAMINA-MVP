@@ -623,7 +623,7 @@ class _ConversationHeader extends StatelessWidget {
                   boxShadow: AminaVisualLanguage.cardShadowLight,
                 ),
                 child: Image.asset(
-                  'assets/images/logo_amina.png',
+                  'assets/images/iamina_logo_mark.png',
                   fit: BoxFit.contain,
                 ),
               ),
@@ -1254,7 +1254,7 @@ class _TypingBubbleState extends State<_TypingBubble>
                     child: ColoredBox(
                       color: Colors.white,
                       child: Image.asset(
-                        'assets/images/logo_amina.png',
+                        'assets/images/iamina_logo_mark.png',
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
                       ),

@@ -63,6 +63,12 @@ void main() {
     checkPng('assets/images/iamina_logo_vertical.png', 400, 410);
     checkPng('assets/images/iamina_logo_horizontal.png', 580, 116);
     checkPng('assets/images/iamina_logo_mark.png', 320, 320);
+    // Legacy URL is a V4 alias for already-installed Web/PWA clients.
+    checkPng('assets/images/logo_amina.png', 320, 320);
+    expect(
+      File('assets/images/logo_amina.png').readAsBytesSync(),
+      File('assets/images/iamina_logo_mark.png').readAsBytesSync(),
+    );
     checkPng('web/favicon.png', 64, 64);
     checkPng('web/icons/Icon-192.png', 192, 192);
     checkPng('web/icons/Icon-512.png', 512, 512);
@@ -80,7 +86,18 @@ void main() {
       expect(File(path).existsSync(), true, reason: path);
     }
     final sw = source('web/iamina_service_worker.js');
-    expect(sw, contains("IAMINA_CACHE_SCHEMA = '0.1.0+1-logo-v4'"));
+    final version = RegExp(r'^version: ([0-9]+\.[0-9]+\.[0-9]+\+[0-9]+)
+    for (final icon in icons) {
+      expect(sw, contains("./${icon['src']}"));
+    }
+    expect(source('web/index.html'), contains('href="favicon.png"'));
+  });
+}
+, multiLine: true)
+        .firstMatch(source('pubspec.yaml'))?.group(1);
+    expect(version, isNotNull);
+    expect(sw, contains("IAMINA_CACHE_SCHEMA = '$version'"));
+    expect(sw, contains("./assets/assets/images/logo_amina.png"));
     for (final icon in icons) {
       expect(sw, contains("./${icon['src']}"));
     }

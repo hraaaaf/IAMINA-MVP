@@ -298,7 +298,7 @@ class _DashboardCompanionAvatarActionState
                       child: ColoredBox(
                         color: Colors.white,
                         child: Image.asset(
-                          'assets/images/logo_amina.png',
+                          'assets/images/iamina_logo_mark.png',
                           fit: BoxFit.cover,
                           alignment: Alignment.topCenter,
                           excludeFromSemantics: true,

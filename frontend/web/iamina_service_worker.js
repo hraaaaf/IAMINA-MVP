@@ -1,5 +1,5 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const IAMINA_CACHE_SCHEMA = '0.1.0+1-logo-v4';
+const IAMINA_CACHE_SCHEMA = '0.1.1+2';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 const IAMINA_HOSTED_REVIEW =
   self.location.hostname === 'iamina-review.vercel.app' ||
@@ -21,6 +21,8 @@ const PRECACHE = [
   './assets/assets/images/iamina_logo_vertical.png',
   './assets/assets/images/iamina_logo_horizontal.png',
   './assets/assets/images/iamina_logo_mark.png',
+  // Migration alias: same V4 mark bytes for older cached Flutter clients.
+  './assets/assets/images/logo_amina.png',
   './sqlite3.wasm',
   './drift_worker.js',
   // Bundle font subsets with the offline shell before any clinical UI opens.
