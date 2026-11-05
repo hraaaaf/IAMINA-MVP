@@ -93,8 +93,19 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
 
     def trace_bearer(self, request):
         try:
+            # Only metadata booleans, no credentials: determine whether Ninja's
+            # HttpBearer sees the correct scheme and actual native credential.
+            header = request.headers.get("Authorization") or ""
+            shape = (
+                bool(header),
+                header.lower().startswith("bearer "),
+                self.header,
+                self.openapi_scheme,
+                header.partition(" ")[2].startswith("iamina."),
+                header.partition(" ")[2] in (token_a, token_b),
+            )
             value = original_bearer_call(self, request)
-            outcomes.append(("bearer", bool(value), "Authorization" in request.headers))
+            outcomes.append(("bearer", bool(value), shape))
             return value
         except Exception as exc:
             outcomes.append(("bearer_error", type(exc).__name__))
