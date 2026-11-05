@@ -52,3 +52,14 @@
 **G7 OPEN / NO SIGN-OFF. G6 PARTIAL. G2 OWNER-WAIVED, NOT SECURE.** PR stays Draft. Do not merge or deploy to Production based on this evidence pack alone. Next exact: request a real independent reviewer after a named reviewer is available; perform safe current backup/restoration certification separately.
 
 Canonical W01 continuation: `docs/assessments/2026-11-04-w01-current-main-synthetic-preview.md`; audit log: https://app.notion.com/p/3fc77c66336281ab8bfcf0c6b0060e2f .
+
+
+## Addendum de gouvernance et preuve CI — 05/11/2026 (remplace les priorités antérieures)
+
+**Le propriétaire a confirmé que l'application est encore en développement et n'a pas de données de patients réels.** La sauvegarde/restauration complète **G6 est donc REPORTÉE au gate de préproduction réelle**, non supprimée et **non bloquante pour le développement W01**. Les risques d'absence de sauvegarde indépendante restent valables pour un futur lancement patient. **G2 est explicitement ANNULÉ/WAIVED** par le propriétaire pour ce chantier, jamais déclaré PASS ni protection de Production obtenue. Ne pas rouvrir G2 ni manipuler Neon G6 sans nouveau besoin justifié.
+
+Le candidat GitHub `31f12e94a6301d50dcb1ee5e1335e02b9eadcf48` dispose de **17/17 workflows COMPLETED/SUCCESS** vérifiés : [CI générale #42111037305](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42111037305) (Ruff+pytest, PostgreSQL et Frontend SUCCESS), [UI Chrome #42111037412](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42111037412) (3 jobs SUCCESS 390×844/768×1024/1280×900 ; trois artifacts non expirés), [D11 Web PG16 FR/AR #42111037450](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42111037450) SUCCESS, [Developer portability #42111037312](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42111037312) SUCCESS. Correctif Chrome limité au harness, sans changement UI ni relâchement des assertions de capture.
+
+**G7 demeure OPEN** : GitHub #1273 n'a **aucune review enregistrée** au dernier contrôle. Un reviewer indépendant doit produire un verdict PASS/CHANGES_REQUIRED à la SHA examinée ; le mainteneur/auteur et cet agent ne peuvent pas se substituer à cette revue. **La certification technique de la CI ne vaut pas sécurité/privacy clinique ni autorisation de Production.** Previews existantes sur le SHA runtime `14a97bfa...`, non sur `31f12e94a6301d50dcb1ee5e1335e02b9eadcf48`. PR Draft, aucun merge ni nouveau déploiement.
+
+**Next :** faire examiner le dossier par une personne indépendante identifiable ; documenter le verdict et les éventuelles corrections. Le présent addendum est documentaire et crée un nouveau commit, dont la CI doit être recontrôlée séparément.
