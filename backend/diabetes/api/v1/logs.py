@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Status
 from ninja.errors import HttpError
 
+from amina.vercel_session_auth import SessionAuth
 from core.observability import EVT_LOG_CREATED, track
 from diabetes.contracts import log_entry as log_input
 from diabetes.models import LogEntry
@@ -22,6 +23,7 @@ from diabetes.services.clinical.observation_memory import (
 from diabetes.services.session_cache import invalidate as _invalidate_ctx
 
 from .kpis import invalidate_kpi_cache as _invalidate_kpis
+from .security import firebase_auth_backend
 from .schemas import (
     BatchSyncResponse,
     Error,
@@ -33,7 +35,10 @@ from .schemas import (
     validate_meal_portion_links,
 )
 
-router = Router(tags=["logs"])
+# Resolve both sovereign Bearer and Django session at the clinical router's
+# own declaration. W01 PG16 HTTP revealed that relying only on the
+# add_router() mount did not register HybridBearerAuth on the operation.
+router = Router(tags=["logs"], auth=[firebase_auth_backend, SessionAuth()])
 
 logger = logging.getLogger(__name__)
 

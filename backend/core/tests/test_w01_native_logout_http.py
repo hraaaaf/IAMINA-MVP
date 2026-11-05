@@ -12,7 +12,6 @@ from django.utils import timezone
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import LogEntry
-from diabetes.api.v1.security import HybridBearerAuth, firebase_auth_backend
 
 
 def _login(user, password):
@@ -37,7 +36,7 @@ def _as(token, method, path, body=None):
 
 
 @pytest.mark.django_db
-def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monkeypatch):
+def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     password = "Synthetic-Strong-Passphrase-W01-2026!"
     a = User.objects.create_user(
         username="w01-http-a", email="w01-http-a@example.invalid", password=password
@@ -57,39 +56,9 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
     # Verify a freshly-issued bearer before testing the HTTP adapter.
     assert verify_native_token(token_a).pk == a.pk
     assert verify_native_token(token_b).pk == b.pk
-    # Observe auth dispatch without modifying the result; only synthetic user
-    # IDs are retained, never the raw bearer or request body.
-    observed = []
-    original_authenticate = HybridBearerAuth.authenticate
-
-    def observe_auth(self, request, candidate):
-        principal = original_authenticate(self, request, candidate)
-        observed.append(principal.pk if principal is not None else None)
-        return principal
-
-    monkeypatch.setattr(HybridBearerAuth, "authenticate", observe_auth)
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
-    # Runtime Ninja routing diagnostics: no credentials, bodies, or patient facts.
-    from diabetes.api.v1.logs import router as logs_router
-    from django.urls import resolve
-    callbacks = [
-        (str(path), [type(cb).__name__ for cb in (op.auth_callbacks or [])])
-        for path, view in logs_router.path_operations.items()
-        for op in view.operations
-    ]
-    match = resolve("/api/v1/logs")
-    print("W01_HTTP_AUTH_ROUTER", callbacks)
-    print("W01_HTTP_RESOLVED", match.url_name, match.route)
-    assert observed, "HTTP clinical route never dispatched HybridBearerAuth"
-    assert observed[:2] == [a.pk, b.pk], "HybridBearerAuth route rejected signed bearers"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
-    # Diagnostic split (not a bypass): distinguish token verification,
-    # HttpBearer header extraction, and Ninja router dispatch. Never emit tokens.
-    direct = firebase_auth_backend.authenticate(only_a.wsgi_request, token_a)
-    assert direct is not None and direct.pk == a.pk, "HybridBearerAuth.authenticate rejected valid A"
-    callback = firebase_auth_backend(only_a.wsgi_request)
-    assert callback is not None and callback.pk == a.pk, "HttpBearer.__call__ did not extract header"
     assert only_a.status_code == 200, only_a.content[:250]
     assert only_b.status_code == 200, only_b.content[:250]
     assert [item["id"] for item in only_a.json()["items"]] == [first_a.pk]
