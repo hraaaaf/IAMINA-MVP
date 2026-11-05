@@ -161,8 +161,24 @@ async function logoutByUI(page,width){
     await page.mouse.click(locale==='ar'?width-65:65,width>=1100?354:300);
     return;
   }
-  await clickLabel(page,locale==='fr'?'Profil':'الملف الشخصي');
-  await clickLabel(page,locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب');
+  // Real 390x844 screenshots show Profile in the bottom nav even when
+  // CanvasKit omits its semantics node. Use a real physical pointer fallback,
+  // never an invoked Flutter callback or direct route navigation.
+  const profileLabel=locale==='fr'?'Profil':'الملف الشخصي';
+  const profileSection=locale==='fr'?'Confidentialité & compte':'الخصوصية والحساب';
+  const navButton=page.getByRole('button',{name:profileLabel,exact:true});
+  if(await navButton.count() && await navButton.last().isVisible()){
+    await navButton.last().click({timeout:5000});
+  }else{
+    // MainShell._BottomNav: 18px side margins, 4 equal items.
+    // Profile is at slot 3 (FR) or slot 0 (AR/RTL).
+    const margin=18,slot=(width-2*margin)/4,index=locale==='ar'?0:3;
+    await page.mouse.click(margin+(index+0.5)*slot,page.viewportSize().height-36);
+  }
+  // A click is not proof of navigation: assert the real profile is visible.
+  await page.getByText(profileSection,{exact:true}).first()
+    .waitFor({state:'visible',timeout:12000});
+  await clickLabel(page,profileSection);
   const label=locale==='fr'?'Se déconnecter':'تسجيل الخروج';
   const nodes=page.locator('flt-semantics');
   let visible=false;
