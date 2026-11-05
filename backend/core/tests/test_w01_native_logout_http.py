@@ -13,6 +13,8 @@ from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import LogEntry
 from ninja.operation import Operation
+from diabetes.api.v1.security import HybridBearerAuth
+from amina.vercel_session_auth import SessionAuth
 
 
 def _login(user, password):
@@ -83,9 +85,36 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
         return original_run_authentication(self, request)
 
     monkeypatch.setattr(Operation, "_run_authentication", trace_operation)
+    # Preserve each callback's exact behavior, observing only boolean success
+    # and exception class, never tokens or session/cookie values.
+    outcomes = []
+    original_bearer_call = HybridBearerAuth.__call__
+    original_session_call = SessionAuth.__call__
+
+    def trace_bearer(self, request):
+        try:
+            value = original_bearer_call(self, request)
+            outcomes.append(("bearer", bool(value), "Authorization" in request.headers))
+            return value
+        except Exception as exc:
+            outcomes.append(("bearer_error", type(exc).__name__))
+            raise
+
+    def trace_session(self, request):
+        try:
+            value = original_session_call(self, request)
+            outcomes.append(("session", bool(value), "Authorization" in request.headers))
+            return value
+        except Exception as exc:
+            outcomes.append(("session_error", type(exc).__name__))
+            raise
+
+    monkeypatch.setattr(HybridBearerAuth, "__call__", trace_bearer)
+    monkeypatch.setattr(SessionAuth, "__call__", trace_session)
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
     print("W01_HTTP_AUTH_OPERATIONS", observed_callbacks)
+    print("W01_HTTP_AUTH_CALLBACK_OUTCOMES", outcomes)
     assert observed_callbacks, "No Ninja operation performed authentication"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
     assert only_a.status_code == 200, only_a.content[:250]
