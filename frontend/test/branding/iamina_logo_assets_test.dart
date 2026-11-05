@@ -86,20 +86,15 @@ void main() {
       expect(File(path).existsSync(), true, reason: path);
     }
     final sw = source('web/iamina_service_worker.js');
-    final version = RegExp(r'^version: ([0-9]+\.[0-9]+\.[0-9]+\+[0-9]+)
-    for (final icon in icons) {
-      expect(sw, contains("./${icon['src']}"));
-    }
-    expect(source('web/index.html'), contains('href="favicon.png"'));
-  });
-}
-, multiLine: true)
-        .firstMatch(source('pubspec.yaml'))?.group(1);
-    expect(version, isNotNull);
+    final version = source('pubspec.yaml')
+        .split('\n')
+        .firstWhere((line) => line.startsWith('version: '))
+        .split(' ')
+        .last;
     expect(sw, contains("IAMINA_CACHE_SCHEMA = '$version'"));
-    expect(sw, contains("./assets/assets/images/logo_amina.png"));
+    expect(sw, contains('./assets/assets/images/logo_amina.png'));
     for (final icon in icons) {
-      expect(sw, contains("./${icon['src']}"));
+      expect(sw, contains('./' + (icon['src'] as String)));
     }
     expect(source('web/index.html'), contains('href="favicon.png"'));
   });
