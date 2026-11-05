@@ -109,6 +109,8 @@ jobs:
         run: python manage.py migrate --noinput
       - name: Exercise authenticated Django HTTP route with synthetic patient isolation
         run: python -m pytest -q diabetes/tests/test_api.py::APILogsTestCase::test_logs_isolation
+      - name: W01 real HTTP native bearer logout revocation and A/B ownership (PostgreSQL16)
+        run: python -m pytest -q core/tests/test_w01_native_logout_http.py
       - name: Enforce Vercel serverless PostgreSQL and patient production fail-closed boot gates
         run: python -m pytest -q amina/test_w01b_vercel_runtime_preflight.py
       - name: Verify Web CORS credential/origin/preflight fail-closed policy

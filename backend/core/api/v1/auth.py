@@ -29,7 +29,12 @@ from core.auth_migration import (
     verify_firebase_token,
 )
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token, revoke_native_tokens
+from core.native_auth import (
+    NativeTokenError,
+    issue_native_token,
+    revoke_native_tokens,
+    verify_native_token,
+)
 from core.observability import EVT_SESSION_START, track
 
 logger = logging.getLogger(__name__)
@@ -195,9 +200,42 @@ def current_identity(request):
     return _serialize_user(_require_authenticated(request))
 
 
+def _logout_principal(request):
+    """Resolve the native bearer explicitly: this is a public-auth router.
+
+    Hosted Web Preview forwards Authorization but deliberately strips cookies.
+    A 200 logout without a resolved principal would leave its native bearer
+    valid until expiry. Never resolve an account from an unverified payload.
+    """
+    session_user = getattr(request, "user", None)
+    if session_user is not None and not session_user.is_authenticated:
+        session_user = None
+
+    headers = getattr(request, "headers", None)
+    authorization = headers.get("Authorization") if headers is not None else None
+    if authorization is None:
+        return session_user  # Legacy session-only and idempotent anonymous logout.
+
+    scheme, separator, bearer = authorization.partition(" ")
+    if (
+        scheme.lower() != "bearer"
+        or not separator
+        or not bearer
+        or bearer != bearer.strip()
+    ):
+        raise HttpError(401, "Authentication required")
+    try:
+        bearer_user = verify_native_token(bearer)
+    except NativeTokenError as exc:
+        raise HttpError(401, "Authentication required") from exc
+    if session_user is not None and session_user.pk != bearer_user.pk:
+        raise HttpError(401, "Conflicting authentication identities")
+    return bearer_user
+
+
 @router.post("/auth/logout")
 def logout_native(request):
-    user = request.user if request.user.is_authenticated else None
+    user = _logout_principal(request)
     if user is not None:
         revoke_native_tokens(user)
     logout(request)
