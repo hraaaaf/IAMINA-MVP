@@ -270,3 +270,27 @@ L'inspection du code `backend/conftest.py` confirme une fixture `@pytest.fixture
 **Corrections candidates sur branche Draft (GO Preview donné le 05/11) :** test Flutter `w01_revocation_probe_test.dart` exécute un test fail-closed sans flag sur CI générale et des scénarios HTTP mock uniquement avec `IAMINA_W01_SESSION_PROBE=true` sur la Web Preview ; géométrie Login change `EdgeInsets.fromLTRB` en `EdgeInsetsDirectional.fromSTEB` pour le RTL. Cinq tests historiques de gouvernance exécutent leur commande au contexte explicite du 04/08, sans changer la validation ni les dates d'approbation ; un test supplémentaire exige le refus `fallback.processor_identity evidence is stale` au 05/11. **L'attestation opérationnelle réelle reste expirée et Production NO-GO jusqu'à une revue humaine conforme.**
 
 **À vérifier après commit :** CI W01, Flutter générale, backend pytest/Postgres, D7 FUE et Developer portability ; Web Preview SHA exact, RTL et bouton sur mobile/desktop. **Aucun commit = autorisation de Production**. G2 Neon protected branch payante reste human gate ; G6 intégrité DR Production et G7 revue indépendante demeurent ouverts. Logs et décision exhaustive dans [Notion W01](https://app.notion.com/p/3fc77c66336281ab8bfcf0c6b0060e2f). W01 global NO-GO.
+
+## W01 — G2 annulé ; G6 snapshot et récupération ; G7 état (05/11/2026)
+
+**Décision utilisateur :** G2 annulé/WAIVED et sorti du chemin de travail W01. Cette annulation n'est pas une certification : Neon Production reste sans branche protégée ni allowlist IP sur le forfait Free. Ne pas réactiver G2, changer d'offre, appliquer des protections ou toucher Production sans nouvelle instruction explicite. Elle ne vaut pas autorisation de déployer pour de vrais patients.
+
+**Référence de preuve** : PR #1273 Draft, HEAD code 14a97bfa, 17/17 workflows GitHub SUCCESS ; deux Previews Web/API READY au même SHA ; A→B→A et isolation confirmés humainement, sans trace réseau instrumentée transmise.
+
+### G6 — essai de restauration synthétique et incident rétabli
+
+Projet sandbox noisy-truth-00115950, branche originale br-sweet-frog-b9ok6ptp, endpoint original ep-old-art-b9sy0oo4.c-7.eu-central-1.aws.neon.tech, DB iamina925_empty. AVANT : 46 tables publiques, 2 comptes, 2 profils, 78 événements, 76 auth buckets.
+
+Snapshot daté du 21/10/2026 snap-orange-mode-b9tjsdd1. L'outil restore_snapshot sans target_branch_id a, de façon inattendue, permuté la branche par défaut et l'endpoint du sandbox. La branche restaurée br-super-block-b9ka8qll contenait 42 tables mais 0 compte/profil/événement/bucket. L'ancienne branche br-sweet-frog-b9ok6ptp a conservé toutes les données actuelles. Incident transitoire possible sur Preview, non mesuré via une trace client.
+
+RÉCUPÉRATION VÉRIFIÉE : branche tampon non-default br-rough-meadow-b9fcfhaq sans compute créée, endpoint additionnel ep-cool-dream-b98tmthn déplacé via tampon, endpoint original ep-old-art-b9sy0oo4 réassigné à la branche d'origine br-sweet-frog-b9ok6ptp, branche renommée synthetic-only et rétablie default=true. Snapshot historique br-super-block-b9ka8qll nommé w01-g6-snapshot-proof-20261105, non-default, accessible sur endpoint alternatif ep-cool-dream-b98tmthn. AFTER ORIGINAL : 46 tables, 2 comptes, 2 profils, 78 événements, 76 auth buckets, tous identiques à l'avant-test. Neon Production et Vercel non modifiés.
+
+Deux branches auxiliaires G6 restent dans le sandbox (snapshot et tampon). Suppression non autorisée : action destructive soumise à confirmation spécifique. Tentative de snapshot courant sur la source : HTTP 422 snapshots limit exceeded ; aucune suppression de l'ancien snapshot. G6 = restauration HISTORIQUE constatée, récupération ACTUELLE et Production NON certifiées. Ne pas relancer restore_snapshot sans procédure explicitement sans bascule de l'endpoint.
+
+### G7 — revue de cohérence statique, pas revue indépendante
+
+À HEAD code 14a97bfa, audit ciblé : auth.py (création comptes interdite Preview ; logout révoque Bearer), diabetes/api/v1/security.py (tokens natifs + conflit identité), diabetes/api/v1/logs.py (scope patient et actions protégées), middleware/csrf_exempt_api.py et vercel_session_auth.py (CSRF et fail closed), frontend/api/index.js (proxy Preview fail-closed et aucun cookie transféré), backend/amina/settings.py (cookies HTTPS si DEBUG=False) ; DEBUG=False contrôlé en variables Vercel Preview et Production. Test W01 réel PG16 sur les Bearers et cross-patient présent et CI 17/17 SUCCESS à l'ancien HEAD.
+
+Le contrôle ci-dessus ne remplace pas un avis indépendant ni un test E2E adversarial documenté. G7 = NON certifié. Aucun merge ni déploiement Vercel autorisé par cette note.
+
+**Next exact** : documenter une restauration isolée sans permutation endpoint ou banc indépendant, résoudre la limite snapshots sans supprimer une preuve sans accord, obtenir revue indépendante G7 ; recontrôler les nouvelles CI du commit documentaire. Notion : https://app.notion.com/p/3fc77c66336281ab8bfcf0c6b0060e2f
