@@ -51,27 +51,6 @@ def _deny_conflicting_cookie_identity(request, user) -> None:
 class HybridBearerAuth(HttpBearer):
     """Resolve sovereign IAMINA tokens, then optional linked Firebase tokens."""
 
-    def __call__(self, request):
-        """Select explicit Bearer authentication without falling back to cookies.
-
-        In hosted Web Preview the proxy deliberately forwards Authorization
-        but not session cookies. Keep the parsing deterministic and fail
-        closed on any ambiguous whitespace/scheme before resolving identity.
-        This is the sole native/Firebase Bearer entry point for clinical APIs.
-        """
-        authorization = request.headers.get(self.header)
-        if not authorization:
-            return None
-        scheme, separator, token = authorization.partition(" ")
-        if (
-            scheme.lower() != self.openapi_scheme
-            or not separator
-            or not token
-            or any(character.isspace() for character in token)
-        ):
-            return None
-        return self.authenticate(request, token)
-
     def authenticate(self, request, token: str):
         if token.startswith("iamina."):
             try:

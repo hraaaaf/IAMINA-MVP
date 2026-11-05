@@ -8,7 +8,6 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 from django.utils import timezone
-from ninja.operation import Operation
 
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
@@ -51,7 +50,7 @@ def test_w01_every_logs_operation_explicitly_requires_bearer_or_session():
         assert names == ["HybridBearerAuth", "SessionAuth"], names
 
 @pytest.mark.django_db(transaction=True)
-def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monkeypatch):
+def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     password = "Synthetic-Strong-Passphrase-W01-2026!"
     a = User.objects.create_user(
         username="w01-http-a", email="w01-http-a@example.invalid", password=password
@@ -71,45 +70,21 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
     # Verify a freshly-issued bearer before testing the HTTP adapter.
     assert verify_native_token(token_a).pk == a.pk
     assert verify_native_token(token_b).pk == b.pk
-    # Read-only diagnosis inside the *actual* Ninja operation, not in the
-    # original test thread. No credentials or clinical facts are ever logged.
-    trace = []
-    original_run = Operation._run_authentication
-
-    def trace_in_operation(self, request):
-        for callback in self.auth_callbacks:
-            if type(callback).__name__ != "HybridBearerAuth":
-                continue
-            authorization = request.headers.get("Authorization") or ""
-            scheme, separator, candidate = authorization.partition(" ")
-            try:
-                verified = verify_native_token(candidate).pk
-            except Exception as exc:
-                verified = type(exc).__name__
-            session_user = getattr(request, "user", None)
-            trace.append({
-                "callback_module": type(callback).__module__,
-                "call_method": type(callback).__call__.__qualname__,
-                "scheme_ok": scheme.lower() == callback.openapi_scheme,
-                "separator": bool(separator),
-                "token_present": bool(candidate),
-                "has_whitespace": any(ch.isspace() for ch in candidate),
-                "exact_synthetic_token": candidate in (token_a, token_b),
-                "verified": verified,
-                "session_authenticated": bool(getattr(session_user, "is_authenticated", False)),
-            })
-        return original_run(self, request)
-
-    monkeypatch.setattr(Operation, "_run_authentication", trace_in_operation)
+    # Real HTTP through the unmodified auth backend. No callback substitutions.
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
-    assert trace, "Real HTTP route never reached bearer callback"
-    print("W01_HTTP_IN_OPERATION_GATE", trace)
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
     assert only_a.status_code == 200, only_a.content[:250]
     assert only_b.status_code == 200, only_b.content[:250]
     assert [item["id"] for item in only_a.json()["items"]] == [first_a.pk]
     assert [item["id"] for item in only_b.json()["items"]] == [first_b.pk]
+
+    # A valid cookie for patient B never overrides an explicit bearer for A.
+    mixed = Client()
+    mixed.force_login(b)
+    assert mixed.get(
+        "/api/v1/logs", HTTP_AUTHORIZATION=f"Bearer {token_a}"
+    ).status_code == 401
 
     assert _as(token_b, "get", f"/api/v1/logs/{first_a.pk}").status_code == 404
     assert _as(
