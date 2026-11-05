@@ -12,6 +12,7 @@ from django.utils import timezone
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import LogEntry
+from diabetes.api.v1.security import firebase_auth_backend
 
 
 def _login(user, password):
@@ -59,6 +60,12 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
+    # Diagnostic split (not a bypass): distinguish token verification,
+    # HttpBearer header extraction, and Ninja router dispatch. Never emit tokens.
+    direct = firebase_auth_backend.authenticate(only_a.wsgi_request, token_a)
+    assert direct is not None and direct.pk == a.pk, "HybridBearerAuth.authenticate rejected valid A"
+    callback = firebase_auth_backend(only_a.wsgi_request)
+    assert callback is not None and callback.pk == a.pk, "HttpBearer.__call__ did not extract header"
     assert only_a.status_code == 200, only_a.content[:250]
     assert only_b.status_code == 200, only_b.content[:250]
     assert [item["id"] for item in only_a.json()["items"]] == [first_a.pk]
