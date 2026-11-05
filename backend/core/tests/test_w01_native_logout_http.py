@@ -12,6 +12,7 @@ from django.utils import timezone
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import LogEntry
+from ninja.operation import Operation
 
 
 def _login(user, password):
@@ -50,7 +51,7 @@ def test_w01_every_logs_operation_explicitly_requires_bearer_or_session():
         assert names == ["HybridBearerAuth", "SessionAuth"], names
 
 @pytest.mark.django_db
-def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
+def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monkeypatch):
     password = "Synthetic-Strong-Passphrase-W01-2026!"
     a = User.objects.create_user(
         username="w01-http-a", email="w01-http-a@example.invalid", password=password
@@ -70,8 +71,22 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     # Verify a freshly-issued bearer before testing the HTTP adapter.
     assert verify_native_token(token_a).pk == a.pk
     assert verify_native_token(token_b).pk == b.pk
+    # Diagnose the operation that actually answers the HTTP request; no
+    # auth headers, bearer values, or patient data may enter CI logs.
+    observed_callbacks = []
+    original_run_authentication = Operation._run_authentication
+
+    def trace_operation(self, request):
+        observed_callbacks.append(
+            (self.path, [type(cb).__name__ for cb in self.auth_callbacks])
+        )
+        return original_run_authentication(self, request)
+
+    monkeypatch.setattr(Operation, "_run_authentication", trace_operation)
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
+    print("W01_HTTP_AUTH_OPERATIONS", observed_callbacks)
+    assert observed_callbacks, "No Ninja operation performed authentication"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
     assert only_a.status_code == 200, only_a.content[:250]
     assert only_b.status_code == 200, only_b.content[:250]
