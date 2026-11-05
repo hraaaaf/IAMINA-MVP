@@ -1,5 +1,8 @@
 # IAMINA W01 — G7 Security & Privacy Independent Review Packet — 05/11/2026
 
+> **NOUVELLE DÉCISION PROPRIÉTAIRE — 05/11/2026 :** Pour le **lot de développement W01 uniquement**, la revue GitHub indépendante décrite dans ce dossier historique est **REMPLACÉE par des FUE adaptés**, vérifiables en CI réelle Chrome/Flutter Web/PostgreSQL16 synthétique. Référence d'exécution : [W01 G7 FUE WEB](W01_G7_FUE_WEB_2026-11-05.md). Une fois les FUE PASS avec preuves et autres CI vertes, la validation technique de W01 peut être close **sans reviewer externe**. Le présent packet reste une liste des risques à couvrir ; il ne faut pas confondre cette validation de développement avec une certification préproduction de sécurité/confidentialité pour de vrais patients. G2 annulé, G6 reporté.
+
+
 > **STATUS: REVIEW REQUIRED / NOT CERTIFIED.** This document packages observed controls and unresolved issues for a genuinely independent reviewer. It is not a sign-off or clinical-production approval.
 
 ## Decision and boundary
