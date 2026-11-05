@@ -8,12 +8,9 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 from django.utils import timezone
-from ninja.operation import Operation
 
-from amina.vercel_session_auth import SessionAuth
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
-from diabetes.api.v1.security import HybridBearerAuth
 from diabetes.models import LogEntry
 
 
@@ -53,7 +50,7 @@ def test_w01_every_logs_operation_explicitly_requires_bearer_or_session():
         assert names == ["HybridBearerAuth", "SessionAuth"], names
 
 @pytest.mark.django_db(transaction=True)
-def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monkeypatch):
+def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     password = "Synthetic-Strong-Passphrase-W01-2026!"
     a = User.objects.create_user(
         username="w01-http-a", email="w01-http-a@example.invalid", password=password
@@ -73,81 +70,10 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
     # Verify a freshly-issued bearer before testing the HTTP adapter.
     assert verify_native_token(token_a).pk == a.pk
     assert verify_native_token(token_b).pk == b.pk
-    # Diagnose the operation that actually answers the HTTP request; no
-    # auth headers, bearer values, or patient data may enter CI logs.
-    observed_callbacks = []
-    original_run_authentication = Operation._run_authentication
-
-    def trace_operation(self, request):
-        observed_callbacks.append(
-            (self.path, [type(cb).__name__ for cb in self.auth_callbacks])
-        )
-        return original_run_authentication(self, request)
-
-    monkeypatch.setattr(Operation, "_run_authentication", trace_operation)
-    # Preserve each callback's exact behavior, observing only boolean success
-    # and exception class, never tokens or session/cookie values.
-    outcomes = []
-    original_bearer_call = HybridBearerAuth.__call__
-    original_session_call = SessionAuth.__call__
-
-    def trace_bearer(self, request):
-        try:
-            # Only metadata booleans, no credentials: determine whether Ninja's
-            # HttpBearer sees the correct scheme and actual native credential.
-            header = request.headers.get("Authorization") or ""
-            shape = (
-                bool(header),
-                header.lower().startswith("bearer "),
-                self.header,
-                self.openapi_scheme,
-                header.partition(" ")[2].startswith("iamina."),
-                header.partition(" ")[2] in (token_a, token_b),
-            )
-            value = original_bearer_call(self, request)
-            outcomes.append(("bearer", bool(value), shape))
-            return value
-        except Exception as exc:
-            outcomes.append(("bearer_error", type(exc).__name__))
-            raise
-
-    def trace_session(self, request):
-        try:
-            value = original_session_call(self, request)
-            outcomes.append(("session", bool(value), "Authorization" in request.headers))
-            return value
-        except Exception as exc:
-            outcomes.append(("session_error", type(exc).__name__))
-            raise
-
-    monkeypatch.setattr(HybridBearerAuth, "__call__", trace_bearer)
-    monkeypatch.setattr(SessionAuth, "__call__", trace_session)
-
-    # Verify token inside Ninja's callback context without logging any
-    # credential, patient data, header or user identity beyond synthetic IDs.
-    seen_native = []
-    original_authenticate = HybridBearerAuth.authenticate
-
-    def trace_native_authenticate(self, request, candidate):
-        try:
-            verified = verify_native_token(candidate).pk
-        except Exception as exc:
-            verified = type(exc).__name__
-        try:
-            principal = original_authenticate(self, request, candidate)
-        except Exception as exc:
-            seen_native.append((verified, type(exc).__name__))
-            raise
-        seen_native.append((verified, principal.pk if principal else None))
-        return principal
-
-    monkeypatch.setattr(HybridBearerAuth, "authenticate", trace_native_authenticate)
+    # Pure HTTP integration: no test-time substitution of authentication
+    # callbacks. Signed native bearers must succeed before logout.
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
-    print("W01_HTTP_AUTH_OPERATIONS", observed_callbacks)
-    print("W01_HTTP_AUTH_CALLBACK_OUTCOMES", outcomes)
-    print("W01_NATIVE_VERIFY_IN_CALLBACK", seen_native)
-    assert observed_callbacks, "No Ninja operation performed authentication"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
     assert only_a.status_code == 200, only_a.content[:250]
     assert only_b.status_code == 200, only_b.content[:250]
