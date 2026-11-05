@@ -7,7 +7,6 @@ This checks a representative operation per explicitly protected router.
 
 import pytest
 
-
 PROTECTED_HTTP_ROUTES = (
     ("GET", "/api/v1/logs"),
     ("GET", "/api/v1/profile"),
