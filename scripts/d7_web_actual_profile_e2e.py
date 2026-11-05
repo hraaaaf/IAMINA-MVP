@@ -292,6 +292,12 @@ def main():
                 country.click()
                 country.press_sequentially("Morocco", delay=110)
                 page.get_by_role("button", name="Morocco").click(timeout=18000)
+                # D8 requires an explicit unit on first use. The historical
+                # D7 FUE stopped at country and waited for a disabled/absent
+                # Start CTA; choose the actual glycemic unit, never bypass it.
+                page.get_by_role(
+                    "checkbox", name=re.compile(r"mg/dL", re.I)
+                ).click(timeout=18000)
                 page.get_by_role("button", name="Start", exact=True).click(
                     timeout=18000
                 )
