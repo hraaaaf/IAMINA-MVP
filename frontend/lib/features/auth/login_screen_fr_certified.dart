@@ -426,13 +426,13 @@ class _Brand extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final logo = kIsWeb
         ? Image.network(
-            'assets/assets/images/logo_amina.png',
+            'assets/assets/images/iamina_logo_vertical.png',
             fit: BoxFit.contain,
             webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
             errorBuilder: (_, __, ___) => const _BrandFallback(),
           )
         : Image.asset(
-            'assets/images/logo_amina.png',
+            'assets/images/iamina_logo_vertical.png',
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
             errorBuilder: (_, __, ___) => const _BrandFallback(),

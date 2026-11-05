@@ -551,7 +551,14 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('IAmina'),
+            Image.asset(
+              'assets/images/iamina_logo_horizontal.png',
+              width: 148,
+              height: 34,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              semanticLabel: 'IAMINA',
+            ),
             Text(
               assistantLabel,
               style: const TextStyle(fontSize: 12),

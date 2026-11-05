@@ -311,7 +311,7 @@ class _Brand extends StatelessWidget {
         width: 138,
         height: 124,
         child: Image.asset(
-          'assets/images/logo_amina.png',
+          'assets/images/iamina_logo_vertical.png',
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
         ),

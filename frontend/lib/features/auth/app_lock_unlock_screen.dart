@@ -110,7 +110,7 @@ class _AppLockUnlockScreenState extends State<AppLockUnlockScreen> {
                         width: 116,
                         height: 116,
                         child: Image.asset(
-                          'assets/images/logo_amina.png',
+                          'assets/images/iamina_logo_vertical.png',
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
                           errorBuilder: (_, __, ___) => const _LogoFallback(),
