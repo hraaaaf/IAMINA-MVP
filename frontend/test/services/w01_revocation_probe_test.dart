@@ -15,6 +15,30 @@ http.Response _json(int code) => http.Response(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // The general Flutter CI suite compiles without preview flags. Verify that
+  // the diagnostic is fail-closed and sends no request in that configuration.
+  // The dedicated W01 Preview build runs all MockClient cases below with
+  // --dart-define=IAMINA_W01_SESSION_PROBE=true.
+  if (!kW01RevocationProbeEnabled) {
+    test('non-preview build blocks this diagnostic without network access',
+        () async {
+      expect(kW01RevocationProbeEnabled, isFalse);
+      var requests = 0;
+      final result = await runW01RevocationProbe(
+        bearer: _syntheticBearer,
+        baseUrl: _url,
+        client: MockClient((_) async {
+          requests++;
+          fail('Non-preview diagnostics must never reach the network');
+        }),
+      );
+      expect(requests, 0);
+      expect(result.passed, isFalse);
+      expect(result.failureCode, 'disabled');
+    });
+    return;
+  }
+
   test('preview-only gate enabled in isolated CI test invocation', () {
     expect(kW01RevocationProbeEnabled, isTrue);
   });

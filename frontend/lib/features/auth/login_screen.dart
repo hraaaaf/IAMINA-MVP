@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
               child: Card(
                 key: const Key('w01-revocation-result-banner'),
                 child: Padding(
