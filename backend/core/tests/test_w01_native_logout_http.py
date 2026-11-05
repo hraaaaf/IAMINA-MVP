@@ -10,7 +10,7 @@ from django.test import Client
 from django.utils import timezone
 
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token
+from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import LogEntry
 
 
@@ -53,9 +53,14 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
         patient=b, blood_sugar=191, logged_at=timezone.now()
     )
 
+    # Verify a freshly-issued bearer before testing the HTTP adapter.
+    assert verify_native_token(token_a).pk == a.pk
+    assert verify_native_token(token_b).pk == b.pk
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
-    assert only_a.status_code == only_b.status_code == 200
+    assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
+    assert only_a.status_code == 200, only_a.content[:250]
+    assert only_b.status_code == 200, only_b.content[:250]
     assert [item["id"] for item in only_a.json()["items"]] == [first_a.pk]
     assert [item["id"] for item in only_b.json()["items"]] == [first_b.pk]
 
@@ -91,6 +96,9 @@ def test_w01_logout_invalid_or_conflicting_bearer_fails_closed():
     a = User.objects.create_user(username="w01-guard-a", email="guard-a@example.invalid")
     b = User.objects.create_user(username="w01-guard-b", email="guard-b@example.invalid")
     bearer_a = issue_native_token(a)
+    # The test fixture for B must explicitly create B's profile; force_login
+    # creates a Django session but must not fabricate an IAMINA patient.
+    BasePatientProfile.objects.get_or_create(patient=b)
 
     bad = _as(bearer_a + "tampered", "post", "/api/v1/auth/logout")
     assert bad.status_code == 401
