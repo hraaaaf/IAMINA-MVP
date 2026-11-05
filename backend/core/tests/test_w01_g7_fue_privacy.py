@@ -47,12 +47,30 @@ def test_g7_invalid_bearer_or_cross_patient_cookie_cannot_authorize():
 
 
 @pytest.mark.django_db
-def test_g7_session_cookie_write_without_csrf_rejected():
+def test_g7_session_cookie_write_without_csrf_rejected(monkeypatch):
     user = User.objects.create_user(username="g7-csrf-a", email="g7-csrf-a@example.invalid")
     BasePatientProfile.objects.get_or_create(patient=user)
+    # The repository-wide legacy force_login fixture short-circuits the real
+    # Bearer callback for cookie sessions. Restore its production method in
+    # THIS negative test; otherwise the fake callback masks CSRF protection.
+    from ninja.security import HttpBearer
+
+    from core.consent_notice import expected_notice_claim
+    from diabetes.api.v1.security import FirebaseAuth
+
+    monkeypatch.setattr(FirebaseAuth, "__call__", HttpBearer.__call__)
     client = Client(enforce_csrf_checks=True)
     client.force_login(user)
-    assert client.post(
-        "/api/v1/account/consent", data="{}", content_type="application/json"
-    ).status_code == 403
+    claim = expected_notice_claim("fr")
+    body = {
+        "notice_version": claim.version,
+        "notice_hash": claim.notice_hash,
+        "locale": claim.locale,
+    }
+    response = client.post(
+        "/api/v1/account/consent",
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 403, response.content[:250]
     assert BasePatientProfile.objects.get(patient=user).ai_consent_given_at is None
