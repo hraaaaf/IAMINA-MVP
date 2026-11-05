@@ -12,7 +12,7 @@ from django.utils import timezone
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
 from diabetes.models import LogEntry
-from diabetes.api.v1.security import firebase_auth_backend
+from diabetes.api.v1.security import HybridBearerAuth, firebase_auth_backend
 
 
 def _login(user, password):
@@ -37,7 +37,7 @@ def _as(token, method, path, body=None):
 
 
 @pytest.mark.django_db
-def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
+def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monkeypatch):
     password = "Synthetic-Strong-Passphrase-W01-2026!"
     a = User.objects.create_user(
         username="w01-http-a", email="w01-http-a@example.invalid", password=password
@@ -57,8 +57,21 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     # Verify a freshly-issued bearer before testing the HTTP adapter.
     assert verify_native_token(token_a).pk == a.pk
     assert verify_native_token(token_b).pk == b.pk
+    # Observe auth dispatch without modifying the result; only synthetic user
+    # IDs are retained, never the raw bearer or request body.
+    observed = []
+    original_authenticate = HybridBearerAuth.authenticate
+
+    def observe_auth(self, request, candidate):
+        principal = original_authenticate(self, request, candidate)
+        observed.append(principal.pk if principal is not None else None)
+        return principal
+
+    monkeypatch.setattr(HybridBearerAuth, "authenticate", observe_auth)
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
+    assert observed, "HTTP clinical route never dispatched HybridBearerAuth"
+    assert observed[:2] == [a.pk, b.pk], "HybridBearerAuth route rejected signed bearers"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
     # Diagnostic split (not a bypass): distinguish token verification,
     # HttpBearer header extraction, and Ninja router dispatch. Never emit tokens.
