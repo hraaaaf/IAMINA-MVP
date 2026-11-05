@@ -295,8 +295,10 @@ def main():
                 # D8 requires an explicit unit on first use. The historical
                 # D7 FUE stopped at country and waited for a disabled/absent
                 # Start CTA; choose the actual glycemic unit, never bypass it.
+                # The slash in mg/dL must be an exact literal label:
+                # Playwright's role-regex selector misparses this slash.
                 page.get_by_role(
-                    "checkbox", name=re.compile(r"mg/dL", re.I)
+                    "checkbox", name="mg/dL", exact=True
                 ).click(timeout=18000)
                 page.get_by_role("button", name="Start", exact=True).click(
                     timeout=18000
