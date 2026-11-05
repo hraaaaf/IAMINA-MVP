@@ -106,7 +106,7 @@ def test_expired_local_identity_still_blocks_real_command(monkeypatch):
             return date(2026, 11, 5)
 
     monkeypatch.setattr("core.pilot_consent_governance.date", AfterExpiryDate)
-    with pytest.raises(CommandError, match=r"fallback\\.processor_identity evidence is stale"):
+    with pytest.raises(CommandError, match=r"fallback\.processor_identity evidence is stale"):
         call_command("audit_pilot_consent_governance")
 
 
