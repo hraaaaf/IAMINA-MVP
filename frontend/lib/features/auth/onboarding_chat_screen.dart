@@ -785,26 +785,18 @@ class _DesktopWelcomePanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .16),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.favorite_outline_rounded,
+          Semantics(
+            label: title,
+            image: true,
+            child: Image.asset(
+              'assets/images/iamina_logo_horizontal.png',
+              width: 235,
+              height: 62,
+              alignment: AlignmentDirectional.centerStart,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
               color: Colors.white,
-              size: 26,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
+              colorBlendMode: BlendMode.srcIn,
             ),
           ),
           const SizedBox(height: 6),

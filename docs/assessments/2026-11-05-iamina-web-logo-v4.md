@@ -32,3 +32,6 @@ CI SHA exact → correction si échec → revue visuelle BEFORE/AFTER sur naviga
 
 ## Revue visuelle adversariale — contraste en mode sombre
 L'emblème vert sur fond sombre pouvait devenir difficile à distinguer. Les surfaces de login FR/MENA, verrouillage setup/unlock et en-tête onboarding appliquent désormais une colorisation blanche au rendu du PNG en mode sombre, sans modifier les glyphes vectoriels ni l'asset de référence. Les cartes blanches du dashboard et des en-têtes conservent l'emblème vert. La preuve finale requiert une capture Flutter Web réelle en mode sombre ; pas de certification anticipée.
+
+## Dernier perfectionnement — accueil onboarding desktop
+Le panneau de bienvenue desktop sur fond vert comporte désormais le lockup IAMINA horizontal blanc ; l'ancien cœur décoratif et la typographie « IAmina » indépendante ont été supprimés de ce panneau. Le même composant de marque reste visible sur l'AppBar du parcours mobile, en vert sur fond clair et en blanc sur fond sombre. Pas de modification des questions, traitements ou formulaires d'onboarding.
