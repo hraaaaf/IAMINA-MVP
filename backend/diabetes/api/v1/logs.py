@@ -38,7 +38,10 @@ from .schemas import (
 # Resolve both sovereign Bearer and Django session at the clinical router's
 # own declaration. W01 PG16 HTTP revealed that relying only on the
 # add_router() mount did not register HybridBearerAuth on the operation.
-router = Router(tags=["logs"], auth=[firebase_auth_backend, SessionAuth()])
+router = Router(tags=["logs"])
+# Explicit operation-level authorization survives the same Router being mounted
+# both at /v1/logs and /v1/diabetes/logs (P3 module registry).
+_LOGS_AUTH = [firebase_auth_backend, SessionAuth()]
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +85,7 @@ def _refresh_clinical_twin_after_source_write(patient_id: int) -> None:
         )
 
 
-@router.get("/logs", response=PaginatedLogsResponse)
+@router.get("/logs", response=PaginatedLogsResponse, auth=_LOGS_AUTH)
 def list_logs(request, page: int = 1, page_size: int = 50):
     """
     Paginated log list.  Query params: ?page=1&page_size=50.
@@ -97,7 +100,7 @@ def list_logs(request, page: int = 1, page_size: int = 50):
     return {"total": total, "page": page, "page_size": page_size, "items": items}
 
 
-@router.post("/logs", response=LogEntrySchema)
+@router.post("/logs", response=LogEntrySchema, auth=_LOGS_AUTH)
 def create_log(request, data: LogEntryCreateSchema):
     try:
         # Keep database integrity failures inside a savepoint. Django marks the
@@ -124,7 +127,7 @@ def create_log(request, data: LogEntryCreateSchema):
 # /logs/batch MUST be declared before /logs/{log_id} — Ninja matches routes
 # in registration order; the literal "batch" would otherwise be swallowed by
 # the {log_id} int pattern as a 405.
-@router.post("/logs/batch", response=BatchSyncResponse)
+@router.post("/logs/batch", response=BatchSyncResponse, auth=_LOGS_AUTH)
 def batch_create_logs(request, data: List[LogEntryCreateSchema]):
     synced_uuids = []
     errors = []
@@ -199,7 +202,7 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
     return {"synced_ids": synced_uuids, "errors": errors}
 
 
-@router.get("/logs/{log_id}", response=LogEntrySchema)
+@router.get("/logs/{log_id}", response=LogEntrySchema, auth=_LOGS_AUTH)
 def get_log(request, log_id: int):
     return get_object_or_404(LogEntry, id=log_id, patient=request.user)
 
@@ -248,7 +251,7 @@ def _validate_patch_meal_episode(log: LogEntry, data: LogEntryUpdateSchema) -> N
         raise HttpError(422, str(exc)) from exc
 
 
-@router.patch("/logs/{log_id}", response=LogEntrySchema)
+@router.patch("/logs/{log_id}", response=LogEntrySchema, auth=_LOGS_AUTH)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
     try:
@@ -278,7 +281,7 @@ def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     return log
 
 
-@router.delete("/logs/{log_id}", response={204: None, 404: Error})
+@router.delete("/logs/{log_id}", response={204: None, 404: Error}, auth=_LOGS_AUTH)
 def delete_log(request, log_id: int):
     log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
     with transaction.atomic():

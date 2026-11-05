@@ -35,6 +35,20 @@ def _as(token, method, path, body=None):
     return getattr(client, method)(path, **kwargs)
 
 
+
+@pytest.mark.django_db
+def test_w01_every_logs_operation_explicitly_requires_bearer_or_session():
+    from diabetes.api.v1.logs import router as logs_router
+
+    operations = [
+        op for view in logs_router.path_operations.values()
+        for op in view.operations
+    ]
+    assert len(operations) == 6
+    for op in operations:
+        names = [type(callback).__name__ for callback in (op.auth_callbacks or [])]
+        assert names == ["HybridBearerAuth", "SessionAuth"], names
+
 @pytest.mark.django_db
 def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private():
     password = "Synthetic-Strong-Passphrase-W01-2026!"
