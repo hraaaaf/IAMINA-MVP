@@ -52,7 +52,7 @@ def test_w01_every_logs_operation_explicitly_requires_bearer_or_session():
         names = [type(callback).__name__ for callback in (op.auth_callbacks or [])]
         assert names == ["HybridBearerAuth", "SessionAuth"], names
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monkeypatch):
     password = "Synthetic-Strong-Passphrase-W01-2026!"
     a = User.objects.create_user(
