@@ -429,12 +429,16 @@ class _Brand extends StatelessWidget {
             'assets/assets/images/iamina_logo_vertical.png',
             fit: BoxFit.contain,
             webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+            color: AminaTheme.isDark(context) ? Colors.white : null,
+            colorBlendMode: BlendMode.srcIn,
             errorBuilder: (_, __, ___) => const _BrandFallback(),
           )
         : Image.asset(
             'assets/images/iamina_logo_vertical.png',
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
+            color: AminaTheme.isDark(context) ? Colors.white : null,
+            colorBlendMode: BlendMode.srcIn,
             errorBuilder: (_, __, ___) => const _BrandFallback(),
           );
     return Semantics(

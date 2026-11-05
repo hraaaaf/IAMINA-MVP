@@ -29,3 +29,6 @@ Les 8 objets PNG GitHub sont créés depuis fichiers locaux et leurs SHA corresp
 
 ## Séquence restante
 CI SHA exact → correction si échec → revue visuelle BEFORE/AFTER sur navigateur Flutter réellement construit → FR/AR, responsive et RTL → certifier les gates sur HEAD exact → demande GO propriétaire pour tout déploiement Preview Vercel → merge/puis postmerge uniquement selon garde explicite.
+
+## Revue visuelle adversariale — contraste en mode sombre
+L'emblème vert sur fond sombre pouvait devenir difficile à distinguer. Les surfaces de login FR/MENA, verrouillage setup/unlock et en-tête onboarding appliquent désormais une colorisation blanche au rendu du PNG en mode sombre, sans modifier les glyphes vectoriels ni l'asset de référence. Les cartes blanches du dashboard et des en-têtes conservent l'emblème vert. La preuve finale requiert une capture Flutter Web réelle en mode sombre ; pas de certification anticipée.

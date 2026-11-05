@@ -8,7 +8,7 @@ String source(String path) => File(path).readAsStringSync();
 void checkPng(String path, int width, int height) {
   final bytes = File(path).readAsBytesSync();
   expect(bytes.length, greaterThan(24), reason: path);
-  expect(bytes.take(8), [137, 80, 78, 71, 13, 10, 26, 10], reason: path);
+  expect(bytes.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10], reason: path);
   int dimensionAt(int offset) =>
       (bytes[offset] << 24) |
       (bytes[offset + 1] << 16) |
@@ -46,10 +46,17 @@ void main() {
     ]) {
       expect(source(path), contains('iamina_logo_mark.png'), reason: path);
     }
-    expect(
-      source('lib/features/auth/onboarding_chat_screen.dart'),
-      contains('iamina_logo_horizontal.png'),
-    );
+    final onboarding = source('lib/features/auth/onboarding_chat_screen.dart');
+    expect(onboarding, contains('iamina_logo_horizontal.png'));
+    expect(onboarding, contains('colorBlendMode: BlendMode.srcIn'));
+    for (final path in [
+      'lib/features/auth/login_screen_fr_certified.dart',
+      'lib/features/auth/login_screen_mena.dart',
+      'lib/features/auth/app_lock_setup_screen.dart',
+      'lib/features/auth/app_lock_unlock_screen.dart',
+    ]) {
+      expect(source(path), contains('colorBlendMode: BlendMode.srcIn'), reason: path);
+    }
   });
 
   test('all Web/PWA icons and in-app images are correctly sized PNGs', () {

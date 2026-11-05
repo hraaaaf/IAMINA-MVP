@@ -314,6 +314,8 @@ class _Brand extends StatelessWidget {
           'assets/images/iamina_logo_vertical.png',
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
+          color: AminaTheme.isDark(context) ? Colors.white : null,
+          colorBlendMode: BlendMode.srcIn,
         ),
       ),
     );

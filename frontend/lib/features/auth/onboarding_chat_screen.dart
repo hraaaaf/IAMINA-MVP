@@ -558,6 +558,8 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
               semanticLabel: 'IAMINA',
+              color: AminaTheme.isDark(context) ? Colors.white : null,
+              colorBlendMode: BlendMode.srcIn,
             ),
             Text(
               assistantLabel,

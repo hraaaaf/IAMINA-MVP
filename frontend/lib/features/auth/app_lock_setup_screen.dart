@@ -149,6 +149,8 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                           'assets/images/iamina_logo_vertical.png',
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
+                          color: dark ? Colors.white : null,
+                          colorBlendMode: BlendMode.srcIn,
                           errorBuilder: (_, __, ___) => const _LogoFallback(),
                         ),
                       ),
