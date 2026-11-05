@@ -18,6 +18,7 @@ flutter pub get
 # API_BASE_URL is the backend origin only: Flutter services append /api/v1.
 IAMINA_REVIEW_VERCEL_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
 IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
+IAMINA_W01_SESSION_PROBE=false
 
 # Fail closed on Vercel if this Flutter build is ever invoked by another
 # project. This prevents the certified backend project from accidentally
@@ -46,6 +47,9 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
       IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
+      if [ "${VERCEL_GIT_COMMIT_REF:-}" = "preview/w01-current-main-synthetic-20261104" ]; then
+        IAMINA_W01_SESSION_PROBE=true
+      fi
       ;;
     production)
       # Existing production routing remains unchanged.
@@ -69,11 +73,17 @@ if [ -n "${API_BASE_URL:-}" ]; then
 fi
 
 if [ -n "${API_BASE_URL:-}" ]; then
+  if [ "$IAMINA_W01_SESSION_PROBE" = "true" ]; then
+    echo "W01 ephemeral session-revocation diagnostic: PREVIEW ONLY"
+    flutter test --no-pub --dart-define=IAMINA_W01_SESSION_PROBE=true \
+      test/services/w01_revocation_probe_test.dart
+  fi
   echo "Building IAMINA web with configured backend: $API_BASE_URL"
   flutter build web --release --no-web-resources-cdn \
     --dart-define=API_BASE_URL="$API_BASE_URL" \
     --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}" \
-    --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN="${IAMINA_REMOTE_ACCOUNT_SIGN_IN:-false}"
+    --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN="${IAMINA_REMOTE_ACCOUNT_SIGN_IN:-false}" \
+    --dart-define=IAMINA_W01_SESSION_PROBE="${IAMINA_W01_SESSION_PROBE:-false}"
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
   flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_OFFLINE_DEMO=true

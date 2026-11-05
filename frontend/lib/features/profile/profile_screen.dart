@@ -16,6 +16,7 @@ import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../data/drift/patient_treatment_declaration_store.dart';
 import '../../services/auth_service.dart';
+import '../../services/w01_revocation_probe.dart';
 import '../../services/app_lock_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
@@ -100,6 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _savingRamadan = false;
   bool _savingLockPreference = false;
   bool _withdrawingConsent = false;
+  bool _w01ProbeRunning = false;
 
   // Fail closed when no clinical transport provider is mounted (e.g. offline
   // pilot widget tests). The remote conflict action stays unavailable until
@@ -295,6 +297,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ));
     } finally {
       if (mounted) setState(() => _savingLockPreference = false);
+    }
+  }
+
+  Future<void> _runW01RevocationCheck() async {
+    if (!kIsWeb || !kW01RevocationProbeEnabled || _w01ProbeRunning) return;
+    final auth = context.read<AuthService>();
+    final lock = context.read<AppLockService>();
+    if (!auth.hasRemoteApiCredential ||
+        auth.isAuditSession ||
+        (!lock.isUnlocked && !lock.isExplicitlySkipped)) return;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_profileUiText(context,
+          fr: 'Test de révocation W01',
+          en: 'W01 session revocation test',
+          ar: 'اختبار إبطال الجلسة W01',
+        )),
+        content: Text(_profileUiText(context,
+          fr: 'Réservé aux comptes synthétiques. Le test lit le Journal sans le modifier, révoque votre jeton puis vérifie son refus. Il fermera votre session.',
+          en: 'Synthetic accounts only. The test reads but never changes the Journal, revokes your token and verifies rejection. You will be signed out.',
+          ar: 'للحسابات التجريبية فقط. يقرأ الاختبار السجل دون تغييره ويتحقق من إبطال الرمز ثم يسجل خروجك.',
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(_profileUiText(context,
+              fr: 'Annuler', en: 'Cancel', ar: 'إلغاء')),
+          ),
+          FilledButton(
+            key: const Key('w01-revocation-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(_profileUiText(context,
+              fr: 'Tester et me déconnecter',
+              en: 'Test and sign out',
+              ar: 'اختبار وتسجيل الخروج',
+            )),
+          ),
+        ],
+      ),
+    );
+    if (proceed != true || !mounted) return;
+
+    setState(() => _w01ProbeRunning = true);
+    final router = GoRouter.of(context);
+    W01RevocationProbeResult result;
+    try {
+      // No bearer is ever inserted into UI state, a URL, a log or storage.
+      final bearer = await auth.getIdToken();
+      result = await runW01RevocationProbe(
+        bearer: bearer,
+        baseUrl: kAuthBaseUrl,
+      );
+    } catch (_) {
+      result = const W01RevocationProbeResult(
+        failureCode: 'diagnostic_unavailable',
+      );
+    }
+    // No token in notice; the three HTTP codes alone are retained in memory.
+    w01RevocationProbeNotice.value = result;
+    try {
+      await auth.signOut();
+    } catch (_) {
+      w01RevocationProbeNotice.value = result.withCleanupFailure();
+    }
+    if (mounted) {
+      setState(() => _w01ProbeRunning = false);
+      router.go('/login');
     }
   }
 

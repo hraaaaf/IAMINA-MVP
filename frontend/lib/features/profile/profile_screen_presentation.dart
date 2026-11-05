@@ -591,6 +591,74 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             );
           },
         ),
+        if (kIsWeb &&
+            kW01RevocationProbeEnabled &&
+            auth.hasRemoteApiCredential &&
+            !auth.isAuditSession) ...[
+          const SizedBox(height: 14),
+          Container(
+            key: const ValueKey('w01-revocation-probe-card'),
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AminaVisualLanguage.cardSurface(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AminaVisualLanguage.controlBorder(context),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _profileUiText(context,
+                    fr: 'W01 · Contrôle temporaire Preview',
+                    en: 'W01 · Temporary Preview check',
+                    ar: 'W01 · فحص تجريبي مؤقت',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  _profileUiText(context,
+                    fr: 'Vérifie 200 → 200 → 401 avec le même jeton. Lecture seule du Journal. Ferme votre session.',
+                    en: 'Verifies 200 → 200 → 401 with the same token. Read-only Journal. Signs you out.',
+                    ar: 'يفحص 200 ← 200 ← 401 لنفس الرمز. قراءة السجل فقط وتسجيل الخروج.',
+                  ),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  key: const Key('w01-revocation-probe-button'),
+                  onPressed: _w01ProbeRunning
+                      ? null
+                      : _runW01RevocationCheck,
+                  icon: _w01ProbeRunning
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.verified_user_outlined, size: 19),
+                  label: Text(_profileUiText(context,
+                    fr: 'Tester la révocation serveur',
+                    en: 'Test server token revocation',
+                    ar: 'اختبار إبطال رمز الخادم',
+                  )),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
