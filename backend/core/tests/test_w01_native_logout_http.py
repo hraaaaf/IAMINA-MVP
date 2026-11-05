@@ -8,13 +8,13 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 from django.utils import timezone
+from ninja.operation import Operation
 
+from amina.vercel_session_auth import SessionAuth
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, verify_native_token
-from diabetes.models import LogEntry
-from ninja.operation import Operation
 from diabetes.api.v1.security import HybridBearerAuth
-from amina.vercel_session_auth import SessionAuth
+from diabetes.models import LogEntry
 
 
 def _login(user, password):
@@ -122,10 +122,31 @@ def test_w01_http_logout_revokes_bearer_without_cookie_and_keeps_b_private(monke
 
     monkeypatch.setattr(HybridBearerAuth, "__call__", trace_bearer)
     monkeypatch.setattr(SessionAuth, "__call__", trace_session)
+
+    # Verify token inside Ninja's callback context without logging any
+    # credential, patient data, header or user identity beyond synthetic IDs.
+    seen_native = []
+    original_authenticate = HybridBearerAuth.authenticate
+
+    def trace_native_authenticate(self, request, candidate):
+        try:
+            verified = verify_native_token(candidate).pk
+        except Exception as exc:
+            verified = type(exc).__name__
+        try:
+            principal = original_authenticate(self, request, candidate)
+        except Exception as exc:
+            seen_native.append((verified, type(exc).__name__))
+            raise
+        seen_native.append((verified, principal.pk if principal else None))
+        return principal
+
+    monkeypatch.setattr(HybridBearerAuth, "authenticate", trace_native_authenticate)
     only_a = _as(token_a, "get", "/api/v1/logs")
     only_b = _as(token_b, "get", "/api/v1/logs")
     print("W01_HTTP_AUTH_OPERATIONS", observed_callbacks)
     print("W01_HTTP_AUTH_CALLBACK_OUTCOMES", outcomes)
+    print("W01_NATIVE_VERIFY_IN_CALLBACK", seen_native)
     assert observed_callbacks, "No Ninja operation performed authentication"
     assert "HTTP_AUTHORIZATION" in only_a.wsgi_request.META
     assert only_a.status_code == 200, only_a.content[:250]

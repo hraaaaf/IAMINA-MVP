@@ -23,7 +23,6 @@ from diabetes.services.clinical.observation_memory import (
 from diabetes.services.session_cache import invalidate as _invalidate_ctx
 
 from .kpis import invalidate_kpi_cache as _invalidate_kpis
-from .security import firebase_auth_backend
 from .schemas import (
     BatchSyncResponse,
     Error,
@@ -34,6 +33,7 @@ from .schemas import (
     PaginatedLogsResponse,
     validate_meal_portion_links,
 )
+from .security import firebase_auth_backend
 
 # Resolve both sovereign Bearer and Django session at the clinical router's
 # own declaration. W01 PG16 HTTP revealed that relying only on the
