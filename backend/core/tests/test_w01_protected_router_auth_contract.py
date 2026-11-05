@@ -5,6 +5,8 @@ unbound Router template. Verify actual requests, not template auth_callbacks.
 This checks a representative operation per explicitly protected router.
 """
 
+import json
+
 import pytest
 from django.test import Client
 
@@ -35,7 +37,7 @@ def test_anonymous_cannot_access_protected_routes(method, path):
     if method == "GET":
         response = client.get(path)
     else:
-        response = client.post(path, data="{}", content_type="application/json")
+        response = client.post(path, data=json.dumps({}), content_type="application/json")
     assert response.status_code in (401, 403), (
         f"Protected route {method} {path}: "
         f"expected 401/403, got {response.status_code}"
