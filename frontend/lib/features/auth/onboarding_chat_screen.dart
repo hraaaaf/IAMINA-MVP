@@ -551,7 +551,16 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('IAmina'),
+            Image.asset(
+              'assets/images/iamina_logo_horizontal.png',
+              width: 148,
+              height: 34,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              semanticLabel: 'IAMINA',
+              color: AminaTheme.isDark(context) ? Colors.white : null,
+              colorBlendMode: BlendMode.srcIn,
+            ),
             Text(
               assistantLabel,
               style: const TextStyle(fontSize: 12),
@@ -776,26 +785,18 @@ class _DesktopWelcomePanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .16),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.favorite_outline_rounded,
+          Semantics(
+            label: title,
+            image: true,
+            child: Image.asset(
+              'assets/images/iamina_logo_horizontal.png',
+              width: 235,
+              height: 62,
+              alignment: AlignmentDirectional.centerStart,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
               color: Colors.white,
-              size: 26,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
+              colorBlendMode: BlendMode.srcIn,
             ),
           ),
           const SizedBox(height: 6),

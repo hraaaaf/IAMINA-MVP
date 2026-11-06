@@ -67,9 +67,11 @@ class _LocalDeviceEnrollmentScreenState
                           width: 132,
                           height: 132,
                           child: Image.asset(
-                            'assets/images/logo_amina.png',
+                            'assets/images/iamina_logo_vertical.png',
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.high,
+                            color: AminaTheme.isDark(context) ? Colors.white : null,
+                            colorBlendMode: BlendMode.srcIn,
                             errorBuilder: (_, __, ___) => const _LogoFallback(),
                           ),
                         ),

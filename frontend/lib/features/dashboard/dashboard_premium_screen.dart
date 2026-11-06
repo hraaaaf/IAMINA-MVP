@@ -344,48 +344,40 @@ class _PremiumBrandHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 72,
-          height: 72,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .86),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withValues(alpha: .95)),
-            boxShadow: AminaVisualLanguage.cardShadowLight,
-          ),
-          child: Image.asset(
-            'assets/images/logo_amina.png',
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'IAmina',
-                style: TextStyle(
-                  fontSize: 22,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -.6,
-                  color: AminaVisualLanguage.primaryText(context),
+              Semantics(
+                label: 'IAMINA',
+                image: true,
+                child: Image.asset(
+                  'assets/images/iamina_logo_horizontal.png',
+                  width: 198,
+                  height: 52,
+                  alignment: AlignmentDirectional.centerStart,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  color: AminaTheme.isDark(context) ? Colors.white : null,
+                  colorBlendMode: BlendMode.srcIn,
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(
-                _t(
-                  context,
-                  'Votre compagnon du diabète',
-                  'Your diabetes companion',
-                  'رفيقك لمرض السكري',
-                ),
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: AminaVisualLanguage.secondary(context),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 53),
+                child: Text(
+                  _t(
+                    context,
+                    'Votre compagnon du diabète',
+                    'Your diabetes companion',
+                    'رفيقك لمرض السكري',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
                 ),
               ),
             ],

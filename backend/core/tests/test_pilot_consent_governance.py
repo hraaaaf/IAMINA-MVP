@@ -17,16 +17,17 @@ from core.pilot_consent_governance import (
 TODAY = date(2026, 8, 4)
 
 
+class _HistoricalAuditDate(date):
+    """Deterministic baseline only; production audits use the real clock."""
+
+    @classmethod
+    def today(cls):
+        return TODAY
+
+
 @pytest.fixture
-def historic_audit_clock(monkeypatch):
-    """Reproduce the dated August command contract without altering live evidence."""
-    class HistoricalDate(date):
-        @classmethod
-        def today(cls):
-            return TODAY
-
-    monkeypatch.setattr("core.pilot_consent_governance.date", HistoricalDate)
-
+def historical_audit_clock(monkeypatch):
+    monkeypatch.setattr("core.pilot_consent_governance.date", _HistoricalAuditDate)
 
 
 def test_consent_matrix_covers_every_runtime_purpose_and_modality():
@@ -98,6 +99,25 @@ def test_stale_approved_evidence_is_rejected():
         evidence.validate(label="provider.evidence", today=TODAY)
 
 
+def test_audit_command_reports_pending_without_fabricating_approval(capsys, historical_audit_clock):
+    call_command("audit_pilot_consent_governance")
+    output = capsys.readouterr().out
+
+    assert '"status": "pending_external_approval"' in output
+    assert '"non_claim"' in output
+
+
+def test_audit_command_require_approved_is_fail_closed(historical_audit_clock):
+    with pytest.raises(CommandError, match="not approved"):
+        call_command("audit_pilot_consent_governance", "--require-approved")
+
+def test_live_audit_rejects_local_identity_after_its_recorded_review_deadline():
+    # Current identity proof must remain fail-closed after 2026-11-04.
+    # This test explicitly uses a post-expiry date, not the historical fixture.
+    with pytest.raises(ValueError, match=r"fallback\.processor_identity evidence is stale"):
+        validate_consent_governance(today=date(2026, 11, 6))
+
+
 def test_expired_local_identity_still_blocks_real_command(monkeypatch):
     """No fixture or test may convert a stale November approval into GO."""
     class AfterExpiryDate(date):
@@ -108,16 +128,3 @@ def test_expired_local_identity_still_blocks_real_command(monkeypatch):
     monkeypatch.setattr("core.pilot_consent_governance.date", AfterExpiryDate)
     with pytest.raises(CommandError, match=r"fallback\.processor_identity evidence is stale"):
         call_command("audit_pilot_consent_governance")
-
-
-def test_audit_command_reports_pending_without_fabricating_approval(capsys, historic_audit_clock):
-    call_command("audit_pilot_consent_governance")
-    output = capsys.readouterr().out
-
-    assert '"status": "pending_external_approval"' in output
-    assert '"non_claim"' in output
-
-
-def test_audit_command_require_approved_is_fail_closed(historic_audit_clock):
-    with pytest.raises(CommandError, match="not approved"):
-        call_command("audit_pilot_consent_governance", "--require-approved")

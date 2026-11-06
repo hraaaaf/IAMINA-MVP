@@ -146,9 +146,11 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                         width: 118,
                         height: 118,
                         child: Image.asset(
-                          'assets/images/logo_amina.png',
+                          'assets/images/iamina_logo_vertical.png',
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
+                          color: dark ? Colors.white : null,
+                          colorBlendMode: BlendMode.srcIn,
                           errorBuilder: (_, __, ___) => const _LogoFallback(),
                         ),
                       ),

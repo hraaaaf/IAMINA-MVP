@@ -29,7 +29,7 @@ void main() {
     expect(wrapper, contains('DashboardPremiumScreen'));
     // D27: keep the Home-only primary entry, but use IAmina's actual brand.
     expect(wrapper, contains('DashboardCompanionAvatarAction'));
-    expect(wrapper, contains("'assets/images/logo_amina.png'"));
+    expect(wrapper, contains("'assets/images/iamina_logo_mark.png'"));
     expect(wrapper, contains("context.push('/companion/chat')"));
     expect(wrapper, isNot(contains('Icons.auto_awesome_rounded')));
     expect(premium, contains('DashboardTodaySection('));
