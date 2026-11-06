@@ -68,6 +68,12 @@ void main() {
       const Duration(seconds: 5),
     );
 
+    // Track every auth publication after logout; a transient reactivation
+    // is unsafe even if a later cleanup happens to remove persisted keys.
+    final postLogoutAuthEvents = <bool>[];
+    auth.addListener(() {
+      postLogoutAuthEvents.add(auth.isAuthenticated);
+    });
     // Logout must cancel an older enrollment before any suspension resumes.
     final pendingLogout = auth.signOut();
     expect(auth.isAuthenticated, isFalse);
@@ -80,6 +86,7 @@ void main() {
     await rejectedEnrollment;
 
     expect(auth.isAuthenticated, isFalse);
+    expect(postLogoutAuthEvents, isNot(contains(true)));
     expect(auth.boundNativeAccountId, isNull);
     expect(await auth.getIdToken(), isNull);
     expect(await auth.resolvePatientVaultScope(), isNull);
