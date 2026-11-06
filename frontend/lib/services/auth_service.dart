@@ -300,8 +300,21 @@ class AuthService extends ChangeNotifier {
     }
     if (_firebaseAuth?.currentUser != null) return null;
     if (!_localSessionEnrolled) return null;
+    // A device-ID read can resolve from an older storage snapshot after a
+    // sign-out or account transition. Never return that revoked vault.
+    final intent = _credentialIntent;
+    final epoch = AuthEpoch.value;
     final deviceId = await _storage.read(key: _localDeviceIdKey);
-    if (deviceId == null) return null;
+    if (intent != _credentialIntent ||
+        epoch != AuthEpoch.value ||
+        !_initialized ||
+        _auditSession ||
+        !_localSessionEnrolled ||
+        _nativeToken != null ||
+        _firebaseAuth?.currentUser != null ||
+        deviceId == null) {
+      return null;
+    }
     try {
       return PatientVaultScope.deviceLocal(deviceId);
     } on ArgumentError {
@@ -313,8 +326,18 @@ class AuthService extends ChangeNotifier {
   /// This does NOT enroll a user or grant access to patient data.
   Future<PatientVaultScope?> dormantDeviceVaultForProtectedStateProbe() async {
     if (!_initialized || _auditSession) return null;
+    final intent = _credentialIntent;
+    final epoch = AuthEpoch.value;
     final deviceId = await _storage.read(key: _localDeviceIdKey);
-    if (deviceId == null) return null;
+    // This probe does not unlock clinical data, but must not publish a stale
+    // locator if logout or a newer session transition occurred mid-read.
+    if (intent != _credentialIntent ||
+        epoch != AuthEpoch.value ||
+        !_initialized ||
+        _auditSession ||
+        deviceId == null) {
+      return null;
+    }
     try {
       return PatientVaultScope.deviceLocal(deviceId);
     } on ArgumentError {
