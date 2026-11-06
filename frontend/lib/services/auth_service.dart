@@ -340,13 +340,22 @@ class AuthService extends ChangeNotifier {
     if (!_initialized) {
       throw StateError('Local enrollment requires initialized authentication');
     }
-    final existingId = await _storage.read(key: _localDeviceIdKey);
-    if (existingId == null || existingId.isEmpty) {
-      await _storage.write(key: _localDeviceIdKey, value: const Uuid().v4());
-    }
-    await _ensureLocalEnrollment();
-    _remoteCredentialVerified = false;
-    _notifyAuthChanged();
+    // Local enrollment is an auth intent too. Do not let an older, suspended
+    // local marker write outlive sign-out or a newer remote sign-in.
+    final intent = ++_credentialIntent;
+    await _serializeCredentials(() async {
+      _requireCurrentCredentialIntent(intent);
+      final existingId = await _storage.read(key: _localDeviceIdKey);
+      _requireCurrentCredentialIntent(intent);
+      if (existingId == null || existingId.isEmpty) {
+        await _storage.write(key: _localDeviceIdKey, value: const Uuid().v4());
+        _requireCurrentCredentialIntent(intent);
+      }
+      await _ensureLocalEnrollment();
+      _requireCurrentCredentialIntent(intent);
+      _remoteCredentialVerified = false;
+      _notifyAuthChanged();
+    });
   }
 
   void enterAuditSession() {
@@ -517,7 +526,11 @@ class AuthService extends ChangeNotifier {
 
   Future<void> _ensureLocalEnrollment() async {
     if (_localSessionEnrolled) return;
+    final intent = _credentialIntent;
     await _storage.write(key: _localSessionKey, value: _localSessionValue);
+    // A later sign-out may have invalidated this write while it was pending.
+    // Never republish local enrollment after that newer auth decision.
+    _requireCurrentCredentialIntent(intent);
     _localSessionEnrolled = true;
   }
 
