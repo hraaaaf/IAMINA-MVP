@@ -292,6 +292,11 @@ def main():
                 country.click()
                 country.press_sequentially("Morocco", delay=110)
                 page.get_by_role("button", name="Morocco").click(timeout=18000)
+                # D8: an explicit measurement unit is now mandatory before Start.
+                # This is an isolated synthetic test profile, not a real patient.
+                page.get_by_role("checkbox", name="mg/dL", exact=True).click(
+                    timeout=18000
+                )
                 page.get_by_role("button", name="Start", exact=True).click(
                     timeout=18000
                 )
