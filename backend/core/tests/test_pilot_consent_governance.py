@@ -116,3 +116,15 @@ def test_live_audit_rejects_local_identity_after_its_recorded_review_deadline():
     # This test explicitly uses a post-expiry date, not the historical fixture.
     with pytest.raises(ValueError, match=r"fallback\.processor_identity evidence is stale"):
         validate_consent_governance(today=date(2026, 11, 6))
+
+
+def test_expired_local_identity_still_blocks_real_command(monkeypatch):
+    """No fixture or test may convert a stale November approval into GO."""
+    class AfterExpiryDate(date):
+        @classmethod
+        def today(cls):
+            return date(2026, 11, 5)
+
+    monkeypatch.setattr("core.pilot_consent_governance.date", AfterExpiryDate)
+    with pytest.raises(CommandError, match=r"fallback\.processor_identity evidence is stale"):
+        call_command("audit_pilot_consent_governance")

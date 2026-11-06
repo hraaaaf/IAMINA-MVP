@@ -27,6 +27,75 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+// Sign-in to existing synthetic accounts is independent of account creation.
+// Production retains its existing behavior through this default.
+const bool kRemoteAccountSignInEnabled = bool.fromEnvironment(
+  'IAMINA_REMOTE_ACCOUNT_SIGN_IN',
+  defaultValue: kRemoteAccountEnrollmentEnabled,
+);
+
+/// For remote Web sign-in, always use the *current page's* exact origin.
+/// Vercel immutable Preview URLs differ from branch aliases; sending login
+/// credentials to an older alias breaks same-origin BFF/OIDC and CORS.
+/// Non-Web or local-first clients preserve their configured transport.
+String resolveAuthApiOrigin({
+  required bool isWeb,
+  required bool remoteAccountLogin,
+  required Uri pageUri,
+  required String configuredBaseUrl,
+  bool useConfiguredLoopbackBackend = false,
+}) {
+  if (!isWeb || !remoteAccountLogin) return configuredBaseUrl;
+  final host = pageUri.host.toLowerCase();
+  final local = pageUri.scheme == 'http' &&
+      (host == 'localhost' || host == '127.0.0.1');
+  if (local && useConfiguredLoopbackBackend) {
+    // Local D11 FUE serves Flutter on one loopback port and Django on another.
+    // This exception never applies to a hosted Preview. Never forward patient
+    // credentials from a local page to an arbitrary remote backend.
+    final backend = Uri.tryParse(configuredBaseUrl);
+    if (backend == null ||
+        backend.scheme != 'http' ||
+        (backend.host != 'localhost' && backend.host != '127.0.0.1') ||
+        backend.userInfo.isNotEmpty) {
+      throw StateError('Local remote login requires a loopback backend');
+    }
+    return configuredBaseUrl;
+  }
+  if (pageUri.scheme != 'https' && !local) {
+    throw StateError('A secure browser origin is required for remote login');
+  }
+  if (host.isEmpty || pageUri.userInfo.isNotEmpty) {
+    throw StateError('Missing secure patient origin');
+  }
+  return pageUri.origin;
+}
+
+/// Do not conflate invalid credentials (HTTP 401) with API or network faults.
+class AuthCredentialsRejected implements Exception {
+  const AuthCredentialsRejected();
+}
+
+class AuthSignInServiceUnavailable implements Exception {
+  final int statusCode;
+  const AuthSignInServiceUnavailable(this.statusCode);
+}
+
+/// Only the Django-native rejection is evidence of incorrect credentials.
+/// A Vercel SSO/OIDC 401 or HTML protection page must be reported as an
+/// unavailable service, never as a wrong patient password.
+bool _isNativeCredentialRejection(http.Response response) {
+  if (response.statusCode != 401) return false;
+  try {
+    final payload = jsonDecode(response.body);
+    return payload is Map &&
+        payload['detail'] == 'Invalid authentication credential';
+  } catch (_) {
+    return false;
+  }
+}
+
+
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
@@ -301,7 +370,8 @@ class AuthService extends ChangeNotifier {
       await _acceptAuthResponse(nativeResponse);
       return;
     }
-    if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
+    final nativeInvalidCredentials = _isNativeCredentialRejection(nativeResponse);
+    if (nativeInvalidCredentials && _firebaseAuth != null) {
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: normalized,
         password: password,
@@ -319,7 +389,10 @@ class AuthService extends ChangeNotifier {
         return;
       }
     }
-    throw StateError('Authentication failed');
+    if (nativeInvalidCredentials) {
+      throw const AuthCredentialsRejected();
+    }
+    throw AuthSignInServiceUnavailable(nativeResponse.statusCode);
   }
 
   Future<void> registerWithEmail(String email, String password) async {
@@ -361,7 +434,7 @@ class AuthService extends ChangeNotifier {
     if (token != null) {
       try {
         await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          Uri.parse('$_effectiveAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
       } catch (error, stackTrace) {
@@ -419,9 +492,17 @@ class AuthService extends ChangeNotifier {
     _localSessionEnrolled = true;
   }
 
+  String get _effectiveAuthBaseUrl => resolveAuthApiOrigin(
+        isWeb: kIsWeb,
+        remoteAccountLogin: kRemoteAccountSignInEnabled,
+        pageUri: Uri.base,
+        configuredBaseUrl: kAuthBaseUrl,
+        useConfiguredLoopbackBackend: true,
+      );
+
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('$_effectiveAuthBaseUrl$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );

@@ -29,6 +29,12 @@ extension AuthLocalizedCopy on AppLocalizations {
         ar: 'كلمتا المرور غير متطابقتين.',
       );
 
+  String get accountSignInUnavailable => _pick(
+        en: 'Sign-in service temporarily unavailable. Please try again.',
+        fr: 'Service de connexion temporairement indisponible. Réessayez.',
+        ar: 'خدمة تسجيل الدخول غير متاحة مؤقتًا. يُرجى المحاولة مجددًا.',
+      );
+
   String get accountCreationFailed => _pick(
         en: 'Account creation failed — check the email and password.',
         fr: 'Échec de la création du compte — vérifiez l’e-mail et le mot de passe.',

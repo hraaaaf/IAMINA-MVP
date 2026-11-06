@@ -113,3 +113,10 @@
 5. **Clore G7**, puis et seulement puis reprendre W02 depuis sa PR préservée, revoir son code face à `main` et relancer ses tests.
 
 **Maintenir production patient = NO-GO** jusqu'aux W02/W14 et à une décision de déploiement séparée.
+
+
+## Mise à jour de preuves W01 — 05/11/2026 (sans release)
+
+La matrice datée du 16/10 ci-dessus reste un **état historique**, non une certification actuelle. À la suite de la Preview synthétique testée par l'utilisateur, le transport Web→API `GET /api/v1/health` répond `status=ok/db=ok`, login A/B et logout A/B répondent HTTP 200 ; la mesure **fictive** 112 mg/dL a été isolée dans le coffre local A/B/A, pas dans la table des mesures Neon distante. Le correctif de révocation Bearer sur la PR Draft #1273 `977d137659244d0f834202d1f5aa41f334e3031c` est **PASS seulement sur PostgreSQL16 éphémère**, [W01 #41990891616](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41990891616) **2/2 SUCCESS**, dont backup/restore/rollback G6 LOCAL SUCCESS. Aucun nouveau code de sécurité déployé sur l'API Preview ; l'ancien comportement logout 200 sans version de révocation reste présent tant que cette API n'est pas redéployée avec GO.
+
+**Restants / gates exacts :** G2 `protected=false` sur Neon IAMINA Production (forfait Free, tentative `protected=true` refusée HTTP422), G3 secrets/préparation Production non clos, G4/G5 E2E hébergé sous nouveau code non prouvé, G6 distant non testé, G7 revue indépendante + merge/postmerge encore ouverts. CI générale #41990891693 garde **5 échecs d'évidence pilot/consent `fallback.processor_identity evidence is stale`**, indépendants du W01 PG16 vert : ne pas les effacer. **W01 NO-GO et W02 gelé**, aucun déploiement Vercel/Neon Production/merge autorisé dans cette mise à jour documentaire.

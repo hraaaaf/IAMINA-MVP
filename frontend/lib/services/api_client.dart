@@ -249,17 +249,12 @@ String resolvePatientApiOrigin({
   required Uri pageUri,
   required String configuredBaseUrl,
 }) {
-  if (!isWeb || !remoteAccountLogin) return configuredBaseUrl;
-  final host = pageUri.host.toLowerCase();
-  final local = pageUri.scheme == 'http' &&
-      (host == 'localhost' || host == '127.0.0.1');
-  if (pageUri.scheme != 'https' && !local) {
-    throw StateError('A secure browser origin is required for remote login');
-  }
-  if (host.isEmpty || pageUri.userInfo.isNotEmpty) {
-    throw StateError('Missing secure patient origin');
-  }
-  return pageUri.origin;
+  return resolveAuthApiOrigin(
+    isWeb: isWeb,
+    remoteAccountLogin: remoteAccountLogin,
+    pageUri: pageUri,
+    configuredBaseUrl: configuredBaseUrl,
+  );
 }
 
 const int kMaxDocumentUploadBytes = 15 * 1024 * 1024;
