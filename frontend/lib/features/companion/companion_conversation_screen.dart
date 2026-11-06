@@ -85,6 +85,7 @@ class _CompanionConversationScreenState
   late CompanionService _service;
   bool _serviceInitialized = false;
   bool _ownsService = false;
+  bool _kuficMarkPreloaded = false;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _inputFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -113,6 +114,17 @@ class _CompanionConversationScreenState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Predecode the canonical Kufic mark while the chat is idle. Otherwise
+    // the first waiting frame can show a blank square during PNG decoding.
+    if (!_kuficMarkPreloaded) {
+      _kuficMarkPreloaded = true;
+      unawaited(
+        precacheImage(
+          const AssetImage('assets/images/iamina_logo_mark.png'),
+          context,
+        ),
+      );
+    }
     if (_serviceInitialized) return;
     final injected = widget.service;
     if (injected != null) {
