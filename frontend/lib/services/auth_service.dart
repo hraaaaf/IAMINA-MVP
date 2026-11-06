@@ -346,47 +346,70 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
+    // Read-only hydration must not block sign-out: a secure-storage read can
+    // remain suspended while logout must finish its cleanup immediately.
+    // Stage the snapshot and commit it only if no newer auth intent won.
+    final intent = _credentialIntent;
     try {
-      _localSessionEnrolled =
+      final enrolled =
           await _storage.read(key: _localSessionKey) == _localSessionValue;
+      _requireCurrentCredentialIntent(intent);
       final storedToken = await _storage.read(key: _tokenKey);
+      _requireCurrentCredentialIntent(intent);
+      String? binding;
       if (_isExpectedNativeBearerShape(storedToken)) {
-        _nativeToken = storedToken;
-        _nativeAccountId = null;
         // Local-first startup: no network required to validate a cached binding.
-        final binding = await _storage.read(key: _nativeIdentityKey);
-        if (binding != null) {
-          try {
-            final parsed = jsonDecode(binding);
-            if (parsed is Map<String, dynamic> &&
-                parsed['token'] == storedToken &&
-                parsed['user_id'] is int &&
-                (parsed['user_id'] as int) > 0) {
-              _nativeAccountId = parsed['user_id'] as int;
-            }
-          } on FormatException {
-            // Invalid cached binding must never become a patient ID.
-          }
-        }
-        _remoteCredentialVerified = false;
-        await _ensureLocalEnrollment();
-      } else if (storedToken != null) {
-        await _storage.delete(key: _tokenKey);
-        await _storage.delete(key: _nativeIdentityKey);
+        binding = await _storage.read(key: _nativeIdentityKey);
+        _requireCurrentCredentialIntent(intent);
+      }
+
+      // The only hydration writes/publication are ordered with signOut. If a
+      // newer logout happened during a read, reject the old snapshot before
+      // it can re-enrol a device or restore a previous owner's bearer.
+      await _serializeCredentials(() async {
+        _requireCurrentCredentialIntent(intent);
+        _localSessionEnrolled = enrolled;
         _nativeToken = null;
         _nativeAccountId = null;
         _remoteCredentialVerified = false;
-      }
+        if (_isExpectedNativeBearerShape(storedToken)) {
+          if (binding != null) {
+            try {
+              final parsed = jsonDecode(binding);
+              if (parsed is Map<String, dynamic> &&
+                  parsed['token'] == storedToken &&
+                  parsed['user_id'] is int &&
+                  (parsed['user_id'] as int) > 0) {
+                _nativeAccountId = parsed['user_id'] as int;
+              }
+            } on FormatException {
+              // Invalid cached binding must never become a patient ID.
+            }
+          }
+          await _ensureLocalEnrollment();
+          _requireCurrentCredentialIntent(intent);
+          _nativeToken = storedToken;
+        } else if (storedToken != null) {
+          await _storage.delete(key: _tokenKey);
+          _requireCurrentCredentialIntent(intent);
+          await _storage.delete(key: _nativeIdentityKey);
+          _requireCurrentCredentialIntent(intent);
+        }
+      });
     } catch (error, stackTrace) {
       _failureLogger(
         'initialize',
         error.runtimeType.toString(),
         stackTrace,
       );
-      _nativeToken = null;
-      _nativeAccountId = null;
-      _localSessionEnrolled = false;
-      _remoteCredentialVerified = false;
+      // An older failed initialize must not erase a newer successful sign-in.
+      // A newer sign-out already synchronously retired these credentials.
+      if (intent == _credentialIntent) {
+        _nativeToken = null;
+        _nativeAccountId = null;
+        _localSessionEnrolled = false;
+        _remoteCredentialVerified = false;
+      }
     } finally {
       _initialized = true;
       _notifyAuthChanged();
