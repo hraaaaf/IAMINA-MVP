@@ -119,7 +119,7 @@ void main() {
           httpClient: MockClient((request) async {
             if (request.url.path == '/api/v1/auth/login') {
               rejectedLogins++;
-              return http.Response('{"error":"invalid_credentials"}', 401);
+              return http.Response('{"detail":"Invalid authentication credential"}', 401);
             }
             if (request.url.path ==
                 '/api/v1/auth/password/reset/request') {
