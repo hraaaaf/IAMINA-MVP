@@ -78,7 +78,12 @@ void main() {
         httpClient: MockClient((request) async {
           expect(request.url.path, '/api/v1/auth/login');
           expect(request.body, contains('synthetic@example.invalid'));
-          return http.Response('{"detail":"synthetic"}', code);
+          return http.Response(
+            code == 401
+                ? '{"detail":"Invalid authentication credential"}'
+                : '{"detail":"synthetic"}',
+            code,
+          );
         }),
       );
       try {
@@ -95,4 +100,22 @@ void main() {
       }
     }
   });
+  test('Vercel SSO 401 is service unavailable, not a wrong password', () async {
+    final service = AuthService(
+      httpClient: MockClient((request) async {
+        expect(request.url.path, '/api/v1/auth/login');
+        return http.Response('<html>Protected by Vercel</html>', 401);
+      }),
+    );
+    try {
+      await expectLater(
+        service.signInWithEmail('synthetic@example.invalid', 'sample-only'),
+        throwsA(isA<AuthSignInServiceUnavailable>()),
+      );
+      expect(service.isRemoteCredentialVerified, isFalse);
+    } finally {
+      service.dispose();
+    }
+  });
+
 }

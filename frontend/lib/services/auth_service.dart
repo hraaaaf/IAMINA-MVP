@@ -67,6 +67,20 @@ class AuthSignInServiceUnavailable implements Exception {
   const AuthSignInServiceUnavailable(this.statusCode);
 }
 
+/// Only the Django-native rejection is evidence of incorrect credentials.
+/// A Vercel SSO/OIDC 401 or HTML protection page must be reported as an
+/// unavailable service, never as a wrong patient password.
+bool _isNativeCredentialRejection(http.Response response) {
+  if (response.statusCode != 401) return false;
+  try {
+    final payload = jsonDecode(response.body);
+    return payload is Map &&
+        payload['detail'] == 'Invalid authentication credential';
+  } catch (_) {
+    return false;
+  }
+}
+
 
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
@@ -342,7 +356,8 @@ class AuthService extends ChangeNotifier {
       await _acceptAuthResponse(nativeResponse);
       return;
     }
-    if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
+    final nativeInvalidCredentials = _isNativeCredentialRejection(nativeResponse);
+    if (nativeInvalidCredentials && _firebaseAuth != null) {
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: normalized,
         password: password,
@@ -360,7 +375,7 @@ class AuthService extends ChangeNotifier {
         return;
       }
     }
-    if (nativeResponse.statusCode == 401) {
+    if (nativeInvalidCredentials) {
       throw const AuthCredentialsRejected();
     }
     throw AuthSignInServiceUnavailable(nativeResponse.statusCode);
