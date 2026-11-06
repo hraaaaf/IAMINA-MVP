@@ -79,6 +79,20 @@ Statut : correction proposée dans la PR ; succès CI et comportement en navigat
 
 **Sécurité — frontière importante :** `fallback.processor_identity` et `quota-exhausted.processor_identity` portent la preuve du 04/08/2026 avec échéance du 04/11/2026 dans le registre runtime. Le nouveau test prouve que la vérification au 06/11/2026 la rejette comme **stale**. La correction des cinq tests historiques (horloge test uniquement) permet la CI 29/29 sans falsifier une approbation : un GO de mise en service avec cette preuve exige une réelle revalidation documentée par l'IAMINA Security Owner.
 
-**État du lot :** design APPROUVÉ et code TESTÉ en CI sur `13560549`. Le présent closeout documentaire modifie le HEAD : le résultat 29/29 **ne doit pas être attribué automatiquement à ce commit documentaire** avant vérification GitHub. PR à vérifier après commit, puis seulement envisager merge du code si contrôles stricts satisfaits et sans déploiement automatique.
+**État du lot avant fusion :** design APPROUVÉ et code TESTÉ en CI sur `13560549`. La CI du HEAD documentaire de PR `fa6f4460def9d245d94adcd54a49415de98df1a9` a ensuite été vérifiée : **29/29 WORKFLOWS SUCCESS**.
 
-**Séquence restante :** vérifier CI sur le nouveau HEAD documentaire → en cas de rouge diagnostiqué corriger → en cas de vert fusionner la PR de code sans déclencher Vercel → vérifier main et post-merge → conserver le gate de revue sécurité avant toute Preview/Production ; déployer uniquement après autorisation explicite distincte du propriétaire.
+## 06/11/2026 — CLOSEOUT POST-MERGE VÉRIFIÉ
+
+**Résultat exact :** PR [#1275](https://github.com/hraaaaf/IAMINA-MVP/pull/1275) **MERGED** par squash ; commit de fusion `07702cfc5ee1a9375d88c5b78338050be6c87404`, vérifié dans `refs/heads/main`. Les 34 fichiers modifiés par la PR comprennent les logos horizontal, vertical et carré, le favicon et les icônes PWA, les références Flutter Web et les tests. Le propriétaire a approuvé visuellement la V4 sur captures réelles Chrome BEFORE/AFTER (390×844, 768×1024, 1280×900).
+
+**CI vérifiée au bon SHA :** sur `fa6f4460` avant fusion, **29/29 SUCCESS**. Sur le commit fusionné exact `07702cfc`, **11/11 workflows de push vers main SUCCESS**, aucun rouge, aucun en cours au contrôle du 06/11/2026. Preuves prioritaires : [CI générale post-merge #42233061820](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42233061820), [UI browser #42233061842](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42233061842), [Dashboard responsive #42233061685](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42233061685), [P5-5 rehearsal #42233061629](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42233061629). Les résultats sont associés à leur SHA ; une éventuelle mise à jour documentaire ultérieure ne peut hériter automatiquement de ces PASS.
+
+**Critère de succès :** design V4 approuvé + code intégré sur `main` + tests pré-merge et post-merge au vert = **lot d'intégration de code clôturé**. Ce closeout documentaire ajoute une trace rétrospective ; il ne prétend pas être un déploiement Web live ni une nouvelle certification à la date du commit documentaire.
+
+**Réserves et risques non clos :** la preuve opérationnelle `fallback.processor_identity` expirée le 04/11/2026 reste non renouvelée ; les tests de dates historiques ont été stabilisés, mais le runtime continue de rejeter la preuve périmée. Revue datée du responsable IAMINA Security nécessaire avant mise en service. Le rendu micro-favicon 16–24 px demande encore une validation optique spécifique. L'accessibilité et les couleurs en toutes locales ne sont pas affirmées au-delà des tests effectivement exécutés.
+
+**Déploiement :** **aucun Vercel Preview/Production effectué**. `git.deploymentEnabled=false` vérifié sur le dépôt dans `vercel.json`, `frontend/vercel.json` et `backend/vercel.json`. Une autorisation utilisateur **explicite et distincte** est obligatoire pour tout déploiement Vercel ; le feu vert CI et la validation graphique ne l'accordent pas.
+
+**Prochain human gate précis :** revue de la preuve `fallback.processor_identity` par IAMINA Security Owner et décision explicite du propriétaire sur un éventuel Vercel Preview (sans présumer de l'ordre d'exécution ou des autorisations). Après ces gates, tout déploiement ferait l'objet de tests du site réel FR/AR, 390/768/1280, PWA offline/mise à jour et réconciliation documentée.
+
+**Fichier canonique :** `docs/assessments/2026-11-05-iamina-web-logo-v4.md`. État global d'IAMINA non évalué par ce lot, aucun pourcentage global inventé.
