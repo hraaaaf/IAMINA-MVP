@@ -156,15 +156,38 @@ jobs:
               assert len(set(test['captures']))==9
               checks=set(test['checks'])
               assert {'a-token-revoked','b-token-revoked','idor-get-patch-delete-404','old-tokens-still-revoked'} <= checks
-              digests=set()
+              # In the real W01 test-only Flutter UI, A, B and returning A
+              # intentionally share the same static dashboard. The chooser
+              # and login screen also repeat after each sign-out. Do not
+              # demand five unrelated visual states from three real screens.
+              stages=(
+                  '01-local-choice',
+                  '02-preview-login-only',
+                  '03-signed-in-a',
+                  '04-a-logout',
+                  '04b-preview-login-only',
+                  '05-signed-in-b',
+                  '06-b-logout',
+                  '06b-preview-login-only',
+                  '07-a-returned',
+              )
+              assert all(name.endswith('-'+stage+'.png') for name,stage
+                         in zip(test['captures'],stages)), 'Missing ordered journey screenshot'
+              assert test['captured'] is True
+              assert test['external_request_count']==0 and test['browser_error_count']==0
+              digests=[]
               for filename in test['captures']:
                   raw=(root/filename).read_bytes()
                   assert len(raw)>=10000 and raw[:8]==bytes.fromhex('89504e470d0a1a0a')
                   w,h=struct.unpack('>II',raw[16:24])
                   assert w==test['width'] and h==test['height']
-                  digests.add(hashlib.sha256(raw).hexdigest())
-              assert len(digests)>=5, 'Screenshot collection lacks distinct visual states'
-          print('W01_G7_FUE_SCREENSHOTS=PASS 18 PNG per locale, 2 viewports, 9 per flow')
+                  digests.append(hashlib.sha256(raw).hexdigest())
+              assert len(set(digests[:3]))==3, 'Chooser, login and dashboard must differ'
+              assert digests[1]==digests[4]==digests[7], 'Real login screen must return after logout'
+              assert digests[2]==digests[5]==digests[8], 'Real test-only dashboard must be stable A/B/A'
+              assert digests[3]==digests[6], 'Both logouts must return to same account chooser'
+              assert digests[3] not in {digests[1],digests[2]}, 'Logout screen must differ from login/dashboard'
+          print('W01_G7_FUE_SCREENSHOTS=PASS 18 PNG per locale, 3 distinct phases + A/B/A visual return, 2 viewports')
           PY
       - name: Verify PG16 patient A/B isolation after FUE
         if: always()
