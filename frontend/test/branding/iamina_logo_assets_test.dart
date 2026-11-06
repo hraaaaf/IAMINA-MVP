@@ -67,6 +67,16 @@ void main() {
     }
   });
 
+  test('governed chat reuses V4 mark and lockup without legacy branding', () {
+    final chat = source('lib/features/companion/companion_conversation_screen.dart');
+    expect(chat, contains('iamina_logo_horizontal.png'));
+    expect(chat, contains('iamina_logo_mark.png'));
+    expect(chat, contains("label: 'IAMINA'"));
+    expect(chat, contains("colorBlendMode: BlendMode.srcIn"));
+    expect(chat, isNot(contains('Icons.forum_outlined')));
+    expect(chat, isNot(contains('IAmina')));
+  });
+
   test('all Web/PWA icons and in-app images are correctly sized PNGs', () {
     checkPng('assets/images/iamina_logo_vertical.png', 400, 410);
     checkPng('assets/images/iamina_logo_horizontal.png', 580, 116);

@@ -28,21 +28,21 @@ String _failureText(BuildContext context, ProviderApiException failure) {
   return switch (failure.code) {
     'provider_timeout' => _chatText(
       context,
-      'IAmina met trop de temps à répondre. Réessaie dans un instant.',
-      'IAmina is taking too long to respond. Try again in a moment.',
-      'تستغرق IAmina وقتًا أطول من المعتاد للرد. حاول مجددًا بعد لحظة.',
+      'IAMINA met trop de temps à répondre. Réessaie dans un instant.',
+      'IAMINA is taking too long to respond. Try again in a moment.',
+      'تستغرق IAMINA وقتًا أطول من المعتاد للرد. حاول مجددًا بعد لحظة.',
     ),
     'provider_unavailable' => _chatText(
       context,
-      'Le service IAmina est temporairement indisponible. Réessaie dans un instant.',
-      'IAmina is temporarily unavailable. Try again in a moment.',
-      'خدمة IAmina غير متاحة مؤقتًا. حاول مجددًا بعد لحظة.',
+      'Le service IAMINA est temporairement indisponible. Réessaie dans un instant.',
+      'IAMINA is temporarily unavailable. Try again in a moment.',
+      'خدمة IAMINA غير متاحة مؤقتًا. حاول مجددًا بعد لحظة.',
     ),
     'provider_quota_exceeded' => _chatText(
       context,
-      'IAmina a atteint sa limite temporaire. Réessaie plus tard.',
-      'IAmina has reached its temporary limit. Try again later.',
-      'بلغت IAmina الحد المؤقت للخدمة. حاول مجددًا لاحقًا.',
+      'IAMINA a atteint sa limite temporaire. Réessaie plus tard.',
+      'IAMINA has reached its temporary limit. Try again later.',
+      'بلغت IAMINA الحد المؤقت للخدمة. حاول مجددًا لاحقًا.',
     ),
     'authentication_required' => _chatText(
       context,
@@ -393,7 +393,7 @@ class _CompanionConversationScreenState
         _scrollToBottom();
       } catch (error) {
         // No patient value or identifier is included in the diagnostic.
-        debugPrint('IAmina local reading unavailable: ${error.runtimeType}');
+        debugPrint('IAMINA local reading unavailable: ${error.runtimeType}');
       }
     }
 
@@ -609,38 +609,29 @@ class _ConversationHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Hero(
-            tag: 'dashboard-companion-chat-action',
-            child: Material(
-              type: MaterialType.transparency,
-              child: Container(
-                width: 46,
-                height: 46,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .9),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: AminaVisualLanguage.cardShadowLight,
-                ),
-                child: Image.asset(
-                  'assets/images/iamina_logo_mark.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'IAmina',
-                  style: TextStyle(
-                    color: AminaVisualLanguage.primaryText(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.35,
+                Hero(
+                  tag: 'dashboard-companion-chat-action',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Semantics(
+                      label: 'IAMINA',
+                      image: true,
+                      child: Image.asset(
+                        'assets/images/iamina_logo_horizontal.png',
+                        width: 168,
+                        height: 38,
+                        fit: BoxFit.contain,
+                        alignment: AlignmentDirectional.centerStart,
+                        filterQuality: FilterQuality.high,
+                        color: AminaTheme.isDark(context) ? Colors.white : null,
+                        colorBlendMode: BlendMode.srcIn,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -651,6 +642,8 @@ class _ConversationHeader extends StatelessWidget {
                     'Governed conversation',
                     'محادثة محكومة',
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AminaVisualLanguage.secondary(context),
                     fontSize: 11.5,
@@ -707,23 +700,31 @@ class _EmptyConversation extends StatelessWidget {
                 width: 68,
                 height: 68,
                 decoration: AminaVisualLanguage.mintIconDecoration(context),
-                child: const Icon(
-                  Icons.forum_outlined,
-                  color: AminaVisualLanguage.actionGreen,
-                  size: 30,
+                child: Semantics(
+                  label: 'IAMINA',
+                  image: true,
+                  child: Image.asset(
+                    'assets/images/iamina_logo_mark.png',
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    color: AminaTheme.isDark(context) ? Colors.white : null,
+                    colorBlendMode: BlendMode.srcIn,
+                  ),
                 ),
               ),
               const SizedBox(height: 18),
               Text(
                 _chatText(
                   context,
-                  'Parler avec IAmina',
-                  'Talk with IAmina',
-                  'تحدث مع IAmina',
+                  'Parler avec IAMINA',
+                  'Talk with IAMINA',
+                  'تحدث مع IAMINA',
                 ),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'Georgia',
+                  fontFamily: 'Inter Tight',
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: AminaVisualLanguage.primaryText(context),
@@ -733,9 +734,9 @@ class _EmptyConversation extends StatelessWidget {
               Text(
                 _chatText(
                   context,
-                  'Pose une question avec tes mots. IAmina peut organiser et reformuler, mais ne remplace pas ton professionnel de santé.',
-                  'Ask in your own words. IAmina can organize and rephrase, but does not replace your clinician.',
-                  'اكتب سؤالك بطريقتك. يمكن لـ IAmina التنظيم وإعادة الصياغة، لكنها لا تستبدل طبيبك.',
+                  'Pose une question avec tes mots. IAMINA peut organiser et reformuler, mais ne remplace pas ton professionnel de santé.',
+                  'Ask in your own words. IAMINA can organize and rephrase, but does not replace your clinician.',
+                  'اكتب سؤالك بطريقتك. يمكن لـ IAMINA التنظيم وإعادة الصياغة، لكنها لا تستبدل طبيبك.',
                 ),
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -890,9 +891,9 @@ class _Composer extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: _chatText(
                   context,
-                  'Écrire à IAmina…',
-                  'Write to IAmina…',
-                  'اكتب إلى IAmina…',
+                  'Écrire à IAMINA…',
+                  'Write to IAMINA…',
+                  'اكتب إلى IAMINA…',
                 ),
                 filled: true,
                 fillColor: AminaVisualLanguage.controlSurface(context),
@@ -1109,16 +1110,16 @@ class _MessageBubble extends StatelessWidget {
         ? _chatText(context, 'Vous', 'You', 'أنت')
         : isLocal
         ? _chatText(context, 'Sur cet appareil', 'On this device', 'على هذا الجهاز')
-        : 'IAmina';
+        : 'IAMINA';
 
     final renderedBubble = emergency
         ? Semantics(
             liveRegion: true,
             label: _chatText(
               context,
-              'Alerte urgente IAmina. ${message.text}',
-              'Urgent IAmina alert. ${message.text}',
-              'تنبيه عاجل من IAmina. ${message.text}',
+              'Alerte urgente IAMINA. ${message.text}',
+              'Urgent IAMINA alert. ${message.text}',
+              'تنبيه عاجل من IAMINA. ${message.text}',
             ),
             child: ExcludeSemantics(child: bubble),
           )
@@ -1217,15 +1218,15 @@ class _TypingBubbleState extends State<_TypingBubble>
     final status = widget.voiceProcessing
         ? _chatText(
             context,
-            'IAmina traite le message vocal…',
-            'IAmina is processing your voice message…',
-            'تعالج IAmina الرسالة الصوتية…',
+            'IAMINA traite le message vocal…',
+            'IAMINA is processing your voice message…',
+            'تعالج IAMINA الرسالة الصوتية…',
           )
         : _chatText(
             context,
-            'IAmina prépare sa réponse…',
-            'IAmina is preparing a reply…',
-            'تُحضّر IAmina ردّها…',
+            'IAMINA prépare sa réponse…',
+            'IAMINA is preparing a reply…',
+            'تُحضّر IAMINA ردّها…',
           );
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return Align(
