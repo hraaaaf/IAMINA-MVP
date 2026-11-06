@@ -148,6 +148,7 @@ jobs:
           import http.client
           import http.server
           import os
+          import time
           from pathlib import Path
 
           root = Path(os.environ['STATIC_ROOT'])
@@ -176,6 +177,11 @@ jobs:
                   )
                   response = conn.getresponse()
                   payload = response.read()
+                  # Synthetic E2E-only delay: prove the real Flutter waiting UI
+                  # at distinct phases of the official Kufic mark animation.
+                  # No change to backend behavior, clinical policy, or production.
+                  if self.path == '/api/v1/ai/chat':
+                      time.sleep(3.0)
                   self.send_response(response.status)
                   self.send_header(
                       'Content-Type',
@@ -331,6 +337,13 @@ jobs:
           time.sleep(1)
           screenshot('chat-typed-390x844.png')
           click(354, 793)
+          # Three actual Chrome frames while the synthetic proxy holds the reply.
+          time.sleep(0.3)
+          screenshot('chat-thinking-early-390x844.png')
+          time.sleep(0.45)
+          screenshot('chat-thinking-separated-390x844.png')
+          time.sleep(0.55)
+          screenshot('chat-thinking-reforming-390x844.png')
 
           deadline = time.time() + 15
           while time.time() < deadline:
@@ -374,6 +387,9 @@ jobs:
           for name in (
               'chat-empty-390x844.png',
               'chat-typed-390x844.png',
+              'chat-thinking-early-390x844.png',
+              'chat-thinking-separated-390x844.png',
+              'chat-thinking-reforming-390x844.png',
               'chat-reply-390x844.png',
               'p1-after-390x844.png',
           ):
