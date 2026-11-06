@@ -180,8 +180,13 @@ class _LoginScreenState extends State<LoginScreen> {
         await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
       }
       if (mounted) context.go('/dashboard');
-    } catch (e) {
+    } on AuthCredentialsRejected {
       if (mounted) setState(() => _error = AppLocalizations.of(context)!.loginError);
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            _error = AppLocalizations.of(context)!.accountSignInUnavailable);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

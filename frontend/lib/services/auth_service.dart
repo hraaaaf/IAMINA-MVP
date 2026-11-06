@@ -34,6 +34,40 @@ const bool kRemoteAccountSignInEnabled = bool.fromEnvironment(
   defaultValue: kRemoteAccountEnrollmentEnabled,
 );
 
+/// For remote Web sign-in, always use the *current page's* exact origin.
+/// Vercel immutable Preview URLs differ from branch aliases; sending login
+/// credentials to an older alias breaks same-origin BFF/OIDC and CORS.
+/// Non-Web or local-first clients preserve their configured transport.
+String resolveAuthApiOrigin({
+  required bool isWeb,
+  required bool remoteAccountLogin,
+  required Uri pageUri,
+  required String configuredBaseUrl,
+}) {
+  if (!isWeb || !remoteAccountLogin) return configuredBaseUrl;
+  final host = pageUri.host.toLowerCase();
+  final local = pageUri.scheme == 'http' &&
+      (host == 'localhost' || host == '127.0.0.1');
+  if (pageUri.scheme != 'https' && !local) {
+    throw StateError('A secure browser origin is required for remote login');
+  }
+  if (host.isEmpty || pageUri.userInfo.isNotEmpty) {
+    throw StateError('Missing secure patient origin');
+  }
+  return pageUri.origin;
+}
+
+/// Do not conflate invalid credentials (HTTP 401) with API or network faults.
+class AuthCredentialsRejected implements Exception {
+  const AuthCredentialsRejected();
+}
+
+class AuthSignInServiceUnavailable implements Exception {
+  final int statusCode;
+  const AuthSignInServiceUnavailable(this.statusCode);
+}
+
+
 bool demoUsesLocalAuditSession({
   required bool offlineDemo,
   required bool remoteAccountEnrollmentEnabled,
@@ -326,7 +360,10 @@ class AuthService extends ChangeNotifier {
         return;
       }
     }
-    throw StateError('Authentication failed');
+    if (nativeResponse.statusCode == 401) {
+      throw const AuthCredentialsRejected();
+    }
+    throw AuthSignInServiceUnavailable(nativeResponse.statusCode);
   }
 
   Future<void> registerWithEmail(String email, String password) async {
@@ -368,7 +405,7 @@ class AuthService extends ChangeNotifier {
     if (token != null) {
       try {
         await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          Uri.parse('$_effectiveAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
       } catch (error, stackTrace) {
@@ -426,9 +463,16 @@ class AuthService extends ChangeNotifier {
     _localSessionEnrolled = true;
   }
 
+  String get _effectiveAuthBaseUrl => resolveAuthApiOrigin(
+        isWeb: kIsWeb,
+        remoteAccountLogin: kRemoteAccountSignInEnabled,
+        pageUri: Uri.base,
+        configuredBaseUrl: kAuthBaseUrl,
+      );
+
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('$_effectiveAuthBaseUrl$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );

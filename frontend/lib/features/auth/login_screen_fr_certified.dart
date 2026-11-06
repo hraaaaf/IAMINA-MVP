@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/localization/auth_localized_copy.dart';
 import '../../data/drift/database.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
@@ -237,9 +238,15 @@ class _LoginScreenState extends State<LoginScreen> {
         await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
       }
       if (mounted) context.go('/dashboard');
-    } catch (_) {
-      if (mounted)
+    } on AuthCredentialsRejected {
+      if (mounted) {
         setState(() => _error = AppLocalizations.of(context)!.loginError);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            _error = AppLocalizations.of(context)!.accountSignInUnavailable);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
