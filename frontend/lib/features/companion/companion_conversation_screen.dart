@@ -635,18 +635,22 @@ class _ConversationHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  _chatText(
-                    context,
-                    'Conversation gouvernée',
-                    'Governed conversation',
-                    'محادثة محكومة',
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AminaVisualLanguage.secondary(context),
-                    fontSize: 11.5,
+                Padding(
+                  // Align the subtitle with the wordmark, not the Kufic mark.
+                  padding: const EdgeInsetsDirectional.only(start: 44),
+                  child: Text(
+                    _chatText(
+                      context,
+                      'Conversation gouvernée',
+                      'Governed conversation',
+                      'محادثة محكومة',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AminaVisualLanguage.secondary(context),
+                      fontSize: 11.5,
+                    ),
                   ),
                 ),
               ],
