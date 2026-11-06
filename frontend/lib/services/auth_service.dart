@@ -169,6 +169,28 @@ class AuthService extends ChangeNotifier {
   // permanently would also retain its old async-zone boundary (notably in
   // sequential Flutter widget tests).
   static Future<void>? _credentialMutationTail;
+  // A sign-out must also retire credentials already published by sibling
+  // AuthService objects. Weak references avoid retaining unused instances.
+  // Scope: one Dart isolate; browser tabs require a separate security design.
+  static final List<WeakReference<AuthService>> _liveInstances = [];
+  bool _disposed = false;
+
+  static void _revokePublishedSessionsInIsolate() {
+    for (final reference in List<WeakReference<AuthService>>.of(_liveInstances)) {
+      final service = reference.target;
+      if (service == null || service._disposed) {
+        _liveInstances.remove(reference);
+        continue;
+      }
+      service._auditSession = false;
+      service._nativeToken = null;
+      service._nativeAccountId = null;
+      service._localSessionEnrolled = false;
+      service._remoteCredentialVerified = false;
+      // Notify each owner so its own observers/egress stop immediately.
+      service._notifyAuthChanged();
+    }
+  }
 
   Future<T> _serializeCredentials<T>(Future<T> Function() mutation) {
     final previous = _credentialMutationTail;
@@ -204,7 +226,9 @@ class AuthService extends ChangeNotifier {
         ),
         _storage = storage ?? const FlutterSecureStorage(),
         _httpClient = httpClient ?? http.Client(),
-        _failureLogger = failureLogger ?? _defaultFailureLogger;
+        _failureLogger = failureLogger ?? _defaultFailureLogger {
+    _liveInstances.add(WeakReference<AuthService>(this));
+  }
 
   static FirebaseAuth? _getAuthInstance(
     FirebaseAuth? provided,
@@ -457,18 +481,12 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     // Synchronous cancellation, before waiting for any persistent operation.
     ++_credentialIntent;
-    _auditSession = false;
     final token = _nativeToken;
 
-    // Local sign-out is authoritative. Never let optional remote revocation keep
-    // an enrolled device authenticated while the network is slow or unavailable.
-    _nativeToken = null;
-    _nativeAccountId = null;
-    _localSessionEnrolled = false;
-    _remoteCredentialVerified = false;
-    // Cancel stale session egress SYNCHRONOUSLY. Awaiting secure storage first
-    // left an A→logout window where old SyncService still had A's epoch.
-    _notifyAuthChanged();
+    // The token may already be published by *another* AuthService on this
+    // isolate. Clear every live owner's in-memory authority before any await.
+    // Also notifies each owner to cancel its own cached clinical egress.
+    _revokePublishedSessionsInIsolate();
     await _serializeCredentials(() async {
       // Wait for an interrupted earlier login write, then erase its keys.
       await _storage.delete(key: _tokenKey);
@@ -610,6 +628,10 @@ class AuthService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _liveInstances.removeWhere(
+      (reference) => reference.target == null || identical(reference.target, this),
+    );
     _httpClient.close();
     super.dispose();
   }
