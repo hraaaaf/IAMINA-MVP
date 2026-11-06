@@ -43,3 +43,11 @@ Constat GitHub sur `4f498bb4`: 14 workflows SUCCESS, six FAILURE. `CI` 918 PASS 
 Remédiation : compléter les références Flutter laissées sur le nom historique dans enrollment local, compagnon, overlay chat, FAB et contrat de langage visuel ; maintenir `assets/images/logo_amina.png` comme **alias binaire exact du nouvel emblème V4** pour compatibilité des clients Web anciens, sans restaurer l'ancien dessin ; ajouter l'alias au precache du service worker ; avancer `frontend/pubspec.yaml` de `0.1.0+1` à `0.1.1+2`, et aligner `IAMINA_CACHE_SCHEMA` et fallback bootstrap au même identifiant canonique. Le test de branding contrôle l'identité de l'alias et la cohérence de version.
 
 Ces modifications ne constituent pas une preuve de succès CI ou navigateur tant que le nouveau SHA n'a pas passé les gates exact-HEAD. Aucun déploiement Vercel.
+
+## 06/11/2026 — Revue des 4 workflows rouges au HEAD 93225aae
+
+Les 27 workflows sur la PR Draft #1275 indiquent 23 SUCCESS / 4 FAILURE, soit : CI Flutter (967 tests PASS, 7 FAIL, 7 SKIPPED), PWA update/recovery (Chrome n'expose pas le port de débogage 9225), D7 FUE (le scénario navigateur n'a pas sélectionné l'unité obligatoire avant de chercher le bouton « Start »), Developer portability macOS (5 tests de gouvernance échouent car la preuve `fallback.processor_identity` expire le 04/11/2026). La preuve réglementaire expirée est un **vrai bloqueur de sécurité**, non un problème de marque : ne pas prolonger arbitrairement sa date ni exclure ces tests pour obtenir artificiellement une CI verte.
+
+Correction en cours : mettre à jour les deux contrats de tests restés sur l'ancien nom `logo_amina.png` (qui causaient les 7 FAIL Flutter), faire sélectionner explicitement `mg/dL` au patient **synthétique** dans le scénario D7, et stabiliser le navigateur du test PWA avec un Chromium Playwright versionné + diagnostic de démarrage. Aucune modification du flux clinique ou de ses exigences.
+
+**Statut** : à prouver sur nouveau HEAD. Si le gate macOS reste rouge, demander une revue d'identité et une reconfirmation datée réelle par le responsable IAMINA Security ; ne pas renouveler une preuve sans validation humaine. Aucun merge ni déploiement Vercel.
