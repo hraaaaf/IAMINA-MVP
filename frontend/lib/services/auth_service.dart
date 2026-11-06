@@ -146,6 +146,10 @@ class AuthService extends ChangeNotifier {
   static const _localSessionKey = 'iamina_local_session_v1';
   static const _localSessionValue = 'enrolled';
   static const _localDeviceIdKey = 'iamina_local_device_id_v1';
+  // Durable fail-closed fence: retained when interrupted secure-storage
+  // cleanup leaves a bearer that must never be restored on next startup.
+  static const _logoutPendingKey = 'iamina_auth_logout_pending_v1';
+  static const _logoutPendingValue = 'revoked';
   static final RegExp _nativeBearerShape = RegExp(
     r'^iamina\.[A-Za-z0-9_.-]+:[A-Za-z0-9]+:[A-Za-z0-9_-]+$',
   );
@@ -351,6 +355,28 @@ class AuthService extends ChangeNotifier {
     // Stage the snapshot and commit it only if no newer auth intent won.
     final intent = _credentialIntent;
     try {
+      final pendingRevocation = await _storage.read(key: _logoutPendingKey);
+      _requireCurrentCredentialIntent(intent);
+      if (pendingRevocation != null) {
+        // A previous logout may have failed while erasing a persisted token.
+        // Retry the full cleanup before reading any bearer or vault marker.
+        // Keep the fence if *any* delete fails, so subsequent startups remain
+        // fail-closed instead of reviving the old authenticated account.
+        await _serializeCredentials(() async {
+          _requireCurrentCredentialIntent(intent);
+          await _storage.delete(key: _tokenKey);
+          await _storage.delete(key: _nativeIdentityKey);
+          await _storage.delete(key: _localSessionKey);
+          await _storage.delete(key: _logoutPendingKey);
+          _requireCurrentCredentialIntent(intent);
+          _nativeToken = null;
+          _nativeAccountId = null;
+          _localSessionEnrolled = false;
+          _remoteCredentialVerified = false;
+        });
+        return;
+      }
+
       final enrolled =
           await _storage.read(key: _localSessionKey) == _localSessionValue;
       _requireCurrentCredentialIntent(intent);
@@ -534,10 +560,18 @@ class AuthService extends ChangeNotifier {
     // Also notifies each owner to cancel its own cached clinical egress.
     _revokePublishedSessionsInIsolate();
     await _serializeCredentials(() async {
-      // Wait for an interrupted earlier login write, then erase its keys.
+      // Commit the revocation fence *before* attempting non-atomic deletes.
+      // If erasure fails, recovery on the next initialize sees this fence.
+      // Never delete the stable local device vault identifier.
+      await _storage.write(
+        key: _logoutPendingKey,
+        value: _logoutPendingValue,
+      );
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _nativeIdentityKey);
       await _storage.delete(key: _localSessionKey);
+      // Only a fully completed credential cleanup may clear the fence.
+      await _storage.delete(key: _logoutPendingKey);
     });
     // Preserve the stable local-only vault locator: deleting it orphaned
     // offline clinical records without removing their SQLite database.
