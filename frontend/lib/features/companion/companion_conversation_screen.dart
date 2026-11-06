@@ -1137,17 +1137,31 @@ class _TypingBubbleState extends State<_TypingBubble>
     super.initState();
     _motion = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 960),
+      duration: const Duration(milliseconds: 1600),
     );
+  }
+
+  void _syncMotion() {
+    // Only thinking animates. Voice processing and reduced-motion stay static.
+    if (widget.voiceProcessing || MediaQuery.disableAnimationsOf(context)) {
+      _motion.stop();
+      _motion.value = 0;
+    } else if (!_motion.isAnimating) {
+      _motion.repeat();
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _motion.stop();
-    } else if (!_motion.isAnimating) {
-      _motion.repeat();
+    _syncMotion();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TypingBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.voiceProcessing != oldWidget.voiceProcessing) {
+      _syncMotion();
     }
   }
 
@@ -1172,7 +1186,9 @@ class _TypingBubbleState extends State<_TypingBubble>
             'IAMINA is preparing a reply…',
             'تُحضّر IAMINA ردّها…',
           );
-    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final staticMark =
+        widget.voiceProcessing || MediaQuery.disableAnimationsOf(context);
+
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: Semantics(
@@ -1193,19 +1209,7 @@ class _TypingBubbleState extends State<_TypingBubble>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ClipOval(
-                  child: SizedBox.square(
-                    dimension: 28,
-                    child: ColoredBox(
-                      color: Colors.white,
-                      child: Image.asset(
-                        'assets/images/iamina_logo_mark.png',
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
+                KuficThinkingMark(animation: _motion, staticMark: staticMark),
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
@@ -1217,33 +1221,6 @@ class _TypingBubbleState extends State<_TypingBubble>
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                AnimatedBuilder(
-                  animation: _motion,
-                  builder: (_, __) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(3, (index) {
-                      final phase = (_motion.value - index * .18) * 2 * math.pi;
-                      final lift = reducedMotion
-                          ? 0.0
-                          : 2.6 * (1 + math.sin(phase)) / 2;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Transform.translate(
-                          offset: Offset(0, -lift),
-                          child: Container(
-                            width: 5,
-                            height: 5,
-                            decoration: const BoxDecoration(
-                              color: AminaVisualLanguage.actionGreen,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
               ],
             ),
           ),
@@ -1251,6 +1228,97 @@ class _TypingBubbleState extends State<_TypingBubble>
       ),
     );
   }
+}
+
+/// Exact canonical Arabic/Kufic IAMINA mark. Its pixels are never redrawn.
+/// Only the four clipped quadrants gently separate and rejoin while thinking.
+class KuficThinkingMark extends StatelessWidget {
+  final Animation<double> animation;
+  final bool staticMark;
+
+  const KuficThinkingMark({
+    super.key,
+    required this.animation,
+    required this.staticMark,
+  });
+
+  static const _asset = 'assets/images/iamina_logo_mark.png';
+
+  @override
+  Widget build(BuildContext context) {
+    if (staticMark) {
+      return SizedBox.square(
+        key: const Key('companion-kufic-static'),
+        dimension: 34,
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Image.asset(
+            _asset,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            excludeFromSemantics: true,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox.square(
+      key: const Key('companion-kufic-thinking'),
+      dimension: 34,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          // sin² has zero velocity at both ends of the loop: no jump or flash.
+          final separation =
+              math.pow(math.sin(math.pi * animation.value), 2).toDouble() *
+              2.0;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: List.generate(4, (index) {
+              final x = index.isEven ? -separation : separation;
+              final y = index < 2 ? -separation : separation;
+              return Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Transform.translate(
+                    key: Key('companion-kufic-segment-$index'),
+                    offset: Offset(x, y),
+                    child: ClipRect(
+                      clipper: _KuficQuarterClipper(index),
+                      child: Image.asset(
+                        _asset,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _KuficQuarterClipper extends CustomClipper<Rect> {
+  final int quarter;
+
+  const _KuficQuarterClipper(this.quarter);
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(
+    quarter.isOdd ? size.width / 2 : 0,
+    quarter >= 2 ? size.height / 2 : 0,
+    size.width / 2,
+    size.height / 2,
+  );
+
+  @override
+  bool shouldReclip(covariant _KuficQuarterClipper oldClipper) =>
+      oldClipper.quarter != quarter;
 }
 
 enum _ConversationRole { user, assistant, localFact }
