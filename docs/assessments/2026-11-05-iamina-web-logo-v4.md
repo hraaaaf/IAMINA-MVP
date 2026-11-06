@@ -51,3 +51,10 @@ Les 27 workflows sur la PR Draft #1275 indiquent 23 SUCCESS / 4 FAILURE, soit : 
 Correction en cours : mettre à jour les deux contrats de tests restés sur l'ancien nom `logo_amina.png` (qui causaient les 7 FAIL Flutter), faire sélectionner explicitement `mg/dL` au patient **synthétique** dans le scénario D7, et stabiliser le navigateur du test PWA avec un Chromium Playwright versionné + diagnostic de démarrage. Aucune modification du flux clinique ou de ses exigences.
 
 **Statut** : à prouver sur nouveau HEAD. Si le gate macOS reste rouge, demander une revue d'identité et une reconfirmation datée réelle par le responsable IAMINA Security ; ne pas renouveler une preuve sans validation humaine. Aucun merge ni déploiement Vercel.
+
+## 06/11/2026 — Contrôle AVANT sur captures réelles GitHub / correction du lockup principal
+Le navigateur Flutter Web a produit et stocké des captures sur les viewports 390×844 et 768×1024 (artefacts UI browser GitHub). Inspection réelle des captures du 06/11/2026 : le carré V4 est affiché, mais le tableau de bord et l'accueil compagnon reprenaient encore un titre `Text('IAmina')` indépendant, au lieu du wordmark V4 prévu. Score visuel qualitatif provisoire : 7,5/10 sur l'intégration de marque (icône reconnue, lettrage incohérent). 
+
+**Goal :** afficher le lockup horizontal V4 (symbole + lettrage exact IAMINA) en en-tête du dashboard et du compagnon, en conservant le sous-titre localisé, les boutons de notification/fermeture et le tracé original. Les zones compactes (FAB, titres des pages de soins, chat Hero) continuent à utiliser le carré V4 sans altération du tracé.
+
+**Implémentation** : passer des deux en-têtes `Text('IAmina')` + icône isolée au même `Image.asset('assets/images/iamina_logo_horizontal.png')`, conserver les sous-titres FR/EN/AR, mode sombre blanc, tests de contrat. Aucun changement médical ; favicon et PWA inchangés. **AFTER réel attendu** : captures CI Web FR/AR, 390/768/1280, revue comparée avec les artefacts AVANT. Pas de certification sans ces preuves.

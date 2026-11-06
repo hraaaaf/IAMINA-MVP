@@ -154,37 +154,35 @@ class _BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 58,
-          height: 58,
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .88),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: AminaVisualLanguage.cardShadowLight,
-          ),
-          child: Image.asset('assets/images/iamina_logo_mark.png', fit: BoxFit.contain),
-        ),
-        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'IAmina',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -.45,
-                  color: AminaVisualLanguage.primaryText(context),
+              Semantics(
+                label: 'IAMINA',
+                image: true,
+                child: Image.asset(
+                  'assets/images/iamina_logo_horizontal.png',
+                  width: 170,
+                  height: 42,
+                  alignment: AlignmentDirectional.centerStart,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  color: AminaTheme.isDark(context) ? Colors.white : null,
+                  colorBlendMode: BlendMode.srcIn,
                 ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                _t(context, 'Compagnon gouverné', 'Governed companion', 'رفيق محكوم'),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AminaVisualLanguage.secondary(context),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 45),
+                child: Text(
+                  _t(context, 'Compagnon gouverné', 'Governed companion', 'رفيق محكوم'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
                 ),
               ),
             ],

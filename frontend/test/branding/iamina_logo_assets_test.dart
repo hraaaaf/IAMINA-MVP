@@ -42,9 +42,17 @@ void main() {
     for (final path in [
       'lib/core/widgets/mobile_page_header.dart',
       'lib/core/widgets/premium_task_brand_overlay.dart',
-      'lib/features/dashboard/dashboard_premium_screen.dart',
     ]) {
       expect(source(path), contains('iamina_logo_mark.png'), reason: path);
+    }
+    for (final path in [
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+      'lib/features/companion/companion_premium_screen_presentation.dart',
+    ]) {
+      final rendered = source(path);
+      expect(rendered, contains('iamina_logo_horizontal.png'), reason: path);
+      expect(rendered, contains("label: 'IAMINA'"), reason: path);
+      expect(rendered, isNot(contains("Text(\n                'IAmina'")), reason: path);
     }
     final onboarding = source('lib/features/auth/onboarding_chat_screen.dart');
     expect(onboarding, contains('iamina_logo_horizontal.png'));

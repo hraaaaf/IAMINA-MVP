@@ -68,7 +68,8 @@ void main() {
       contains("ValueKey('dashboard-companion-primary-entry')"),
     );
     expect(module, contains('const DashboardCompanionEntryScreen()'));
-    expect(dashboard, contains(logo));
+    expect(dashboard, contains('assets/images/iamina_logo_horizontal.png'));
+    expect(dashboard, contains("label: 'IAMINA'"));
     expect(companion, contains(logo));
     expect(header, contains(logo));
     expect(header, contains('width: 64'));
