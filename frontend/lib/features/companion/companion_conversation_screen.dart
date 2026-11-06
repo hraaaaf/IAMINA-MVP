@@ -610,50 +610,25 @@ class _ConversationHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Hero(
-                  tag: 'dashboard-companion-chat-action',
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Semantics(
-                      label: 'IAMINA',
-                      image: true,
-                      child: Image.asset(
-                        'assets/images/iamina_logo_horizontal.png',
-                        width: 168,
-                        height: 38,
-                        fit: BoxFit.contain,
-                        alignment: AlignmentDirectional.centerStart,
-                        filterQuality: FilterQuality.high,
-                        color: AminaTheme.isDark(context) ? Colors.white : null,
-                        colorBlendMode: BlendMode.srcIn,
-                      ),
-                    ),
+            child: Hero(
+              tag: 'dashboard-companion-chat-action',
+              child: Material(
+                type: MaterialType.transparency,
+                child: Semantics(
+                  label: 'IAMINA',
+                  image: true,
+                  child: Image.asset(
+                    'assets/images/iamina_logo_horizontal.png',
+                    width: 168,
+                    height: 38,
+                    fit: BoxFit.contain,
+                    alignment: AlignmentDirectional.centerStart,
+                    filterQuality: FilterQuality.high,
+                    color: AminaTheme.isDark(context) ? Colors.white : null,
+                    colorBlendMode: BlendMode.srcIn,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Padding(
-                  // Align the subtitle with the wordmark, not the Kufic mark.
-                  padding: const EdgeInsetsDirectional.only(start: 44),
-                  child: Text(
-                    _chatText(
-                      context,
-                      'Conversation gouvernée',
-                      'Governed conversation',
-                      'محادثة محكومة',
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AminaVisualLanguage.secondary(context),
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           Semantics(
@@ -700,41 +675,6 @@ class _EmptyConversation extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: AminaVisualLanguage.mintIconDecoration(context),
-                child: Semantics(
-                  label: 'IAMINA',
-                  image: true,
-                  child: Image.asset(
-                    'assets/images/iamina_logo_mark.png',
-                    width: 46,
-                    height: 46,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    color: AminaTheme.isDark(context) ? Colors.white : null,
-                    colorBlendMode: BlendMode.srcIn,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                _chatText(
-                  context,
-                  'Parler avec IAMINA',
-                  'Talk with IAMINA',
-                  'تحدث مع IAMINA',
-                ),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Inter Tight',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AminaVisualLanguage.primaryText(context),
-                ),
-              ),
-              const SizedBox(height: 9),
               Text(
                 _chatText(
                   context,

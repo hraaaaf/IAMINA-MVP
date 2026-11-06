@@ -70,6 +70,18 @@ void main() {
   test('governed chat reuses V4 mark and lockup without legacy branding', () {
     final chat = source('lib/features/companion/companion_conversation_screen.dart');
     expect(chat, contains('iamina_logo_horizontal.png'));
+    final header = chat.split('class _ConversationHeader').last.split('class _EmptyConversation').first;
+    final welcome = chat.split('class _EmptyConversation').last.split('class _Composer').first;
+    expect(header, isNot(contains('Conversation gouvernée')));
+    expect(header, isNot(contains('Governed conversation')));
+    expect(header, isNot(contains('محادثة محكومة')));
+    expect(welcome, isNot(contains('iamina_logo_mark.png')));
+    expect(welcome, isNot(contains('Parler avec IAMINA')));
+    expect(welcome, isNot(contains('Talk with IAMINA')));
+    expect(welcome, isNot(contains('تحدث مع IAMINA')));
+    expect(welcome, contains('Pose une question avec tes mots'));
+    expect(welcome, contains('Pour commencer'));
+    // The in-conversation typing state can still use the official square mark.
     expect(chat, contains('iamina_logo_mark.png'));
     expect(chat, contains("label: 'IAMINA'"));
     expect(chat, contains("colorBlendMode: BlendMode.srcIn"));
