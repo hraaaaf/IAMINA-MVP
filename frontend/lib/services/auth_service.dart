@@ -160,6 +160,26 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
+  // A later logout or login intent invalidates every older HTTP response
+  // and every still-pending secure-storage credential commit.
+  int _credentialIntent = 0;
+  Future<void> _credentialMutationTail = Future<void>.value();
+
+  Future<T> _serializeCredentials<T>(Future<T> Function() mutation) {
+    final result = _credentialMutationTail.then((_) => mutation());
+    // Keep the queue usable after a rejected/stale login or storage exception.
+    _credentialMutationTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return result;
+  }
+
+  void _requireCurrentCredentialIntent(int intent) {
+    if (intent != _credentialIntent) {
+      throw StateError('Authentication request superseded');
+    }
+  }
 
   AuthService({
     FirebaseAuth? auth,
@@ -353,21 +373,24 @@ class AuthService extends ChangeNotifier {
       // Retire the session before a storage/plugin await can resume its
       // pending clinical synchronizer under an unbound credential.
       _notifyAuthChanged();
-      await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _nativeIdentityKey);
+      await _serializeCredentials(() async {
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+      });
       return null;
     }
     return _firebaseAuth?.currentUser?.getIdToken(true);
   }
 
   Future<void> signInWithEmail(String email, String password) async {
+    final intent = ++_credentialIntent;
     final normalized = email.trim().toLowerCase();
     final nativeResponse = await _postJson(
       '/api/v1/auth/login',
       {'email': normalized, 'password': password},
     );
     if (nativeResponse.statusCode >= 200 && nativeResponse.statusCode < 300) {
-      await _acceptAuthResponse(nativeResponse);
+      await _acceptAuthResponse(nativeResponse, intent);
       return;
     }
     final nativeInvalidCredentials = _isNativeCredentialRejection(nativeResponse);
@@ -385,7 +408,7 @@ class AuthService extends ChangeNotifier {
         {'id_token': firebaseToken},
       );
       if (exchange.statusCode >= 200 && exchange.statusCode < 300) {
-        await _acceptAuthResponse(exchange);
+        await _acceptAuthResponse(exchange, intent);
         return;
       }
     }
@@ -399,6 +422,7 @@ class AuthService extends ChangeNotifier {
     if (!kRemoteAccountEnrollmentEnabled) {
       throw StateError('Remote account enrollment is disabled');
     }
+    final intent = ++_credentialIntent;
     final response = await _postJson(
       '/api/v1/auth/register',
       {'email': email.trim().toLowerCase(), 'password': password},
@@ -406,10 +430,12 @@ class AuthService extends ChangeNotifier {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw registrationFailureForStatus(response.statusCode);
     }
-    await _acceptAuthResponse(response);
+    await _acceptAuthResponse(response, intent);
   }
 
   Future<void> signOut() async {
+    // Synchronous cancellation, before waiting for any persistent operation.
+    ++_credentialIntent;
     _auditSession = false;
     final token = _nativeToken;
 
@@ -422,9 +448,12 @@ class AuthService extends ChangeNotifier {
     // Cancel stale session egress SYNCHRONOUSLY. Awaiting secure storage first
     // left an A→logout window where old SyncService still had A's epoch.
     _notifyAuthChanged();
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _nativeIdentityKey);
-    await _storage.delete(key: _localSessionKey);
+    await _serializeCredentials(() async {
+      // Wait for an interrupted earlier login write, then erase its keys.
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeIdentityKey);
+      await _storage.delete(key: _localSessionKey);
+    });
     // Preserve the stable local-only vault locator: deleting it orphaned
     // offline clinical records without removing their SQLite database.
     // The revoked session cannot resolve it until explicit re-enrollment;
@@ -508,7 +537,8 @@ class AuthService extends ChangeNotifier {
     );
   }
 
-  Future<void> _acceptAuthResponse(http.Response response) async {
+  Future<void> _acceptAuthResponse(http.Response response, int intent) async {
+    _requireCurrentCredentialIntent(intent);
     final payload = jsonDecode(response.body);
     if (payload is! Map<String, dynamic>) {
       throw StateError('Malformed authentication response');
@@ -522,27 +552,30 @@ class AuthService extends ChangeNotifier {
     if (id is! int || id <= 0) {
       throw StateError('Missing authenticated IAMINA user ID');
     }
-    // A completed native response retires any previous local/remote account
-    // before the first persistence await. Failures leave no old patient open.
-    _nativeToken = null;
-    _nativeAccountId = null;
-    _remoteCredentialVerified = false;
-    _localSessionEnrolled = false;
-    _auditSession = false;
-    _notifyAuthChanged();
-    // Write binding first. Interrupted writes cannot pair a new token
-    // with a previous account's cached patient ID.
-    await _storage.write(
-      key: _nativeIdentityKey,
-      value: jsonEncode({'token': token, 'user_id': id}),
-    );
-    await _storage.write(key: _tokenKey, value: token);
-    await _storage.write(key: _localSessionKey, value: _localSessionValue);
-    _nativeToken = token;
-    _nativeAccountId = id;
-    _localSessionEnrolled = true;
-    _remoteCredentialVerified = true;
-    _notifyAuthChanged();
+    await _serializeCredentials(() async {
+      _requireCurrentCredentialIntent(intent);
+      // Retire any previous owner before storage persistence starts.
+      _nativeToken = null;
+      _nativeAccountId = null;
+      _remoteCredentialVerified = false;
+      _localSessionEnrolled = false;
+      _auditSession = false;
+      _notifyAuthChanged();
+      // Ordered with signOut: a delayed A write may finish, but logout's
+      // queued cleanup must win. A stale operation must not publish A.
+      await _storage.write(
+        key: _nativeIdentityKey,
+        value: jsonEncode({'token': token, 'user_id': id}),
+      );
+      await _storage.write(key: _tokenKey, value: token);
+      await _storage.write(key: _localSessionKey, value: _localSessionValue);
+      _requireCurrentCredentialIntent(intent);
+      _nativeToken = token;
+      _nativeAccountId = id;
+      _localSessionEnrolled = true;
+      _remoteCredentialVerified = true;
+      _notifyAuthChanged();
+    });
   }
 
   void _notifyAuthChanged() {
