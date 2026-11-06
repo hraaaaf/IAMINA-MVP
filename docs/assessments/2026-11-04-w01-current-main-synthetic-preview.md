@@ -356,3 +356,13 @@ Le contrôle ci-dessus ne remplace pas un avis indépendant ni un test E2E adver
 **Closeout documentaire :** cet addendum constitue un nouveau commit documentaire postérieur au SHA applicatif testé. Le statut 18/18 ci-dessus appartient au **SHA runtime `31c7b057`**, et **ne se transfère pas automatiquement** au commit de documentation. Vérifier séparément la CI du nouveau HEAD ; si elle reste en cours, poursuivre les actions indépendantes et ne pas revendiquer le closeout CI final avant verdict. Aucun nouveau déploiement Vercel, aucune écriture Neon, aucune opération Production.
 
 **Next exact :** contrôler CI du commit documentaire, mettre à jour la PR #1273 avec la séparation preuve runtime / preuve documentaire, conserver Draft et ne pas merger sans décision ultérieure.
+
+## 06/11/2026 — Clôture administrative W01 développement synthétique
+
+**Verdict : CLOS pour le périmètre de validation Web synthétique uniquement** ; SHA applicatif certifié par preuves `31c7b057d76dc757a575047d36eec799773d5174`. Cette clôture n'est **pas** une certification de mise en service clinique et ne vaut **pas** fusion de la PR.
+
+**Contrôle du commit documentaire `9960c28ebf70f10209c4a0f1941149d8ce205742` :** GitHub a retourné `workflow_runs=[]` et `statuses=[]` à deux contrôles. **CI documentaire non attestée**, sans prétendre à une réussite ni à un échec. Le commit précédent de code reste à 18/18 SUCCESS et les deux déploiements Preview READY. La configuration `.github/workflows/ci.yml` prévoit les PR vers main ; la cause de l'absence de run sur le commit documentaire n'est pas prouvée. Ne pas lancer une campagne lourde simplement pour une note sans changement runtime.
+
+**Gouvernance :** G2 WAIVED pour W01 développement, G6 reporté préproduction, G7 FUE développement PASS ; PR #1273 OPEN/DRAFT/non mergée. Pas de nouveau déploiement Vercel, pas de mutation Neon, pas de Production. Les garanties réglementaires, restauration indépendante, sécurité des données de vrais patients et décision de mise en ligne restent distinctes.
+
+**Next exact :** préparer le cadrage du lot Web suivant à partir de la roadmap et de l'état actuel de `main`, sans déploiement ni fusion implicite. Avant toute modification de code, identifier précisément le périmètre du lot, ses critères de succès et sa preuve. Cette note de clôture est elle-même documentaire ; aucune CI nouvelle n'est revendiquée pour son commit.
