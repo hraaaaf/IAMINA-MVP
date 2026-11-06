@@ -210,7 +210,17 @@ async function logoutByUI(page,width){
   }
   assert(visible,'Logout must be visibly reachable by real scrolling');
   await clickLabel(page,label);
-  await clickLabel(page,locale==='fr'?'Déconnecter':'خروج');
+  // A real bottom-sheet is now displayed. The 49567d40 failure screenshots
+  // show the confirmation control rendered, but a CanvasKit semantics click
+  // does not fire it (no /api/v1/auth/logout response in FR or AR).
+  // Hit-test the PAINTED red confirmation button; no widget callbacks,
+  // route injection, direct API logout or forced DOM click.
+  // 390x844 screenshots: FR red CTA x201..365/y690..723;
+  // AR red CTA x24..189/y682..721.
+  await page.waitForTimeout(350);
+  const confirmX=width*(locale==='ar'?0.27:0.73);
+  const confirmY=h*(locale==='ar'?0.831:0.837);
+  await page.mouse.click(confirmX,confirmY);
 }
 async function logoutAndRevoke(page,width,token){
   const res=await authResponse(page,'/api/v1/auth/logout',()=>
