@@ -70,7 +70,8 @@ void main() {
     expect(module, contains('const DashboardCompanionEntryScreen()'));
     expect(dashboard, contains('assets/images/iamina_logo_horizontal.png'));
     expect(dashboard, contains("label: 'IAMINA'"));
-    expect(companion, contains(logo));
+    expect(companion, contains('assets/images/iamina_logo_horizontal.png'));
+    expect(companion, contains("label: 'IAMINA'"));
     expect(header, contains(logo));
     expect(header, contains('width: 64'));
     expect(header, contains('height: 64'));

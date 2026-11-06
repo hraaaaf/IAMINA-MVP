@@ -58,3 +58,11 @@ Le navigateur Flutter Web a produit et stocké des captures sur les viewports 39
 **Goal :** afficher le lockup horizontal V4 (symbole + lettrage exact IAMINA) en en-tête du dashboard et du compagnon, en conservant le sous-titre localisé, les boutons de notification/fermeture et le tracé original. Les zones compactes (FAB, titres des pages de soins, chat Hero) continuent à utiliser le carré V4 sans altération du tracé.
 
 **Implémentation** : passer des deux en-têtes `Text('IAmina')` + icône isolée au même `Image.asset('assets/images/iamina_logo_horizontal.png')`, conserver les sous-titres FR/EN/AR, mode sombre blanc, tests de contrat. Aucun changement médical ; favicon et PWA inchangés. **AFTER réel attendu** : captures CI Web FR/AR, 390/768/1280, revue comparée avec les artefacts AVANT. Pas de certification sans ces preuves.
+
+## 06/11/2026 — Dernières erreurs : tests de marque et horloge de gouvernance
+
+Résultat du HEAD `ee0dcc3a` : 26 SUCCESS / 2 FAILURE. Flutter CI : `973 PASS / 1 FAIL / 7 SKIPPED`. L'échec unique est un contrat source `ui_visual_language_contract_test.dart` attendant l'icône carrée dans le `CompanionPremiumScreen` alors que l'en-tête utilise intentionnellement le lockup horizontal V4. Le contrat a été corrigé pour exiger le lockup `iamina_logo_horizontal.png` et son étiquette accessible `IAMINA`; le carré reste exigé dans `AminaMobilePageHeader`.
+
+Developer portability macOS : cinq tests de CLI d'audit prévus pour le scénario historique du `2026-08-04` invoquent implicitement `date.today()`. À la date actuelle, l'approbation du provider local a expiré le `2026-11-04`, et les tests échouent avant l'assertion attendue. **Correction de déterminisme des tests uniquement** : fixture d'horloge historique limitée aux cinq tests scénarisés, tout en ajoutant un test explicite qui exige que `validate_consent_governance(today=2026-11-06)` rejette `fallback.processor_identity evidence is stale`. Aucun fichier du moteur de gouvernance ni aucune date d'approbation n'est modifié. Cela ne constitue **pas** une revalidation de la preuve locale : le gate opérationnel reste interdit sans audit réel daté du responsable sécurité. 
+
+Statut : correction proposée dans la PR ; succès CI et comportement en navigateur à prouver sur le nouveau SHA. Pas de merge ou Vercel.
