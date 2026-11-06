@@ -93,6 +93,8 @@ void main() {
     checkPng('assets/images/iamina_logo_vertical.png', 400, 410);
     checkPng('assets/images/iamina_logo_horizontal.png', 580, 116);
     checkPng('assets/images/iamina_logo_mark.png', 320, 320);
+    // Approved conversational brain+medical icon is only for the dashboard FAB.
+    checkPng('assets/images/iamina_chatbrain_diabetes.png', 96, 96);
     // Legacy URL is a V4 alias for already-installed Web/PWA clients.
     checkPng('assets/images/logo_amina.png', 320, 320);
     expect(
