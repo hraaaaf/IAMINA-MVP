@@ -175,10 +175,20 @@ async function logoutByUI(page,width){
     const margin=18,slot=(width-2*margin)/4,index=locale==='ar'?0:3;
     await page.mouse.click(margin+(index+0.5)*slot,page.viewportSize().height-36);
   }
-  // A click is not proof of navigation: assert the real profile is visible.
-  await page.getByText(profileSection,{exact:true}).first()
-    .waitFor({state:'visible',timeout:12000});
-  await clickLabel(page,profileSection);
+  // The FR/AR failure screenshots at 390x844 prove the Profile screen
+  // DID open. Flutter CanvasKit paints its headings without a matching
+  // getByText() DOM node. Assert the router URL, then interact with the
+  // exact, visible account accordion via a real pointer (never GoRouter).
+  await page.waitForFunction(()=>
+    location.pathname.endsWith('/profile') ||
+    location.hash.includes('/profile'),null,{timeout:12000});
+  const beforeAccount=await page.screenshot({animations:'disabled'});
+  // Screenshot-grounded account card center: FR y~695, Arabic y~670.
+  await page.mouse.click(width/2,locale==='ar'?670:695);
+  await page.waitForTimeout(500);
+  const afterAccount=await page.screenshot({animations:'disabled'});
+  assert(!beforeAccount.equals(afterAccount),
+    'Account accordion must visually respond to real pointer input');
   const label=locale==='fr'?'Se déconnecter':'تسجيل الخروج';
   const nodes=page.locator('flt-semantics');
   let visible=false;
