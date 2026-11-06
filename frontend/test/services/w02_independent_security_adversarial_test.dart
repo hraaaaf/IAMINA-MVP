@@ -115,13 +115,22 @@ void main() {
 
     await second.signOut();
 
-    // A logout is a global revocation, not just cancellation of pending writes.
-    expect(first.hasRemoteApiCredential, isFalse);
-    expect(first.boundNativeAccountId, isNull);
-    expect(await first.getIdToken(), isNull);
-    expect(await first.resolvePatientVaultScope(), isNull);
-    expect(storage.values[_tokenKey], isNull);
-    expect(storage.values[_bindingKey], isNull);
+    // Capture memory, credential resolution, vault selection and persistence
+    // BEFORE asserting: one failure must not hide the other layers.
+    final actualToken = await first.getIdToken();
+    final actualScope = await first.resolvePatientVaultScope();
+    final snapshot = <String, bool>{
+      'memoryBearer': first.hasRemoteApiCredential,
+      'memoryBoundId': first.boundNativeAccountId != null,
+      'getIdToken': actualToken != null,
+      'vaultScope': actualScope != null,
+      'persistentBearer': storage.values.containsKey(_tokenKey),
+      'persistentBinding': storage.values.containsKey(_bindingKey),
+      'persistentMarker': storage.values.containsKey(_localKey),
+    };
+    expect(snapshot, equals(<String, bool>{
+      for (final key in snapshot.keys) key: false,
+    }));
     first.dispose();
     second.dispose();
   });
@@ -141,8 +150,16 @@ void main() {
 
     storage.releaseDeviceRead();
     final resolved = await pendingScope;
-    expect(resolved, isNull,
-        reason: 'A pre-logout device read must not grant a revoked vault');
+    final snapshot = <String, bool>{
+      'memoryAuthenticated': auth.isAuthenticated,
+      'memoryBearer': auth.hasRemoteApiCredential,
+      'vaultScope': resolved != null,
+      'persistentMarker': storage.values.containsKey(_localKey),
+      'persistentBearer': storage.values.containsKey(_tokenKey),
+    };
+    expect(snapshot, equals(<String, bool>{
+      for (final key in snapshot.keys) key: false,
+    }), reason: 'A pre-logout device read must not grant a revoked vault');
     auth.dispose();
   });
 
@@ -161,10 +178,19 @@ void main() {
 
     storage.releaseBindingRead();
     await pendingInit;
-    expect(auth.isAuthenticated, isFalse,
-        reason: 'Old initialize continuation must not re-enroll after logout');
-    expect(await auth.resolvePatientVaultScope(), isNull);
-    expect(storage.values[_localKey], isNull);
+    final scope = await auth.resolvePatientVaultScope();
+    final token = await auth.getIdToken();
+    final snapshot = <String, bool>{
+      'memoryAuthenticated': auth.isAuthenticated,
+      'memoryBearer': auth.hasRemoteApiCredential,
+      'getIdToken': token != null,
+      'vaultScope': scope != null,
+      'persistentMarker': storage.values.containsKey(_localKey),
+      'persistentBearer': storage.values.containsKey(_tokenKey),
+    };
+    expect(snapshot, equals(<String, bool>{
+      for (final key in snapshot.keys) key: false,
+    }), reason: 'Old initialize continuation must not re-enroll after logout');
     auth.dispose();
   });
 
@@ -182,10 +208,20 @@ void main() {
 
     final reopened = _service(storage);
     await reopened.initialize();
-    expect(reopened.boundNativeAccountId, isNull,
-        reason: 'Failed logout must leave a durable revocation fence');
-    expect(await reopened.getIdToken(), isNull);
-    expect(await reopened.resolvePatientVaultScope(), isNull);
+    final token = await reopened.getIdToken();
+    final scope = await reopened.resolvePatientVaultScope();
+    final snapshot = <String, bool>{
+      'memoryBoundId': reopened.boundNativeAccountId != null,
+      'memoryBearer': reopened.hasRemoteApiCredential,
+      'getIdToken': token != null,
+      'vaultScope': scope != null,
+      'persistentBearer': storage.values.containsKey(_tokenKey),
+      'persistentBinding': storage.values.containsKey(_bindingKey),
+      'persistentMarker': storage.values.containsKey(_localKey),
+    };
+    expect(snapshot, equals(<String, bool>{
+      for (final key in snapshot.keys) key: false,
+    }), reason: 'Failed logout must leave a durable revocation fence');
     reopened.dispose();
   });
 }
