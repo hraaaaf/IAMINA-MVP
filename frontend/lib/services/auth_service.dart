@@ -160,18 +160,30 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
-  // A later logout or login intent invalidates every older HTTP response
-  // and every still-pending secure-storage credential commit.
-  int _credentialIntent = 0;
-  Future<void> _credentialMutationTail = Future<void>.value();
+  // One Dart isolate can host multiple AuthService objects backed by the
+  // same persisted credentials. Ordering and intent must span those objects:
+  // an instance-local queue lets a sibling sign-out lose to a paused login.
+  // This does NOT synchronize separate browser tabs / JS isolates.
+  static int _credentialIntent = 0;
+  // Keep only active writes in the shared queue. Retaining a completed Future
+  // permanently would also retain its old async-zone boundary (notably in
+  // sequential Flutter widget tests).
+  static Future<void>? _credentialMutationTail;
 
   Future<T> _serializeCredentials<T>(Future<T> Function() mutation) {
-    final result = _credentialMutationTail.then((_) => mutation());
+    final previous = _credentialMutationTail;
+    final result = (previous ?? Future<void>.value()).then((_) => mutation());
     // Keep the queue usable after a rejected/stale login or storage exception.
-    _credentialMutationTail = result.then<void>(
+    final settled = result.then<void>(
       (_) {},
       onError: (Object _, StackTrace __) {},
     );
+    _credentialMutationTail = settled;
+    settled.whenComplete(() {
+      if (identical(_credentialMutationTail, settled)) {
+        _credentialMutationTail = null;
+      }
+    });
     return result;
   }
 
