@@ -43,11 +43,25 @@ String resolveAuthApiOrigin({
   required bool remoteAccountLogin,
   required Uri pageUri,
   required String configuredBaseUrl,
+  bool useConfiguredLoopbackBackend = false,
 }) {
   if (!isWeb || !remoteAccountLogin) return configuredBaseUrl;
   final host = pageUri.host.toLowerCase();
   final local = pageUri.scheme == 'http' &&
       (host == 'localhost' || host == '127.0.0.1');
+  if (local && useConfiguredLoopbackBackend) {
+    // Local D11 FUE serves Flutter on one loopback port and Django on another.
+    // This exception never applies to a hosted Preview. Never forward patient
+    // credentials from a local page to an arbitrary remote backend.
+    final backend = Uri.tryParse(configuredBaseUrl);
+    if (backend == null ||
+        backend.scheme != 'http' ||
+        (backend.host != 'localhost' && backend.host != '127.0.0.1') ||
+        backend.userInfo.isNotEmpty) {
+      throw StateError('Local remote login requires a loopback backend');
+    }
+    return configuredBaseUrl;
+  }
   if (pageUri.scheme != 'https' && !local) {
     throw StateError('A secure browser origin is required for remote login');
   }
@@ -483,6 +497,7 @@ class AuthService extends ChangeNotifier {
         remoteAccountLogin: kRemoteAccountSignInEnabled,
         pageUri: Uri.base,
         configuredBaseUrl: kAuthBaseUrl,
+        useConfiguredLoopbackBackend: true,
       );
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {

@@ -118,4 +118,39 @@ void main() {
     }
   });
 
+  test('D11 local Flutter and Django may use separate loopback ports', () {
+    final page = Uri.parse('http://127.0.0.1:7383/login');
+    const backend = 'http://127.0.0.1:8000';
+    expect(
+      resolveAuthApiOrigin(
+        isWeb: true,
+        remoteAccountLogin: true,
+        pageUri: page,
+        configuredBaseUrl: backend,
+        useConfiguredLoopbackBackend: true,
+      ),
+      backend,
+    );
+    expect(
+      resolveAuthApiOrigin(
+        isWeb: true,
+        remoteAccountLogin: true,
+        pageUri: page,
+        configuredBaseUrl: backend,
+      ),
+      page.origin,
+    );
+    expect(
+      () => resolveAuthApiOrigin(
+        isWeb: true,
+        remoteAccountLogin: true,
+        pageUri: page,
+        configuredBaseUrl: 'https://untrusted.example.invalid',
+        useConfiguredLoopbackBackend: true,
+      ),
+      throwsStateError,
+    );
+  });
+
+
 }
