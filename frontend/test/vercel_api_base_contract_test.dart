@@ -86,4 +86,18 @@ void main() {
     expect(source, contains('const String companionApiBaseUrl = kBaseUrl;'));
     expect(source, isNot(contains("String.fromEnvironment(\n  'API_BASE_URL'")));
   });
+  test('W01 Preview permits sign-in without account creation', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+    expect(source, contains('IAMINA_REMOTE_ACCOUNT_SIGN_IN=true'));
+    expect(source, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false'));
+    expect(
+      source,
+      contains(
+        r'--dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN="${IAMINA_REMOTE_ACCOUNT_SIGN_IN:-false}"',
+      ),
+    );
+    expect(source, contains('IAMINA_REVIEW_PREVIEW_API_BASE_URL'));
+    expect(source, isNot(contains('IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true')));
+  });
+
 }

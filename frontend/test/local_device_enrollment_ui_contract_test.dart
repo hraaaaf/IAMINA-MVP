@@ -9,6 +9,7 @@ void main() {
     expect(source, contains("import '../../services/auth_service.dart';"));
     expect(source, contains("import 'local_device_enrollment_screen.dart'"));
     expect(source, isNot(contains("../features/auth/")));
+    expect(source, contains('kRemoteAccountSignInEnabled'));
     expect(source, contains('kRemoteAccountEnrollmentEnabled'));
     expect(source, contains('LocalDeviceEnrollmentScreen'));
     expect(source, contains('certified_fr.LoginScreen'));

@@ -24,6 +24,7 @@ class W01WebTopologyContractTest(unittest.TestCase):
             "vercel.json",
             "backend/api/index.py",
             "frontend/vercel_build.sh",
+            "frontend/api/index.js",
         ]:
             destination = self.root / rel
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -50,6 +51,15 @@ class W01WebTopologyContractTest(unittest.TestCase):
         with (self.root / "frontend/vercel_build.sh").open("a", encoding="utf-8") as f:
             f.write("\nDATABASE_URL=should_never_be_here\n")
         self.assertTrue(any("SQL credentials" in e for e in check_web_topology(self.root)))
+
+    def test_same_origin_bridge_route_must_precede_spa(self) -> None:
+        self._edit_json("frontend/vercel.json", lambda cfg: cfg["rewrites"].reverse())
+        self.assertTrue(any("API relay" in e for e in check_web_topology(self.root)))
+
+    def test_missing_oidc_bridge_fails_closed(self) -> None:
+        entry = self.root / "frontend/api/index.js"
+        entry.write_text("unsafe placeholder", encoding="utf-8")
+        self.assertTrue(any("OIDC API bridge" in e for e in check_web_topology(self.root)))
 
     def test_backend_region_needs_explicit_review(self) -> None:
         self._edit_json("backend/vercel.json", lambda cfg: cfg.update(regions=["fra1"]))

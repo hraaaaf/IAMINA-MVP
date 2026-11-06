@@ -6,6 +6,7 @@ Firebase and never synthesize clinical or demographic facts.
 """
 
 import logging
+import os
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -28,7 +29,12 @@ from core.auth_migration import (
     verify_firebase_token,
 )
 from core.models import BasePatientProfile
-from core.native_auth import issue_native_token, revoke_native_tokens
+from core.native_auth import (
+    NativeTokenError,
+    issue_native_token,
+    revoke_native_tokens,
+    verify_native_token,
+)
 from core.observability import EVT_SESSION_START, track
 
 logger = logging.getLogger(__name__)
@@ -132,10 +138,25 @@ def _open_session(request, user: User, *, method: str) -> None:
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 
 
+def _native_registration_allowed_in_environment() -> bool:
+    """Deny native account creation on hosted Preview unless explicitly opted in.
+
+    VERCEL_ENV is the hosting source of truth; IAMINA_ENV also protects
+    preview-like local/rehearsal runtimes. Production remains unchanged.
+    """
+    preview = (
+        os.environ.get("VERCEL_ENV", "").strip().lower() == "preview"
+        or os.environ.get("IAMINA_ENV", "").strip().lower() == "preview"
+    )
+    return not preview or os.environ.get("IAMINA_PREVIEW_ALLOW_REGISTRATION") == "true"
+
+
 @router.post("/auth/register", response=AuthResponse)
 @transaction.atomic
 def register_native(request, data: NativeRegisterRequest):
     """Create a sovereign Django identity without fabricating patient facts."""
+    if not _native_registration_allowed_in_environment():
+        raise HttpError(403, "Registration disabled in synthetic Preview")
     if User.objects.filter(email__iexact=data.email).exists():
         raise HttpError(409, "Account already exists")
 
@@ -179,9 +200,42 @@ def current_identity(request):
     return _serialize_user(_require_authenticated(request))
 
 
+def _logout_principal(request):
+    """Resolve the native bearer explicitly: this is a public-auth router.
+
+    Hosted Web Preview forwards Authorization but deliberately strips cookies.
+    A 200 logout without a resolved principal would leave its native bearer
+    valid until expiry. Never resolve an account from an unverified payload.
+    """
+    session_user = getattr(request, "user", None)
+    if session_user is not None and not session_user.is_authenticated:
+        session_user = None
+
+    headers = getattr(request, "headers", None)
+    authorization = headers.get("Authorization") if headers is not None else None
+    if authorization is None:
+        return session_user  # Legacy session-only and idempotent anonymous logout.
+
+    scheme, separator, bearer = authorization.partition(" ")
+    if (
+        scheme.lower() != "bearer"
+        or not separator
+        or not bearer
+        or bearer != bearer.strip()
+    ):
+        raise HttpError(401, "Authentication required")
+    try:
+        bearer_user = verify_native_token(bearer)
+    except NativeTokenError as exc:
+        raise HttpError(401, "Authentication required") from exc
+    if session_user is not None and session_user.pk != bearer_user.pk:
+        raise HttpError(401, "Conflicting authentication identities")
+    return bearer_user
+
+
 @router.post("/auth/logout")
 def logout_native(request):
-    user = request.user if request.user.is_authenticated else None
+    user = _logout_principal(request)
     if user is not None:
         revoke_native_tokens(user)
     logout(request)
