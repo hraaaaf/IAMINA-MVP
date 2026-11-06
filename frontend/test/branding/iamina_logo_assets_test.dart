@@ -67,10 +67,34 @@ void main() {
     }
   });
 
+  test('governed chat reuses V4 mark and lockup without legacy branding', () {
+    final chat = source('lib/features/companion/companion_conversation_screen.dart');
+    expect(chat, contains('iamina_logo_horizontal.png'));
+    final header = chat.split('class _ConversationHeader').last.split('class _EmptyConversation').first;
+    final welcome = chat.split('class _EmptyConversation').last.split('class _Composer').first;
+    expect(header, isNot(contains('Conversation gouvernée')));
+    expect(header, isNot(contains('Governed conversation')));
+    expect(header, isNot(contains('محادثة محكومة')));
+    expect(welcome, isNot(contains('iamina_logo_mark.png')));
+    expect(welcome, isNot(contains('Parler avec IAMINA')));
+    expect(welcome, isNot(contains('Talk with IAMINA')));
+    expect(welcome, isNot(contains('تحدث مع IAMINA')));
+    expect(welcome, contains('Pose une question avec tes mots'));
+    expect(welcome, contains('Pour commencer'));
+    // The in-conversation typing state can still use the official square mark.
+    expect(chat, contains('iamina_logo_mark.png'));
+    expect(chat, contains("label: 'IAMINA'"));
+    expect(chat, contains("colorBlendMode: BlendMode.srcIn"));
+    expect(chat, isNot(contains('Icons.forum_outlined')));
+    expect(chat, isNot(contains('IAmina')));
+  });
+
   test('all Web/PWA icons and in-app images are correctly sized PNGs', () {
     checkPng('assets/images/iamina_logo_vertical.png', 400, 410);
     checkPng('assets/images/iamina_logo_horizontal.png', 580, 116);
     checkPng('assets/images/iamina_logo_mark.png', 320, 320);
+    // Approved conversational brain+medical icon is only for the dashboard FAB.
+    checkPng('assets/images/iamina_chatbrain_diabetes.png', 96, 96);
     // Legacy URL is a V4 alias for already-installed Web/PWA clients.
     checkPng('assets/images/logo_amina.png', 320, 320);
     expect(

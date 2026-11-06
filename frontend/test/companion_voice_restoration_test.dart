@@ -109,7 +109,7 @@ void main() {
     );
     expect(
       find.bySemanticsLabel(
-        'Alerte urgente IAmina. Appelle immédiatement les services d’urgence.',
+        'Alerte urgente IAMINA. Appelle immédiatement les services d’urgence.',
       ),
       findsOneWidget,
     );
