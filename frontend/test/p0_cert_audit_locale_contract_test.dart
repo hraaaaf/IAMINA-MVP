@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amina/l10n/app_localizations.dart';
+import 'package:amina/services/locale_preference_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,11 +26,22 @@ void main() {
     final main = _read('lib/main.dart');
 
     expect(localeService, contains('final Locale? _auditLocale'));
-    expect(localeService, contains('if (_auditLocale == null)'));
     expect(localeService, contains('auditLocale: _auditLocale'));
     expect(localeService, contains('LocaleResolutionSource.audit'));
+    // The remote-account policy is deliberately evaluated *before* a
+    // patient-profile request; keep the audit exclusion as executable policy.
     expect(
-      localeService.indexOf('if (_auditLocale == null)'),
+      shouldFetchRemoteAccountLocale(
+        hasVerifiedRemoteAccount: true,
+        isAuditLocale: true,
+        isOfflineDemo: false,
+      ),
+      isFalse,
+    );
+    expect(localeService, contains('isAuditLocale: _auditLocale != null'));
+    expect(
+      localeService.indexOf('shouldFetchRemoteAccountLocale(',
+          localeService.indexOf('Future<void> refresh()')),
       lessThan(localeService.indexOf("Uri.parse('/api/v1/profile/locale')")),
     );
 
