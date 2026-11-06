@@ -21,8 +21,8 @@ void main() {
     expect(source, contains("Key('companion-typing-bubble')"));
     expect(source, contains('Semantics('));
     expect(source, contains('liveRegion: true'));
-    expect(source, contains('IAmina prépare sa réponse…'));
-    expect(source, contains('IAmina traite le message vocal…'));
+    expect(source, contains('IAMINA prépare sa réponse…'));
+    expect(source, contains('IAMINA traite le message vocal…'));
     expect(source, contains('Duration(milliseconds: 960)'));
     expect(source, isNot(contains('LinearProgressIndicator(minHeight: 3)')));
     expect(source, contains('_messages.isEmpty && !waitingForReply'));
