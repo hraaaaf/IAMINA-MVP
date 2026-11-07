@@ -1,16 +1,23 @@
 """Django-Ninja session auth wired to IAMINA's Vercel CSRF origin policy."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponseForbidden, JsonResponse
+from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 from ninja.errors import HttpError
 from ninja.security import SessionAuth as NinjaSessionAuth
 
 from amina.middleware.vercel_csrf import IaminaVercelCsrfViewMiddleware
-from core.native_auth import NativeTokenError, verify_native_token
+from core.native_auth import (
+    NATIVE_SESSION_ISSUED_AT_KEY,
+    NativeTokenError,
+    native_token_max_age_seconds,
+    verify_native_token,
+)
 
 
 def _no_view() -> None:
@@ -67,6 +74,39 @@ class SessionAuth(NinjaSessionAuth):
         return super().authenticate(request, key)
 
 
+# Native login/logout/reset are public entry/exit routes; an old cookie must
+# not prevent a patient from reauthenticating or explicitly signing out.
+_PUBLIC_NATIVE_SESSION_PATHS = frozenset({
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/firebase",
+    "/api/v1/auth/logout",
+    "/api/v1/auth/password/reset/request",
+    "/api/v1/auth/password/reset/confirm",
+})
+
+
+def _bounded_native_login_cookie(request: HttpRequest) -> bool:
+    """Reject unbounded legacy cookie authority, with no cookie replay grace.
+
+    The marker is server-side Django session state, not browser-authored input.
+    Checking issued-at on each request also honors a newly SHORTENED bearer
+    policy rather than leaving an older session alive until its prior deadline.
+    """
+    value = request.session.get(NATIVE_SESSION_ISSUED_AT_KEY)
+    if not isinstance(value, str):
+        return False
+    try:
+        issued_at = datetime.fromisoformat(value)
+        max_age = native_token_max_age_seconds()
+    except (TypeError, ValueError, OverflowError, NativeTokenError):
+        return False
+    if issued_at.tzinfo is None:
+        return False
+    now = timezone.now()
+    return issued_at <= now < issued_at + timedelta(seconds=max_age)
+
+
 class ExplicitBearerCookieIdentityMiddleware(MiddlewareMixin):
     """D11: fail closed before Ninja dispatch when cookie and bearer conflict.
 
@@ -91,6 +131,15 @@ class ExplicitBearerCookieIdentityMiddleware(MiddlewareMixin):
                 request.user.is_authenticated
                 and request.COOKIES.get(settings.SESSION_COOKIE_NAME)
             ):
+                # An existing Django session may predate F08 and still carry
+                # Django's historic 14-day default. Never let it authorize
+                # clinical reads/writes or protected identity routes without
+                # the server-issued fixed-duration native login provenance.
+                if (
+                    request.path_info not in _PUBLIC_NATIVE_SESSION_PATHS
+                    and not _bounded_native_login_cookie(request)
+                ):
+                    return JsonResponse({"detail": "Authentication required"}, status=401)
                 denied = check_iamina_csrf(request)
                 if denied:
                     return denied
