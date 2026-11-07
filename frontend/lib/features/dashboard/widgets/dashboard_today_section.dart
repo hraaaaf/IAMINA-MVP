@@ -126,8 +126,6 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
                   onTap: () => context.go('/companion'),
                 ),
               ),
-            const SizedBox(height: 2),
-            const _SecondaryActions(),
             const SizedBox(height: 10),
             const _TrustStrip(),
           ],
@@ -310,30 +308,6 @@ class _TodayStateStrip extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _SecondaryActions extends StatelessWidget {
-  const _SecondaryActions();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        key: const ValueKey('dashboard-secondary-companion'),
-        onPressed: () => context.go('/companion/chat'),
-        icon: const Icon(Icons.auto_awesome_rounded, size: 17),
-        label: Text(
-          _todayActionCopy(
-            context,
-            fr: 'Parler avec IAmina',
-            en: 'Ask IAmina',
-            ar: 'تحدث مع IAmina',
-          ),
-        ),
       ),
     );
   }

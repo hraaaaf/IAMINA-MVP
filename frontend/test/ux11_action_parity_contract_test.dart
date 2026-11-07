@@ -8,8 +8,12 @@ void main() {
       final today = File(
         'lib/features/dashboard/widgets/dashboard_today_section.dart',
       ).readAsStringSync();
-      expect(today, contains("ValueKey('dashboard-secondary-companion')"));
-      expect(today, contains("context.go('/companion/chat')"));
+      expect(today, isNot(contains('DashboardCompanionCallout')));
+      final companion = File(
+        'lib/features/dashboard/widgets/dashboard_companion_fab.dart',
+      ).readAsStringSync();
+      expect(companion, contains("'dashboard-companion-chat-action'"));
+      expect(companion, contains("context.push('/companion/chat')"));
       final premium = File(
         'lib/features/dashboard/dashboard_premium_screen.dart',
       ).readAsStringSync();

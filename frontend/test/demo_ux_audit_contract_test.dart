@@ -33,7 +33,11 @@ void main() {
     final insight = source(
       'lib/core/localization/dashboard_insight_localized_copy.dart',
     );
-    expect(today, contains("context.go('/companion/chat')"));
+    final companion = source(
+      'lib/features/dashboard/widgets/dashboard_companion_fab.dart',
+    );
+    expect(today, isNot(contains('DashboardCompanionCallout')));
+    expect(companion, contains("context.push('/companion/chat')"));
     expect(insight, contains('Automatic IAmina insight'));
   });
 
