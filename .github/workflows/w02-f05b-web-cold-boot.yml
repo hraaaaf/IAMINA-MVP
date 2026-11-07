@@ -1,0 +1,40 @@
+name: W02 F05B real Web cold-boot revocation gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/w02-f05b-web-cold-boot.yml'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/test/web/w02_f05b_web_cold_boot_test.dart'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f05b-web-cold-boot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-web-cold-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Run synthetic cold-boot proof in actual Chromium Web runtime
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          test -x "$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          timeout --signal=TERM 240s flutter test --no-pub --platform chrome --timeout 2m test/web/w02_f05b_web_cold_boot_test.dart
