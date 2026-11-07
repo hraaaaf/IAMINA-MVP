@@ -42,7 +42,7 @@ jobs:
           ! grep -Fq 'web_refresh_c8_coordinator' frontend/lib/services/auth_service.dart
 
   flutter-preview-probe:
-    name: Real compiled Flutter candidate: local two-tab Chromium and WebKit
+    name: 'Real compiled Flutter candidate: local two-tab Chromium and WebKit'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
