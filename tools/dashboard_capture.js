@@ -197,8 +197,8 @@ const assertFab = async (page, locale, width, height) => {
         });
         await arPage.getByText('ابدأ بأول قياس', { exact: true })
           .waitFor({ state: 'visible', timeout: 45000 });
-        await arPage.getByText('تذكيراتي', { exact: true })
-          .waitFor({ state: 'visible', timeout: 15000 });
+        // First capture the top before scrolling. Arabic can wrap onto
+        // additional lines: the reminders card may be lazy-built below fold.
         await arPage.waitForTimeout(1000);
         const arPath = path.join('dashboard-visual-cert',
           `${name}-ar-top-${width}x${height}.png`);
@@ -206,6 +206,17 @@ const assertFab = async (page, locale, width, height) => {
         if (arBuffer.length < minScreenshotBytes) {
           throw new Error(`${name}-ar: suspicious screenshot bytes ${arBuffer.length}`);
         }
+        const arReminders = arPage.getByText('تذكيراتي', { exact: true });
+        await arPage.mouse.move(width / 2, height / 2);
+        for (let step = 0; step < 6; step++) {
+          if (await arReminders.count()) break;
+          await arPage.mouse.wheel(0, Math.round(height * 0.4));
+          await arPage.waitForTimeout(450);
+        }
+        await arReminders.waitFor({ state: 'visible', timeout: 15000 });
+        const arLowerPath = path.join('dashboard-visual-cert',
+          `${name}-ar-lower-${width}x${height}.png`);
+        await arPage.screenshot({ path: arLowerPath });
         const arFabFue = await assertFab(arPage, 'ar', width, height);
         if (arErrors.length || arApi.some(response => response.status >= 400)) {
           throw new Error(`${name}-ar: browser/backend failure ` +
