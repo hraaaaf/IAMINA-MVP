@@ -9,10 +9,8 @@ import os
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 from pathlib import Path
 from threading import Barrier
-from unittest.mock import patch
 
 import pytest
 from cryptography.hazmat.primitives import hashes
@@ -24,7 +22,7 @@ from django.utils import timezone
 
 from core.models import (
     BasePatientProfile, WebRefreshConsumedSecret,
-    WebRefreshFamily, WebRefreshTransportNonce,
+    WebRefreshTransportNonce,
 )
 from core.web_refresh_boundary import issue_family_csrf
 from core.web_refresh_c3_candidate import (
