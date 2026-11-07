@@ -153,6 +153,7 @@ Future<void> main() async {
     } finally {
       publish();
       await reportPersistentBytes();
+      state.dataset['logoutSettled'] = 'true';
     }
   });
 
