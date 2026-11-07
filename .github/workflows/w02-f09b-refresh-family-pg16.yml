@@ -57,6 +57,8 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install verified Django and lint dependencies
         run: python -m pip install -r requirements.txt ruff==0.15.17
+      - name: Execute synthetic anti-replay, short TTL and true PostgreSQL race
+        run: python -m pytest -q -ra core/tests/test_w02_f09b_refresh_family_pg.py
       - name: Security module/style validation
         run: |
           ruff check core/web_refresh_protocol.py core/models/web_refresh.py core/tests/test_w02_f09b_refresh_family_pg.py
@@ -66,5 +68,3 @@ jobs:
           python manage.py makemigrations --check --dry-run
           python manage.py migrate --noinput
           python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'"
-      - name: Execute synthetic anti-replay, short TTL and true PostgreSQL race
-        run: python -m pytest -q -ra core/tests/test_w02_f09b_refresh_family_pg.py
