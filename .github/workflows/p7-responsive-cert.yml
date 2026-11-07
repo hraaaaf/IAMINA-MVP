@@ -31,6 +31,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact PR source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -159,6 +168,61 @@ jobs:
               raise RuntimeError('No screenshot payload')
           with open('/home/runner/work/IAMINA-MVP/IAMINA-MVP/p7-responsive-cert/dashboard-1440x1000.png', 'wb') as fh:
               fh.write(base64.b64decode(data))
+          # W03 FUE: real Chrome captures with DEMO readings, both locales and
+          # canonical 390/768/1280 viewports. No patient or backend fixtures.
+          import hashlib, os, subprocess
+          output_root = '/home/runner/work/IAMINA-MVP/IAMINA-MVP/p7-responsive-cert'
+          matrix = [(390, 844), (768, 1024), (1280, 900)]
+          captures = []
+          for locale in ('fr', 'ar'):
+              first_width, first_height = matrix[0]
+              call('Emulation.setDeviceMetricsOverride', {
+                  'width': first_width,
+                  'height': first_height,
+                  'deviceScaleFactor': 1,
+                  'mobile': False,
+              })
+              navigation = call('Page.navigate', {
+                  'url': f'http://127.0.0.1:7361/?surface=dashboard&locale={locale}'
+              })
+              if navigation.get('error'):
+                  raise RuntimeError(f'P7 navigation failed: {navigation}')
+              time.sleep(15)
+              for width, height in matrix:
+                  call('Emulation.setDeviceMetricsOverride', {
+                      'width': width,
+                      'height': height,
+                      'deviceScaleFactor': 1,
+                      'mobile': False,
+                  })
+                  time.sleep(3)
+                  png = call('Page.captureScreenshot', {
+                      'format': 'png',
+                      'captureBeyondViewport': False,
+                      'fromSurface': True,
+                  }).get('result', {}).get('data')
+                  if not png:
+                      raise RuntimeError(f'P7 missing {locale} screenshot {width}x{height}')
+                  blob = base64.b64decode(png)
+                  if len(blob) < 10000:
+                      raise RuntimeError(f'P7 suspicious {locale} {width}x{height}: {len(blob)} bytes')
+                  name = f'dashboard-measures-{locale}-{width}x{height}.png'
+                  with open(f'{output_root}/{name}', 'wb') as fh:
+                      fh.write(blob)
+                  captures.append({
+                      'file': name,
+                      'locale': locale,
+                      'viewport': f'{width}x{height}',
+                      'bytes': len(blob),
+                      'sha256': hashlib.sha256(blob).hexdigest(),
+                      'clinical_fixture': 'synthetic-demo-only'
+                  })
+          with open(f'{output_root}/w03-measures-matrix.json', 'w') as fh:
+              json.dump({
+                  'source_head': subprocess.check_output(
+                      ['git', 'rev-parse', 'HEAD']).decode().strip(),
+                  'captures': captures,
+              }, fh, indent=2)
           ws.close()
           PY
 
@@ -167,6 +231,20 @@ jobs:
           test -s "$FILE"
           BYTES="$(stat -c%s "$FILE")"
           test "$BYTES" -ge 10000
+          for locale in fr ar; do
+            for size in 390x844 768x1024 1280x900; do
+              SNAPSHOT="$GITHUB_WORKSPACE/p7-responsive-cert/dashboard-measures-${locale}-${size}.png"
+              test -s "$SNAPSHOT"
+              test "$(stat -c%s "$SNAPSHOT")" -ge 10000
+            done
+          done
+          python3 - <<'PY'
+          import json
+          with open('/home/runner/work/IAMINA-MVP/IAMINA-MVP/p7-responsive-cert/w03-measures-matrix.json') as f:
+              result = json.load(f)
+          assert len(result['captures']) == 6
+          print('W03_P7_CHROME_MEASURES_FR_AR_390_768_1280=PASS')
+          PY
 
       - name: Upload P7 responsive proof
         if: always()
@@ -179,5 +257,7 @@ jobs:
             frontend/test/ui_audit_output/dashboard-responsive-1440x1000.png
             frontend/test/ui_audit_output/dashboard-responsive-ar-900x900.png
             p7-responsive-cert/dashboard-1440x1000.png
+            p7-responsive-cert/dashboard-measures-*.png
+            p7-responsive-cert/w03-measures-matrix.json
           if-no-files-found: warn
           retention-days: 7
