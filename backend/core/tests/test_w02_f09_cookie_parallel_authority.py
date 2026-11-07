@@ -14,7 +14,8 @@ from unittest.mock import patch
 import pytest
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import Client
+from django.middleware.csrf import get_token
+from django.test import Client, RequestFactory
 
 from core.native_auth import issue_native_token
 from diabetes.models import LogEntry
@@ -115,6 +116,63 @@ def test_w02_f09_cookie_only_clinical_write_without_csrf_is_forbidden():
     )
     assert response.status_code == 403, response.content[:200]
     assert LogEntry.objects.filter(patient=user).count() == baseline
+
+
+@pytest.mark.django_db(transaction=True)
+def test_w02_f09_valid_csrf_preserves_authorized_cookie_only_write():
+    client, user, _ = _login(suffix="csrf-valid")
+    strict = Client(enforce_csrf_checks=True)
+    strict.cookies.update(client.cookies)
+    csrf_request = RequestFactory().get(_LOGS)
+    masked_token = get_token(csrf_request)
+    strict.cookies[settings.CSRF_COOKIE_NAME] = csrf_request.META["CSRF_COOKIE"]
+
+    before_count = LogEntry.objects.filter(patient=user).count()
+    response = strict.post(
+        _LOGS,
+        data=json.dumps({"blood_sugar": 111}),
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=masked_token,
+    )
+    assert response.status_code == 200, response.content[:200]
+    assert LogEntry.objects.filter(patient=user).count() == before_count + 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_w02_f09_valid_csrf_but_hostile_origin_still_blocks_write():
+    client, user, _ = _login(suffix="csrf-origin")
+    strict = Client(enforce_csrf_checks=True)
+    strict.cookies.update(client.cookies)
+    csrf_request = RequestFactory().get(_LOGS)
+    masked_token = get_token(csrf_request)
+    strict.cookies[settings.CSRF_COOKIE_NAME] = csrf_request.META["CSRF_COOKIE"]
+
+    before_count = LogEntry.objects.filter(patient=user).count()
+    response = strict.post(
+        _LOGS,
+        data=json.dumps({"blood_sugar": 112}),
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=masked_token,
+        HTTP_ORIGIN="https://attacker.example",
+    )
+    assert response.status_code == 403, response.content[:200]
+    assert LogEntry.objects.filter(patient=user).count() == before_count
+
+
+@pytest.mark.django_db(transaction=True)
+def test_w02_f09_bearer_only_write_does_not_require_browser_csrf():
+    _, user, bearer = _login(suffix="bearer-write")
+    strict = Client(enforce_csrf_checks=True)
+
+    before_count = LogEntry.objects.filter(patient=user).count()
+    response = strict.post(
+        _LOGS,
+        data=json.dumps({"blood_sugar": 113}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {bearer}",
+    )
+    assert response.status_code == 200, response.content[:200]
+    assert LogEntry.objects.filter(patient=user).count() == before_count + 1
 
 
 @pytest.mark.django_db(transaction=True)
