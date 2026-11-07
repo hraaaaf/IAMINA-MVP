@@ -23,6 +23,7 @@ class _FailingLogoutStorage implements FlutterSecureStorage {
   };
   bool failFenceWrite = true;
   bool failTokenDelete = false;
+  bool ignoreTokenDelete = false;
   bool failTokenTombstoneWrite = false;
   final deletedKeys = <String>[];
 
@@ -43,6 +44,9 @@ class _FailingLogoutStorage implements FlutterSecureStorage {
     deletedKeys.add(key);
     if (key == _tokenKey && failTokenDelete) {
       throw StateError('synthetic token delete failure');
+    }
+    if (key == _tokenKey && ignoreTokenDelete) {
+      return; // Silent false-success deletion: read-back must catch it.
     }
     values.remove(key);
   }
@@ -112,6 +116,26 @@ void main() {
     expect(storage.deletedKeys, containsAll(
       [_tokenKey, _bindingKey, _enrollmentKey],
     ));
+    final state = await _restartedState(storage);
+    expect(state.values.every((value) => !value), isTrue, reason: '$state');
+  });
+
+  test('W02 F05B-SILENT: delete returning success without removal is not safe',
+      () async {
+    final storage = _FailingLogoutStorage()
+      ..failFenceWrite = false
+      ..ignoreTokenDelete = true;
+    final auth = _auth(storage);
+    await auth.initialize();
+    await expectLater(auth.signOut(), throwsStateError);
+    expect(auth.hasRemoteApiCredential, isFalse);
+    expect(auth.lastRemoteLogoutConfirmed, isTrue);
+    auth.dispose();
+
+    // An unverified delete must never be considered physical erasure.
+    // The independently verified tombstone removes old bearer bytes.
+    expect(storage.values.containsKey(_tokenKey), isTrue);
+    expect(storage.values[_tokenKey], _revokedToken);
     final state = await _restartedState(storage);
     expect(state.values.every((value) => !value), isTrue, reason: '$state');
   });
