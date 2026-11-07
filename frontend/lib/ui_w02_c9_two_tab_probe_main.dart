@@ -37,9 +37,10 @@ Future<void> main() async {
     ..append(offline);
 
   final isArabic = Uri.base.queryParameters['lang'] == 'ar';
-  html.document.documentElement!.dir = isArabic ? 'rtl' : 'ltr';
+  html.document.documentElement!.setAttribute('dir', isArabic ? 'rtl' : 'ltr');
   state.dataset['lang'] = isArabic ? 'ar' : 'fr';
-  state.dataset['direction'] = html.document.documentElement!.dir;
+  state.dataset['direction'] =
+      html.document.documentElement!.getAttribute('dir');
 
   bool outage = false;
   final coordinator = WebRefreshC8Coordinator(
