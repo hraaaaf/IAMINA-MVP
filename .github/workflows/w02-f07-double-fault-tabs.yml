@@ -1,0 +1,128 @@
+name: W02 F07 REAL double storage and network fault (2 Chrome tabs + PG16)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/w02-f07-two-tabs-revocation.yml'
+      - 'frontend/lib/ui_w02_f07_double_fault_two_tabs_probe_main.dart'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'scripts/w02_f07_double_fault_two_tabs_browser.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f07-two-tabs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  two-live-tabs:
+    name: Real two-tab Chrome double-storage and backend-outage gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_w02_f07_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_w02_f07_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-w02-f07-ephemeral-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:7387
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w02_f07_ci
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Generate disposable synthetic account without printing password
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, secrets
+          data = {
+            'W02_CI_EMAIL': 'w02-f07-tab-user@example.invalid',
+            'W02_CI_PASS': secrets.token_urlsafe(30) + '_A1!',
+          }
+          with open(os.path.join(os.environ['RUNNER_TEMP'], 'w02-f07-ci-credentials.json'), 'w') as handle:
+              json.dump(data, handle)
+          print('::add-mask::' + data['W02_CI_PASS'])
+          with open(os.environ['GITHUB_ENV'], 'a') as handle:
+              for key, value in data.items():
+                  handle.write(key + '=' + value + '\n')
+          PY
+
+      - name: Install Django and pinned Playwright browser
+        run: |
+          set -euo pipefail
+          python3 -m pip install -r backend/requirements.txt
+          python3 -m pip install playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+
+      - name: Create isolated PG16 schema and one synthetic Django account
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python manage.py migrate --noinput
+          python manage.py shell -c "import os; from django.contrib.auth.models import User; User.objects.create_user(username=os.environ['W02_CI_EMAIL'], email=os.environ['W02_CI_EMAIL'], password=os.environ['W02_CI_PASS']); assert User.objects.count() == 1"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Build a real Flutter AuthService tab probe (no hosted deploy)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_w02_f07_double_fault_two_tabs_probe_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/ui_w02_f07_double_fault_two_tabs_probe_main.dart \
+            --dart-define=API_BASE_URL=http://127.0.0.1:8000 \
+            --dart-define-from-file="$RUNNER_TEMP/w02-f07-ci-credentials.json"
+          test -s build/web/main.dart.js
+
+      - name: Execute double persistent-storage failure plus backend outage
+        run: |
+          set -euo pipefail
+          (cd backend && exec python manage.py runserver 127.0.0.1:8000 --noreload > /tmp/w02-f07-api.log 2>&1) &
+          API_PID=$!
+          python3 -m http.server 7387 --bind 127.0.0.1 --directory frontend/build/web > /tmp/w02-f07-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" "$API_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /dev/null
+          curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7387/ > /dev/null
+          python3 -m py_compile scripts/w02_f07_double_fault_two_tabs_browser.py
+          python3 scripts/w02_f07_double_fault_two_tabs_browser.py
+
+      - name: Preserve bounded browser evidence even when RED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w02-f07-double-fault-two-tab-pg16-synthetic-proof
+          path: w02-f07-double-fault-tabs-proof.json
+          retention-days: 14
+          if-no-files-found: warn
