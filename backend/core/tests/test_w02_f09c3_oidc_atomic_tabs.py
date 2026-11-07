@@ -178,9 +178,10 @@ def test_c3_rejects_wrong_oidc_claims(oidc, claim, bad):
 def test_c3_oidc_rejects_alg_confusion_signature_tamper_and_duplicate_kid(oidc):
     sign, jwks = oidc
     bad_alg = sign(header_overrides={"alg": "none"})
+    bad_typ = sign(header_overrides={"typ": 42})
     forged = sign()[:-5] + "AAAAA"
     duplicate = {"keys": jwks["keys"] + jwks["keys"]}
-    for token, keys in [(bad_alg, jwks), (forged, jwks), (sign(), duplicate)]:
+    for token, keys in [(bad_alg, jwks), (bad_typ, jwks), (forged, jwks), (sign(), duplicate)]:
         with pytest.raises(WebRefreshC3Rejected):
             verify_vercel_service_identity(token, _synthetic_jwks=keys)
     with override_settings(F09_C3_SYNTHETIC_JWKS_ALLOWED=False):
