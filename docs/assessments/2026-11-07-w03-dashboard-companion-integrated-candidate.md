@@ -20,3 +20,6 @@ La première proposition « CTA intégré uniquement » a été abandonnée apr�
 | D | chargement et données indisponibles | utile | FR/AR | NOT_RUN |
 
 Le localStorage historique D27 n'est pas lu/écrit, et n'est pas effacé.
+
+## Complément FUE navigateur — lancé après validation du design
+Instrumentation ajoutée dans l'entrée de certification isolée `ui_dashboard_backend_cert_main.dart` : test possible des locales FR/AR réelles avec route de destination *strictement factice pour CI* (ne modifie pas la page de chat produit). `dashboard_capture.js` doit désormais tester dans Chrome les **3 viewports × FR/AR** sur une identité synthétique sans données, capture AR, position avant/après scroll, cible accessible ≥44px, et activation du FAB par clavier Entrée. Le widget test dédié doit vérifier tap, Tab+Entrée, RTL, et géométrie stable pendant le scroll. **Ne compter que les CI/artefacts SUCCESS au nouveau SHA, pas les anciens.** Vérifier particulièrement la capture arabe : glyphes/RTL, disparition de CTA doublon et navigation non interceptée. Aucun déploiement Vercel.

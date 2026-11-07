@@ -22,6 +22,13 @@ import 'services/sync_service.dart';
 const String _certEmail = String.fromEnvironment('IAMINA_CERT_EMAIL');
 const String _certPassword = String.fromEnvironment('IAMINA_CERT_PASSWORD');
 
+// Browser FUE probes use a query override only in the certification entrypoint.
+// This does not change the shipping app's locale preferences.
+Locale _certLocaleFromUri() =>
+    Uri.base.queryParameters['lang'] == 'ar'
+        ? const Locale('ar')
+        : const Locale('fr');
+
 double _certScrollOffsetFromUri() {
   final parsed = double.tryParse(Uri.base.queryParameters['scroll'] ?? '') ?? 0;
   if (!parsed.isFinite || parsed < 0) return 0;
@@ -152,6 +159,14 @@ class _DashboardBackendCertAppState extends State<_DashboardBackendCertApp> {
                 scrollController: _scrollController,
               ),
             ),
+            // Isolated browser certification destination: proves actual FAB
+            // pointer/keyboard routing without invoking a clinical chatbot.
+            GoRoute(
+              path: '/companion/chat',
+              builder: (context, state) => const Scaffold(
+                body: Center(child: Text('IAMINA_CERT_CHAT_DESTINATION')),
+              ),
+            ),
           ],
         ),
       ],
@@ -162,7 +177,7 @@ class _DashboardBackendCertAppState extends State<_DashboardBackendCertApp> {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      locale: _certLocaleFromUri(),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

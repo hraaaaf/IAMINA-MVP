@@ -1,6 +1,7 @@
 import 'package:amina/features/dashboard/dashboard_companion_entry_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -68,7 +69,25 @@ void main() {
         expect(find.text('Poser une question'), findsNothing);
         expect(find.text('اطرح سؤالاً'), findsNothing);
         expect(tester.takeException(), isNull);
-        await tester.tap(fab);
+
+        // A real swipe of the cards must not change the viewport-local FAB.
+        final originalFab = tester.getRect(fab);
+        await tester.drag(find.byType(Scrollable).first, const Offset(0, -500));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(fab), originalFab);
+        expect(tester.getRect(fab).top,
+            greaterThanOrEqualTo(tester.getRect(viewport).bottom));
+
+        // Tab and Enter, not only a pointer tap, must activate the companion.
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(find.text('CHAT_ROUTE'), findsOneWidget);
+        router.go('/dashboard');
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(
+            const ValueKey('dashboard-companion-chat-action')));
         await tester.pumpAndSettle();
         expect(find.text('CHAT_ROUTE'), findsOneWidget);
         expect(tester.takeException(), isNull);
