@@ -119,7 +119,7 @@ def run():
                 click(page_b, "logout")
                 until(page_b, "logoutSettled", "true", timeout=30000)
                 b = state(page_b)
-                if b.get("logout") != "StateError":
+                if b.get("logout") != "error":
                     raise AssertionError(
                         "W02-F07 FAIL: double persistent-storage refusal not observable"
                     )
