@@ -1,0 +1,75 @@
+name: W02 F09-C2 signed BFF Django boundary PG16 (isolated)
+
+on:
+  push:
+    branches:
+      - test/w02-f09c2-signed-web-boundary-20261107
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f09c2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signed-web-boundary:
+    name: Node22 to Django PG16 signed BFF + family CSRF/replay proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_f09c2_ephemeral
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_f09c2_ephemeral"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-f09c2-fake-synthetic-never-use-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_f09c2_ephemeral
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      GROQ_API_KEY: ""
+      OPENAI_API_KEY: ""
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Django PG16 and Ruff dependencies
+        run: python -m pip install -r requirements.txt ruff==0.15.17
+      - name: RED-first cross-language HMAC and family CSRF PG16 oracles
+        run: python -m pytest -q -ra core/tests/test_w02_f09c2_signed_boundary.py
+      - name: Validate isolated candidate lint/model schema
+        run: |
+          ruff check core/web_refresh_boundary.py core/models/web_refresh.py core/models/__init__.py core/migrations/0021_web_refresh_transport_nonce.py core/tests/test_w02_f09c2_signed_boundary.py
+          node --check ../frontend/api/w02_f09c2_signing.js
+          python manage.py makemigrations --check --dry-run
+      - name: Reversible additive migration check on disposable PG16
+        run: |
+          python manage.py migrate --noinput
+          python manage.py migrate core 0020_web_refresh_candidate --noinput
+          python manage.py migrate core 0021_web_refresh_transport_nonce --noinput
+          python manage.py makemigrations --check --dry-run
