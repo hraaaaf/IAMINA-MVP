@@ -59,7 +59,7 @@ void main() {
       _tokenKey: _bearer,
       _bindingKey: jsonEncode({'token': _bearer, 'user_id': 734}),
       _localSessionKey: 'enrolled',
-      _localDeviceKey: 'synthetic-device-f05b',
+      _localDeviceKey: '550e8400-e29b-41d4-a716-446655440000',
     });
     final reopened = _webService(storage);
     await reopened.initialize();
@@ -84,7 +84,7 @@ void main() {
       () async {
     final storage = _UnwritableBrowserStorage({
       _localSessionKey: 'enrolled',
-      _localDeviceKey: 'synthetic-device-f05b',
+      _localDeviceKey: '550e8400-e29b-41d4-a716-446655440000',
     });
     final reopened = _webService(storage);
     await reopened.initialize();
