@@ -654,9 +654,9 @@ class AuthService extends ChangeNotifier {
           // merely an unavailable transport. Keep F05B-HTTP2 fail-closed.
           final error = StateError('Remote sign-out not confirmed');
           remoteFailure = error;
-          remoteFailureStack = StackTrace.current;
-          _failureLogger('logout', error.runtimeType.toString(),
-              remoteFailureStack);
+          final stackTrace = StackTrace.current;
+          remoteFailureStack = stackTrace;
+          _failureLogger('logout', error.runtimeType.toString(), stackTrace);
         }
       }
     }
