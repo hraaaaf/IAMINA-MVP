@@ -36,6 +36,12 @@ class SessionAuth(NinjaSessionAuth):
         # with no Authorization header retains the Web/PWA session + CSRF path.
         if "HTTP_AUTHORIZATION" in request.META:
             return None
+        cookie = request.COOKIES.get(self.param_name)
+        if not cookie:
+            # Anonymous writes must remain 401 (no credential), not 403
+            # (missing CSRF). Django Ninja's SessionAuth.authenticate ignores
+            # its key argument, so this case is also guarded below.
+            return None
         # Django Ninja exempts its router view from Django's outer CSRF
         # middleware. The cookie auth path must therefore enforce CSRF
         # itself on every request, irrespective of Ninja's per-operation
@@ -44,7 +50,7 @@ class SessionAuth(NinjaSessionAuth):
         error_response = check_iamina_csrf(request)
         if error_response:
             raise HttpError(403, "CSRF check Failed")
-        return request.COOKIES.get(self.param_name)
+        return cookie
 
     def authenticate(
         self,
@@ -55,7 +61,7 @@ class SessionAuth(NinjaSessionAuth):
         # even when _get_key returned None. Its SessionAuth.authenticate
         # checks request.user but ignores key entirely. Guard both methods:
         # an invalid explicit bearer must NEVER authorize via cookie.
-        if "HTTP_AUTHORIZATION" in request.META:
+        if "HTTP_AUTHORIZATION" in request.META or not key:
             return None
         return super().authenticate(request, key)
 
