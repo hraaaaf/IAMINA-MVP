@@ -419,6 +419,34 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Erase every independent credential key even if an earlier operation
+  /// fails. A persisted logout fence must only be cleared after ALL three
+  /// operations succeeded. This prevents an undeletable bearer from also
+  /// preserving an old account binding or enrollment marker unnecessarily.
+  Future<void> _eraseCredentialKeysBestEffort() async {
+    Object? firstFailure;
+    StackTrace? firstStack;
+    for (final key in <String>[
+      _tokenKey,
+      _nativeIdentityKey,
+      _localSessionKey,
+    ]) {
+      try {
+        if (key == _tokenKey) {
+          await _retireStoredNativeBearer();
+        } else {
+          await _storage.delete(key: key);
+        }
+      } catch (error, stackTrace) {
+        firstFailure ??= error;
+        firstStack ??= stackTrace;
+      }
+    }
+    if (firstFailure != null) {
+      Error.throwWithStackTrace(firstFailure, firstStack!);
+    }
+  }
+
   Future<void> initialize() async {
     // Read-only hydration must not block sign-out: a secure-storage read can
     // remain suspended while logout must finish its cleanup immediately.
@@ -434,11 +462,10 @@ class AuthService extends ChangeNotifier {
         // fail-closed instead of reviving the old authenticated account.
         await _serializeCredentials(() async {
           _requireCurrentCredentialIntent(intent);
-          // Do not discard the durable fence on a "successful" token delete
-          // that silently left raw bearer bytes in secure storage.
-          await _retireStoredNativeBearer();
-          await _storage.delete(key: _nativeIdentityKey);
-          await _storage.delete(key: _localSessionKey);
+          // Try all three independent erasures. Even if bearer deletion is
+          // impossible, remove identity/enrollment where possible and KEEP
+          // the pending fence for subsequent cold starts.
+          await _eraseCredentialKeysBestEffort();
           await _storage.delete(key: _logoutPendingKey);
           _requireCurrentCredentialIntent(intent);
           _nativeToken = null;
@@ -694,37 +721,13 @@ class AuthService extends ChangeNotifier {
           );
         } catch (fenceError, fenceStackTrace) {
           // A failed fence write must NOT prevent still-available credential
-          // erasure. Try every deletion even when one fails, to avoid leaving
-          // a local enrollment or bound identity behind unnecessarily.
-          Object? firstDeleteError;
-          StackTrace? firstDeleteStack;
-          for (final key in <String>[
-            _tokenKey,
-            _nativeIdentityKey,
-            _localSessionKey,
-          ]) {
-            try {
-              if (key == _tokenKey) {
-                await _retireStoredNativeBearer();
-              } else {
-                await _storage.delete(key: key);
-              }
-            } catch (deleteError, deleteStackTrace) {
-              firstDeleteError ??= deleteError;
-              firstDeleteStack ??= deleteStackTrace;
-            }
-          }
-          // Never pretend that a failed durable fence is safe. If both the
-          // fence write and credential deletion fail, a future process restart
-          // remains a security NO-GO without a separate durable mechanism.
-          if (firstDeleteError != null) {
-            Error.throwWithStackTrace(firstDeleteError, firstDeleteStack!);
-          }
+          // erasure. Even if bearer erasure fails, clear the old binding and
+          // local enrollment wherever secure storage still allows it.
+          await _eraseCredentialKeysBestEffort();
+          // Never pretend the fence is durable if writing it failed.
           Error.throwWithStackTrace(fenceError, fenceStackTrace);
         }
-        await _retireStoredNativeBearer();
-        await _storage.delete(key: _nativeIdentityKey);
-        await _storage.delete(key: _localSessionKey);
+        await _eraseCredentialKeysBestEffort();
         // Only a fully completed credential cleanup may clear the fence.
         await _storage.delete(key: _logoutPendingKey);
       });
