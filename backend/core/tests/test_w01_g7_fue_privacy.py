@@ -1,4 +1,5 @@
 """W01/G7 security/privacy FUE negatives on ephemeral PostgreSQL."""
+
 import json
 
 import pytest
