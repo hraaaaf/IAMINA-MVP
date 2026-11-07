@@ -387,6 +387,22 @@ class AuthService extends ChangeNotifier {
       _requireCurrentCredentialIntent(intent);
       final storedToken = await _storage.read(key: _tokenKey);
       _requireCurrentCredentialIntent(intent);
+      if (kIsWeb && _isExpectedNativeBearerShape(storedToken)) {
+        // A Web cold start cannot distinguish a valid prior login from bearer
+        // bytes that survived a failed logout (fence write + token delete).
+        // Never rehydrate account authority from those bytes. This guard
+        // remains effective even when the browser storage refuses deletion.
+        // A genuinely local-only marker with NO cached bearer still follows
+        // the separate device enrollment/app-lock path below.
+        await _serializeCredentials(() async {
+          _requireCurrentCredentialIntent(intent);
+          _nativeToken = null;
+          _nativeAccountId = null;
+          _localSessionEnrolled = false;
+          _remoteCredentialVerified = false;
+        });
+        return;
+      }
       String? binding;
       if (_isExpectedNativeBearerShape(storedToken)) {
         // Local-first startup: no network required to validate a cached binding.
