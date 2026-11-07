@@ -66,18 +66,18 @@ async function proxy(req, res, options = {}) {
     fail(res, 400, 'Invalid API path');
     return;
   }
-  // W02-F09-A: refresh must have its OWN reviewed same-origin BFF handler.
-  // Never treat future renewal credentials as regular clinical API traffic:
-  // the generic bridge intentionally does not forward Cookie/Set-Cookie or
-  // perform refresh-specific CSRF, Origin, replay or rotation checks.
-  // Exact path reservation is fail-closed; no renewal endpoint is enabled.
-  if (relativePath === 'auth/refresh' || relativePath === 'auth/refresh/') {
-    fail(res, 404, 'Not found');
-    return;
-  }
   // Never accept client-supplied destination URLs or follow redirects. The
   // only outbound host is the exact immutable synthetic Preview API.
   const target = new URL(`/api/v1/${relativePath}`, `${origin}/`);
+  // W02-F09-A2: WHATWG normalizes dot segments (e.g. auth/./refresh) while
+  // constructing the target URL. Deny reserved refresh routes on the FINAL
+  // canonical path, not raw user input, BEFORE any upstream fetch.
+  // The generic proxy never handles refresh cookies, CSRF or replay policy.
+  if (target.pathname === '/api/v1/auth/refresh' ||
+      target.pathname === '/api/v1/auth/refresh/') {
+    fail(res, 404, 'Not found');
+    return;
+  }
   const requested = new URL(req.url || '/', 'https://preview.invalid');
   requested.searchParams.delete('forward');
   target.search = requested.searchParams.toString();
