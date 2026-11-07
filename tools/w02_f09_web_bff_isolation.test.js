@@ -66,7 +66,7 @@ test('F09-A: generic clinical API transport never forwards browser refresh cooki
 });
 
 for (const relativePath of ['auth/refresh', 'auth/refresh/']) {
-  test('F09-A RED: generic BFF must reserve ' + relativePath + ' for reviewed session route', async () => {
+  test('F09-A: generic BFF must reserve ' + relativePath + ' for reviewed session route', async () => {
     const res = response();
     let upstreamCalls = 0;
     await proxy(request(relativePath, 'POST'), res, {
