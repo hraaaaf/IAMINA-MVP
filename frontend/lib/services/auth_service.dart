@@ -164,6 +164,10 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
+  // null: no remote bearer at logout; true: HTTP 2xx confirmed; false:
+  // remote revocation unconfirmed (offline, transport error, or HTTP failure).
+  // This reports an observation, not a guarantee of crash-safe session expiry.
+  bool? _lastRemoteLogoutConfirmed;
   // One Dart isolate can host multiple AuthService objects backed by the
   // same persisted credentials. Ordering and intent must span those objects:
   // an instance-local queue lets a sibling sign-out lose to a paused login.
@@ -274,6 +278,7 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
+  bool? get lastRemoteLogoutConfirmed => _lastRemoteLogoutConfirmed;
   /// Previously authenticated Django ID bound to this exact bearer.
   /// Offline restoration does not verify that the bearer is still active.
   int? get boundNativeAccountId =>
@@ -554,6 +559,7 @@ class AuthService extends ChangeNotifier {
     // Synchronous cancellation, before waiting for any persistent operation.
     ++_credentialIntent;
     final token = _nativeToken;
+    _lastRemoteLogoutConfirmed = token == null ? null : false;
 
     // The token may already be published by *another* AuthService on this
     // isolate. Clear every live owner's in-memory authority before any await.
@@ -628,20 +634,30 @@ class AuthService extends ChangeNotifier {
     Object? remoteFailure;
     StackTrace? remoteFailureStack;
     if (token != null) {
+      http.Response? response;
       try {
-        final response = await _httpClient.post(
+        response = await _httpClient.post(
           Uri.parse('$_effectiveAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          // A failed HTTP response is never evidence that Django advanced
-          // auth_token_version. Never include bearer or body in the error.
-          throw StateError('Remote sign-out not confirmed');
-        }
       } catch (error, stackTrace) {
-        remoteFailure = error;
-        remoteFailureStack = stackTrace;
+        // An offline/failed transport cannot block a completed LOCAL logout.
+        // Explicitly keep remote confirmation false and report observability;
+        // no claim of server-side revocation is made.
         _failureLogger('logout', error.runtimeType.toString(), stackTrace);
+      }
+      if (response != null) {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          _lastRemoteLogoutConfirmed = true;
+        } else {
+          // Explicit HTTP refusal is a known failed server operation, not
+          // merely an unavailable transport. Keep F05B-HTTP2 fail-closed.
+          final error = StateError('Remote sign-out not confirmed');
+          remoteFailure = error;
+          remoteFailureStack = StackTrace.current;
+          _failureLogger('logout', error.runtimeType.toString(),
+              remoteFailureStack);
+        }
       }
     }
 
