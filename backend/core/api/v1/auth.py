@@ -197,7 +197,14 @@ def login_native(request, data: NativeLoginRequest):
 
 @router.get("/auth/me", response=UserResponse)
 def current_identity(request):
-    return _serialize_user(_require_authenticated(request))
+    # Public auth router has no HybridBearer auth callback. Resolve the
+    # explicit bearer through the existing native verifier rather than
+    # trusting cookie identity or a token's shape. Do not alter the route's
+    # published OpenAPI description while fixing its authorization behavior.
+    user = _logout_principal(request)
+    if user is None:
+        raise HttpError(401, "Authentication required")
+    return _serialize_user(user)
 
 
 def _logout_principal(request):
