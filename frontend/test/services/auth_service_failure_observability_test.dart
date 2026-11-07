@@ -76,18 +76,31 @@ void main() {
 
   test('logout transport failure is observable but local logout completes', () async {
     const token = 'iamina.e30:1abcde:synthetic_secret_token';
+    // Exercise the independent network-failure contract against a faithful
+    // stateful storage double: a successful delete must make a later read
+    // return null. A mock that always returns the old token would falsely
+    // simulate the separate F05B-SILENT security fault.
+    final stored = <String, String>{
+      'iamina_native_access_token': token,
+    };
     when(() => storage.read(key: any(named: 'key'))).thenAnswer((invocation) async {
-      final key = invocation.namedArguments[#key] as String?;
-      if (key == 'iamina_native_access_token') return token;
-      return null;
+      final key = invocation.namedArguments[#key] as String;
+      return stored[key];
     });
     when(
       () => storage.write(
         key: any(named: 'key'),
         value: any(named: 'value'),
       ),
-    ).thenAnswer((_) async {});
-    when(() => storage.delete(key: any(named: 'key'))).thenAnswer((_) async {});
+    ).thenAnswer((invocation) async {
+      final key = invocation.namedArguments[#key] as String;
+      final value = invocation.namedArguments[#value] as String;
+      stored[key] = value;
+    });
+    when(() => storage.delete(key: any(named: 'key'))).thenAnswer((invocation) async {
+      final key = invocation.namedArguments[#key] as String;
+      stored.remove(key);
+    });
     when(
       () => httpClient.post(
         any(),
@@ -102,6 +115,8 @@ void main() {
     await service.signOut();
 
     expect(service.isAuthenticated, isFalse);
+    expect(stored.containsKey('iamina_native_access_token'), isFalse);
+    expect(stored.containsKey('iamina_auth_logout_pending_v1'), isFalse);
     expect(failures, <String>['logout:StateError']);
     expect(failures.single, isNot(contains(token)));
     expect(failures.single, isNot(contains('synthetic-secret-token')));
