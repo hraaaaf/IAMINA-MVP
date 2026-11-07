@@ -164,6 +164,10 @@ class AuthService extends ChangeNotifier {
   bool _initialized = false;
   bool _auditSession = false;
   bool _remoteCredentialVerified = false;
+  // null: no remote bearer at logout; true: HTTP 2xx confirmed; false:
+  // remote revocation unconfirmed (offline, transport error, or HTTP failure).
+  // This reports an observation, not a guarantee of crash-safe session expiry.
+  bool? _lastRemoteLogoutConfirmed;
   // One Dart isolate can host multiple AuthService objects backed by the
   // same persisted credentials. Ordering and intent must span those objects:
   // an instance-local queue lets a sibling sign-out lose to a paused login.
@@ -274,6 +278,7 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
+  bool? get lastRemoteLogoutConfirmed => _lastRemoteLogoutConfirmed;
   /// Previously authenticated Django ID bound to this exact bearer.
   /// Offline restoration does not verify that the bearer is still active.
   int? get boundNativeAccountId =>
@@ -554,71 +559,119 @@ class AuthService extends ChangeNotifier {
     // Synchronous cancellation, before waiting for any persistent operation.
     ++_credentialIntent;
     final token = _nativeToken;
+    _lastRemoteLogoutConfirmed = token == null ? null : false;
 
     // The token may already be published by *another* AuthService on this
     // isolate. Clear every live owner's in-memory authority before any await.
     // Also notifies each owner to cancel its own cached clinical egress.
     _revokePublishedSessionsInIsolate();
-    await _serializeCredentials(() async {
-      // Commit the revocation fence *before* attempting non-atomic deletes.
-      // If erasure fails, recovery on the next initialize sees this fence.
-      // Never delete the stable local device vault identifier.
-      try {
-        await _storage.write(
-          key: _logoutPendingKey,
-          value: _logoutPendingValue,
-        );
-      } catch (fenceError, fenceStackTrace) {
-        // A failed fence write must NOT prevent still-available credential
-        // erasure. Try every deletion even when one fails, to avoid leaving
-        // a local enrollment or bound identity behind unnecessarily.
-        Object? firstDeleteError;
-        StackTrace? firstDeleteStack;
-        for (final key in <String>[
-          _tokenKey,
-          _nativeIdentityKey,
-          _localSessionKey,
-        ]) {
-          try {
-            await _storage.delete(key: key);
-          } catch (deleteError, deleteStackTrace) {
-            firstDeleteError ??= deleteError;
-            firstDeleteStack ??= deleteStackTrace;
+    Object? storageFailure;
+    StackTrace? storageFailureStack;
+    try {
+      await _serializeCredentials(() async {
+        // Commit the revocation fence *before* attempting non-atomic deletes.
+        // If erasure fails, recovery on the next initialize sees this fence.
+        // Never delete the stable local device vault identifier.
+        try {
+          await _storage.write(
+            key: _logoutPendingKey,
+            value: _logoutPendingValue,
+          );
+        } catch (fenceError, fenceStackTrace) {
+          // A failed fence write must NOT prevent still-available credential
+          // erasure. Try every deletion even when one fails, to avoid leaving
+          // a local enrollment or bound identity behind unnecessarily.
+          Object? firstDeleteError;
+          StackTrace? firstDeleteStack;
+          for (final key in <String>[
+            _tokenKey,
+            _nativeIdentityKey,
+            _localSessionKey,
+          ]) {
+            try {
+              await _storage.delete(key: key);
+            } catch (deleteError, deleteStackTrace) {
+              firstDeleteError ??= deleteError;
+              firstDeleteStack ??= deleteStackTrace;
+            }
           }
+          // Never pretend that a failed durable fence is safe. If both the
+          // fence write and credential deletion fail, a future process restart
+          // remains a security NO-GO without a separate durable mechanism.
+          if (firstDeleteError != null) {
+            Error.throwWithStackTrace(firstDeleteError, firstDeleteStack!);
+          }
+          Error.throwWithStackTrace(fenceError, fenceStackTrace);
         }
-        // Never pretend that a failed durable fence is safe. If both the
-        // fence write and credential deletion fail, a future process restart
-        // remains a security NO-GO without a separate durable mechanism.
-        if (firstDeleteError != null) {
-          Error.throwWithStackTrace(firstDeleteError, firstDeleteStack!);
-        }
-        Error.throwWithStackTrace(fenceError, fenceStackTrace);
-      }
-      await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _nativeIdentityKey);
-      await _storage.delete(key: _localSessionKey);
-      // Only a fully completed credential cleanup may clear the fence.
-      await _storage.delete(key: _logoutPendingKey);
-    });
+        await _storage.delete(key: _tokenKey);
+        await _storage.delete(key: _nativeIdentityKey);
+        await _storage.delete(key: _localSessionKey);
+        // Only a fully completed credential cleanup may clear the fence.
+        await _storage.delete(key: _logoutPendingKey);
+      });
+    } catch (error, stackTrace) {
+      // Local persistence errors cannot suppress the independent server-side
+      // revocation attempt. The in-memory session was already retired above.
+      storageFailure = error;
+      storageFailureStack = stackTrace;
+      _failureLogger('logout_storage', error.runtimeType.toString(), stackTrace);
+    }
+
     // Preserve the stable local-only vault locator: deleting it orphaned
     // offline clinical records without removing their SQLite database.
     // The revoked session cannot resolve it until explicit re-enrollment;
     // the existing app-lock remains mandatory for reopening the vault.
-    await _firebaseAuth?.signOut();
+    Object? firebaseFailure;
+    StackTrace? firebaseFailureStack;
+    try {
+      await _firebaseAuth?.signOut();
+    } catch (error, stackTrace) {
+      firebaseFailure = error;
+      firebaseFailureStack = stackTrace;
+      _failureLogger('logout_firebase', error.runtimeType.toString(), stackTrace);
+    }
 
+    Object? remoteFailure;
+    StackTrace? remoteFailureStack;
     if (token != null) {
+      http.Response? response;
       try {
-        await _httpClient.post(
+        response = await _httpClient.post(
           Uri.parse('$_effectiveAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
       } catch (error, stackTrace) {
-        _failureLogger(
-          'logout',
-          error.runtimeType.toString(),
-          stackTrace,
-        );
+        // An offline/failed transport cannot block a completed LOCAL logout.
+        // Explicitly keep remote confirmation false and report observability;
+        // no claim of server-side revocation is made.
+        _failureLogger('logout', error.runtimeType.toString(), stackTrace);
       }
+      if (response != null) {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          _lastRemoteLogoutConfirmed = true;
+        } else {
+          // Explicit HTTP refusal is a known failed server operation, not
+          // merely an unavailable transport. Keep F05B-HTTP2 fail-closed.
+          final error = StateError('Remote sign-out not confirmed');
+          remoteFailure = error;
+          final stackTrace = StackTrace.current;
+          remoteFailureStack = stackTrace;
+          _failureLogger('logout', error.runtimeType.toString(), stackTrace);
+        }
+      }
+    }
+
+    // Surface incomplete cleanup/revocation to callers without undoing the
+    // synchronous local denial. Separate client Web startup revalidation is
+    // required: this alone cannot survive a double persistent-storage fault.
+    if (storageFailure != null) {
+      Error.throwWithStackTrace(storageFailure, storageFailureStack!);
+    }
+    if (firebaseFailure != null) {
+      Error.throwWithStackTrace(firebaseFailure, firebaseFailureStack!);
+    }
+    if (remoteFailure != null) {
+      Error.throwWithStackTrace(remoteFailure, remoteFailureStack!);
     }
   }
 
