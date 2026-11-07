@@ -39,10 +39,20 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
     if front.get("functions"):
         problems.append("frontend: static SPA manifest must not define function overrides")
     rewrites = front.get("rewrites", [])
+    expected_refresh = {
+        "source": "/api/v1/auth/refresh",
+        "destination": "/api/session-refresh.js",
+    }
     expected_api = {"source": "/api/v1/:path*", "destination": "/api/index.js?forward=:path*"}
-    if (len(rewrites) != 2 or rewrites[0] != expected_api
-            or rewrites[1] != {"source": "/(.*)", "destination": "/index.html"}):
-        problems.append("frontend: Preview same-origin API relay must precede SPA fallback")
+    expected_spa = {"source": "/(.*)", "destination": "/index.html"}
+    # F09-C1: preserve a STRICT three-rule order. A broader rewrite ahead of
+    # the dedicated refresh handler could leak refresh credentials through the
+    # generic OIDC bridge, which has no cookie/rotation/CSRF authority.
+    if rewrites != [expected_refresh, expected_api, expected_spa]:
+        problems.append(
+            "frontend: dedicated deny-only refresh handler must precede "
+            "generic Preview API relay and SPA fallback"
+        )
     if "api/index.py" not in back.get("functions", {}):
         problems.append("backend: expected Django WSGI api/index.py function absent")
     if back.get("outputDirectory") == "build/web":
