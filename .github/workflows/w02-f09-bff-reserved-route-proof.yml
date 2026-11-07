@@ -1,0 +1,33 @@
+name: W02 F09-A Web BFF refresh path isolation (synthetic)
+
+on:
+  push:
+    branches:
+      - test/w02-f09-bff-refresh-reserved-route-20261107
+  workflow_dispatch:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "frontend/api/index.js"
+      - "tools/w02_f09_web_bff_isolation.test.js"
+      - ".github/workflows/w02-f09-bff-reserved-route-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bff-refresh-boundary:
+    name: Synthetic Web BFF reserved-route / cookie boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-validate BFF and test
+        run: |
+          node --check frontend/api/index.js
+          node --check tools/w02_f09_web_bff_isolation.test.js
+      - name: Prove Web BFF cookie isolation and reserved path
+        run: node --test tools/w02_f09_web_bff_isolation.test.js
