@@ -49,3 +49,13 @@ class WebRefreshConsumedSecret(models.Model):
                 name="core_wrused_fam_date_idx",
             ),
         ]
+
+class WebRefreshTransportNonce(models.Model):
+    """Consumed signed BFF request nonce. Store only keyed digest, never raw."""
+
+    nonce_digest = models.CharField(max_length=64, unique=True)
+    seen_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        app_label = "core"
