@@ -7,6 +7,16 @@ const fs = require('fs');
 const path = require('path');
 const origin='http://127.0.0.1:7383', api='http://127.0.0.1:8000';
 const directory='d19-real-auth-web-proof';
+// Count distinct, successful clinical endpoints rather than assuming four
+// requests: the tested flow explicitly fetches one summary and one KPI.
+const clinicalKind=url=>{
+ if(!url.startsWith(api+'/api/v1/'))return null;
+ const p=new URL(url).pathname;
+ if(/^\/api\/v1\/ai\/summary\/?$/.test(p))return 'summary';
+ if(/^\/api\/v1\/kpis\/?$/.test(p))return 'kpis';
+ return null;
+};
+const requiredClinicalKinds=['summary','kpis'];
 const localeToTest=process.env.D19_CI_LOCALE;
 if(!['fr','ar'].includes(localeToTest))throw Error('CI locale must be fr or ar');
 fs.mkdirSync(directory,{recursive:true});
@@ -19,20 +29,24 @@ fs.mkdirSync(directory,{recursive:true});
    const context=await browser.newContext({viewport,locale:locale==='fr'?'fr-FR':'ar-MA',serviceWorkers:'block'});
    for(const principal of ['a','b','a']){
     const page=await context.newPage();
-    const errors=[],external=[],requests=[],loginStatuses=[],loginTransportFailures=[];
+    const errors=[],external=[],requests=[],responses=[],clinicalTransportFailures=[],loginStatuses=[],loginTransportFailures=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,300)));
     page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,300));});
     page.on('response',r=>{
       if(r.url().startsWith(api+'/api/v1/auth/login'))
         loginStatuses.push(r.status());
+      const kind=clinicalKind(r.url());
+      if(kind)responses.push({kind,status:r.status()});
     });
     page.on('requestfailed',r=>{
       if(r.url().startsWith(api+'/api/v1/auth/login'))
         loginTransportFailures.push('auth login transport failed');
+      const kind=clinicalKind(r.url());
+      if(kind)clinicalTransportFailures.push(kind);
     });
     page.on('request',r=>{
-      if(r.url().startsWith(api) && /\/api\/v1\/(ai\/summary|kpis\/)/.test(r.url()))
-        requests.push(r.url().split('?')[0]);
+      const kind=clinicalKind(r.url());
+      if(kind)requests.push(kind);
     });
     await page.route('**/*',route=>{
       const u=route.request().url();
@@ -49,9 +63,22 @@ fs.mkdirSync(directory,{recursive:true});
     const target='IAMINA_D19_REAL_HTTP_'+principal.toUpperCase()+'_PASS';
     const file=locale+'-'+viewport.width+'-'+principal+'-'+report.tests.length+'.png';
     await page.screenshot({path:path.join(directory,file)});
+    // Each A/B/A synthetic principal must fetch BOTH endpoints, receive at
+    // least one HTTP 2xx for each and have no failed/HTTP-error clinical call.
+    // Dart independently validates owner-scoped KPI values, the rendered
+    // Flutter summary screen and absence of unverified CGM claims before PASS.
+    const allClinicalEndpointsOk=requiredClinicalKinds.every(kind=>
+      requests.includes(kind) &&
+      responses.some(r=>r.kind===kind&&r.status>=200&&r.status<300)
+    ) && responses.every(r=>r.status>=200&&r.status<300)
+      && clinicalTransportFailures.length===0;
     const observation={locale,viewport:viewport.width+'x'+viewport.height,principal,expectedTitle:target,
-      pass:title===target&&requests.length>=4&&errors.length===0&&external.length===0,
-      backendRequestCount:requests.length,loginStatuses,loginTransportFailures:loginTransportFailures.length,consoleErrors:errors.length,
+      pass:title===target&&allClinicalEndpointsOk&&errors.length===0&&external.length===0&&loginTransportFailures.length===0,
+      backendRequestCount:requests.length,
+      clinicalEndpoints:[...new Set(requests)].sort(),
+      clinicalResponseStatuses:responses.map(r=>r.kind+':'+r.status),
+      clinicalTransportFailures:clinicalTransportFailures.length,
+      loginStatuses,loginTransportFailures:loginTransportFailures.length,consoleErrors:errors.length,
       blockedExternal:external.length,file};
     report.tests.push(observation);
     if(!observation.pass)report.failed.push({...observation,actualTitle:title});
@@ -62,6 +89,6 @@ fs.mkdirSync(directory,{recursive:true});
   }
  }finally{await browser.close();}
  fs.writeFileSync(path.join(directory,'report.json'),JSON.stringify(report,null,2));
- console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,loginStatuses:x.loginStatuses,loginTransportFailures:x.loginTransportFailures,requests:x.backendRequestCount,errors:x.consoleErrors,external:x.blockedExternal}))}));
+ console.log('D19_NATIVE_WEB_HTTP='+JSON.stringify({passed:report.tests.filter(x=>x.pass).length,total:report.tests.length,failed:report.failed.map(x=>({locale:x.locale,principal:x.principal,title:x.actualTitle,loginStatuses:x.loginStatuses,loginTransportFailures:x.loginTransportFailures,requests:x.backendRequestCount,endpoints:x.clinicalEndpoints,endpointStatuses:x.clinicalResponseStatuses,clinicalTransportFailures:x.clinicalTransportFailures,errors:x.consoleErrors,external:x.blockedExternal}))}));
  if(report.failed.length||report.tests.length!==9)process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
