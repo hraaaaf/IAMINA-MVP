@@ -16,6 +16,7 @@ import json
 import re
 
 from django.conf import settings
+from django.core.exceptions import DisallowedHost
 
 from core.web_refresh_c3_candidate import (
     WebRefreshC3Rejected,
@@ -99,5 +100,5 @@ def execute_unmounted_web_refresh(request, *, _synthetic_jwks=None):
             header_csrf=values["csrf_header"],
             _synthetic_jwks=_synthetic_jwks,
         )
-    except (ValueError, UnicodeError, TypeError, WebRefreshC3Rejected):
+    except (ValueError, UnicodeError, TypeError, DisallowedHost, WebRefreshC3Rejected):
         raise WebRefreshC4Rejected(_FAIL) from None
