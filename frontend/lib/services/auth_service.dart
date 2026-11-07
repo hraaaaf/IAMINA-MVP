@@ -152,6 +152,11 @@ class AuthService extends ChangeNotifier {
   // cleanup leaves a bearer that must never be restored on next startup.
   static const _logoutPendingKey = 'iamina_auth_logout_pending_v1';
   static const _logoutPendingValue = 'revoked';
+  // A token deletion can fail independently of secure-storage writes. A
+  // verified non-bearer tombstone prevents the old raw credential from being
+  // rehydrated even if the logout fence could not be written. This is a
+  // fallback, NEVER evidence that the secure-storage key was physically erased.
+  static const _revokedNativeTokenValue = 'iamina_logout_revoked_token_v1';
   static final RegExp _nativeBearerShape = RegExp(
     r'^iamina\.[A-Za-z0-9_.-]+:[A-Za-z0-9]+:[A-Za-z0-9_-]+$',
   );
@@ -374,6 +379,74 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Best-effort physical erasure followed by a fail-closed overwrite.
+  ///
+  /// A failed delete must still be reported to the caller. If an independent
+  /// write succeeds, the persisted value is no longer an authentic bearer.
+  /// If both operations fail, no local-only code can promise physical erasure
+  /// or crash-safe invalidation. Remote revocation remains independently
+  /// required and is attempted even after this method throws.
+  Future<void> _retireStoredNativeBearer() async {
+    try {
+      await _storage.delete(key: _tokenKey);
+      // Treat a silent no-op delete as a failure too. Only a read-back
+      // establishes that the raw bearer is no longer in this storage slot.
+      if (await _storage.read(key: _tokenKey) != null) {
+        throw StateError('Native bearer deletion not verified');
+      }
+      return;
+    } catch (deleteError, deleteStackTrace) {
+      try {
+        await _storage.write(
+          key: _tokenKey,
+          value: _revokedNativeTokenValue,
+        );
+        // Verify read-back, not merely an acknowledged storage write.
+        final persisted = await _storage.read(key: _tokenKey);
+        if (persisted != _revokedNativeTokenValue) {
+          throw StateError('Native bearer revocation marker not persisted');
+        }
+      } catch (overwriteError, overwriteStackTrace) {
+        _failureLogger(
+          'logout_token_tombstone',
+          overwriteError.runtimeType.toString(),
+          overwriteStackTrace,
+        );
+      }
+      // Even if the overwrite succeeded, a physical delete failed. Avoid
+      // misreporting the overall cleanup as complete.
+      Error.throwWithStackTrace(deleteError, deleteStackTrace);
+    }
+  }
+
+  /// Erase every independent credential key even if an earlier operation
+  /// fails. A persisted logout fence must only be cleared after ALL three
+  /// operations succeeded. This prevents an undeletable bearer from also
+  /// preserving an old account binding or enrollment marker unnecessarily.
+  Future<void> _eraseCredentialKeysBestEffort() async {
+    Object? firstFailure;
+    StackTrace? firstStack;
+    for (final key in <String>[
+      _tokenKey,
+      _nativeIdentityKey,
+      _localSessionKey,
+    ]) {
+      try {
+        if (key == _tokenKey) {
+          await _retireStoredNativeBearer();
+        } else {
+          await _storage.delete(key: key);
+        }
+      } catch (error, stackTrace) {
+        firstFailure ??= error;
+        firstStack ??= stackTrace;
+      }
+    }
+    if (firstFailure != null) {
+      Error.throwWithStackTrace(firstFailure, firstStack!);
+    }
+  }
+
   Future<void> initialize() async {
     // Read-only hydration must not block sign-out: a secure-storage read can
     // remain suspended while logout must finish its cleanup immediately.
@@ -389,9 +462,10 @@ class AuthService extends ChangeNotifier {
         // fail-closed instead of reviving the old authenticated account.
         await _serializeCredentials(() async {
           _requireCurrentCredentialIntent(intent);
-          await _storage.delete(key: _tokenKey);
-          await _storage.delete(key: _nativeIdentityKey);
-          await _storage.delete(key: _localSessionKey);
+          // Try all three independent erasures. Even if bearer deletion is
+          // impossible, remove identity/enrollment where possible and KEEP
+          // the pending fence for subsequent cold starts.
+          await _eraseCredentialKeysBestEffort();
           await _storage.delete(key: _logoutPendingKey);
           _requireCurrentCredentialIntent(intent);
           _nativeToken = null;
@@ -407,6 +481,24 @@ class AuthService extends ChangeNotifier {
       _requireCurrentCredentialIntent(intent);
       final storedToken = await _storage.read(key: _tokenKey);
       _requireCurrentCredentialIntent(intent);
+      if (storedToken == _revokedNativeTokenValue) {
+        // A prior logout replaced an undeletable bearer with a tombstone.
+        // Never reinterpret its surviving enrollment as a fresh local owner.
+        // Delete identity and enrollment first, tombstone LAST. On any fault,
+        // keep the remaining tombstone and deny all in-memory authority.
+        await _serializeCredentials(() async {
+          _requireCurrentCredentialIntent(intent);
+          await _storage.delete(key: _nativeIdentityKey);
+          await _storage.delete(key: _localSessionKey);
+          await _storage.delete(key: _tokenKey);
+          _requireCurrentCredentialIntent(intent);
+          _nativeToken = null;
+          _nativeAccountId = null;
+          _localSessionEnrolled = false;
+          _remoteCredentialVerified = false;
+        });
+        return;
+      }
       if (kIsWeb && _isExpectedNativeBearerShape(storedToken)) {
         // A Web cold start cannot distinguish a valid prior login from bearer
         // bytes that survived a failed logout (fence write + token delete).
@@ -532,7 +624,7 @@ class AuthService extends ChangeNotifier {
       // pending clinical synchronizer under an unbound credential.
       _notifyAuthChanged();
       await _serializeCredentials(() async {
-        await _storage.delete(key: _tokenKey);
+        await _retireStoredNativeBearer();
         await _storage.delete(key: _nativeIdentityKey);
       });
       return null;
@@ -629,33 +721,13 @@ class AuthService extends ChangeNotifier {
           );
         } catch (fenceError, fenceStackTrace) {
           // A failed fence write must NOT prevent still-available credential
-          // erasure. Try every deletion even when one fails, to avoid leaving
-          // a local enrollment or bound identity behind unnecessarily.
-          Object? firstDeleteError;
-          StackTrace? firstDeleteStack;
-          for (final key in <String>[
-            _tokenKey,
-            _nativeIdentityKey,
-            _localSessionKey,
-          ]) {
-            try {
-              await _storage.delete(key: key);
-            } catch (deleteError, deleteStackTrace) {
-              firstDeleteError ??= deleteError;
-              firstDeleteStack ??= deleteStackTrace;
-            }
-          }
-          // Never pretend that a failed durable fence is safe. If both the
-          // fence write and credential deletion fail, a future process restart
-          // remains a security NO-GO without a separate durable mechanism.
-          if (firstDeleteError != null) {
-            Error.throwWithStackTrace(firstDeleteError, firstDeleteStack!);
-          }
+          // erasure. Even if bearer erasure fails, clear the old binding and
+          // local enrollment wherever secure storage still allows it.
+          await _eraseCredentialKeysBestEffort();
+          // Never pretend the fence is durable if writing it failed.
           Error.throwWithStackTrace(fenceError, fenceStackTrace);
         }
-        await _storage.delete(key: _tokenKey);
-        await _storage.delete(key: _nativeIdentityKey);
-        await _storage.delete(key: _localSessionKey);
+        await _eraseCredentialKeysBestEffort();
         // Only a fully completed credential cleanup may clear the fence.
         await _storage.delete(key: _logoutPendingKey);
       });

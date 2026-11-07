@@ -13,8 +13,10 @@ const _bearerKey = 'iamina_native_access_token';
 const _fenceKey = 'iamina_auth_logout_pending_v1';
 
 // Delegates all normal reads/writes/deletes to actual browser secure storage.
-// Only after "arm" does it inject TWO independent persistent-operation faults:
-// (1) durable pending-logout fence write; (2) bearer deletion.
+// Only after "arm" does it inject THREE independent persistent-operation
+// faults: (1) durable pending-logout fence write; (2) bearer deletion;
+// (3) fallback bearer-tombstone write. This intentionally preserves the
+// original RAW bearer to keep the hardest Web cold-boot adversarial gate.
 // Unlike an in-memory fake, the original encrypted browser bytes remain.
 class _FaultedBrowserStorage implements FlutterSecureStorage {
   final FlutterSecureStorage _delegate = const FlutterSecureStorage();
@@ -25,6 +27,11 @@ class _FaultedBrowserStorage implements FlutterSecureStorage {
   Future<void> _write(String key, String value) {
     if (active && key == _fenceKey) {
       throw StateError('Synthetic logout fence write unavailable');
+    }
+    if (active && key == _bearerKey) {
+      // Force even the new F05B fallback to fail. The browser test must
+      // still prove zero remote authority when the RAW bearer survives.
+      throw StateError('Synthetic bearer tombstone write unavailable');
     }
     return _delegate.write(key: key, value: value);
   }
