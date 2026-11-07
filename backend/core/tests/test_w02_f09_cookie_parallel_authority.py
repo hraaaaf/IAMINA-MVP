@@ -111,6 +111,13 @@ def test_w02_f08_legacy_unbounded_cookie_cannot_access_clinical_api():
     # Old cookies have no server-issued native-login issued-at marker.
     old = Client(enforce_csrf_checks=True)
     old.force_login(user)
+    # Test-only force_login normally models a fresh bounded native login.
+    # Strip that fixture marker and restore the former 14-day cookie expiry
+    # deliberately, to represent an actual pre-migration session record.
+    legacy_session = old.session
+    legacy_session.pop(NATIVE_SESSION_ISSUED_AT_KEY, None)
+    legacy_session.set_expiry(14 * 24 * 60 * 60)
+    legacy_session.save()
     assert settings.SESSION_COOKIE_NAME in old.cookies
     assert NATIVE_SESSION_ISSUED_AT_KEY not in old.session
 
