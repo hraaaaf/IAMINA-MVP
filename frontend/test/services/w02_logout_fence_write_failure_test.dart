@@ -116,6 +116,28 @@ void main() {
     expect(state.values.every((value) => !value), isTrue, reason: '$state');
   });
 
+  test('W02 F05B-OFFLINE: verified tombstone prevents cold restart without server',
+      () async {
+    final storage = _FailingLogoutStorage()..failTokenDelete = true;
+    final auth = AuthService(
+      storage: storage,
+      httpClient: MockClient((request) async {
+        expect(request.url.path, '/api/v1/auth/logout');
+        throw http.ClientException('synthetic network unavailable', request.url);
+      }),
+    );
+    await auth.initialize();
+    await expectLater(auth.signOut(), throwsStateError);
+    expect(auth.hasRemoteApiCredential, isFalse);
+    expect(auth.lastRemoteLogoutConfirmed, isFalse);
+    auth.dispose();
+
+    expect(storage.values[_tokenKey], _revokedToken,
+        reason: 'No successful network call can replace local cold-boot denial');
+    final state = await _restartedState(storage);
+    expect(state.values.every((value) => !value), isTrue, reason: '$state');
+  });
+
   test('W02 F05C: if token overwrite also fails, logout reports NO-GO',
       () async {
     final storage = _FailingLogoutStorage()
