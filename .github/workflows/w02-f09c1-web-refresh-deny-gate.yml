@@ -1,0 +1,27 @@
+name: W02 F09-C1 Web refresh dedicated deny-by-default proof
+
+on:
+  push:
+    branches:
+      - test/w02-f09c1-web-refresh-dedicated-deny-gate-20261107
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dedicated-web-refresh:
+    name: Node22 synthetic BFF Origin CSRF routing and disabled proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate security oracle
+        run: node --check tools/w02_f09c1_web_refresh_deny_gate.test.js
+      - name: RED-first / GREEN fail-closed dedicated route
+        run: node --test tools/w02_f09c1_web_refresh_deny_gate.test.js
