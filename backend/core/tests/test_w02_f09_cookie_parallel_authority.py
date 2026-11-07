@@ -100,6 +100,19 @@ def test_w02_f09_invalid_bearer_and_conflicting_cookie_fail_closed():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_w02_f09_anonymous_write_without_cookie_still_returns_401():
+    strict = Client(enforce_csrf_checks=True)
+    original_rows = LogEntry.objects.count()
+    response = strict.post(
+        _LOGS,
+        data=json.dumps({"blood_sugar": 109}),
+        content_type="application/json",
+    )
+    assert response.status_code == 401, response.content[:200]
+    assert LogEntry.objects.count() == original_rows
+
+
+@pytest.mark.django_db(transaction=True)
 def test_w02_f09_cookie_only_clinical_write_without_csrf_is_forbidden():
     client, user, _ = _login(suffix="csrf")
     strict = Client(enforce_csrf_checks=True)
