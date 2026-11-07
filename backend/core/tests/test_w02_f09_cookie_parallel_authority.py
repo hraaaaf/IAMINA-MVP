@@ -20,7 +20,6 @@ from django.test import Client, RequestFactory
 from core.native_auth import issue_native_token
 from diabetes.models import LogEntry
 
-
 _LOGS = "/api/v1/logs"
 
 
