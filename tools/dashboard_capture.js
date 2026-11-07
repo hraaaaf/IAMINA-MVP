@@ -21,8 +21,12 @@ const assertFab = async (page, locale, width, height) => {
   if (!before || before.width < 44 || before.height < 44) {
     throw new Error(`${locale} ${width}: FAB not accessible as >=44px control`);
   }
-  if (before.y + before.height > height - 48) {
-    throw new Error(`${locale} ${width}: FAB overlaps bottom viewport safe inset`);
+  // MainShell uses a bottom nav only below 700px. At tablet/desktop
+  // the navigation becomes a side rail, so the FAB can safely sit 10px
+  // above the viewport bottom instead of reserving mobile-nav height.
+  const bottomSafetyMargin = width < 700 ? 48 : 8;
+  if (before.y + before.height > height - bottomSafetyMargin) {
+    throw new Error(`${locale} ${width}: FAB overlaps bottom safe inset (margin=${bottomSafetyMargin}px)`);
   }
   // Check physical anchoring under an actual scroll gesture.
   await page.mouse.move(width / 2, height / 2);
