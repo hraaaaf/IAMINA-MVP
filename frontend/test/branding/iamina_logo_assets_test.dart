@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as image;
 
 String source(String path) => File(path).readAsStringSync();
 
@@ -95,6 +96,24 @@ void main() {
     checkPng('assets/images/iamina_logo_mark.png', 320, 320);
     // Approved conversational brain+medical icon is only for the dashboard FAB.
     checkPng('assets/images/iamina_chatbrain_diabetes.png', 96, 96);
+    // RGBA: the ChatBrain art must have an alpha channel, not an opaque
+    // square that replaces the removed Dashboard FAB background.
+    expect(
+      File('assets/images/iamina_chatbrain_diabetes.png')
+          .readAsBytesSync()[25],
+      6,
+      reason: 'ChatBrain must be an RGBA PNG',
+    );
+    // The exact visible outline retains a solid pale interior to conceal
+    // Dashboard text beneath it, while exterior corners stay transparent.
+    final brain = image.decodePng(
+      File('assets/images/iamina_chatbrain_diabetes.png').readAsBytesSync(),
+    );
+    expect(brain, isNotNull);
+    expect(brain!.getPixel(0, 0).a, 0,
+        reason: 'Exterior must not draw a rectangular backing');
+    expect(brain.getPixel(20, 20).a, 255,
+        reason: 'Interior of the speech bubble must be opaque');
     // Legacy URL is a V4 alias for already-installed Web/PWA clients.
     checkPng('assets/images/logo_amina.png', 320, 320);
     expect(

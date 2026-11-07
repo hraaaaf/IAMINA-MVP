@@ -49,6 +49,13 @@ void main() {
         // FAB.tooltip installs a competing long-press recognizer and would
         // block the accessible position picker; use explicit Semantics instead.
         expect(fab.tooltip, isNull);
+        // The approved brain icon must stand alone: no circular FAB or shadow.
+        expect(fab.backgroundColor, Colors.transparent);
+        expect(fab.elevation, 0);
+        expect(fab.focusElevation, 0);
+        expect(fab.hoverElevation, 0);
+        expect(fab.highlightElevation, 0);
+        expect(fab.child, isA<SizedBox>());
         expect(
           find.byWidgetPredicate(
             (widget) => widget is Semantics &&
@@ -62,6 +69,8 @@ void main() {
         final image = tester.widget<Image>(find.byType(Image));
         expect((image.image as AssetImage).assetName,
             'assets/images/iamina_chatbrain_diabetes.png');
+        expect(image.color, isNull,
+            reason: 'Tinting the solid RGBA bubble would hide the brain lines');
 
         // Before any upward movement there must be room to move DOWN too.
         final initial = tester.getTopLeft(avatar);
