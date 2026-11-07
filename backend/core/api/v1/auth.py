@@ -197,13 +197,10 @@ def login_native(request, data: NativeLoginRequest):
 
 @router.get("/auth/me", response=UserResponse)
 def current_identity(request):
-    """Revalidate one native bearer against Django's current revocation state.
-
-    This public-auth router does not install the protected route's HybridBearer
-    callback. Resolve an explicit bearer here instead of trusting a cookie
-    identity or the syntactic shape of a persisted token on browser restart.
-    The same fail-closed native verifier already protects /auth/logout.
-    """
+    # Public auth router has no HybridBearer auth callback. Resolve the
+    # explicit bearer through the existing native verifier rather than
+    # trusting cookie identity or a token's shape. Do not alter the route's
+    # published OpenAPI description while fixing its authorization behavior.
     user = _logout_principal(request)
     if user is None:
         raise HttpError(401, "Authentication required")
