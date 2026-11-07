@@ -118,7 +118,7 @@ def _parsed_request(request):
         return raw_body, values, headers, request.headers.get(
             "x-vercel-trusted-oidc-idp-token"
         )
-    except (ValueError, TypeError, UnicodeError, DisallowedHost) as exc:
+    except (ValueError, TypeError, UnicodeError, DisallowedHost):
         raise WebRefreshC7Rejected(_FAIL) from None
 
 
