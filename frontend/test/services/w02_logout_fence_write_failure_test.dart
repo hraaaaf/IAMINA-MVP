@@ -156,7 +156,13 @@ void main() {
     // mean RAW bearer remains. The successful original fence MUST survive.
     expect(storage.values[_tokenKey], _token);
     expect(storage.values[_fenceKey], 'revoked');
+    // When token erasure fails, identity and enrollment are still separate
+    // deletions. Their cleanup must continue, without clearing the fence.
+    expect(storage.values.containsKey(_bindingKey), isFalse);
+    expect(storage.values.containsKey(_enrollmentKey), isFalse);
     final first = await _restartedState(storage);
+    expect(first['persistedBinding'], isFalse);
+    expect(first['persistedEnrollment'], isFalse);
     expect(first['memoryBearer'], isFalse);
     expect(first['getIdToken'], isFalse);
     expect(first['patientVaultScope'], isFalse);
