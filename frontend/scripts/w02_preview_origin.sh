@@ -10,7 +10,7 @@ iamina_w02_preview_origin() {
 
   if [[ "$environment" != "preview" ||
         "$project_id" != "prj_AYaUi32KTDHak8I7dmdQpDrqd8SI" ||
-        ! "$deployment_host" =~ ^iamina-review-[a-z0-9]{9,12}-achraf-benmoussa-s-projects\\.vercel\\.app$ ]]; then
+        ! "$deployment_host" =~ ^iamina-review-[a-z0-9]{9,12}-achraf-benmoussa-s-projects\.vercel\.app$ ]]; then
     printf '%s\n' 'IAMINA W02: immutable Preview origin unavailable' >&2
     return 64
   fi
