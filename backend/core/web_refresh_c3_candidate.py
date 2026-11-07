@@ -127,7 +127,9 @@ def verify_vercel_service_identity(token, *, _synthetic_jwks=None, _now=None):
             raise ValueError("JWT structure")
         kid = header.get("kid")
         if (
-            header.get("alg") != "RS256" or header.get("typ") != "JWT"
+            header.get("alg") != "RS256"
+            or not isinstance(header.get("typ"), str)
+            or header["typ"].lower() != "jwt"
             or not isinstance(kid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", kid)
             or "jku" in header or "jwk" in header or "x5u" in header
         ):
