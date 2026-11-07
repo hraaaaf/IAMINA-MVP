@@ -81,11 +81,11 @@ void main() {
       expect(premium, contains("ValueKey('dashboard-data-import')"));
       expect(premium, contains("context.go('/importer')"));
       final companion = _read(
-        'lib/features/dashboard/widgets/dashboard_companion_callout.dart',
+        'lib/features/dashboard/widgets/dashboard_companion_fab.dart',
       );
-      expect(today, contains('const DashboardCompanionCallout()'));
-      expect(companion, contains("'dashboard-secondary-companion'"));
-      expect(companion, contains("context.go('/companion/chat')"));
+      expect(today, isNot(contains('DashboardCompanionCallout')));
+      expect(companion, contains("'dashboard-companion-chat-action'"));
+      expect(companion, contains("context.push('/companion/chat')"));
     },
   );
 

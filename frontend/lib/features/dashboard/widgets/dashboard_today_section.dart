@@ -6,7 +6,6 @@ import '../../../core/localization/dashboard_localized_copy.dart';
 import '../../../core/theme/amina_visual_language.dart';
 import '../../../data/models/companion_models.dart';
 import '../../../services/companion_service.dart';
-import 'dashboard_companion_callout.dart';
 
 String _todayActionCopy(
   BuildContext context, {
@@ -127,8 +126,6 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
                   onTap: () => context.go('/companion'),
                 ),
               ),
-            const SizedBox(height: 2),
-            const DashboardCompanionCallout(),
             const SizedBox(height: 10),
             const _TrustStrip(),
           ],

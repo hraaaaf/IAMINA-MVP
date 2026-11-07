@@ -11,11 +11,11 @@ void main() {
     expect(source, contains('_service.fetchOverview()'));
     expect(source, contains('signals.take(2)'));
     expect(source, contains("context.go('/companion')"));
-    expect(source, contains('const DashboardCompanionCallout()'));
-    final callout = File(
-      'lib/features/dashboard/widgets/dashboard_companion_callout.dart',
+    expect(source, isNot(contains('DashboardCompanionCallout')));
+    final fab = File(
+      'lib/features/dashboard/widgets/dashboard_companion_fab.dart',
     ).readAsStringSync();
-    expect(callout, contains("context.go('/companion/chat')"));
+    expect(fab, contains("context.push('/companion/chat')"));
     expect(source, isNot(contains("context.go('/importer')")));
     expect(source, isNot(contains('proactive-insights')));
     expect(source, isNot(contains('evaluateProactive')));
