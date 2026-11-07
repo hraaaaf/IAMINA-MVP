@@ -4,8 +4,8 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
-from django.utils import timezone
 from django.contrib.auth.models import AnonymousUser, User
+from django.utils import timezone
 from ninja.errors import HttpError
 
 from core.api.v1.auth import (
