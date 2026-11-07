@@ -11,6 +11,7 @@ const _bindingKey = 'iamina_native_account_binding_v1';
 const _enrollmentKey = 'iamina_local_session_v1';
 const _fenceKey = 'iamina_auth_logout_pending_v1';
 const _token = 'iamina.e30:1abcde:f05_synthetic_signature';
+const _revokedToken = 'iamina_logout_revoked_token_v1';
 
 /// Deliberate non-atomic secure-storage faults; no PHI, device keys or remote
 /// identity provider. The fake returns stored values across AuthService restarts.
@@ -22,6 +23,7 @@ class _FailingLogoutStorage implements FlutterSecureStorage {
   };
   bool failFenceWrite = true;
   bool failTokenDelete = false;
+  bool failTokenTombstoneWrite = false;
   final deletedKeys = <String>[];
 
   Future<String?> _read(String key) async => values[key];
@@ -29,6 +31,10 @@ class _FailingLogoutStorage implements FlutterSecureStorage {
   Future<void> _write(String key, String value) async {
     if (key == _fenceKey && failFenceWrite) {
       throw StateError('synthetic logout fence write failure');
+    }
+    if (key == _tokenKey && value == _revokedToken &&
+        failTokenTombstoneWrite) {
+      throw StateError('synthetic bearer tombstone write failure');
     }
     values[key] = value;
   }
@@ -77,7 +83,9 @@ Future<Map<String, bool>> _restartedState(_FailingLogoutStorage storage) async {
     'boundAccount': reopened.boundNativeAccountId != null,
     'getIdToken': token != null,
     'patientVaultScope': scope != null,
-    'persistedBearer': storage.values.containsKey(_tokenKey),
+    // "Persisted bearer" is an authentic raw credential, not mere presence
+    // of a deliberately non-bearer revocation sentinel in the same slot.
+    'persistedBearer': storage.values[_tokenKey] == _token,
     'persistedBinding': storage.values.containsKey(_bindingKey),
     'persistedEnrollment': storage.values.containsKey(_enrollmentKey),
   };
@@ -108,6 +116,27 @@ void main() {
     expect(state.values.every((value) => !value), isTrue, reason: '$state');
   });
 
+  test('W02 F05C: if token overwrite also fails, logout reports NO-GO',
+      () async {
+    final storage = _FailingLogoutStorage()
+      ..failTokenDelete = true
+      ..failTokenTombstoneWrite = true;
+    final auth = _auth(storage);
+    await auth.initialize();
+    await expectLater(auth.signOut(), throwsStateError);
+    expect(auth.hasRemoteApiCredential, isFalse);
+    expect(auth.lastRemoteLogoutConfirmed, isTrue);
+    auth.dispose();
+
+    // This is a captured UNSOLVED physical-storage failure. The old
+    // secret remains in hostile storage; even HTTP 204 revocation does not
+    // make local erasure true. Do NOT certify this as safe offline or for
+    // the native-platform persistent hydration path.
+    expect(storage.values[_tokenKey], _token);
+    expect(storage.values.containsKey(_bindingKey), isFalse);
+    expect(storage.values.containsKey(_enrollmentKey), isFalse);
+  });
+
   test('W02 F05B: fence write AND token delete both fail: restart must not revive A',
       () async {
     final storage = _FailingLogoutStorage()..failTokenDelete = true;
@@ -117,10 +146,14 @@ void main() {
     expect(auth.hasRemoteApiCredential, isFalse);
     auth.dispose();
 
-    // This is deliberately a stronger adversarial oracle. If both durable
-    // writes and token deletion fail, a client-only approach may be unable
-    // to prove crash-safe revocation; keep it RED until a viable mechanism
-    // is demonstrated (e.g. independent server-side credential invalidation).
+    // The injected deletion fault makes PHYSICAL key removal impossible.
+    // Require instead that the old secret bytes are overwritten, read back
+    // as a non-bearer, and NEVER published after process restart. Do not
+    // mislabel this as physical erasure or independently confirmed server
+    // revocation; those are separate gates.
+    expect(storage.values.containsKey(_tokenKey), isTrue,
+        reason: 'The injected token deletion fault is still active');
+    expect(storage.values[_tokenKey], _revokedToken);
     final state = await _restartedState(storage);
     expect(state.values.every((value) => !value), isTrue, reason: '$state');
   });
