@@ -73,3 +73,11 @@ jobs:
           python manage.py migrate core 0020_web_refresh_candidate --noinput
           python manage.py migrate core 0021_web_refresh_transport_nonce --noinput
           python manage.py makemigrations --check --dry-run
+      - name: Prove Web BFF remains deny-only and strict topology is intact
+        working-directory: .
+        run: |
+          node --test tools/w02_f09c1_web_refresh_deny_gate.test.js
+          node --test tools/w02_f09_web_bff_isolation.test.js
+          python scripts/check_web_topology_contract.py
+      - name: Full Django PG16 regression including legacy W01 and F09-B
+        run: python -m pytest -q --tb=short
