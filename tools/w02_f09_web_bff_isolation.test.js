@@ -65,7 +65,16 @@ test('F09-A: generic clinical API transport never forwards browser refresh cooki
   assert.equal(res.headers.get('cache-control'), 'no-store');
 });
 
-for (const relativePath of ['auth/refresh', 'auth/refresh/']) {
+// F09-A2: WHATWG URL constructor normalizes these path aliases to refresh.
+// A guard on the raw path is insufficient even though validPath rejects "..".
+for (const relativePath of [
+  'auth/refresh',
+  'auth/refresh/',
+  'auth/./refresh',
+  'auth/./refresh/',
+  'auth/refresh/.',
+  'auth/refresh/./',
+]) {
   test('F09-A: generic BFF must reserve ' + relativePath + ' for reviewed session route', async () => {
     const res = response();
     let upstreamCalls = 0;
