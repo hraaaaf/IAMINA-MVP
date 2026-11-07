@@ -389,6 +389,11 @@ class AuthService extends ChangeNotifier {
   Future<void> _retireStoredNativeBearer() async {
     try {
       await _storage.delete(key: _tokenKey);
+      // Treat a silent no-op delete as a failure too. Only a read-back
+      // establishes that the raw bearer is no longer in this storage slot.
+      if (await _storage.read(key: _tokenKey) != null) {
+        throw StateError('Native bearer deletion not verified');
+      }
       return;
     } catch (deleteError, deleteStackTrace) {
       try {
