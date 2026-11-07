@@ -1,5 +1,4 @@
 """W01/G7 security/privacy FUE negatives on ephemeral PostgreSQL."""
-
 import json
 
 import pytest
@@ -8,21 +7,6 @@ from django.test import Client
 
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token
-
-
-_G7_PASSWORD = "Synthetic-only-G7-Bounded-Session-2026!"
-
-
-def _open_bounded_native_session(client: Client, user: User) -> None:
-    """W01 cookie tests need a REAL native issuance, not unbounded force_login."""
-    user.set_password(_G7_PASSWORD)
-    user.save(update_fields=["password"])
-    response = client.post(
-        "/api/v1/auth/login",
-        data=json.dumps({"email": user.email, "password": _G7_PASSWORD}),
-        content_type="application/json",
-    )
-    assert response.status_code == 200, response.content[:200]
 
 
 @pytest.mark.django_db
@@ -50,7 +34,7 @@ def test_g7_invalid_bearer_or_cross_patient_cookie_cannot_authorize():
     BasePatientProfile.objects.get_or_create(patient=a)
     BasePatientProfile.objects.get_or_create(patient=b)
     client = Client()
-    _open_bounded_native_session(client, b)
+    client.force_login(b)
     assert client.get(
         "/api/v1/account/consent",
         HTTP_AUTHORIZATION="Bearer invalid-w01-g7",
@@ -76,7 +60,7 @@ def test_g7_session_cookie_write_without_csrf_rejected(monkeypatch):
 
     monkeypatch.setattr(FirebaseAuth, "__call__", HttpBearer.__call__)
     client = Client(enforce_csrf_checks=True)
-    _open_bounded_native_session(client, user)
+    client.force_login(user)
     claim = expected_notice_claim("fr")
     body = {
         "notice_version": claim.version,
