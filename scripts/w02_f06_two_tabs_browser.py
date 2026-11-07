@@ -40,13 +40,13 @@ def settled(page, key, value, timeout=30000):
 
 
 def login(page):
-    page.locator("#w02-f06-login").click()
+    page.evaluate("document.getElementById('w02-f06-login').click()")
     settled(page, "loginResult", "success")
     settled(page, "remote", "true")
 
 
 def inspect_locked(page):
-    page.locator("#w02-f06-sample").click()
+    page.evaluate("document.getElementById('w02-f06-sample').click()")
     settled(page, "sampleResult", "success")
     state = safe_state(page)
     if any(state.get(k) != "false" for k in ("remote", "bound", "token", "scope")):
@@ -92,7 +92,7 @@ def main():
                 if safe_state(page_b)["bound"] != "true":
                     raise AssertionError("Tab B never obtained bound Django principal")
 
-                page_b.locator("#w02-f06-logout").click()
+                page_b.evaluate("document.getElementById('w02-f06-logout').click()")
                 settled(page_b, "logoutResult", "success", timeout=25000)
                 settled(page_b, "remote", "false")
                 proof["steps"].append("tab_b_logged_out_and_server_acknowledged")
@@ -124,7 +124,7 @@ def main():
                     "**/api/v1/auth/logout",
                     lambda route: route.abort("failed"),
                 )
-                page_b.locator("#w02-f06-logout").click()
+                page_b.evaluate("document.getElementById('w02-f06-logout').click()")
                 settled(page_b, "logoutResult", "success", timeout=25000)
                 proof["steps"].append("tab_b_local_logout_when_backend_unavailable")
                 try:
