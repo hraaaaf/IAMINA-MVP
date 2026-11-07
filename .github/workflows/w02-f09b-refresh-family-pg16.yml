@@ -61,10 +61,15 @@ jobs:
         run: python -m pytest -q -ra core/tests/test_w02_f09b_refresh_family_pg.py
       - name: Security module/style validation
         run: |
-          ruff check core/web_refresh_protocol.py core/models/web_refresh.py core/tests/test_w02_f09b_refresh_family_pg.py
+          ruff check core/web_refresh_protocol.py core/models/web_refresh.py core/models/__init__.py core/migrations/0020_web_refresh_candidate.py core/tests/test_w02_f09b_refresh_family_pg.py
           python -m py_compile core/web_refresh_protocol.py core/models/web_refresh.py
-      - name: Prove migration plan matches model without data-dependent backfill
+      - name: Prove migration schema and isolated reversible rollback
         run: |
           python manage.py makemigrations --check --dry-run
           python manage.py migrate --noinput
           python manage.py shell -c "from django.db import connection; assert connection.vendor == 'postgresql'"
+          python manage.py migrate core 0019_auth_abuse_bucket --noinput
+          python manage.py migrate core 0020_web_refresh_candidate --noinput
+          python manage.py makemigrations --check --dry-run
+      - name: Full Django backend regression on disposable PostgreSQL 16
+        run: python -m pytest -q --tb=short
