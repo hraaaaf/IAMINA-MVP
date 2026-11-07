@@ -434,7 +434,9 @@ class AuthService extends ChangeNotifier {
         // fail-closed instead of reviving the old authenticated account.
         await _serializeCredentials(() async {
           _requireCurrentCredentialIntent(intent);
-          await _storage.delete(key: _tokenKey);
+          // Do not discard the durable fence on a "successful" token delete
+          // that silently left raw bearer bytes in secure storage.
+          await _retireStoredNativeBearer();
           await _storage.delete(key: _nativeIdentityKey);
           await _storage.delete(key: _localSessionKey);
           await _storage.delete(key: _logoutPendingKey);
