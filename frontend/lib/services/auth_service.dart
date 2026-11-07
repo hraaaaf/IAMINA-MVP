@@ -559,7 +559,10 @@ class AuthService extends ChangeNotifier {
     // isolate. Clear every live owner's in-memory authority before any await.
     // Also notifies each owner to cancel its own cached clinical egress.
     _revokePublishedSessionsInIsolate();
-    await _serializeCredentials(() async {
+    Object? storageFailure;
+    StackTrace? storageFailureStack;
+    try {
+      await _serializeCredentials(() async {
       // Commit the revocation fence *before* attempting non-atomic deletes.
       // If erasure fails, recovery on the next initialize sees this fence.
       // Never delete the stable local device vault identifier.
@@ -597,28 +600,62 @@ class AuthService extends ChangeNotifier {
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _nativeIdentityKey);
       await _storage.delete(key: _localSessionKey);
-      // Only a fully completed credential cleanup may clear the fence.
-      await _storage.delete(key: _logoutPendingKey);
-    });
+        // Only a fully completed credential cleanup may clear the fence.
+        await _storage.delete(key: _logoutPendingKey);
+      });
+    } catch (error, stackTrace) {
+      // Local persistence errors cannot suppress the independent server-side
+      // revocation attempt. The in-memory session was already retired above.
+      storageFailure = error;
+      storageFailureStack = stackTrace;
+      _failureLogger('logout_storage', error.runtimeType.toString(), stackTrace);
+    }
+
     // Preserve the stable local-only vault locator: deleting it orphaned
     // offline clinical records without removing their SQLite database.
     // The revoked session cannot resolve it until explicit re-enrollment;
     // the existing app-lock remains mandatory for reopening the vault.
-    await _firebaseAuth?.signOut();
+    Object? firebaseFailure;
+    StackTrace? firebaseFailureStack;
+    try {
+      await _firebaseAuth?.signOut();
+    } catch (error, stackTrace) {
+      firebaseFailure = error;
+      firebaseFailureStack = stackTrace;
+      _failureLogger('logout_firebase', error.runtimeType.toString(), stackTrace);
+    }
 
+    Object? remoteFailure;
+    StackTrace? remoteFailureStack;
     if (token != null) {
       try {
-        await _httpClient.post(
+        final response = await _httpClient.post(
           Uri.parse('$_effectiveAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          // A failed HTTP response is never evidence that Django advanced
+          // auth_token_version. Never include bearer or body in the error.
+          throw StateError('Remote sign-out not confirmed');
+        }
       } catch (error, stackTrace) {
-        _failureLogger(
-          'logout',
-          error.runtimeType.toString(),
-          stackTrace,
-        );
+        remoteFailure = error;
+        remoteFailureStack = stackTrace;
+        _failureLogger('logout', error.runtimeType.toString(), stackTrace);
       }
+    }
+
+    // Surface incomplete cleanup/revocation to callers without undoing the
+    // synchronous local denial. Separate client Web startup revalidation is
+    // required: this alone cannot survive a double persistent-storage fault.
+    if (storageFailure != null) {
+      Error.throwWithStackTrace(storageFailure, storageFailureStack!);
+    }
+    if (firebaseFailure != null) {
+      Error.throwWithStackTrace(firebaseFailure, firebaseFailureStack!);
+    }
+    if (remoteFailure != null) {
+      Error.throwWithStackTrace(remoteFailure, remoteFailureStack!);
     }
   }
 
