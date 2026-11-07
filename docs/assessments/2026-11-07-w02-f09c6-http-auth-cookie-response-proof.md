@@ -1,0 +1,21 @@
+# IAMINA — W02-F09-C6 · Unmounted Django-Ninja Web authentication + BFF response contract
+
+Date: 2026-11-07. Parent: C5 code SHA `7a2e179dd15cd8b5b192c2534dc86b7d47a7eaf2` (CI #42414499236 COMPLETED/SUCCESS). Branch `test/w02-f09c6-http-auth-cookie-response-20261107`.
+
+## GOAL / SUCCESS / PROOF
+GOAL: prove an isolated Django-Ninja HTTP clinical-auth adapter can accept ONLY short-lived family-bound Web tokens and immediately deny after family revocation, without Django session cookie or native/Firebase fallback. Prove a pure BFF response constructor keeps refresh secrets in HttpOnly Secure Strict host-only cookies while exposing only a short-lived access bearer in JSON. **No deployed or mounted feature.**
+SUCCESS criterion: tests on a test-only Django URLconf, real Django Client against disposable PostgreSQL16, negative native/cookie/mixed-user/expired/revoked auth, Node22 signed-shaped response and logout safety, C1–C5 regression, full Django PG16 suite, exact source HEAD. No schema drift and no change to live routers or Vercel configuration.
+PROOF: `.github/workflows/w02-f09c6-http-auth-pg16.yml`. Record the exact GitHub run and logs once completed; at first document commit status is NOT YET VERIFIED.
+
+## CHANGES / AUDIT BOUNDARIES
+- `backend/core/web_refresh_c6_http_auth_candidate.py`: class `CandidateWebFamilyHttpBearer`, subclass of Django Ninja `HttpBearer`. Requires `F09_C6_HTTP_AUTH_ENABLED=True`, absent/False by default. Strict `Authorization: Bearer iamina-web.*` on the request itself; rejects any Django session cookie or preauthenticated request, even matching account, and resolves authority only via C5 DB family+account+TTL check. It is NOT registered in `diabetes/api/main.py` or any live router.
+- `backend/core/tests/test_w02_f09c6_http_auth_pg.py`: isolated test module defines ephemeral `NinjaAPI` URLconf only during `override_settings(ROOT_URLCONF=__name__)` and checks HTTP 200 for valid family tokens; HTTP 401 for missing/corrupt/native/legacy/mixed cookies and after family/global revocation; live clinical `/api/v1/logs` remains HTTP 401 for C5 bearer and `/api/v1/auth/refresh` remains HTTP 404.
+- `frontend/api/w02_f09c6_response_candidate.js`: pure candidate response serializer. Strict exact input fields; bearer-shaped JSON token with short explicit TTL, no refresh secret or family ID or CSRF in JSON; cookies delegated to C5 host-only Secure HttpOnly SameSite=Strict policy; no-store, no-referrer, nosniff; logout cookie clearing only with explicit backend-confirmed-revocation input. NO HTTP network, handler import or Set-Cookie emission.
+- `tools/w02_f09c6_response_contract.test.js`: Node22 happy/negative response, schema injection, header pollution, TTL confusion, cookie and bearer segregation, bad logout confirmation, live-handler isolation.
+
+## LIMITATIONS / HUMAN GATES
+This is NOT a real Web HTTP session: the new Ninja router exists ONLY in the test URLconf. The live Django clinical auth chain is unchanged and DOES NOT recognize C6. The Vercel handler still always denies refresh. Tests are synthetic and do not prove actual Vercel OIDC/JWKS, backend/BFF response provenance, atomic C4→C5→CSRF→Set-Cookie commitment, browser memory/cookie behaviors, concurrent in-flight clinical-request revocation, real multi-tab/single-flight, Safari/Chromium FR/AR E2E, physical persistence failures, XSS, key rotation or security review.
+Logout response's `backendConfirmedRevoked: true` is a test-only call-site precondition, NOT a signed trust assertion. No production use before independent validation of response attestation and actual server flow. The C5 60s/120s test values are NOT approved patient policies.
+Do NOT merge, enable a live endpoint, create clinical bearer authority, alter Neon, use real patients or deploy Vercel Preview/Production without explicit owner permission. **W02 SECURITY_NO_GO / PATIENT_NO_GO.**
+
+NEXT EXACT: verify CI on code HEAD, repair any red, update PR+Notion. After CI, a separate gate is required for atomic C4→C5 issuance/CSRF, trusted backend response provenance and real HTTP cookie exchange; hosted browser E2E requires a separate Vercel authorization.
