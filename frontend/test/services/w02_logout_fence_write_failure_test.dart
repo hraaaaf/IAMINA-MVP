@@ -140,6 +140,37 @@ void main() {
     expect(state.values.every((value) => !value), isTrue, reason: '$state');
   });
 
+  test('W02 F05D: pending fence survives silent deletion across two restarts',
+      () async {
+    final storage = _FailingLogoutStorage()
+      ..failFenceWrite = false
+      ..ignoreTokenDelete = true
+      ..failTokenTombstoneWrite = true;
+    final auth = _auth(storage);
+    await auth.initialize();
+    await expectLater(auth.signOut(), throwsStateError);
+    expect(auth.hasRemoteApiCredential, isFalse);
+    auth.dispose();
+
+    // Both a "successful" no-op delete and tombstone overwrite refusal
+    // mean RAW bearer remains. The successful original fence MUST survive.
+    expect(storage.values[_tokenKey], _token);
+    expect(storage.values[_fenceKey], 'revoked');
+    final first = await _restartedState(storage);
+    expect(first['memoryBearer'], isFalse);
+    expect(first['getIdToken'], isFalse);
+    expect(first['patientVaultScope'], isFalse);
+    expect(storage.values[_fenceKey], 'revoked');
+
+    // The prior initialize must not clear the fence and authorize this
+    // original bearer on the next native-process cold boot.
+    final second = await _restartedState(storage);
+    expect(second['memoryBearer'], isFalse);
+    expect(second['getIdToken'], isFalse);
+    expect(second['patientVaultScope'], isFalse);
+    expect(storage.values[_fenceKey], 'revoked');
+  });
+
   test('W02 F05B-OFFLINE: verified tombstone prevents cold restart without server',
       () async {
     final storage = _FailingLogoutStorage()..failTokenDelete = true;
