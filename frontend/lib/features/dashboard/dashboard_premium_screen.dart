@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
 import 'widgets/dashboard_my_reminders_card.dart';
+import 'widgets/dashboard_companion_callout.dart';
 import 'widgets/dashboard_responsive_sections.dart';
 import 'widgets/dashboard_today_section.dart';
 
@@ -948,6 +949,8 @@ class _EmptyPremiumDashboard extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const DashboardMyRemindersCard(),
+                      const SizedBox(height: 14),
+                      const DashboardCompanionCallout(compact: true),
                     ]),
                   ),
                 ),
