@@ -13,6 +13,9 @@ from core.models import BasePatientProfile
 _TOKEN_PREFIX = "iamina."
 _TOKEN_SALT = "iamina.native-auth.v1"
 _DEFAULT_MAX_AGE_SECONDS = 15 * 60  # Candidate absolute server limit; human security/UX gate
+# Only server-issued, bounded Django native-login sessions carry this marker.
+# Older 14-day session cookies must not silently bypass the new F08 ceiling.
+NATIVE_SESSION_ISSUED_AT_KEY = "iamina_native_session_issued_at_v1"
 
 
 class NativeTokenError(Exception):
