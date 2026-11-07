@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
-from django.test import Client
+from django.test import Client, override_settings
 
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token
@@ -58,3 +58,21 @@ def test_w02_f08_candidate_15min_absolute_bearer_limit_rejects_replay():
     with patch("django.core.signing.time.time", return_value=future):
         expired = _logs_as(bearer)
     assert expired.status_code == 401, expired.content[:200]
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS=60 * 60 * 24 * 30)
+def test_w02_f08_configuration_must_not_exceed_bearer_security_ceiling():
+    user = User.objects.create_user(
+        username="w02-f08-override-user",
+        email="w02-f08-override@example.invalid",
+        password="Synthetic-only-Auth-F08-2026!",
+    )
+    bearer = issue_native_token(user)
+    assert _logs_as(bearer).status_code == 200
+
+    # A server setting must not silently restore a 30-day replay window.
+    future = time.time() + (16 * 60)
+    with patch("django.core.signing.time.time", return_value=future):
+        response = _logs_as(bearer)
+    assert response.status_code == 401, response.content[:200]
