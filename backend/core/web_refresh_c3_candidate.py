@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import base64
 import binascii
-import hashlib
 import hmac
 import json
 import re
@@ -27,10 +26,14 @@ from django.db import transaction
 
 from core.models import WebRefreshFamily
 from core.web_refresh_boundary import (
-    WebRefreshBoundaryRejected, verify_bff_refresh_envelope, verify_family_csrf,
+    WebRefreshBoundaryRejected,
+    verify_bff_refresh_envelope,
+    verify_family_csrf,
 )
 from core.web_refresh_protocol import (
-    WebRefreshRejected, _digest, rotate_web_refresh_family,
+    WebRefreshRejected,
+    _digest,
+    rotate_web_refresh_family,
 )
 
 _FAILURE = "web_refresh_c3_unavailable"
@@ -174,7 +177,7 @@ def verify_vercel_service_identity(token, *, _synthetic_jwks=None, _now=None):
             raise ValueError("JWT service claims")
         return True
     except (ValueError, TypeError, KeyError, IndexError, OverflowError,
-            InvalidSignature, binascii.Error, OSError) as exc:
+            InvalidSignature, binascii.Error, OSError):
         raise WebRefreshC3Rejected(_FAILURE) from None
 
 
