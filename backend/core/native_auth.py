@@ -12,7 +12,7 @@ from core.models import BasePatientProfile
 
 _TOKEN_PREFIX = "iamina."
 _TOKEN_SALT = "iamina.native-auth.v1"
-_DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+_DEFAULT_MAX_AGE_SECONDS = 15 * 60  # Candidate absolute server limit; human security/UX gate
 
 
 class NativeTokenError(Exception):
@@ -42,11 +42,18 @@ def verify_native_token(token: str):
         raise NativeTokenError("invalid_native_token")
 
     signer = signing.TimestampSigner(salt=_TOKEN_SALT)
-    max_age = getattr(
+    configured_max_age = getattr(
         settings,
         "NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS",
         _DEFAULT_MAX_AGE_SECONDS,
     )
+    if type(configured_max_age) is not int or configured_max_age <= 0:
+        # Never silently disable expiry or issue a server 500 on a
+        # malformed security setting. Invalid policy means no bearer access.
+        raise NativeTokenError("invalid_native_token_policy")
+    # An oversized runtime override may shorten but must not extend the
+    # reviewed absolute server-side lifetime (including offline replay).
+    max_age = min(configured_max_age, _DEFAULT_MAX_AGE_SECONDS)
     try:
         payload = signer.unsign_object(token[len(_TOKEN_PREFIX):], max_age=max_age)
     except (signing.BadSignature, signing.SignatureExpired, TypeError, ValueError) as exc:
