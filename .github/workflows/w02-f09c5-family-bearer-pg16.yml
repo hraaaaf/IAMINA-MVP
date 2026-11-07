@@ -1,0 +1,86 @@
+name: W02 F09-C5 isolated family bearer and Web cookie PG16
+
+on:
+  push:
+    branches:
+      - test/w02-f09c5-family-bearer-cookie-20261107
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f09c5-synthetic
+  cancel-in-progress: true
+
+jobs:
+  c5-family-session:
+    name: C5 synthetic family bearer, per-device logout and safe cookie PG16
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_c5_ephemeral
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_c5_ephemeral"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-c5-test-only-ephemeral-never-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_c5_ephemeral
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      GROQ_API_KEY: ""
+      OPENAI_API_KEY: ""
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install disposable PG16 test dependencies
+        run: python -m pip install -r requirements.txt ruff==0.15.17
+      - name: Ruff, static syntax and no schema migration drift
+        run: |
+          ruff check core/web_refresh_c5_family_bearer.py core/tests/test_w02_f09c5_family_bearer_pg.py
+          node --check ../frontend/api/w02_f09c5_cookie_policy.js
+          node --check ../tools/w02_f09c5_cookie_contract.test.js
+          python manage.py makemigrations --check --dry-run
+      - name: C5 Node22 secure cookie and unchanged BFF denial
+        working-directory: .
+        run: |
+          node --test tools/w02_f09c5_cookie_contract.test.js
+          node --test tools/w02_f09c4_signed_http_adapter.test.js
+          node --test tools/w02_f09c1_web_refresh_deny_gate.test.js
+          node --test tools/w02_f09_web_bff_isolation.test.js
+          python scripts/check_web_topology_contract.py
+      - name: C5 family-bound bearer, per-device logout, and PG16 issue race
+        run: python -m pytest -q -ra core/tests/test_w02_f09c5_family_bearer_pg.py
+      - name: C4/C3/C2 protocol and transport regression
+        run: >
+          python -m pytest -q -ra
+          core/tests/test_w02_f09c4_http_adapter_pg.py
+          core/tests/test_w02_f09c3_oidc_atomic_tabs.py
+          core/tests/test_w02_f09c2_signed_boundary.py
+      - name: Full Django PostgreSQL16 tests on exact HEAD
+        run: python -m pytest -q --tb=short
