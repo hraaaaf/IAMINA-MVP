@@ -4,7 +4,7 @@ Synthetic signed Vercel OIDC, BFF HMAC and accounts only. C7 is NOT an
 installed API route and returns NO real HTTP Set-Cookie. These tests prove
 atomicity, bounded access, pre-spent nonce and A/B contention on a PG row.
 """
-import base64
+import base64  # noqa: I001  (shared pytest fixtures are deliberately re-exported)
 import json
 import os
 import subprocess
@@ -41,7 +41,7 @@ _REPLY_KEY = "C7_RESPONSE_HMAC_TEST_ONLY_2026_DISTINCT_KEY_48"
 
 
 @pytest.fixture(autouse=True)
-def _c7_settings(c4_settings, settings):
+def _c7_settings(c4_settings, settings):  # noqa: F811  (pytest fixture injection)
     settings.F09_C5_FAMILY_ACCESS_ENABLED = True
     settings.F09_C5_ACCESS_MAX_AGE_SECONDS = 60
     settings.F09_C7_ATOMIC_ENABLED = True
