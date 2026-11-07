@@ -147,9 +147,11 @@ Future<void> main() async {
     try {
       await auth.signOut();
       state.dataset['logoutResult'] = 'success';
-    } catch (error) {
-      // Expected on this fault injection. Do not hide or weaken it.
-      state.dataset['logoutResult'] = error.runtimeType.toString();
+    } catch (_) {
+      // The exception type is minified by Flutter release builds.
+      // Report the *fact* of a thrown error, not an unstable class name.
+      // This remains a hard assertion in the separate browser harness.
+      state.dataset['logoutResult'] = 'error';
     } finally {
       publish();
       await reportPersistentBytes();
