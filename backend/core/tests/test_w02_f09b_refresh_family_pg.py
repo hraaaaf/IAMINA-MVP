@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
-from django.db import connection, close_old_connections
+from django.db import close_old_connections, connection
 from django.test import Client, override_settings
 from django.utils import timezone
 
