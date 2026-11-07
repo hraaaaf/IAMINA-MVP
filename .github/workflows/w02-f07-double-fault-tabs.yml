@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - '.github/workflows/w02-f07-two-tabs-revocation.yml'
+      - '.github/workflows/w02-f07-double-fault-tabs.yml'
       - 'frontend/lib/ui_w02_f07_double_fault_two_tabs_probe_main.dart'
       - 'frontend/lib/services/auth_service.dart'
       - 'scripts/w02_f07_double_fault_two_tabs_browser.py'
