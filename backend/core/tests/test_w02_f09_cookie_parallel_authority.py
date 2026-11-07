@@ -17,7 +17,7 @@ from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
 from django.test import Client, RequestFactory
 
-from core.native_auth import issue_native_token
+from core.native_auth import NativeTokenError, issue_native_token, verify_native_token
 from diabetes.models import LogEntry
 
 _LOGS = "/api/v1/logs"
@@ -185,6 +185,37 @@ def test_w02_f09_bearer_only_write_does_not_require_browser_csrf():
     )
     assert response.status_code == 200, response.content[:200]
     assert LogEntry.objects.filter(patient=user).count() == before_count + 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_w02_f09_cookie_only_logout_without_csrf_does_not_revoke_bearer():
+    client, user, bearer = _login(suffix="logout-csrf")
+    strict = Client(enforce_csrf_checks=True)
+    strict.cookies.update(client.cookies)
+
+    response = strict.post("/api/v1/auth/logout")
+    assert response.status_code == 403, response.content[:200]
+    # A forged browser POST must not revoke every native bearer for the
+    # same account via a cookie-only public Ninja auth route.
+    assert verify_native_token(bearer).pk == user.pk
+
+
+@pytest.mark.django_db(transaction=True)
+def test_w02_f09_cookie_only_logout_with_valid_csrf_revokes_bearer():
+    client, _, bearer = _login(suffix="logout-csrf-valid")
+    strict = Client(enforce_csrf_checks=True)
+    strict.cookies.update(client.cookies)
+    csrf_request = RequestFactory().get("/api/v1/auth/logout")
+    masked_token = get_token(csrf_request)
+    strict.cookies[settings.CSRF_COOKIE_NAME] = csrf_request.META["CSRF_COOKIE"]
+
+    response = strict.post(
+        "/api/v1/auth/logout",
+        HTTP_X_CSRFTOKEN=masked_token,
+    )
+    assert response.status_code == 200, response.content[:200]
+    with pytest.raises(NativeTokenError):
+        verify_native_token(bearer)
 
 
 @pytest.mark.django_db(transaction=True)
