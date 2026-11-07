@@ -204,11 +204,11 @@ def test_c7_hostile_transport_denies_without_family_rotation(oidc, mutation):  #
     elif mutation == "origin":
         overrides["HTTP_X_IAMINA_BFF_ORIGIN"] = "https://attack.example"
     elif mutation == "raw":
-        signed["body"] = signed["body"].replace(raw.encode(), b"iamina-wr1." + b"A" * 64)
+        signed["body"] = signed["body"].replace(raw, "iamina-wr1." + "A" * 64)
     elif mutation == "csrf":
-        signed["body"] = signed["body"].replace(csrf.encode(), b"forged")
+        signed["body"] = signed["body"].replace(csrf, "forged")
     elif mutation == "body":
-        signed["body"] += b'{"unexpected":true}'
+        signed["body"] += '{"unexpected":true}'
     req = _django_req(signed, **overrides)
     with pytest.raises(WebRefreshC7Rejected):
         execute_unmounted_atomic_refresh_bundle(req, _synthetic_jwks=jwks)
