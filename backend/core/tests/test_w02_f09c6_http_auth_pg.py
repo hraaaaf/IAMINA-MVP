@@ -94,7 +94,7 @@ def test_c6_rejects_no_bearer_native_bearer_and_malformed_auth_header():
         ).status_code == 401
         assert Client().get(
             _URL, HTTP_AUTHORIZATION="bearer " + bearer
-        ).status_code in (200, 401)
+).status_code == 401
     # This test-only URL is NEVER available in the real URLconf.
     assert Client().get(_URL, HTTP_AUTHORIZATION=f"Bearer {bearer}").status_code == 404
 
