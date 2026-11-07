@@ -159,6 +159,9 @@ def test_c3_is_off_by_default_even_with_valid_oidc_and_hmac(oidc):
 def test_c3_valid_signed_oidc_team_issuer_exact_claims(oidc):
     sign, jwks = oidc
     assert verify_vercel_service_identity(sign(), _synthetic_jwks=jwks)
+    assert verify_vercel_service_identity(
+        sign(header_overrides={"typ": "jwt"}), _synthetic_jwks=jwks,
+    )
 
 
 @pytest.mark.parametrize("claim,bad", [
