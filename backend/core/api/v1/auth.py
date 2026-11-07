@@ -7,6 +7,7 @@ Firebase and never synthesize clinical or demographic facts.
 
 import logging
 import os
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -16,6 +17,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
@@ -30,8 +32,10 @@ from core.auth_migration import (
 )
 from core.models import BasePatientProfile
 from core.native_auth import (
+    NATIVE_SESSION_ISSUED_AT_KEY,
     NativeTokenError,
     issue_native_token,
+    native_token_max_age_seconds,
     revoke_native_tokens,
     verify_native_token,
 )
@@ -134,7 +138,19 @@ def _require_authenticated(request) -> User:
 
 
 def _open_session(request, user: User, *, method: str) -> None:
+    # F08 candidate: a native login issues TWO authorities (signed bearer and
+    # Django session cookie). The cookie must never outlive the bearer merely
+    # because Django's global SESSION_COOKIE_AGE is 14 days. Use an absolute
+    # datetime, not a sliding integer TTL: unrelated session writes must not
+    # extend it, and a shorter configured bearer TTL shortens it as well.
+    # Compute policy before login so invalid settings cannot create a session.
+    issued_at = timezone.now()
+    absolute_expiry = issued_at + timedelta(seconds=native_token_max_age_seconds())
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    # An independently enforced issuance marker also rejects 14-day cookies
+    # minted by older deployments, or cookies from an unbounded auth flow.
+    request.session[NATIVE_SESSION_ISSUED_AT_KEY] = issued_at.isoformat()
+    request.session.set_expiry(absolute_expiry)
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 
 

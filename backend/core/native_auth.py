@@ -13,6 +13,9 @@ from core.models import BasePatientProfile
 _TOKEN_PREFIX = "iamina."
 _TOKEN_SALT = "iamina.native-auth.v1"
 _DEFAULT_MAX_AGE_SECONDS = 15 * 60  # Candidate absolute server limit; human security/UX gate
+# Only server-issued, bounded Django native-login sessions carry this marker.
+# Older 14-day session cookies must not silently bypass the new F08 ceiling.
+NATIVE_SESSION_ISSUED_AT_KEY = "iamina_native_session_issued_at_v1"
 
 
 class NativeTokenError(Exception):
@@ -36,24 +39,30 @@ def issue_native_token(user) -> str:
     return _TOKEN_PREFIX + signed
 
 
-def verify_native_token(token: str):
-    """Resolve one active IAMINA bearer or fail closed."""
-    if not isinstance(token, str) or not token.startswith(_TOKEN_PREFIX):
-        raise NativeTokenError("invalid_native_token")
+def native_token_max_age_seconds() -> int:
+    """Conservative candidate F08 max age shared by bearer and native login cookie.
 
-    signer = signing.TimestampSigner(salt=_TOKEN_SALT)
+    A shorter runtime bearer limit must also shorten the Django session
+    created by that same login. Oversized or invalid policy must never
+    silently produce a longer-lived cookie-only clinical credential.
+    """
     configured_max_age = getattr(
         settings,
         "NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS",
         _DEFAULT_MAX_AGE_SECONDS,
     )
     if type(configured_max_age) is not int or configured_max_age <= 0:
-        # Never silently disable expiry or issue a server 500 on a
-        # malformed security setting. Invalid policy means no bearer access.
         raise NativeTokenError("invalid_native_token_policy")
-    # An oversized runtime override may shorten but must not extend the
-    # reviewed absolute server-side lifetime (including offline replay).
-    max_age = min(configured_max_age, _DEFAULT_MAX_AGE_SECONDS)
+    return min(configured_max_age, _DEFAULT_MAX_AGE_SECONDS)
+
+
+def verify_native_token(token: str):
+    """Resolve one active IAMINA bearer or fail closed."""
+    if not isinstance(token, str) or not token.startswith(_TOKEN_PREFIX):
+        raise NativeTokenError("invalid_native_token")
+
+    signer = signing.TimestampSigner(salt=_TOKEN_SALT)
+    max_age = native_token_max_age_seconds()
     try:
         payload = signer.unsign_object(token[len(_TOKEN_PREFIX):], max_age=max_age)
     except (signing.BadSignature, signing.SignatureExpired, TypeError, ValueError) as exc:
