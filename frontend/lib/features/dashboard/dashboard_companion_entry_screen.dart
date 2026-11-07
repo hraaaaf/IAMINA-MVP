@@ -306,12 +306,9 @@ class _DashboardCompanionAvatarActionState
                       'assets/images/iamina_chatbrain_diabetes.png',
                       fit: BoxFit.contain,
                       alignment: Alignment.center,
-                      // Preserve contrast on dark surfaces now that the white
-                      // square behind the icon has been removed.
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : null,
-                      colorBlendMode: BlendMode.srcIn,
+                      // Keep the original green strokes and solid inner
+                      // fill visible in both light and dark mode.
+                      // Tinting the RGBA PNG would erase the brain details.
                       excludeFromSemantics: true,
                     ),
                   ),

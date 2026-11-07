@@ -69,6 +69,8 @@ void main() {
         final image = tester.widget<Image>(find.byType(Image));
         expect((image.image as AssetImage).assetName,
             'assets/images/iamina_chatbrain_diabetes.png');
+        expect(image.color, isNull,
+            reason: 'Tinting the solid RGBA bubble would hide the brain lines');
 
         // Before any upward movement there must be room to move DOWN too.
         final initial = tester.getTopLeft(avatar);
