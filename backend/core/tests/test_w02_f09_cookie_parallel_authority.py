@@ -1,21 +1,23 @@
 """W02-F09: characterize Django cookie and native bearer as two authorities.
 
 Real HTTP through Django/Ninja against isolated CI PostgreSQL; synthetic
-identities only. The cookie-only acceptance is a KNOWN OPEN SECURITY/UX
-POLICY GAP, not an approved W02 session design or hosted BFF assertion.
+identities only. F08 now tests a candidate absolute cookie lifetime tied to
+the bearer policy. Renewal, BFF cookies and full session UX remain UNAPPROVED.
 """
 
 from __future__ import annotations
 
 import json
 import time
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, override_settings
+from django.utils import timezone
 
 from core.native_auth import NativeTokenError, issue_native_token, verify_native_token
 from diabetes.models import LogEntry
@@ -57,13 +59,28 @@ def test_w02_f09_native_login_creates_parallel_bearer_and_cookie_authorities():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_w02_f09_expired_bearer_does_not_fall_back_to_django_cookie():
+def test_w02_f09_expired_bearer_cannot_fall_back_to_native_login_cookie():
     client, _, bearer = _login(suffix="expiry")
     assert client.get(_LOGS).status_code == 200
 
-    # F08 15m is ONLY a candidate. The Django cookie has a separate
-    # SESSION_COOKIE_AGE of 14 days and no proved shared expiry/revocation.
-    with patch("django.core.signing.time.time", return_value=time.time() + 960):
+    # Both credentials were issued by one login. Advance BOTH independent
+    # server clocks: Django signs bearer seconds with signing.time.time and
+    # compares database session expiry with django.utils.timezone.now.
+    # Patching only one would produce an artificial cookie-only bypass.
+    now = timezone.now()
+    with (
+        patch("django.core.signing.time.time", return_value=time.time() + 840),
+        patch("django.utils.timezone.now", return_value=now + timedelta(seconds=840)),
+    ):
+        assert client.get(_LOGS).status_code == 200
+        assert Client().get(
+            _LOGS, HTTP_AUTHORIZATION=f"Bearer {bearer}"
+        ).status_code == 200
+
+    with (
+        patch("django.core.signing.time.time", return_value=time.time() + 960),
+        patch("django.utils.timezone.now", return_value=now + timedelta(seconds=960)),
+    ):
         expired_with_cookie = client.get(
             _LOGS, HTTP_AUTHORIZATION=f"Bearer {bearer}"
         )
@@ -74,8 +91,7 @@ def test_w02_f09_expired_bearer_does_not_fall_back_to_django_cookie():
 
     assert expired_with_cookie.status_code == 401
     assert expired_bearer_only.status_code == 401
-    # CURRENT BEHAVIOR / SECURITY GAP: not a claim of safe W02 policy.
-    assert cookie_only.status_code == 200
+    assert cookie_only.status_code == 401
 
 
 @pytest.mark.django_db(transaction=True)
@@ -219,19 +235,29 @@ def test_w02_f09_cookie_only_logout_with_valid_csrf_revokes_bearer():
 
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "W02-F09 security policy UNDECIDED: direct Django cookie-only "
-        "clinical API survives the candidate 15-minute bearer expiry"
-    ),
-)
-def test_w02_f09_proposed_cookie_only_session_ceiling_is_not_yet_enforced():
-    client, _, _ = _login(suffix="policy-gap")
-    # This RED oracle is intentionally XFAIL until a SECURITY/UX owner chooses
-    # cookie-only disablement or another SERVER-ENFORCED session limit.
-    # It must never be presented as passing F09 acceptance.
-    with patch("django.core.signing.time.time", return_value=time.time() + 960):
+def test_w02_f08_native_cookie_ceiling_is_enforced_on_direct_django():
+    client, _, _ = _login(suffix="cookie-ceiling")
+    # The old F09 strict-XFAIL documented a 14-day cookie bypass; the
+    # candidate fix now requires Django's REAL session-expiry clock to
+    # advance too. No bearer header, no refresh token, no cookie fallback.
+    now = timezone.now()
+    with patch("django.utils.timezone.now", return_value=now + timedelta(seconds=960)):
         result = client.get(_LOGS)
-
     assert result.status_code == 401, result.content[:200]
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(NATIVE_AUTH_TOKEN_MAX_AGE_SECONDS=3 * 60)
+def test_w02_f08_shorter_bearer_policy_also_shortens_native_session_cookie():
+    client, _, bearer = _login(suffix="shorter-policy")
+    now = timezone.now()
+    with (
+        patch("django.core.signing.time.time", return_value=time.time() + 240),
+        patch("django.utils.timezone.now", return_value=now + timedelta(seconds=240)),
+    ):
+        # A shorter configured bearer age cannot leave the browser cookie
+        # active until the unconditional 15-minute upper ceiling.
+        assert client.get(_LOGS).status_code == 401
+        assert Client().get(
+            _LOGS, HTTP_AUTHORIZATION=f"Bearer {bearer}"
+        ).status_code == 401
