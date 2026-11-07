@@ -24,6 +24,7 @@ class W01WebTopologyContractTest(unittest.TestCase):
             "vercel.json",
             "backend/api/index.py",
             "frontend/vercel_build.sh",
+            "frontend/scripts/w02_preview_origin.sh",
             "frontend/api/index.js",
         ]:
             destination = self.root / rel
@@ -46,6 +47,10 @@ class W01WebTopologyContractTest(unittest.TestCase):
     def test_missing_backend_function_fails_closed(self) -> None:
         self._edit_json("backend/vercel.json", lambda cfg: cfg.pop("functions"))
         self.assertTrue(any("Django WSGI" in e for e in check_web_topology(self.root)))
+
+    def test_w02_preview_resolver_absence_still_fails_closed(self) -> None:
+        (self.root / "frontend/scripts/w02_preview_origin.sh").unlink()
+        self.assertTrue(any("required source missing" in e for e in check_web_topology(self.root)))
 
     def test_frontend_build_must_not_embed_db_secret(self) -> None:
         with (self.root / "frontend/vercel_build.sh").open("a", encoding="utf-8") as f:

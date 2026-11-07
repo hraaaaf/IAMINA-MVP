@@ -74,8 +74,38 @@ def check_web_topology(root: Path = ROOT) -> list[str]:
         build = (root / "frontend/vercel_build.sh").read_text(encoding="utf-8")
         if 'VERCEL_PROJECT_ID' not in build or 'API_BASE_URL' not in build:
             problems.append("frontend: project gate or API origin define missing")
-        if 'API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"' not in build:
-            problems.append("frontend: Preview browser API must be same-origin W01 alias")
+        # W01's old stable alias is still accepted on legacy branches. W02
+        # replaces it ONLY with a stricter immutable same-deployment host
+        # resolver. Never accept a raw arbitrary URL or a fallback.
+        w01_legacy = (
+            'API_BASE_URL="https://iamina-review-git-preview-w0-'
+            'f972e4-achraf-benmoussa-s-projects.vercel.app"'
+        ) in build
+        w02_immutable = (
+            'source "$(dirname "$0")/scripts/w02_preview_origin.sh"' in build
+            and 'API_BASE_URL="$(iamina_w02_preview_origin '
+            in build
+            and '"${VERCEL_URL:-}" "$VERCEL_PROJECT_ID" "$VERCEL_ENV")"' in build
+        )
+        if w02_immutable:
+            helper = (root / "frontend/scripts/w02_preview_origin.sh").read_text(
+                encoding="utf-8"
+            )
+            required = (
+                'iamina_w02_preview_origin()',
+                'prj_AYaUi32KTDHak8I7dmdQpDrqd8SI',
+                '"preview"',
+                'iamina-review-[a-z0-9]{9,12}',
+                '-achraf-benmoussa-s-projects',
+                'return 64',
+            )
+            if any(field not in helper for field in required):
+                w02_immutable = False
+        if not (w01_legacy or w02_immutable):
+            problems.append(
+                "frontend: Preview browser API must use the exact W01 "
+                "alias or verified immutable W02 same-origin resolver"
+            )
         if "DATABASE_URL" in build or "NEON_DATABASE_URL" in build:
             problems.append("frontend: SQL credentials must never appear in web build")
     except FileNotFoundError as exc:

@@ -6,11 +6,12 @@ probe, no real credentials/patient data. C7/C6 PG16 integration is tested
 separately. Evidence contains only booleans and coarse step names.
 """
 import json
+import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright, TimeoutError as BrowserTimeout
 
-ORIGIN = "http://127.0.0.1:7399"
+ORIGIN = os.environ.get("W02_C9_BROWSER_ORIGIN", "http://127.0.0.1:7399").rstrip("/")
 PROOF = Path("w02-f09-c7c8c9-local-browser-proof.json")
 
 

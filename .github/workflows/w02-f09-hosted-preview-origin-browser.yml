@@ -1,0 +1,110 @@
+name: W02 F09 hosted Preview origin and isolated Flutter C8/C9 gate
+
+on:
+  push:
+    branches:
+      - test/w02-f09-hosted-preview-e2e-20261107
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f09-hosted-preview-e2e-20261107
+  cancel-in-progress: true
+
+jobs:
+  origin-security:
+    name: Immutable Preview origin, deny-only BFF and source isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Bash syntax and Web origin boundary
+        run: |
+          set -euo pipefail
+          bash -n frontend/scripts/w02_preview_origin.sh frontend/vercel_build.sh
+          node --test tools/w02_f09_hosted_preview_origin.test.js
+          node --test tools/w02_f09c1_web_refresh_deny_gate.test.js
+          node --test tools/w02_f09_web_bff_isolation.test.js
+          node --test tools/w02_f09c6_response_contract.test.js
+          python scripts/check_web_topology_contract.py
+      - name: No live refresh route, no database writes or product handler import
+        run: |
+          set -euo pipefail
+          grep -Fq 'deploymentEnabled": false' frontend/vercel.json
+          ! grep -Fq 'w02_f09c7_verify_reply' frontend/api/session-refresh.js
+          ! grep -Fq 'web_refresh_c8_coordinator' frontend/lib/services/auth_service.dart
+
+  flutter-preview-probe:
+    name: 'Real compiled Flutter candidate: local two-tab Chromium and WebKit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Flutter candidate check and VM/Chrome unit tests
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos \
+            lib/services/web_refresh_c8_coordinator.dart \
+            lib/services/web_refresh_c8_signal_contract.dart \
+            lib/services/web_refresh_c8_signal_web.dart \
+            lib/ui_w02_c9_two_tab_probe_main.dart \
+            test/services/w02_f09c8_candidate_coordinator_test.dart
+          flutter test test/services/w02_f09c8_candidate_coordinator_test.dart
+          flutter test --platform chrome test/services/w02_f09c8_candidate_coordinator_test.dart
+      - name: Build real IAMINA SPA and branch-only nested synthetic C9 bundle
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=API_BASE_URL=https://iamina-review-ntzu0e1iz-achraf-benmoussa-s-projects.vercel.app \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
+          test -s build/web/index.html
+          flutter build web --release --no-web-resources-cdn \
+            --pwa-strategy=none --base-href=/__w02_f09_probe/ \
+            --output=build/w02_f09_probe \
+            --target=lib/ui_w02_c9_two_tab_probe_main.dart
+          mkdir -p build/web/__w02_f09_probe
+          cp -R build/w02_f09_probe/. build/web/__w02_f09_probe/
+          test -s build/web/__w02_f09_probe/index.html
+          test -s build/web/__w02_f09_probe/main.dart.js
+      - name: Install two real browser engines
+        run: |
+          python -m pip install playwright==1.58.0
+          python -m playwright install --with-deps chromium webkit
+      - name: Test two tabs at nested path, FR/AR RTL, offline, replay and reload
+        env:
+          W02_C9_BROWSER_ORIGIN: http://127.0.0.1:7399/__w02_f09_probe
+        run: |
+          set -euo pipefail
+          python -m http.server 7399 --bind 127.0.0.1 \
+            --directory frontend/build/web > /tmp/w02-f09-preview-ci-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused \
+            --retry-delay 1 http://127.0.0.1:7399/__w02_f09_probe/index.html > /dev/null
+          python scripts/w02_f09_c9_real_browser_probe.py
+      - name: Preserve strictly synthetic, redacted browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w02-f09-preview-origin-and-browser-probe
+          path: w02-f09-c7c8c9-local-browser-proof.json
+          retention-days: 14
+          if-no-files-found: warn

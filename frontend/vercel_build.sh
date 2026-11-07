@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# No network/DB access here: pure trust check on Vercel system-provided URL.
+source "$(dirname "$0")/scripts/w02_preview_origin.sh"
+
 FLUTTER_VERSION="3.41.0"
 FLUTTER_DIR="/tmp/flutter-$FLUTTER_VERSION"
 
@@ -41,10 +44,10 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
         echo "ERROR: Preview requires the exact IAMINA synthetic backend deployment URL" >&2
         exit 64
       fi
-      # Pin the browser bundle to the stable W01 Web alias. All /api/v1
-      # requests are now same-origin; the server-side OIDC bridge forwards
-      # them to the immutable synthetic API deployment above.
-      API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"
+      # The immutable W02 Preview URL must be the browser's API origin.
+      # Never reuse the older W01 branch alias: its cookies/Origin/OIDC
+      # assertions identify another deployment. No fallback is permitted.
+      API_BASE_URL="$(iamina_w02_preview_origin "${VERCEL_URL:-}" "$VERCEL_PROJECT_ID" "$VERCEL_ENV")"
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
       IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
       if [ "${VERCEL_GIT_COMMIT_REF:-}" = "preview/w01-current-main-synthetic-20261104" ]; then
@@ -87,4 +90,22 @@ if [ -n "${API_BASE_URL:-}" ]; then
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
   flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_OFFLINE_DEMO=true
+fi
+
+# The separate, non-clinical browser fixture is published ONLY on this
+# explicitly approved Preview test branch. It has no real account, DB,
+# refresh cookies or patient records; do not treat it as a C7 hosted E2E.
+if [ "${VERCEL_ENV:-}" = "preview" ] &&
+   [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ] &&
+   [ "${VERCEL_GIT_COMMIT_REF:-}" = "test/w02-f09-hosted-preview-e2e-20261107" ]; then
+  echo "W02 synthetic Flutter probe: dedicated path, Preview-only"
+  flutter build web --release --no-web-resources-cdn \
+    --pwa-strategy=none \
+    --base-href=/__w02_f09_probe/ \
+    --output=build/w02_f09_probe \
+    --target=lib/ui_w02_c9_two_tab_probe_main.dart
+  mkdir -p build/web/__w02_f09_probe
+  cp -R build/w02_f09_probe/. build/web/__w02_f09_probe/
+  test -s build/web/__w02_f09_probe/index.html
+  test -s build/web/__w02_f09_probe/main.dart.js
 fi
