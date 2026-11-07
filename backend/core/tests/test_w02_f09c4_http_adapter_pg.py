@@ -23,7 +23,7 @@ from core.tests.test_w02_f09c3_oidc_atomic_tabs import (
     _PROJECT,
     _PROJECT_ID,
     _session,
-    oidc,  # noqa: F401: pytest fixture re-export
+    oidc,  # noqa: F401  (import registers shared pytest fixture)
 )
 from core.web_refresh_c4_http_candidate import (
     WebRefreshC4Rejected,
@@ -137,7 +137,7 @@ def test_c4_real_http_route_is_still_404_and_never_creates_session():
     assert WebRefreshTransportNonce.objects.count() == 0
 
 
-def test_c4_adapter_disabled_by_default_even_with_signed_request(oidc):
+def test_c4_adapter_disabled_by_default_even_with_signed_request(oidc):  # noqa: F811  (pytest fixture name injected)
     sign, jwks = oidc
     _, family, raw, csrf = _session("c4-default-off")
     prepared = _node_signed_http(sign(), family, raw, csrf)
@@ -147,7 +147,7 @@ def test_c4_adapter_disabled_by_default_even_with_signed_request(oidc):
     assert WebRefreshTransportNonce.objects.count() == 0
 
 
-def test_c4_node22_to_django_http_adaptation_rotates_once(oidc):
+def test_c4_node22_to_django_http_adaptation_rotates_once(oidc):  # noqa: F811  (pytest fixture name injected)
     sign, jwks = oidc
     _, family, raw, csrf = _session("c4-happy")
     signed = _node_signed_http(sign(), family, raw, csrf)
@@ -168,7 +168,7 @@ def test_c4_node22_to_django_http_adaptation_rotates_once(oidc):
     "bad_body", "cookie_forwarded", "bearer_forwarded", "bad_host",
     "missing_oidc", "tampered_oidc", "duplicate_json",
 ])
-def test_c4_http_untrusted_input_denied_without_rotation(oidc, mutation):
+def test_c4_http_untrusted_input_denied_without_rotation(oidc, mutation):  # noqa: F811  (pytest fixture name injected)
     sign, jwks = oidc
     _, family, raw, csrf = _session("c4-deny-" + mutation)
     signed = _node_signed_http(sign(), family, raw, csrf)
@@ -195,7 +195,7 @@ def test_c4_http_untrusted_input_denied_without_rotation(oidc, mutation):
 
 
 @pytest.mark.skipif(connection.vendor != "postgresql", reason="PG16 row-lock race")
-def test_c4_two_http_requests_one_rotation_after_lock(oidc):
+def test_c4_two_http_requests_one_rotation_after_lock(oidc):  # noqa: F811  (pytest fixture name injected)
     sign, jwks = oidc
     _, family, raw, csrf = _session("c4-multitab")
     signed = [
