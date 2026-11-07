@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/amina_visual_language.dart';
 
 /// Premium 58dp IAMINA chat entry. No patient facts, animation loop, external
-/// image, leaf logo, or ChatBrain. Focusable/tappable with localized semantics.
+/// image or ChatBrain. Focusable/tappable with localized semantics.
 class DashboardCompanionFab extends StatelessWidget {
   const DashboardCompanionFab({super.key});
 

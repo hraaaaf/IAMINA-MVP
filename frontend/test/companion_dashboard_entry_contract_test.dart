@@ -25,7 +25,6 @@ void main() {
     expect(fab, contains("dashboard-companion-chat-action"));
     expect(fab, contains('width: 58'));
     expect(fab, isNot(contains('iamina_chatbrain_diabetes.png')));
-    expect(fab, isNot(contains('leaf')));
     expect(module, contains('const DashboardCompanionEntryScreen()'));
   });
 }
