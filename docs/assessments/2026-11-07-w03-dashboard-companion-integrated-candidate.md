@@ -61,3 +61,17 @@ Code testé : `4d11d30d4ba84e34d7027ccd2ae0f2bc481b91d1` (seuls les documents de
 
 ## Gate de fermeture
 **CI+FUE+Perfection Pass sur code SHA `4d11d30d` : PASS ; résultat candidat au merge.** Après toute modification de ce document et `docs/ROADMAP.md`, les exigences exact HEAD restent à vérifier avant fusion. Préciser le SHA de merge puis contrôler main/postmerge dans le closeout Notion. Les deux configurations Vercel (`/vercel.json`, `/frontend/vercel.json`) ont `git.deploymentEnabled=false` ; aucun déploiement lancé. Pas d'autorisation Vercel.
+
+## Closeout officiel — après fusion GitHub
+- **PR #1302** : MERGED le 07/11/2026 23:10:50 UTC ; squash/merge SHA exact `d48e5bb184c2e343d64f4e44878fd0dd27cea0ba`. GitHub `main` relu et égal au SHA de merge.
+- **CI et certifications post-merge sur main@d48e5bb : 6/6 SUCCESS** :
+  - [CI Flutter + PWA #42424054395](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42424054395)
+  - [Dashboard global v2 #42424054418](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42424054418)
+  - [Dashboard responsive Chrome #42424054420](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42424054420)
+  - [UI navigateur 390/768/1280 #42424054375](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42424054375)
+  - [Géométrie #42424054415](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42424054415)
+  - [Pilote P5-5 #42424054419](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42424054419)
+- **FUE :** six cas requis PASS, deux N/A justifiés (aucun changement de traitement clinique ou comptes). **Perfection Pass : effectué. EXECUTION_SCORE 9.2 ; ADVERSARIAL_SCORE 9.0 ; RETAINED_SCORE 9.0/10**, même exécuteur (cap 9.4). Tous les gates obligatoires sur le code fusionné sont verts. **Verdict : `VERIFIED / MERGED / NOT_DEPLOYED`.**
+- **Migration / DB drift : N/A** : aucune migration, schéma, backend ni persistance modifiés par W03. Les jobs backend CI sont à juste titre SKIPPED.
+- **Préservation du garde-fou humain :** `git.deploymentEnabled:false` confirmé dans `vercel.json` racine et `frontend/vercel.json` **après fusion**, aucune commande de déploiement exécutée. L'app publique Vercel n'a pas été mise à jour par cette fusion. Toute Preview/Production exige une autorisation spécifique ultérieure.
+- **Dernière transaction :** mise à jour purement documentaire ROADMAP/dossier, sans modification de produit ; vérifier l'état du commit closeout sur `main` et sa CI de documentation distincte.
