@@ -103,7 +103,7 @@ def run():
                 sign_in(page_a)
                 sign_in(page_b)
                 proof["steps"].append("both_tabs_have_verified_native_bearer")
-                until(page_b, "persistedBearer", "true")
+                until(page_b, "persistentBearer", "true")
                 proof["steps"].append("tab_b_bearer_persisted_before_fault")
 
                 # Fault only AFTER both normal logins have persisted their
