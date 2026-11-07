@@ -1,7 +1,7 @@
 """Integration tests for IAmina API v1 endpoints."""
 
 from datetime import date
-from json import loads
+from json import dumps, loads
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -18,6 +18,21 @@ def _mock_firebase(uid="test-uid-123", email=None):
         "firebase_admin.auth.verify_id_token",
         return_value={"uid": uid, "email": email or f"{uid}@ex.com"},
     )
+
+
+_NATIVE_TEST_PASSWORD = "Synthetic-only-Django-Native-Login-2026!"
+
+
+def _native_login(client, user):
+    """Real native cookie issuance for API tests, not a bypassing force_login."""
+    user.set_password(_NATIVE_TEST_PASSWORD)
+    user.save(update_fields=["password"])
+    response = client.post(
+        "/api/v1/auth/login",
+        data=dumps({"email": user.email, "password": _NATIVE_TEST_PASSWORD}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200, response.content[:250]
 
 
 def create_patient(username, email):
@@ -90,7 +105,7 @@ class APISummaryTestCase(TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_summary_with_auth(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         LogEntry.objects.create(patient=self.user, blood_sugar=180, logged_at=timezone.now())
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
@@ -116,7 +131,7 @@ class D19AuthenticatedSummaryIsolationTestCase(TestCase):
         self.client = Client()
 
     def _request_as(self, user, *, days=14, target_low=70):
-        self.client.force_login(user)
+        _native_login(self.client, user)
         return self.client.post(
             "/api/v1/ai/summary",
             data={"days": days, "target_low": target_low, "target_high": 180},
@@ -226,7 +241,7 @@ class APIChatTestCase(TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_chat_with_auth(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.post("/api/v1/ai/chat", data={"message": "Hi"}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
 
@@ -246,20 +261,20 @@ class APILogsTestCase(TestCase):
         LogEntry.objects.create(patient=self.user, blood_sugar=100, logged_at=timezone.now())
         LogEntry.objects.create(patient=user2, blood_sugar=200, logged_at=timezone.now())
 
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.get("/api/v1/logs")
         data = loads(resp.content)
         self.assertEqual(len(data["items"]), 1)
 
     def test_logs_empty_list(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.get("/api/v1/logs")
         self.assertEqual(resp.status_code, 200)
         data = loads(resp.content)
         self.assertEqual(len(data["items"]), 0)
 
     def test_logs_create(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.post(
             "/api/v1/logs",
             data={"blood_sugar": 150, "meal_type": "lunch"},
@@ -270,7 +285,7 @@ class APILogsTestCase(TestCase):
         self.assertEqual(data["blood_sugar"], 150)
 
     def test_logs_get_single(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         log = LogEntry.objects.create(patient=self.user, blood_sugar=160, logged_at=timezone.now())
         resp = self.client.get(f"/api/v1/logs/{log.id}")
         self.assertEqual(resp.status_code, 200)
@@ -278,7 +293,7 @@ class APILogsTestCase(TestCase):
         self.assertEqual(data["blood_sugar"], 160)
 
     def test_logs_delete(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         log = LogEntry.objects.create(patient=self.user, blood_sugar=170, logged_at=timezone.now())
         resp = self.client.delete(f"/api/v1/logs/{log.id}")
         self.assertEqual(resp.status_code, 204)
@@ -291,14 +306,14 @@ class APISummaryEdgeCasesTestCase(TestCase):
         self.client = Client()
 
     def test_summary_no_logs(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
         data = loads(resp.content)
         self.assertIn("insights", data)
 
     def test_summary_high_glucose(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         LogEntry.objects.create(patient=self.user, blood_sugar=350, logged_at=timezone.now())
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
@@ -310,7 +325,7 @@ class APISummaryEdgeCasesTestCase(TestCase):
         self.assertIsNone(data["kpis"]["gmi"])
 
     def test_summary_low_glucose(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         LogEntry.objects.create(patient=self.user, blood_sugar=50, logged_at=timezone.now())
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
@@ -322,13 +337,13 @@ class APISummaryEdgeCasesTestCase(TestCase):
         self.assertIsNone(data["kpis"]["gmi"])
 
     def test_summary_custom_days(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         LogEntry.objects.create(patient=self.user, blood_sugar=120, logged_at=timezone.now())
         resp = self.client.post("/api/v1/ai/summary", data={"days": 7}, content_type="application/json")
         self.assertEqual(resp.status_code, 200)
 
     def test_summary_response_structure(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.post("/api/v1/ai/summary", data={"days": 21}, content_type="application/json")
         data = loads(resp.content)
         required_fields = ["insights", "kpis", "daily_averages", "generated_at", "has_sufficient_data"]
@@ -347,7 +362,7 @@ class APIChatEdgeCasesTestCase(TestCase):
         return patch("companion.core.IAmina.chat", return_value=reply)
 
     def test_chat_glucose_keyword(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         with self._patched_iamina_chat("Votre glycémie est stable ce mois-ci."):
             resp = self.client.post(
                 "/api/v1/ai/chat",
@@ -359,7 +374,7 @@ class APIChatEdgeCasesTestCase(TestCase):
         self.assertIn("glycémie", data["reply"].lower())
 
     def test_chat_meal_keyword(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         with self._patched_iamina_chat("Vos repas du soir semblent impacter votre glycémie."):
             resp = self.client.post(
                 "/api/v1/ai/chat",
@@ -371,7 +386,7 @@ class APIChatEdgeCasesTestCase(TestCase):
         self.assertIn("repas", data["reply"].lower())
 
     def test_chat_generic_message(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.post(
             "/api/v1/ai/chat",
             data={"message": "Hello!"},
@@ -384,7 +399,7 @@ class APIChatEdgeCasesTestCase(TestCase):
         self.assertIn("timestamp", data)
 
     def test_chat_response_format(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.post(
             "/api/v1/ai/chat",
             data={"message": "Test"},
@@ -459,7 +474,7 @@ class APIProfileTestCase(TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_profile_get(self):
-        self.client.force_login(self.user)
+        _native_login(self.client, self.user)
         resp = self.client.get("/api/v1/profile")
         self.assertEqual(resp.status_code, 200)
         data = loads(resp.content)
