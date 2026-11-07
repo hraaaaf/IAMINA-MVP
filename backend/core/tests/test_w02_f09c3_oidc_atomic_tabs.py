@@ -21,12 +21,14 @@ from django.test import override_settings
 from django.utils import timezone
 
 from core.models import (
-    BasePatientProfile, WebRefreshConsumedSecret,
+    BasePatientProfile,
+    WebRefreshConsumedSecret,
     WebRefreshTransportNonce,
 )
 from core.web_refresh_boundary import issue_family_csrf
 from core.web_refresh_c3_candidate import (
-    WebRefreshC3Rejected, rotate_web_refresh_c3_candidate,
+    WebRefreshC3Rejected,
+    rotate_web_refresh_c3_candidate,
     verify_vercel_service_identity,
 )
 from core.web_refresh_protocol import issue_web_refresh_family
