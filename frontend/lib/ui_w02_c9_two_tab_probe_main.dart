@@ -40,7 +40,7 @@ Future<void> main() async {
   html.document.documentElement!.setAttribute('dir', isArabic ? 'rtl' : 'ltr');
   state.dataset['lang'] = isArabic ? 'ar' : 'fr';
   state.dataset['direction'] =
-      html.document.documentElement!.getAttribute('dir');
+      html.document.documentElement!.getAttribute('dir') ?? 'ltr';
 
   bool outage = false;
   final coordinator = WebRefreshC8Coordinator(
