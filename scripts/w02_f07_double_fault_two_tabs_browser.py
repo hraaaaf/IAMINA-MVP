@@ -68,7 +68,7 @@ def run():
     proof = {
         "result": "NOT_VERIFIED",
         "scope": "real two-tab Flutter Web AuthService + actual browser secure storage + local Django PG16",
-        "fault": "logout fence write AND native bearer delete fail; HTTP logout aborted",
+        "fault": "logout fence write + native bearer delete + tombstone overwrite fail; HTTP logout aborted",
         "steps": [],
         "tabs": 2,
         "patient_data": "NONE",
@@ -114,7 +114,7 @@ def run():
                 )
                 click(page_b, "arm")
                 until(page_b, "faultArmed", "true")
-                proof["steps"].append("tab_b_double_storage_fault_armed")
+                proof["steps"].append("tab_b_triple_storage_fault_armed_to_keep_raw_bearer")
 
                 click(page_b, "logout")
                 until(page_b, "logoutSettled", "true", timeout=30000)
