@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponseForbidden, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from ninja.errors import HttpError
@@ -81,6 +82,18 @@ class ExplicitBearerCookieIdentityMiddleware(MiddlewareMixin):
             return None
         raw = request.META.get("HTTP_AUTHORIZATION")
         if not raw:
+            # Django Ninja routes are csrf_exempt at the outer Django view
+            # boundary. Enforce CSRF *before view dispatch* whenever Django
+            # has authenticated a browser session cookie, including public
+            # auth routes such as logout. Operation-level auth is not a
+            # sufficient security boundary for session-cookie writes.
+            if (
+                request.user.is_authenticated
+                and request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+            ):
+                denied = check_iamina_csrf(request)
+                if denied:
+                    return denied
             return None
         session_user = request.user
         if not session_user.is_authenticated:
