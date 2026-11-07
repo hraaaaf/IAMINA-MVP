@@ -149,7 +149,7 @@ def test_c4_adapter_disabled_by_default_even_with_signed_request(oidc):
 
 def test_c4_node22_to_django_http_adaptation_rotates_once(oidc):
     sign, jwks = oidc
-    user, family, raw, csrf = _session("c4-happy")
+    _, family, raw, csrf = _session("c4-happy")
     signed = _node_signed_http(sign(), family, raw, csrf)
     assert "cookie" not in signed["headers"]
     assert "authorization" not in signed["headers"]
