@@ -95,6 +95,14 @@ void main() {
     checkPng('assets/images/iamina_logo_mark.png', 320, 320);
     // Approved conversational brain+medical icon is only for the dashboard FAB.
     checkPng('assets/images/iamina_chatbrain_diabetes.png', 96, 96);
+    // RGBA: the ChatBrain art must have an alpha channel, not an opaque
+    // square that replaces the removed Dashboard FAB background.
+    expect(
+      File('assets/images/iamina_chatbrain_diabetes.png')
+          .readAsBytesSync()[25],
+      6,
+      reason: 'ChatBrain must be an RGBA PNG',
+    );
     // Legacy URL is a V4 alias for already-installed Web/PWA clients.
     checkPng('assets/images/logo_amina.png', 320, 320);
     expect(
