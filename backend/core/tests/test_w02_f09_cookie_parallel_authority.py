@@ -4,6 +4,9 @@ Real HTTP through Django/Ninja against isolated CI PostgreSQL; synthetic
 identities only. The cookie-only acceptance is a KNOWN OPEN SECURITY/UX
 POLICY GAP, not an approved W02 session design or hosted BFF assertion.
 """
+
+from __future__ import annotations
+
 import json
 import time
 from unittest.mock import patch
@@ -14,6 +17,7 @@ from django.contrib.auth.models import User
 from django.test import Client
 
 from core.native_auth import issue_native_token
+from diabetes.models import LogEntry
 
 
 _LOGS = "/api/v1/logs"
@@ -97,12 +101,20 @@ def test_w02_f09_invalid_bearer_and_conflicting_cookie_fail_closed():
 
 @pytest.mark.django_db(transaction=True)
 def test_w02_f09_cookie_only_clinical_write_without_csrf_is_forbidden():
-    client, _, _ = _login(suffix="csrf")
+    client, user, _ = _login(suffix="csrf")
     strict = Client(enforce_csrf_checks=True)
     strict.cookies.update(client.cookies)
 
-    response = strict.post(_LOGS, data="{}", content_type="application/json")
+    # Valid payload is vital. A 422 for malformed body might precede auth
+    # and would NOT prove that the server blocks cross-site clinical writes.
+    baseline = LogEntry.objects.filter(patient=user).count()
+    response = strict.post(
+        _LOGS,
+        data=json.dumps({"blood_sugar": 110}),
+        content_type="application/json",
+    )
     assert response.status_code == 403, response.content[:200]
+    assert LogEntry.objects.filter(patient=user).count() == baseline
 
 
 @pytest.mark.django_db(transaction=True)
