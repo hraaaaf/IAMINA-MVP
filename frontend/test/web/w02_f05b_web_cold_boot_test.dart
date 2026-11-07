@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:amina/services/auth_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
@@ -77,7 +78,7 @@ void main() {
     // physical erasure.
     expect(storage.values[_tokenKey], _bearer);
     reopened.dispose();
-  });
+  }, skip: !kIsWeb);
 
   test('W02 F05B WEB local-only device enrollment remains distinct from bearer boot',
       () async {
@@ -96,5 +97,5 @@ void main() {
     expect(await reopened.getIdToken(), isNull);
     expect(await reopened.resolvePatientVaultScope(), isNotNull);
     reopened.dispose();
-  });
+  }, skip: !kIsWeb);
 }
