@@ -9,6 +9,8 @@ import 'package:uuid/uuid.dart';
 
 import '../data/drift/patient_vault_scope.dart';
 
+import 'auth_cross_tab_logout_stub.dart'
+    if (dart.library.html) 'auth_cross_tab_logout_web.dart' as cross_tab;
 import 'auth_epoch.dart';
 import 'firebase_migration_policy.dart';
 
@@ -236,6 +238,24 @@ class AuthService extends ChangeNotifier {
         _httpClient = httpClient ?? http.Client(),
         _failureLogger = failureLogger ?? _defaultFailureLogger {
     _liveInstances.add(WeakReference<AuthService>(this));
+    if (kIsWeb) {
+      try {
+        cross_tab.registerCrossTabLogout(() {
+          // Browser tabs have different Dart isolates; the static F01 registry
+          // does not reach them. A remote logout event must also invalidate
+          // any in-flight login and previously published clinical egress.
+          ++_credentialIntent;
+          _revokePublishedSessionsInIsolate();
+        });
+      } catch (error, stackTrace) {
+        // Never log patient identity, bearer, or any channel message payload.
+        _failureLogger(
+          'cross_tab_logout_listener',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
+    }
   }
 
   static FirebaseAuth? _getAuthInstance(
@@ -581,6 +601,20 @@ class AuthService extends ChangeNotifier {
     // isolate. Clear every live owner's in-memory authority before any await.
     // Also notifies each owner to cancel its own cached clinical egress.
     _revokePublishedSessionsInIsolate();
+    if (kIsWeb) {
+      try {
+        // Broadcast BEFORE secure-storage writes and server I/O: either can
+        // hang or fail, but already-open peer tabs must retire stale tokens.
+        // No bearer, account ID, or clinical content crosses this channel.
+        cross_tab.publishCrossTabLogout();
+      } catch (error, stackTrace) {
+        _failureLogger(
+          'cross_tab_logout_publish',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
+    }
     Object? storageFailure;
     StackTrace? storageFailureStack;
     try {
