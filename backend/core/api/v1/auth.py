@@ -7,6 +7,7 @@ Firebase and never synthesize clinical or demographic facts.
 
 import logging
 import os
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -18,6 +19,7 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -32,6 +34,7 @@ from core.models import BasePatientProfile
 from core.native_auth import (
     NativeTokenError,
     issue_native_token,
+    native_token_max_age_seconds,
     revoke_native_tokens,
     verify_native_token,
 )
@@ -134,7 +137,17 @@ def _require_authenticated(request) -> User:
 
 
 def _open_session(request, user: User, *, method: str) -> None:
+    # F08 candidate: a native login issues TWO authorities (signed bearer and
+    # Django session cookie). The cookie must never outlive the bearer merely
+    # because Django's global SESSION_COOKIE_AGE is 14 days. Use an absolute
+    # datetime, not a sliding integer TTL: unrelated session writes must not
+    # extend it, and a shorter configured bearer TTL shortens it as well.
+    # Compute policy before login so invalid settings cannot create a session.
+    absolute_expiry = timezone.now() + timedelta(
+        seconds=native_token_max_age_seconds()
+    )
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    request.session.set_expiry(absolute_expiry)
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 
 
