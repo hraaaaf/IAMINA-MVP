@@ -563,10 +563,37 @@ class AuthService extends ChangeNotifier {
       // Commit the revocation fence *before* attempting non-atomic deletes.
       // If erasure fails, recovery on the next initialize sees this fence.
       // Never delete the stable local device vault identifier.
-      await _storage.write(
-        key: _logoutPendingKey,
-        value: _logoutPendingValue,
-      );
+      try {
+        await _storage.write(
+          key: _logoutPendingKey,
+          value: _logoutPendingValue,
+        );
+      } catch (fenceError, fenceStackTrace) {
+        // A failed fence write must NOT prevent still-available credential
+        // erasure. Try every deletion even when one fails, to avoid leaving
+        // a local enrollment or bound identity behind unnecessarily.
+        Object? firstDeleteError;
+        StackTrace? firstDeleteStack;
+        for (final key in <String>[
+          _tokenKey,
+          _nativeIdentityKey,
+          _localSessionKey,
+        ]) {
+          try {
+            await _storage.delete(key: key);
+          } catch (deleteError, deleteStackTrace) {
+            firstDeleteError ??= deleteError;
+            firstDeleteStack ??= deleteStackTrace;
+          }
+        }
+        // Never pretend that a failed durable fence is safe. If both the
+        // fence write and credential deletion fail, a future process restart
+        // remains a security NO-GO without a separate durable mechanism.
+        if (firstDeleteError != null) {
+          Error.throwWithStackTrace(firstDeleteError, firstDeleteStack!);
+        }
+        Error.throwWithStackTrace(fenceError, fenceStackTrace);
+      }
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _nativeIdentityKey);
       await _storage.delete(key: _localSessionKey);
