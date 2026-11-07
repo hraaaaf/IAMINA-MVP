@@ -289,21 +289,24 @@ class _DashboardCompanionAvatarActionState
                   // The built-in FAB Tooltip consumes long presses before the
                   // outer reposition gesture. Semantics supplies the label.
                   onPressed: () => context.push('/companion/chat'),
-                  elevation: _dragging ? 9 : 5,
-                  backgroundColor: AminaVisualLanguage.forestDeep,
-                  foregroundColor: Colors.white,
-                  child: ClipOval(
-                    child: SizedBox.square(
-                      dimension: 44,
-                      child: ColoredBox(
-                        color: Colors.white,
-                        child: Image.asset(
-                          'assets/images/iamina_chatbrain_diabetes.png',
-                          fit: BoxFit.cover,
-                          alignment: Alignment.topCenter,
-                          excludeFromSemantics: true,
-                        ),
-                      ),
+                  // Keep the 56dp hit target and drag semantics, but do not
+                  // draw a circular FAB, ring, shadow, or white image backing.
+                  elevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  highlightElevation: 0,
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AminaVisualLanguage.forestDeep,
+                  splashColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
+                  focusColor: Colors.transparent,
+                  child: SizedBox.square(
+                    dimension: 56,
+                    child: Image.asset(
+                      'assets/images/iamina_chatbrain_diabetes.png',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                      excludeFromSemantics: true,
                     ),
                   ),
                 ),
