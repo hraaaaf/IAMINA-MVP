@@ -1,8 +1,10 @@
 """Sovereign Django authentication lifecycle regression tests."""
 
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
+from django.utils import timezone
 from django.contrib.auth.models import AnonymousUser, User
 from ninja.errors import HttpError
 
@@ -17,12 +19,19 @@ from core.api.v1.auth import (
 from core.models import BasePatientProfile
 
 
+class _SyntheticSession(dict):
+    """Only the real set_expiry contract; no fake expiry policy bypass."""
+
+    def set_expiry(self, value):
+        self["_session_expiry"] = value
+
+
 class SessionRequest(SimpleNamespace):
-    session = {}
+    pass
 
 
 def _request(user=None):
-    return SessionRequest(user=user or AnonymousUser())
+    return SessionRequest(user=user or AnonymousUser(), session=_SyntheticSession())
 
 
 @pytest.mark.django_db
@@ -48,6 +57,11 @@ def test_native_registration_creates_only_identity_and_empty_base_profile(monkey
     assert profile.date_of_birth is None
     assert profile.gender is None
     assert request.user == user
+    # The native-issued browser cookie must carry a fixed expiry bounded by
+    # the same 15-minute F08 candidate policy as the native bearer.
+    absolute_expiry = request.session["_session_expiry"]
+    assert isinstance(absolute_expiry, type(timezone.now()))
+    assert timedelta(seconds=0) < absolute_expiry - timezone.now() <= timedelta(minutes=15)
 
 
 @pytest.mark.django_db
@@ -87,6 +101,7 @@ def test_native_login_uses_email_but_authenticates_canonical_username(monkeypatc
     )
     assert result["user"]["id"] == user.id
     assert request.user == user
+    assert timedelta(seconds=0) < request.session["_session_expiry"] - timezone.now() <= timedelta(minutes=15)
 
 
 @pytest.mark.django_db
