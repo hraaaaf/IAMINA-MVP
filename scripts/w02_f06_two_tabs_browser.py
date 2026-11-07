@@ -35,7 +35,7 @@ def settled(page, key, value, timeout=30000):
     page.wait_for_function(
         """([key, expected]) =>
           document.querySelector('#w02-f06-state')?.dataset[key] === expected""",
-        [key, value], timeout=timeout,
+        arg=[key, value], timeout=timeout,
     )
 
 
