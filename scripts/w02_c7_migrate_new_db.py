@@ -120,7 +120,8 @@ def django_command(dsn: str, *args: str, read_only: bool, timeout: int) -> str:
     env["DEBUG"] = "True"
     env["ALLOWED_HOSTS"] = "localhost,127.0.0.1"
     env["CORS_ALLOWED_ORIGINS"] = "http://localhost:3000"
-    env.setdefault("SECRET_KEY", "w02-c7-migration-temporary-synthetic-no-patients")
+    env["DJANGO_SETTINGS_MODULE"] = "amina.settings"
+    env["SECRET_KEY"] = "w02-c7-migration-temporary-synthetic-no-patients"
     env["FIREBASE_CREDENTIALS_PATH"] = ""
     for name in ("GEMINI_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY"):
         env[name] = ""
