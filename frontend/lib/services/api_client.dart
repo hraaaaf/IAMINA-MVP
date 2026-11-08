@@ -115,10 +115,15 @@ void requireUnlockedPatientSyncTransport(
 void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
   final path = url.path;
   final isConsentControl = path == '/api/v1/account/consent';
+  // D2 is account-owned, code-only and non-clinical. It may use the patient
+  // account control plane, but still requires authenticated epoch and unlock.
+  final isD2AccountNotifications = path == '/api/v1/account/notifications' ||
+      path.startsWith('/api/v1/account/notifications/');
   if (allowed != null && !allowed() &&
       path.startsWith('/api/v1/') &&
       !path.startsWith('/api/v1/auth/') &&
-      !isConsentControl) {
+      !isConsentControl &&
+      !isD2AccountNotifications) {
     throw StateError('Clinical transport disabled: local-only pilot');
   }
 }
