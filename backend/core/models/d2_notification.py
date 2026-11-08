@@ -56,3 +56,29 @@ class D2Notification(models.Model):
                 name="core_d2_notice_owner_active",
             ),
         ]
+
+
+class D2ProactiveEmissionReceipt(models.Model):
+    """Minimal anti-repetition evidence kept after OFF; no notice content."""
+
+    patient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name="d2_proactive_emission_receipts",
+    )
+    event_key = models.CharField(max_length=64)
+    emitted_at = models.DateTimeField()
+
+    class Meta:
+        app_label = "core"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("patient", "event_key"),
+                name="core_d2_proactive_receipt_unique",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=("patient", "emitted_at"),
+                name="core_d2_proactive_recent",
+            ),
+        ]
