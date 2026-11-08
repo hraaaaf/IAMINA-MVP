@@ -28,7 +28,11 @@ from core.d2_notification_service import (
     record_verified_event,
 )
 from core.models import AIConsentReceipt, BasePatientProfile
-from core.models.d2_notification import D2Notification, D2NotificationPreference
+from core.models.d2_notification import (
+    D2Notification,
+    D2NotificationPreference,
+    D2ProactiveEmissionReceipt,
+)
 from core.models.locale import PatientLocalePreference
 
 
@@ -232,19 +236,20 @@ def test_proactive_budget_two_per_rolling_week_and_one_per_day(people):
     PatientLocalePreference.objects.create(profile=profile)
     enable(a)
     D2Notification.objects.filter(patient=a).delete()
+    D2ProactiveEmissionReceipt.objects.filter(patient=a).delete()
     now = timezone.now()
-    D2Notification.objects.create(
-        patient=a, event_key="b" * 64, kind="proactive",
-        code="language_pref_available",
-        created_at=now - timedelta(hours=2), expires_at=now + timedelta(days=1),
+    D2ProactiveEmissionReceipt.objects.create(
+        patient=a, event_key="b" * 64,
+        emitted_at=now - timedelta(hours=2),
     )
     assert maybe_record_language_preference(patient_id=a.pk) is None
-    D2Notification.objects.filter(patient=a).update(
-        created_at=now - timedelta(days=2),
+    D2ProactiveEmissionReceipt.objects.filter(patient=a).update(
+        emitted_at=now - timedelta(days=2),
     )
     assert maybe_record_language_preference(patient_id=a.pk) is not None
-    D2Notification.objects.filter(patient=a).update(
-        created_at=now - timedelta(days=2),
+    D2Notification.objects.filter(patient=a).delete()
+    D2ProactiveEmissionReceipt.objects.filter(patient=a).update(
+        emitted_at=now - timedelta(days=2),
     )
     assert maybe_record_language_preference(patient_id=a.pk) is None  # 2/week
 
