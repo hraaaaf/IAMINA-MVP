@@ -1,9 +1,11 @@
 """D2 J4/J5/J7 adversarial tests: synthetic Django users, no real patient data."""
 from datetime import timedelta
+from io import StringIO
 from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.utils import timezone
 from ninja.errors import HttpError
 from pydantic import ValidationError
@@ -258,6 +260,29 @@ def test_expired_items_hidden_without_fake_physical_purge_claim(people):
     )
     assert inbox(req(a))["items"] == []
     assert D2Notification.objects.filter(patient=a).count() == 1
+
+
+@pytest.mark.django_db
+def test_expired_physical_purge_is_manual_bounded_and_dry_by_default(people):
+    a, _ = people
+    now = timezone.now()
+    D2Notification.objects.bulk_create([
+        D2Notification(
+            patient=a, event_key=f"{i + 10:064x}", kind="event",
+            code="ai_consent_given",
+            created_at=now - timedelta(days=10),
+            expires_at=now - timedelta(days=2),
+        )
+        for i in range(3)
+    ])
+    output = StringIO()
+    call_command("purge_d2_notifications", stdout=output)
+    assert "DRY_RUN" in output.getvalue()
+    assert D2Notification.objects.count() == 3
+    output = StringIO()
+    call_command("purge_d2_notifications", apply=True, limit=2, stdout=output)
+    assert "deleted=2" in output.getvalue()
+    assert D2Notification.objects.count() == 1
 
 
 def test_no_phi_or_free_text_columns():
