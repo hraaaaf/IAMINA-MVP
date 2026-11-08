@@ -79,3 +79,56 @@ def test_d2_real_http_session_a_b_a_read_write_csrf():
     assert again.status_code == 200
     assert [row["id"] for row in again.json()["items"]] == [notice.pk]
     assert again.json()["unread_count"] == 0
+
+
+@pytest.mark.django_db
+def test_d2_proactive_is_not_reissued_by_rapid_opt_out_and_back_in():
+    """Revocation deletes content, but cannot reset seven-day dedup evidence."""
+    import json
+
+    from core.models import BasePatientProfile
+    from core.models.d2_notification import D2ProactiveEmissionReceipt
+    from core.models.locale import PatientLocalePreference
+
+    patient = User.objects.create_user(username="audit_d2_rapid_toggle")
+    profile = BasePatientProfile.objects.create(patient=patient)
+    PatientLocalePreference.objects.create(
+        profile=profile,
+        ui_language="fr",
+        ui_language_provenance="defaulted",
+    )
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(patient)
+    path = "/api/v1/account/notifications"
+    initial = client.get(path)
+    assert initial.status_code == 200
+    token = initial.json()["csrf_token"]
+    consent = initial.json()["consent"]
+    grant = json.dumps({
+        "locale": "fr",
+        "notice_version": consent["notice_version"],
+        "notice_digest": consent["notice_digest"],
+        "acknowledgment": "ENABLE_D2_IN_APP_PROACTIVITY",
+    })
+    first = client.put(
+        path + "/proactivity", data=grant, content_type="application/json",
+        HTTP_X_CSRFTOKEN=token,
+    )
+    assert first.status_code == 200, (first.status_code, first.content[:350])
+    assert [row["code"] for row in first.json()["items"]] == [
+        "language_pref_available",
+    ]
+    assert D2ProactiveEmissionReceipt.objects.filter(patient=patient).count() == 1
+    off = client.delete(path + "/proactivity", HTTP_X_CSRFTOKEN=token)
+    assert off.status_code == 200
+    assert off.json()["items"] == []
+    assert D2ProactiveEmissionReceipt.objects.filter(patient=patient).count() == 1
+
+    again = client.put(
+        path + "/proactivity", data=grant, content_type="application/json",
+        HTTP_X_CSRFTOKEN=token,
+    )
+    assert again.status_code == 200
+    assert again.json()["proactive_opt_in"] is True
+    assert again.json()["items"] == []  # same reason remains suppressed 7d
+    assert D2ProactiveEmissionReceipt.objects.filter(patient=patient).count() == 1
