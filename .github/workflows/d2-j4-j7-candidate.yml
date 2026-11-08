@@ -20,7 +20,7 @@ jobs:
   backend-sqlite:
     name: D2 source, consent and security SQLite
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     env:
       DJANGO_SETTINGS_MODULE: amina.settings
       SECRET_KEY: ci-secret-key-not-for-production
@@ -50,6 +50,8 @@ jobs:
         run: python manage.py makemigrations --check --dry-run
       - name: D2 adversarial test suite
         run: pytest -v --tb=short core/tests/test_d2_notifications.py
+      - name: Full backend SQLite regression
+        run: pytest --tb=short -q
       - name: Export updated OpenAPI for review
         run: python manage.py export_openapi > /tmp/iamina-d2-openapi.json
       - name: Preserve generated OpenAPI without committing or deploying
@@ -102,11 +104,13 @@ jobs:
         run: python manage.py migrate --noinput
       - name: D2 owner isolation and concurrency tests
         run: pytest -v --tb=short core/tests/test_d2_notifications.py
+      - name: Full backend PostgreSQL regression
+        run: pytest --tb=short -q
 
   flutter:
     name: D2 Web Flutter contracts and PWA build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: frontend
@@ -128,6 +132,8 @@ jobs:
           test/features/notifications/d2_live_notifications_screen_test.dart
           test/features/dashboard/d2_notification_center_web_test.dart
           test/rtl_screen_contract_test.dart
+      - name: Full Flutter regression
+        run: flutter test --no-pub
       - name: Build self-contained PWA bundle (not deploy)
         run: flutter build web --release --no-web-resources-cdn
       - name: Check PWA artifacts
