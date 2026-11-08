@@ -290,6 +290,28 @@ def test_expired_physical_purge_is_manual_bounded_and_dry_by_default(people):
     assert D2Notification.objects.count() == 1
 
 
+@pytest.mark.django_db
+def test_emission_receipt_purge_is_bounded_and_dry_by_default(people):
+    a, _ = people
+    now = timezone.now()
+    D2ProactiveEmissionReceipt.objects.bulk_create([
+        D2ProactiveEmissionReceipt(
+            patient=a, event_key=f"{i + 100:064x}",
+            emitted_at=now - timedelta(days=9),
+        )
+        for i in range(3)
+    ])
+    stdout = StringIO()
+    call_command("purge_d2_notifications", stdout=stdout)
+    assert "receipts_expired=3" in stdout.getvalue()
+    assert D2ProactiveEmissionReceipt.objects.count() == 3
+
+    stdout = StringIO()
+    call_command("purge_d2_notifications", apply=True, limit=2, stdout=stdout)
+    assert "receipts_deleted=2" in stdout.getvalue()
+    assert D2ProactiveEmissionReceipt.objects.count() == 1
+
+
 def test_no_phi_or_free_text_columns():
     names = {field.name for field in D2Notification._meta.fields}
     assert {"event_key", "code", "kind", "patient", "created_at", "expires_at", "read_at"} <= names
