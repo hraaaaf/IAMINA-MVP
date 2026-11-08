@@ -6,7 +6,6 @@ import hmac
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
@@ -85,7 +84,6 @@ def record_verified_event(*, patient_id: int, code: str, source: str, source_pk:
         raise ValueError("Consent receipt already revoked")
     if code == "ai_consent_withdrawn" and receipt.revoked_at is None:
         raise ValueError("No verified withdrawal")
-    get_user_model().objects.select_for_update().get(pk=patient_id)
     now = timezone.now()
     key = _key(patient_id, code, source_pk)
     # No destructive quota for factual account/security events.
@@ -105,7 +103,6 @@ def maybe_record_language_preference(*, patient_id: int):
     """One factual, optional, non-clinical in-app hint, only after explicit opt-in."""
     if type(patient_id) is not int or patient_id <= 0:
         return None
-    get_user_model().objects.select_for_update().get(pk=patient_id)
     pref = D2NotificationPreference.objects.select_for_update().filter(
         patient_id=patient_id,
     ).first()
