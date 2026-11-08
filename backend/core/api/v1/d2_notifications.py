@@ -1,6 +1,4 @@
 """Patient-owned, CSRF-governed D2 in-app inbox, no push or medical alerts."""
-from __future__ import annotations
-
 from typing import Literal
 
 from django.db import transaction
