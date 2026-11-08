@@ -40,9 +40,19 @@ def check_migration_lineage(
     missing_c7 = sorted(set(_C7) - available)
     # If a source lineage is diverged, migrations may have inconsistent
     # graph predecessors even if Django would happen to accept the names.
+    # Fail closed on a partially recorded C7 dependency chain. A database
+    # with 0021 recorded but no 0020 is not a compatible migration graph.
+    missing_dependency = sorted(
+        migration for migration, predecessor in (
+            ("0021_web_refresh_transport_nonce", "0020_web_refresh_candidate"),
+            ("0020_web_refresh_candidate", "0019_auth_abuse_bucket"),
+        )
+        if migration in applied and predecessor not in applied
+    )
     safe = (
         not unknown
         and not missing_c7
+        and not missing_dependency
         and "0019_auth_abuse_bucket" in applied
         and "0019_auth_abuse_bucket" in available
     )
@@ -51,6 +61,7 @@ def check_migration_lineage(
         "unrepresented_applied": unknown,
         "number_collisions": collisions,
         "missing_c7_source": missing_c7,
+        "missing_c7_dependencies": missing_dependency,
         "required_parent_applied": "0019_auth_abuse_bucket" in applied,
         "source_core_migration_count": len(current),
         "applied_core_migration_count": len(applied),
