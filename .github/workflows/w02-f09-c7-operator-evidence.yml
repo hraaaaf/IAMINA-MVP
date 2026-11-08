@@ -1,0 +1,39 @@
+name: W02 F09 C7 operator evidence (offline only)
+
+on:
+  push:
+    branches:
+      - test/w02-f09-c7-operator-migration-gate-20261108
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f09-c7-operator-evidence-20261108
+  cancel-in-progress: true
+
+jobs:
+  offline-evidence-gate:
+    name: Offline before-after migration evidence, no database credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Offline evidence gate — twelve negative and positive contracts
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts/check_w02_f09_c7_operator_evidence.py scripts/tests/test_w02_f09_c7_operator_evidence.py
+          python -m unittest scripts.tests.test_w02_f09_c7_operator_evidence -v
+          python -m unittest discover -s scripts/tests -p test_w02_f09_c7_migration_lineage.py -v
+      - name: Assert no database or cloud mutation command in the evidence checker
+        run: |
+          set -euo pipefail
+          ! grep -E 'import (psycopg2|psycopg|requests|boto3|subprocess)|\b(connect|execute|cursor|CREATE TABLE|ALTER TABLE|DROP TABLE|manage.py migrate)\b' scripts/check_w02_f09_c7_operator_evidence.py
+          grep -Fq 'clinical_activation_approved' scripts/check_w02_f09_c7_operator_evidence.py
+          grep -Fq 'no_sql_executed_by_gate' scripts/check_w02_f09_c7_operator_evidence.py
