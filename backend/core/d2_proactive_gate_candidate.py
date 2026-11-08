@@ -79,29 +79,39 @@ def evaluate_d2_proactive_dry_run(c: D2ProactiveCandidate) -> D2DryRunVerdict:
     if c.channel != "in_app_notification" or c.kind != "proactive":
         return D2DryRunVerdict.WRONG_SURFACE
     if (
-        c.patient_id is None or c.patient_id <= 0
-        or c.record_patient_id != c.patient_id or not c.unlocked
+        type(c.patient_id) is not int or c.patient_id <= 0
+        or type(c.record_patient_id) is not int
+        or c.record_patient_id != c.patient_id or c.unlocked is not True
     ):
         return D2DryRunVerdict.NOT_AUTHORIZED
-    if c.auth_epoch != c.current_auth_epoch or c.current_auth_epoch < 0:
+    if (
+        type(c.auth_epoch) is not int or type(c.current_auth_epoch) is not int
+        or c.auth_epoch != c.current_auth_epoch or c.current_auth_epoch < 0
+    ):
         return D2DryRunVerdict.STALE_SESSION
     if (
-        not c.proactive_opt_in or not c.server_consent_confirmed
-        or not c.category_enabled or c.global_ai_opt_out
+        c.proactive_opt_in is not True or c.server_consent_confirmed is not True
+        or c.category_enabled is not True or c.global_ai_opt_out is not False
     ):
         return D2DryRunVerdict.CONSENT_MISSING
     if (
-        not c.source_verified
+        c.source_verified is not True
         or c.event_type not in CANDIDATE_SOURCES
         or c.source_contract_version != EXPECTED_CONTRACT_VERSION
-        or not c.evidence_id.strip() or not c.event_signature.strip()
+        or not isinstance(c.evidence_id, str) or not c.evidence_id.strip()
+        or not isinstance(c.event_signature, str) or not c.event_signature.strip()
     ):
         return D2DryRunVerdict.UNVERIFIED_SOURCE
-    if c.claims_urgent or c.suggests_treatment or c.contains_sensitive_preview:
+    if (
+        c.claims_urgent is not False or c.suggests_treatment is not False
+        or c.contains_sensitive_preview is not False
+    ):
         return D2DryRunVerdict.CLINICAL_SCOPE
     if not _aware(c.now) or not _aware(c.evidence_at):
         return D2DryRunVerdict.INVALID_TIMELINE
     if not (c.now - MAX_EVIDENCE_AGE <= c.evidence_at <= c.now):
+        return D2DryRunVerdict.INVALID_TIMELINE
+    if not isinstance(c.previous_proactive_at, tuple):
         return D2DryRunVerdict.INVALID_TIMELINE
     timestamps = c.previous_proactive_at
     if c.last_same_event_at is not None:
