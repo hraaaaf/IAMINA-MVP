@@ -51,6 +51,18 @@ class W02C7MigrationLineageGateTest(unittest.TestCase):
             check_migration_lineage(BASE, [])["result"], "BLOCKED",
         )
 
+    def test_partially_recorded_c7_migrations_block_activation(self):
+        report = check_migration_lineage(
+            BASE,
+            ["0019_auth_abuse_bucket", "0021_web_refresh_transport_nonce"],
+        )
+        self.assertEqual(report["result"], "BLOCKED")
+        self.assertEqual(
+            report["missing_c7_dependencies"],
+            ["0021_web_refresh_transport_nonce"],
+        )
+        self.assertEqual(report["unrepresented_applied"], [])
+
     def test_unknown_applied_no_number_conflict_still_fails_closed(self):
         report = check_migration_lineage(
             BASE, ["0019_auth_abuse_bucket", "0028_unrelated_feature"],
