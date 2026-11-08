@@ -31,7 +31,7 @@ from core.models.locale import PatientLocalePreference
 
 
 @pytest.fixture
-def people(db, monkeypatch):
+def people(transactional_db, monkeypatch):
     a = User.objects.create_user(username="d2-synthetic-A")
     b = User.objects.create_user(username="d2-synthetic-B")
     monkeypatch.setattr("core.api.v1.account.record_audit", lambda *args, **kwargs: None)
@@ -145,6 +145,26 @@ def test_proactive_only_after_explicit_verified_notice_and_real_locale_provenanc
     assert stopped["proactive_opt_in"] is False
     assert stopped["items"] == []
     assert maybe_record_language_preference(patient_id=a.pk) is None
+
+
+@pytest.mark.django_db
+def test_critical_consent_survives_notification_producer_outage(people, monkeypatch):
+    a, _ = people
+
+    def simulate_notification_outage(*args, **kwargs):
+        raise RuntimeError("synthetic D2 database unavailable")
+
+    monkeypatch.setattr(
+        "core.api.v1.account.record_verified_event",
+        simulate_notification_outage,
+    )
+    result = grant_global_consent(a)
+    assert result["ai_consent_given"] is True
+    assert AIConsentReceipt.objects.filter(patient=a, revoked_at__isnull=True).count() == 1
+    assert D2Notification.objects.filter(patient=a).count() == 0
+    # Full account-consent lifecycle must also survive a notice storage outage.
+    assert withdraw_consent(req(a))["ai_consent_given"] is False
+    assert AIConsentReceipt.objects.filter(patient=a, revoked_at__isnull=True).count() == 0
 
 
 @pytest.mark.django_db
