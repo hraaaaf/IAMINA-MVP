@@ -10,6 +10,7 @@ from django.db import models as _models
 from core.models.ai_consent_receipt import AIConsentReceipt  # noqa: F401
 from core.models.ai_media_consent import AIMediaConsentGrant  # noqa: F401
 from core.models.auth_abuse import AuthAbuseBucket  # noqa: F401
+from core.models.d2_notification import D2Notification, D2NotificationPreference  # noqa: F401
 from core.models.erasure_record import ErasureRecord  # noqa: F401
 from core.models.finops_budget import (  # noqa: F401
     AIBudgetAccount,
@@ -23,7 +24,6 @@ from core.models.finops_user_throttle import AIUserThrottleWindow  # noqa: F401
 from core.models.locale import PatientLocalePreference  # noqa: F401
 from core.models.patient import BasePatientProfile  # noqa: F401
 from core.models.patient_module import PatientModule  # noqa: F401
-from core.models.d2_notification import D2Notification, D2NotificationPreference  # noqa: F401
 
 # Re-export so Django's migration framework discovers this model in the core app.
 from core.observability.events import ObservabilityEvent  # noqa: F401
