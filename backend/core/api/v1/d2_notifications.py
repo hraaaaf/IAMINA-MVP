@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Literal
 
 from django.db import transaction
+from django.middleware.csrf import get_token
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
@@ -78,6 +79,7 @@ def inbox(request, locale: str = "fr"):
         "purpose": "d2_in_app_notifications",
         "in_app_enabled": True,
         "browser_push_enabled": False,
+        "csrf_token": get_token(request) if request.COOKIES else None,
         "proactive_opt_in": _is_opted_in(preference),
         "consent": notice_contract(locale),
         "unread_count": sum(row.read_at is None for row in items),
