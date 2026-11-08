@@ -95,6 +95,15 @@ def record_verified_event(*, patient_id: int, code: str, source: str, source_pk:
             "expires_at": now + TTL,
         },
     )
+    # Hard account-bound cap: only code-only in-app rows are removed here;
+    # underlying authoritative account receipts remain intact.
+    old_ids = list(
+        D2Notification.objects.filter(patient_id=patient_id)
+        .order_by("-created_at", "-id")
+        .values_list("pk", flat=True)[MAX_INBOX:]
+    )
+    if old_ids:
+        D2Notification.objects.filter(patient_id=patient_id, pk__in=old_ids).delete()
     return notice, created
 
 
