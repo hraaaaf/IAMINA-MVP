@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from core.account_hooks import run_account_delete_hooks
 from core.audit import record_audit
 from core.consent_notice import profile_has_current_consent, validate_notice_claim
+from core.d2_notification_service import record_verified_event
 from core.models import AIConsentReceipt, AIMediaConsentGrant, BasePatientProfile
 from core.models.erasure_record import ErasureRecord
 
@@ -102,7 +103,7 @@ def give_consent(request, data: ConsentGrantSchema):
             revoked_at__isnull=True,
         ).update(revoked_at=now)
 
-        AIConsentReceipt.objects.create(
+        receipt = AIConsentReceipt.objects.create(
             patient=request.user,
             notice_version=claim.version,
             notice_hash=claim.notice_hash,
@@ -122,6 +123,10 @@ def give_consent(request, data: ConsentGrantSchema):
             ]
         )
         record_audit(request.user, "consent_given", request)
+        record_verified_event(
+            patient_id=request.user.pk, code="ai_consent_given",
+            source="consent_receipt", source_pk=receipt.pk,
+        )
 
     return _consent_status(base)
 
@@ -146,6 +151,9 @@ def withdraw_consent(request):
                     "ai_consent_notice_locale",
                 ]
             )
+            active_receipt = AIConsentReceipt.objects.filter(
+                patient=request.user, revoked_at__isnull=True,
+            ).order_by("-granted_at", "-id").first()
             AIConsentReceipt.objects.filter(
                 patient=request.user,
                 revoked_at__isnull=True,
@@ -156,6 +164,11 @@ def withdraw_consent(request):
             ).update(revoked_at=now)
             if had_consent:
                 record_audit(request.user, "consent_withdrawn", request)
+                if active_receipt is not None:
+                    record_verified_event(
+                        patient_id=request.user.pk, code="ai_consent_withdrawn",
+                        source="consent_receipt", source_pk=active_receipt.pk,
+                    )
     except BasePatientProfile.DoesNotExist:
         pass
     return _consent_status(None)
