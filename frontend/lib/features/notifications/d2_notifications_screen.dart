@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../services/api_client.dart';
+import '../../services/d2_notification_gateway.dart';
+import 'd2_live_notifications_screen.dart';
 
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
@@ -20,6 +25,17 @@ class D2NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No API provider in screenshot fixtures or offline audit: retain the
+    // truthful inactive state. Real patient sessions use the validated API
+    // and display data only after strict source/identity verification.
+    try {
+      final api = Provider.of<ApiClient>(context, listen: false);
+      return D2LiveNotificationsScreen(
+        gateway: D2ApiNotificationGateway(api),
+      );
+    } on ProviderNotFoundException {
+      // The isolated Chrome audit surface intentionally has no patient API.
+    }
     return Scaffold(
       key: const ValueKey('d2-notifications-screen'),
       backgroundColor: AminaTheme.bg(context),
