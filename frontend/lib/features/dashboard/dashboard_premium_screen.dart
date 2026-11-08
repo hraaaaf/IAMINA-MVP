@@ -384,8 +384,9 @@ class _PremiumBrandHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          key: const ValueKey('dashboard-reminders-action'),
-          onPressed: () => context.go('/reminders'),
+          key: const ValueKey('dashboard-notifications-action'),
+          tooltip: _t(context, 'Notifications', 'Notifications', 'الإشعارات'),
+          onPressed: () => context.go('/notifications'),
           icon: const Icon(Icons.notifications_none_rounded),
           style: IconButton.styleFrom(
             minimumSize: const Size(48, 48),
