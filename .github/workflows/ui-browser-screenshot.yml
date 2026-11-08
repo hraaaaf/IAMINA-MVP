@@ -55,6 +55,7 @@ jobs:
       matrix:
         include:
           - { width: 390, height: 844, mobile: true }
+          - { width: 430, height: 932, mobile: true }
           - { width: 768, height: 1024, mobile: false }
           - { width: 1280, height: 900, mobile: false }
 
@@ -168,16 +169,23 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
+          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders notifications notifications-ar)
           viewports=("${{ matrix.width }} ${{ matrix.height }} ${{ matrix.mobile }}")
 
           for viewport in "${viewports[@]}"; do
             read -r width height mobile <<< "$viewport"
             for surface in "${surfaces[@]}"; do
               target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-${width}x${height}.png"
+              # Only D2 RTL capture selects Arabic; all existing surfaces stay FR.
+              browser_surface="$surface"
+              browser_locale="fr"
+              if [ "$surface" = "notifications-ar" ]; then
+                browser_surface="notifications"
+                browser_locale="ar"
+              fi
               # On GitHub runners Chromium can fail to expose DevTools during
               # cold startup. Retry with a fresh profile, never skip a screenshot.
-              # The 18 real Chrome captures and uniqueness assertions remain.
+              # The full surface set, including D2 FR+AR, is always captured.
               DEVTOOLS=0
               for launch_attempt in 1 2 3; do
                 profile_dir="$(mktemp -d)"
@@ -196,7 +204,7 @@ jobs:
                   --remote-debugging-port=9222 \
                   --user-data-dir="$profile_dir" \
                   --window-size=${width},${height} \
-                  "http://127.0.0.1:7358/?surface=${surface}" \
+                  "http://127.0.0.1:7358/?surface=${browser_surface}&locale=${browser_locale}&seed=0" \
                   >"$chrome_log" 2>&1 &
                 CHROME_PID=$!
 
