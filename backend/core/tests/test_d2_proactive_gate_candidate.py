@@ -109,6 +109,19 @@ class TestD2ProactiveInAppGate(TestCase):
             self.now - timedelta(days=2), self.now - timedelta(minutes=2),
         ))
 
+    def test_untyped_flags_are_not_implicit_permission(self):
+        # Runtime dataclasses do not enforce type hints: reject forged truthy strings.
+        self.check(V.NOT_AUTHORIZED, patient_id=True)
+        self.check(V.NOT_AUTHORIZED, unlocked="true")
+        self.check(V.STALE_SESSION, auth_epoch="2")
+        self.check(V.CONSENT_MISSING, proactive_opt_in="yes")
+        self.check(V.CONSENT_MISSING, global_ai_opt_out="false")
+        self.check(V.UNVERIFIED_SOURCE, source_verified="true")
+        self.check(V.UNVERIFIED_SOURCE, evidence_id=None)
+        self.check(V.UNVERIFIED_SOURCE, event_signature=None)
+        self.check(V.CLINICAL_SCOPE, suggests_treatment="false")
+        self.check(V.INVALID_TIMELINE, previous_proactive_at=[])
+
     def test_pure_and_repeatable_no_bookkeeping_or_side_effects(self):
         original = self.candidate
         self.assertEqual(evaluate(original), V.CANDIDATE_ONLY)
