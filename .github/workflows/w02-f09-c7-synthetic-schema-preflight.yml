@@ -101,8 +101,11 @@ jobs:
         run: |
           python manage.py migrate --noinput
           python manage.py makemigrations --check --dry-run
-      - name: Verify C7 atomic rollback and server-attested BFF reply
-        run: python -m pytest -q -ra core/tests/test_w02_f09c7_atomic_bundle_pg.py
+      - name: Verify PG16 runtime history gate, rollback and backend signed reply
+        run: >
+          python -m pytest -q -ra
+          core/tests/test_w02_f09c7_migration_lineage_pg.py
+          core/tests/test_w02_f09c7_atomic_bundle_pg.py
       - name: Prior C2-C6 security candidate regressions
         run: >
           python -m pytest -q -ra
