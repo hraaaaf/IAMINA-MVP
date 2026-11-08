@@ -96,7 +96,7 @@ def evaluate_d2_proactive_dry_run(c: D2ProactiveCandidate) -> D2DryRunVerdict:
         return D2DryRunVerdict.CONSENT_MISSING
     if (
         c.source_verified is not True
-        or c.event_type not in CANDIDATE_SOURCES
+        or type(c.event_type) is not str or c.event_type not in CANDIDATE_SOURCES
         or c.source_contract_version != EXPECTED_CONTRACT_VERSION
         or not isinstance(c.evidence_id, str) or not c.evidence_id.strip()
         or not isinstance(c.event_signature, str) or not c.event_signature.strip()
