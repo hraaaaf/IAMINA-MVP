@@ -41,4 +41,17 @@ class Migration(migrations.Migration):
                 "constraints": [models.UniqueConstraint(fields=("patient", "event_key"), name="core_d2_notice_event_key_unique")],
             },
         ),
+        migrations.CreateModel(
+            name="D2ProactiveEmissionReceipt",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("event_key", models.CharField(max_length=64)),
+                ("emitted_at", models.DateTimeField()),
+                ("patient", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="d2_proactive_emission_receipts", to=settings.AUTH_USER_MODEL)),
+            ],
+            options={
+                "indexes": [models.Index(fields=["patient", "emitted_at"], name="core_d2_proactive_recent")],
+                "constraints": [models.UniqueConstraint(fields=("patient", "event_key"), name="core_d2_proactive_receipt_unique")],
+            },
+        ),
     ]
