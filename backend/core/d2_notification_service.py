@@ -9,7 +9,11 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from core.models.d2_notification import D2Notification, D2NotificationPreference
+from core.models.d2_notification import (
+    D2Notification,
+    D2NotificationPreference,
+    D2ProactiveEmissionReceipt,
+)
 
 NOTICE_VERSION = "d2.inapp.proactivity.2026-11-08.v1"
 NOTICES = {
@@ -132,17 +136,26 @@ def maybe_record_language_preference(*, patient_id: int):
         return None
     cutoff_week = now - timedelta(days=7)
     cutoff_day = now - timedelta(hours=24)
-    recent = D2Notification.objects.filter(
-        patient_id=patient_id, kind="proactive",
-        created_at__gt=cutoff_week,
+    # A revoked notice must disappear immediately, but deleting it must NOT
+    # reset anti-spam limits. Minimal HMAC+time receipts remain for seven days,
+    # with no rendered content and no clinical fields.
+    recent = D2ProactiveEmissionReceipt.objects.filter(
+        patient_id=patient_id, emitted_at__gt=cutoff_week,
     )
-    if recent.count() >= CAP_WEEK or recent.filter(created_at__gt=cutoff_day).exists():
+    if recent.filter(event_key=key).exists():
+        return None
+    if recent.count() >= CAP_WEEK or recent.filter(emitted_at__gt=cutoff_day).exists():
         return None
     if D2Notification.objects.filter(
         patient_id=patient_id, expires_at__gt=now,
     ).count() >= MAX_INBOX:
         return None
-    return D2Notification.objects.create(
+    # Reuse of an identical source is permitted only once its receipt is
+    # older than the rolling seven-day suppression window.
+    D2ProactiveEmissionReceipt.objects.filter(
+        patient_id=patient_id, event_key=key, emitted_at__lte=cutoff_week,
+    ).delete()
+    notice = D2Notification.objects.create(
         patient_id=patient_id,
         event_key=key,
         kind="proactive",
@@ -150,3 +163,7 @@ def maybe_record_language_preference(*, patient_id: int):
         created_at=now,
         expires_at=now + TTL,
     )
+    D2ProactiveEmissionReceipt.objects.create(
+        patient_id=patient_id, event_key=key, emitted_at=now,
+    )
+    return notice
