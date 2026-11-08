@@ -73,6 +73,7 @@ class D2InboxState {
   final String noticeVersion;
   final String noticeDigest;
   final String noticeText;
+  final String? csrfToken;
   final List<D2NoticeItem> items;
 
   const D2InboxState({
@@ -81,6 +82,7 @@ class D2InboxState {
     required this.noticeVersion,
     required this.noticeDigest,
     required this.noticeText,
+    this.csrfToken,
     required this.items,
   });
 
@@ -93,6 +95,9 @@ class D2InboxState {
         raw['browser_push_enabled'] != false ||
         raw['proactive_opt_in'] is! bool ||
         raw['unread_count'] is! int ||
+        (raw['csrf_token'] != null &&
+            (raw['csrf_token'] is! String ||
+                (raw['csrf_token'] as String).isEmpty)) ||
         raw['items'] is! List ||
         (raw['items'] as List).length > 40 ||
         raw['consent'] is! Map<String, dynamic>) {
@@ -120,6 +125,7 @@ class D2InboxState {
       noticeVersion: notice['notice_version'] as String,
       noticeDigest: notice['notice_digest'] as String,
       noticeText: notice['notice_text'] as String,
+      csrfToken: raw['csrf_token'] as String?,
       items: List.unmodifiable(items),
     );
     if (state.unreadCount != raw['unread_count']) {
@@ -140,7 +146,8 @@ abstract class D2NotificationGateway {
 
 class D2ApiNotificationGateway implements D2NotificationGateway {
   final ApiClient api;
-  const D2ApiNotificationGateway(this.api);
+  String? _csrfToken;
+  D2ApiNotificationGateway(this.api);
 
   Future<void> _perform(Future<dynamic> Function() call) async {
     final epoch = AuthEpoch.value;
@@ -160,13 +167,16 @@ class D2ApiNotificationGateway implements D2NotificationGateway {
     );
     requireCurrentAuthEpoch(epoch);
     if (!response.isSuccessful) throw StateError('D2 inbox unavailable');
-    return D2InboxState.parse(response.body);
+    final state = D2InboxState.parse(response.body);
+    _csrfToken = state.csrfToken;
+    return state;
   }
 
   @override
   Future<D2InboxState> enable(D2InboxState accepted) async {
     await _perform(() => api.client.put(
       Uri.parse('/api/v1/account/notifications/proactivity'),
+      headers: _csrfToken == null ? const <String, String>{} : <String, String>{'X-CSRFToken': _csrfToken!},
       body: <String, dynamic>{
         'locale': accepted.locale,
         'notice_version': accepted.noticeVersion,
@@ -181,6 +191,7 @@ class D2ApiNotificationGateway implements D2NotificationGateway {
   Future<D2InboxState> disable(String locale) async {
     await _perform(() => api.client.delete(
       Uri.parse('/api/v1/account/notifications/proactivity'),
+      headers: _csrfToken == null ? const <String, String>{} : <String, String>{'X-CSRFToken': _csrfToken!},
     ));
     return inbox(locale);
   }
@@ -189,6 +200,7 @@ class D2ApiNotificationGateway implements D2NotificationGateway {
   Future<D2InboxState> readOne(int id, String locale) async {
     await _perform(() => api.client.put(
       Uri.parse('/api/v1/account/notifications/$id/read'),
+      headers: _csrfToken == null ? const <String, String>{} : <String, String>{'X-CSRFToken': _csrfToken!},
       body: <String, dynamic>{},
     ));
     return inbox(locale);
@@ -198,6 +210,7 @@ class D2ApiNotificationGateway implements D2NotificationGateway {
   Future<D2InboxState> readAll(String locale) async {
     await _perform(() => api.client.post(
       Uri.parse('/api/v1/account/notifications/read-all'),
+      headers: _csrfToken == null ? const <String, String>{} : <String, String>{'X-CSRFToken': _csrfToken!},
       body: <String, dynamic>{},
     ));
     return inbox(locale);
@@ -207,6 +220,7 @@ class D2ApiNotificationGateway implements D2NotificationGateway {
   Future<D2InboxState> deleteOne(int id, String locale) async {
     await _perform(() => api.client.delete(
       Uri.parse('/api/v1/account/notifications/$id'),
+      headers: _csrfToken == null ? const <String, String>{} : <String, String>{'X-CSRFToken': _csrfToken!},
     ));
     return inbox(locale);
   }
