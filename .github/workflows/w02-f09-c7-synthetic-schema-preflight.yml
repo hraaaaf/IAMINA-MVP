@@ -1,0 +1,116 @@
+name: W02 F09 C7 synthetic database migration lineage safety gate
+
+on:
+  push:
+    branches:
+      - test/w02-f09-c7-synthetic-schema-lineage-20261108
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w02-f09-c7-synthetic-schema-lineage-20261108
+  cancel-in-progress: true
+
+jobs:
+  lineage:
+    name: Fail-closed core migrations lineage and negative tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate read-only synthetic Neon migration collision guard
+        run: |
+          set -euo pipefail
+          python -m compileall -q scripts/check_w02_f09_c7_migration_lineage.py scripts/tests/test_w02_f09_c7_migration_lineage.py
+          python -m unittest discover -s scripts/tests -p test_w02_f09_c7_migration_lineage.py -v
+          python - <<'PY'
+          from scripts.check_w02_f09_c7_migration_lineage import (
+              check_migration_lineage, MIGRATIONS
+          )
+          repository = {p.stem for p in MIGRATIONS.glob("[0-9][0-9][0-9][0-9]_*.py")}
+          synthetic_applied = [
+              "0019_auth_abuse_bucket",
+              "0020_erasure_attempt",
+              "0021_erasure_attempt_claim_states",
+              "0022_d2_preview_consent_receipt",
+              "0023_d2_in_app_notice",
+          ]
+          report = check_migration_lineage(repository, synthetic_applied)
+          assert report["result"] == "BLOCKED"
+          assert report["number_collisions"] == [
+              "0020_erasure_attempt", "0021_erasure_attempt_claim_states",
+          ]
+          assert not report["db_writes_performed"]
+          print("PASS C7 preflight: conflicting synthetic Neon lineage blocks DDL")
+          PY
+
+  pg16:
+    name: Disposable PG16 C7 atomic refresh regression without Neon
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: iamina_c7_ephemeral_lineage
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_c7_ephemeral_lineage"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: c7-synthetic-ci-only-git-not-for-preview
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_c7_ephemeral_lineage
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      GROQ_API_KEY: ""
+      OPENAI_API_KEY: ""
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install disposable test dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Prove source migrations work on fresh disposable DB
+        run: |
+          python manage.py migrate --noinput
+          python manage.py makemigrations --check --dry-run
+      - name: Verify PG16 runtime history gate, rollback and backend signed reply
+        run: >
+          python -m pytest -q -ra
+          core/tests/test_w02_f09c7_migration_lineage_pg.py
+          core/tests/test_w02_f09c7_atomic_bundle_pg.py
+      - name: Prior C2-C6 security candidate regressions
+        run: >
+          python -m pytest -q -ra
+          core/tests/test_w02_f09c6_http_auth_pg.py
+          core/tests/test_w02_f09c5_family_bearer_pg.py
+          core/tests/test_w02_f09c4_http_adapter_pg.py
+          core/tests/test_w02_f09c3_oidc_atomic_tabs.py
+          core/tests/test_w02_f09c2_signed_boundary.py

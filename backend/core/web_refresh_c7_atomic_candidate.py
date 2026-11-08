@@ -18,7 +18,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import DisallowedHost
-from django.db import transaction
+from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
 from core.models import WebRefreshFamily
@@ -54,6 +54,31 @@ _FAIL = "web_refresh_c7_unavailable"
 _RESPONSE_SCOPE = "iamina.web.c7.signed-response.v1"
 _KEY_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
 
+# Migration history from the current C7 source branch only. Never accept
+# an out-of-tree W01/D2 history sharing 0020/0021 migration numbers. This is
+# a secondary runtime fail-closed control, NOT DDL approval.
+_EXPECTED_CORE_TAIL = frozenset({
+    "0019_auth_abuse_bucket",
+    "0020_web_refresh_candidate",
+    "0021_web_refresh_transport_nonce",
+})
+
+
+def _compatible_runtime_lineage():
+    """Read migration names only; if ledger is unavailable, reject C7."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT name FROM django_migrations "
+                "WHERE app = %s AND name >= %s",
+                ["core", "0019"],
+            )
+            names = [name for (name,) in cursor.fetchall()]
+    except (DatabaseError, TypeError, ValueError):
+        return False
+    return len(names) == len(_EXPECTED_CORE_TAIL) and set(names) == _EXPECTED_CORE_TAIL
+
+
 
 class WebRefreshC7Rejected(Exception):
     """Uniform rejection that never exposes secrets, patient or policy data."""
@@ -80,6 +105,8 @@ def _policy():
         or type(access_cap) is not int
         or not 1 <= access_cap <= cookie_cap
     ):
+        raise WebRefreshC7Rejected(_FAIL)
+    if not _compatible_runtime_lineage():
         raise WebRefreshC7Rejected(_FAIL)
     return key.encode("ascii"), cookie_cap, access_cap
 
