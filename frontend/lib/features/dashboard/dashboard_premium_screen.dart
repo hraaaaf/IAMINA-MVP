@@ -216,7 +216,7 @@ class _DashboardBody extends StatelessWidget {
                       ),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
-                          const _PremiumBrandHeader(),
+                          const PremiumDashboardBrandHeader(),
                           const SizedBox(height: 22),
                           Text(
                             _t(context, 'Bonjour', 'Welcome back', 'مرحباً'),
@@ -336,8 +336,9 @@ class _DataTools extends StatelessWidget {
   }
 }
 
-class _PremiumBrandHeader extends StatelessWidget {
-  const _PremiumBrandHeader();
+/// The real dashboard brand header and D2 bell; testable without patient data.
+class PremiumDashboardBrandHeader extends StatelessWidget {
+  const PremiumDashboardBrandHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -697,7 +698,7 @@ class _PremiumState extends StatelessWidget {
               padding: const EdgeInsets.all(22),
               child: Column(
                 children: [
-                  const _PremiumBrandHeader(),
+                  const PremiumDashboardBrandHeader(),
                   const Spacer(),
                   Container(
                     width: double.infinity,
@@ -778,7 +779,7 @@ class _EmptyPremiumDashboard extends StatelessWidget {
                   padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 128),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      const _PremiumBrandHeader(),
+                      const PremiumDashboardBrandHeader(),
                       const SizedBox(height: 28),
                       Text(
                         _t(
