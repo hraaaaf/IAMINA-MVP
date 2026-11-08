@@ -177,11 +177,11 @@ jobs:
             for surface in "${surfaces[@]}"; do
               target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-${width}x${height}.png"
               # Only D2 RTL capture selects Arabic; all existing surfaces stay FR.
-              browser_surface="$surface"
-              browser_locale="fr"
-              if [ "$surface" = "notifications-ar" ]; then
-                browser_surface="notifications"
-                browser_locale="ar"
+              browser_url="http://127.0.0.1:7358/?surface=${surface}"
+              if [ "$surface" = "notifications" ]; then
+                browser_url="http://127.0.0.1:7358/?surface=notifications&locale=fr&seed=0"
+              elif [ "$surface" = "notifications-ar" ]; then
+                browser_url="http://127.0.0.1:7358/?surface=notifications&locale=ar&seed=0"
               fi
               # On GitHub runners Chromium can fail to expose DevTools during
               # cold startup. Retry with a fresh profile, never skip a screenshot.
@@ -204,7 +204,7 @@ jobs:
                   --remote-debugging-port=9222 \
                   --user-data-dir="$profile_dir" \
                   --window-size=${width},${height} \
-                  "http://127.0.0.1:7358/?surface=${browser_surface}&locale=${browser_locale}&seed=0" \
+                  "$browser_url" \
                   >"$chrome_log" 2>&1 &
                 CHROME_PID=$!
 
