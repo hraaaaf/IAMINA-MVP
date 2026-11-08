@@ -28,6 +28,22 @@ logger = logging.getLogger(__name__)
 router = Router(tags=["account"])
 
 
+def _queue_account_notification(patient_id: int, code: str, receipt_id: int):
+    """Never make critical consent transactions depend on D2 availability."""
+    def issue_after_commit():
+        try:
+            record_verified_event(
+                patient_id=patient_id, code=code,
+                source="consent_receipt", source_pk=receipt_id,
+            )
+        except Exception:
+            # No patient data in error message. Honest missing event > failed consent.
+            logger.exception("D2 account notice unavailable after consent commit")
+
+    transaction.on_commit(issue_after_commit)
+
+
+
 class ConsentStatusSchema(BaseModel):
     ai_consent_given: bool
     ai_consent_given_at: str | None
@@ -123,9 +139,8 @@ def give_consent(request, data: ConsentGrantSchema):
             ]
         )
         record_audit(request.user, "consent_given", request)
-        record_verified_event(
-            patient_id=request.user.pk, code="ai_consent_given",
-            source="consent_receipt", source_pk=receipt.pk,
+        _queue_account_notification(
+            request.user.pk, "ai_consent_given", receipt.pk,
         )
 
     return _consent_status(base)
@@ -165,9 +180,8 @@ def withdraw_consent(request):
             if had_consent:
                 record_audit(request.user, "consent_withdrawn", request)
                 if active_receipt is not None:
-                    record_verified_event(
-                        patient_id=request.user.pk, code="ai_consent_withdrawn",
-                        source="consent_receipt", source_pk=active_receipt.pk,
+                    _queue_account_notification(
+                        request.user.pk, "ai_consent_withdrawn", active_receipt.pk,
                     )
     except BasePatientProfile.DoesNotExist:
         pass
