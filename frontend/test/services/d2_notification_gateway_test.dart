@@ -14,7 +14,7 @@ Map<String, dynamic> envelope({
   'consent': {
     'locale': 'fr',
     'notice_version': 'd2.inapp.proactivity.2026-11-08.v1',
-    'notice_digest': 'a' * 64,
+    'notice_digest': List.filled(64, 'a').join(),
     'notice_text': 'Deux informations non medicales max par semaine.',
   },
   'items': items,
@@ -110,7 +110,7 @@ void main() {
     final wrong = envelope()..['consent'] = <String, dynamic>{
       'locale': 'fr',
       'notice_version': 'not-approved',
-      'notice_digest': 'a' * 64,
+      'notice_digest': List.filled(64, 'a').join(),
       'notice_text': 'Unknown',
     };
     expect(() => D2InboxState.parse(wrong), throwsStateError);
