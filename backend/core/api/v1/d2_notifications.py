@@ -1,11 +1,13 @@
 """Patient-owned, CSRF-governed D2 in-app inbox, no push or medical alerts."""
 from __future__ import annotations
 
+from typing import Literal
+
 from django.db import transaction
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, ConfigDict, Literal
+from pydantic import BaseModel, ConfigDict
 
 from amina.vercel_session_auth import check_iamina_csrf
 from core.d2_notification_service import (
