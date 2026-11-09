@@ -1601,6 +1601,184 @@
         ]
       }
     },
+    "/api/v1/account/notifications": {
+      "get": {
+        "operationId": "core_api_v1_d2_notifications_inbox",
+        "summary": "Inbox",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "default": "fr",
+              "title": "Locale",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Read-only: no clinical queries, synthesized messages or side effects.",
+        "tags": [
+          "d2-notifications"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notifications/proactivity": {
+      "put": {
+        "operationId": "core_api_v1_d2_notifications_enable_proactivity",
+        "summary": "Enable Proactivity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProactivityGrant"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "core_api_v1_d2_notifications_disable_proactivity",
+        "summary": "Disable Proactivity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-notifications"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notifications/{notice_id}/read": {
+      "put": {
+        "operationId": "core_api_v1_d2_notifications_mark_read",
+        "summary": "Mark Read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "schema": {
+              "title": "Notice Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-notifications"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notifications/read-all": {
+      "post": {
+        "operationId": "core_api_v1_d2_notifications_mark_all_read",
+        "summary": "Mark All Read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-notifications"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/notifications/{notice_id}": {
+      "delete": {
+        "operationId": "core_api_v1_d2_notifications_delete_item",
+        "summary": "Delete Item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "schema": {
+              "title": "Notice Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "d2-notifications"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/modules/{module_name}/activate": {
       "post": {
         "operationId": "core_api_v1_modules_activate_module",
