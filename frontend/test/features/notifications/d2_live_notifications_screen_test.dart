@@ -130,6 +130,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(fake.enabled, isTrue);
       expect(tester.takeException(), isNull);
+
+      // FUE: explicit OFF is immediate, then deleting an account notice empties UI.
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('d2-proactivity-toggle')),
+      );
+      await tester.tap(find.byKey(const ValueKey('d2-proactivity-toggle')));
+      await tester.pumpAndSettle();
+      expect(fake.enabled, isFalse);
+      final deleteTooltip = switch (locale) {
+        'ar' => 'حذف',
+        'en' => 'Delete',
+        _ => 'Supprimer',
+      };
+      await tester.ensureVisible(find.byTooltip(deleteTooltip));
+      await tester.tap(find.byTooltip(deleteTooltip));
+      await tester.pumpAndSettle();
+      expect(fake.deleted, 1);
+      expect(find.byKey(const ValueKey('d2-live-empty')), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   }
 
@@ -144,6 +163,35 @@ void main() {
     expect(find.byKey(const ValueKey('d2-notice-8')), findsNothing);
     expect(find.byKey(const ValueKey('d2-proactivity-toggle')), findsNothing);
   });
+
+  testWidgets('D2 FUE temporary API outage can retry without fake notices',
+      (tester) async {
+    final fake = _RecoveringGateway();
+    await tester.pumpWidget(
+      MaterialApp(home: D2LiveNotificationsScreen(gateway: fake)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('d2-live-unavailable')), findsOneWidget);
+    expect(find.byKey(const ValueKey('d2-notice-8')), findsNothing);
+    await tester.tap(find.byType(OutlinedButton));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('d2-live-unavailable')), findsNothing);
+    expect(find.byKey(const ValueKey('d2-notice-8')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _RecoveringGateway extends _FakeGateway {
+  bool failNext = true;
+
+  @override
+  Future<D2InboxState> inbox(String locale) async {
+    if (failNext) {
+      failNext = false;
+      throw StateError('Synthetic temporary outage');
+    }
+    return snapshot;
+  }
 }
 
 class _ThrowingGateway extends _FakeGateway {

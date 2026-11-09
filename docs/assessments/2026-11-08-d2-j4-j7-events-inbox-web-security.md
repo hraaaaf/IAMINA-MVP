@@ -67,3 +67,7 @@ Tests :
 **LIMITES :** tests HTTP Django internes ≠ FUE Flutter Web navigateur authentifié ; Chrome historique teste des écrans avec fixtures, pas de parcours hébergé A→B→A. Pas de Flutter SDK ni navigateur prouvé sur le PC, donc ne pas revendiquer de validation UI réelle par Desktop Commander. Reste à traiter : FUE Web utilisateur avec état session authentifié, cas réseau offline/retour, contrôle visuel 390/430/768/1280 FR/EN/AR, conflit migration `0020` avec PR #1135, purge/rétention/backup/erasure vérifiable, autorisation expresse pour tout Vercel preview/prod. **D2 PATIENT : NO-GO, PR DRAFT**, pas de merge.
 
 **Notion canonique :** https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b
+
+### 09/11/2026 — FUE UI Flutter complémentaires (avant CI)
+
+Extension ciblée du test widget de production `frontend/test/features/notifications/d2_live_notifications_screen_test.dart` : FR/EN/AR × 390×844, après acceptation explicite du consentement, désactivation OFF, suppression d'un avis et état inbox vide ; nouveau scénario de panne temporaire gateway puis bouton Retry garantissant zéro avis fictif avant reconnexion. **Ce sont des tests d'interface Flutter avec gateway synthétique et non de navigation PWA hébergée.** Flutter SDK non disponible sur le PC Remote Desktop Commander : résultat local non prétendu PASS. Le workflow D2 (Flutter tests complets + PWA) doit établir l'exécution et les éventuelles régressions au nouveau SHA après push. Aucun code de l'application modifié.
