@@ -1,18 +1,12 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:amina/services/synthetic_doctor_report.dart';
 
-/// CI-only synthetic fixture generation. Never load a patient vault.
+/// CI-only real Chromium print-to-PDF of an offline synthetic Web document.
+/// This never reads any real patient data or calls the product's share/download.
 Future<void> main() async {
   final output = Directory('build/d4-synthetic-proof');
   output.createSync(recursive: true);
-  final latin = ByteData.sublistView(
-    File('assets/fonts/Inter.ttf').readAsBytesSync(),
-  );
-  final arabic = ByteData.sublistView(
-    File('assets/fonts/NotoSansArabic.ttf').readAsBytesSync(),
-  );
   final fixture = SyntheticDoctorReport(
     generatedAtUtc: DateTime.utc(2026, 11, 9, 18),
     periodStartUtc: DateTime.utc(2026, 11, 1),
@@ -32,15 +26,38 @@ Future<void> main() async {
       ),
     ],
   );
+  final chrome = Platform.environment['CHROME_BIN'] ?? 'google-chrome';
   for (final languageCode in const ['fr', 'en', 'ar']) {
-    final data = await SyntheticDoctorPdf.build(
-      report: fixture,
-      latinFontData: latin,
-      arabicFontData: arabic,
-      languageCode: languageCode,
+    final name = 'D4-SYNTHETIC-$languageCode';
+    final htmlFile = File('${output.path}/$name.html');
+    final pdfFile = File('${output.path}/$name.pdf');
+    await htmlFile.writeAsString(
+      SyntheticDoctorHtml.build(
+        report: fixture,
+        languageCode: languageCode,
+      ),
+      flush: true,
     );
-    final file = File('${output.path}/D4-SYNTHETIC-$languageCode.pdf');
-    await file.writeAsBytes(data, flush: true);
-    stdout.writeln('D4_SYNTHETIC_ONLY ${file.path} ${data.length} bytes');
+
+    final result = await Process.run(chrome, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-pdf-header-footer',
+      '--virtual-time-budget=15000',
+      '--print-to-pdf=${pdfFile.absolute.path}',
+      htmlFile.absolute.uri.toString(),
+    ]);
+    if (result.exitCode != 0 || !pdfFile.existsSync() ||
+        pdfFile.lengthSync() < 3000) {
+      throw StateError(
+        'Chromium failed to produce synthetic PDF for $languageCode: '
+        '${result.exitCode}: ${result.stderr}',
+      );
+    }
+    stdout.writeln(
+      'D4_SYNTHETIC_ONLY ${pdfFile.path} ${pdfFile.lengthSync()} bytes',
+    );
   }
 }

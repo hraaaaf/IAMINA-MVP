@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:amina/services/synthetic_doctor_report.dart';
 import 'package:amina/services/synthetic_report_formatter.dart';
@@ -26,7 +24,7 @@ void main() {
     ],
   );
 
-  test('D4 typed fixture CSV/JSON are byte stable, sourced and not patient data', () {
+  test('D4 typed fixture CSV/JSON are byte stable and sourced', () {
     final report = fixture();
     for (final format in SyntheticReportFormat.values) {
       final first = report.format(format);
@@ -123,35 +121,36 @@ void main() {
     );
   });
 
-  test('D4 PDF FR/EN/AR uses embedded offline fonts and marks synthetic scope',
-      () async {
-    final latin = ByteData.sublistView(
-      File('assets/fonts/Inter.ttf').readAsBytesSync(),
-    );
-    final arabic = ByteData.sublistView(
-      File('assets/fonts/NotoSansArabic.ttf').readAsBytesSync(),
-    );
+  test('D4 Web printable HTML is stable Unicode RTL with isolated numerals', () {
+    final report = fixture();
     for (final locale in const ['fr', 'en', 'ar']) {
-      final bytes = await SyntheticDoctorPdf.build(
-        report: fixture(),
-        latinFontData: latin,
-        arabicFontData: arabic,
-        languageCode: locale,
+      final html = SyntheticDoctorHtml.build(
+        report: report, languageCode: locale,
       );
-      expect(bytes.length, greaterThan(3000));
-      expect(utf8.decode(bytes.take(5).toList()), '%PDF-');
-      final raw = latin1.decode(bytes);
-      expect(raw, contains('%%EOF'));
-      expect(raw, contains('/FontFile2'));
-      expect(raw, contains('/ToUnicode'));
-      // This is a synthetic template test, not a visual/clinical qualification.
+      expect(html, SyntheticDoctorHtml.build(
+        report: report, languageCode: locale,
+      ));
+      expect(html, startsWith('<!doctype html>'));
+      expect(html, contains('SYNTHETIC ONLY - NOT FOR CLINICAL USE'));
+      expect(html, contains('<html lang="$locale"'));
+      expect(html, contains('2026-11-02T08:00:00.000Z'));
+      expect(html, contains('142 mg/dL'));
+      expect(html, contains('>N/A</td>'));
+      expect(html, contains('unicode-bidi:isolate'));
+      expect(html, contains('assets/fonts/NotoSansArabic.ttf'));
+      expect(html, isNot(contains('<script')));
+      expect(html, isNot(contains('https://')));
+      expect(html, isNot(contains('patient_id')));
     }
+    final ar = SyntheticDoctorHtml.build(
+      report: report, languageCode: 'ar',
+    );
+    expect(ar, contains('<html lang="ar" dir="rtl">'));
+    expect(ar, contains('تقرير متابعة'));
+    expect(ar, contains('<td class="ltr" dir="ltr">142 mg/dL</td>'));
     expect(
-      () => SyntheticDoctorPdf.build(
-        report: fixture(),
-        latinFontData: latin,
-        arabicFontData: arabic,
-        languageCode: 'xx',
+      () => SyntheticDoctorHtml.build(
+        report: report, languageCode: 'xx',
       ),
       throwsArgumentError,
     );

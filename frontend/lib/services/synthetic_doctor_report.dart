@@ -1,12 +1,9 @@
 import 'dart:typed_data';
 
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-
 import 'synthetic_report_formatter.dart';
 
-/// Only a non-patient fixture. Do not wire this type to a patient vault,
-/// a download, printing, OS sharing or ReportsScreen before CAL-12 approval.
+/// Only a non-patient fixture. Never connect to a vault or download/share UI
+/// before the independently signed CAL-12 clinical and privacy gate.
 enum SyntheticGlucoseOrigin { manual }
 
 final class SyntheticGlucoseObservation {
@@ -17,8 +14,7 @@ final class SyntheticGlucoseObservation {
   });
 
   final DateTime recordedAtUtc;
-
-  /// Null = an explicitly unavailable value, never zero or an estimate.
+  /// Null means missing, never zero or an estimated/CGM value.
   final int? mgDl;
   final SyntheticGlucoseOrigin origin;
 }
@@ -63,7 +59,7 @@ final class SyntheticDoctorReport {
       if (previous != null && !at.isAfter(previous)) {
         throw ArgumentError('Observations must be strictly ordered and unique.');
       }
-      // This is a formatting sanity bound, NOT an approved clinical target.
+      // A formatting sanity bound, not an approved clinical target.
       if (row.mgDl != null && (row.mgDl! <= 0 || row.mgDl! > 1000)) {
         throw ArgumentError('A measured value must be positive and bounded.');
       }
@@ -74,7 +70,7 @@ final class SyntheticDoctorReport {
     }
   }
 
-  /// The CSV/JSON fixture encoder is not authorized for real patient data.
+  /// Byte-stable synthetic fixture; no names, IDs or patient datasource.
   Uint8List format(SyntheticReportFormat format) =>
       SyntheticReportFormatter.build(
         format: format,
@@ -104,117 +100,87 @@ final class SyntheticDoctorReport {
       );
 }
 
-/// Proof-of-concept PDF template with embedded offline fonts, no I/O or sharing.
-/// A clinician-facing *real* export is strictly blocked until CAL-12 review.
-/// Date and numerical spans stay LTR even in the Arabic version: never reverse
-/// numbers to simulate Arabic text shaping.
-final class SyntheticDoctorPdf {
-  const SyntheticDoctorPdf._();
+/// Local-first Web print layout *prototype* only, not a patient PDF generator.
+/// A separate CI script prints this self-contained HTML to an actual PDF using
+/// headless Chromium; no PDF/printing dependency or clinical product path.
+///
+/// Numeric/date spans are explicitly LTR, while Arabic labels flow RTL.
+final class SyntheticDoctorHtml {
+  const SyntheticDoctorHtml._();
 
-  static Future<Uint8List> build({
+  static String build({
     required SyntheticDoctorReport report,
-    required ByteData latinFontData,
-    required ByteData arabicFontData,
     required String languageCode,
-  }) async {
-    if (languageCode != 'fr' &&
-        languageCode != 'en' &&
-        languageCode != 'ar') {
+  }) {
+    if (!const ['fr', 'en', 'ar'].contains(languageCode)) {
       throw ArgumentError.value(languageCode, 'languageCode');
     }
-    final latin = pw.Font.ttf(latinFontData);
-    final arabic = pw.Font.ttf(arabicFontData);
     final rtl = languageCode == 'ar';
-    final pdf = pw.Document(compress: false);
+    String label(String fr, String en, String ar) =>
+        rtl ? ar : (languageCode == 'en' ? en : fr);
 
-    pw.Widget label(String fr, String en, String ar, {double size = 10}) {
-      return pw.Text(
-        rtl ? ar : (languageCode == 'en' ? en : fr),
-        textAlign: rtl ? pw.TextAlign.right : pw.TextAlign.left,
-        textDirection: rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr,
-        style: pw.TextStyle(font: rtl ? arabic : latin, fontSize: size),
-      );
+    // No patient-supplied strings, HTML injection, network imports, scripts or
+    // external assets. The ONLY fonts are bundled locally inside IAMINA.
+    final html = StringBuffer()
+      ..writeln('<!doctype html>')
+      ..writeln('<html lang="$languageCode" dir="${rtl ? 'rtl' : 'ltr'}">')
+      ..writeln('<head><meta charset="utf-8">')
+      ..writeln('<meta name="viewport" content="width=device-width">')
+      ..writeln('<title>D4 SYNTHETIC ONLY</title>')
+      ..writeln('<style>')
+      ..writeln('@font-face{font-family:Inter;src:url("../../assets/fonts/Inter.ttf") format("truetype")}')
+      ..writeln('@font-face{font-family:NotoArabic;src:url("../../assets/fonts/NotoSansArabic.ttf") format("truetype")}')
+      ..writeln('@page{size:A4;margin:20mm}')
+      ..writeln('html,body{padding:0;margin:0;color:#173b34;background:white}')
+      ..writeln('body{font-family:Inter,Arial,sans-serif;font-size:11pt;line-height:1.5}')
+      ..writeln('html[dir=rtl] body{font-family:NotoArabic,Inter,sans-serif}')
+      ..writeln('.masthead{border-bottom:3px solid #1d7565;padding-bottom:14px}')
+      ..writeln('h1{font-size:19pt;margin:0 0 9px}')
+      ..writeln('.banner{color:#813b2e;font-weight:bold;font-size:12pt;margin:0}')
+      ..writeln('.facts{padding:15px 0 10px}')
+      ..writeln('.label{font-weight:600;margin:0 0 2px}')
+      ..writeln('.date{font-family:Inter,monospace;font-size:9pt}')
+      ..writeln('.ltr{direction:ltr;unicode-bidi:isolate;text-align:left;font-family:Inter,monospace}')
+      ..writeln('table{border-collapse:collapse;width:100%;margin-top:12px}')
+      ..writeln('th,td{border-bottom:1px solid #c5d9d2;padding:8px 6px;vertical-align:top}')
+      ..writeln('th{background:#e8f4f0}')
+      ..writeln('.missing{font-weight:bold;color:#814337}')
+      ..writeln('.footer{margin-top:23px;border-top:1px solid #a0bcb4;padding-top:13px}')
+      ..writeln('</style></head><body>')
+      ..writeln('<header class="masthead">')
+      ..writeln('<h1>${label('Rapport de suivi', 'Follow-up report', 'تقرير متابعة')}</h1>')
+      ..writeln('<p class="banner">SYNTHETIC ONLY - NOT FOR CLINICAL USE</p>')
+      ..writeln('<p>${label('Exemple fictif pour validation technique', 'Fictitious example for technical verification', 'مثال افتراضي للتحقق التقني')}</p>')
+      ..writeln('</header>')
+      ..writeln('<section class="facts">')
+      ..writeln('<p class="label">${label('Période (UTC)', 'Period (UTC)', 'الفترة الزمنية (UTC)')}</p>')
+      ..writeln('<p class="date ltr" dir="ltr">${report.periodStartUtc.toIso8601String()} / ${report.periodEndUtc.toIso8601String()}</p>')
+      ..writeln('<p class="label">${label('Généré à (UTC)', 'Generated at (UTC)', 'تاريخ الإنشاء (UTC)')}</p>')
+      ..writeln('<p class="date ltr" dir="ltr">${report.generatedAtUtc.toIso8601String()}</p>')
+      ..writeln('</section>')
+      ..writeln('<h2>${label('Mesures manuelles synthétiques', 'Synthetic manual readings', 'قياسات يدوية تجريبية')}</h2>')
+      ..writeln('<table><thead><tr>')
+      ..writeln('<th>${label('Date UTC', 'UTC date', 'التاريخ UTC')}</th>')
+      ..writeln('<th>${label('Valeur', 'Value', 'القيمة')}</th>')
+      ..writeln('<th>${label('Source', 'Source', 'المصدر')}</th>')
+      ..writeln('</tr></thead><tbody>');
+
+    for (final row in report.observations) {
+      html
+        ..writeln('<tr>')
+        ..writeln('<td class="ltr" dir="ltr">${row.recordedAtUtc.toIso8601String()}</td>')
+        ..writeln(row.mgDl == null
+            ? '<td class="ltr missing" dir="ltr">N/A</td>'
+            : '<td class="ltr" dir="ltr">${row.mgDl} mg/dL</td>')
+        ..writeln('<td>${label('Manuel / synthétique', 'Manual / synthetic', 'يدوي / تجريبي')}</td>')
+        ..writeln('</tr>');
     }
-
-    pw.Widget ltrValue(String value) => pw.Text(
-      value,
-      textDirection: pw.TextDirection.ltr,
-      style: pw.TextStyle(font: latin, fontSize: 9),
-    );
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
-        build: (context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-          children: [
-            label(
-              'Rapport de suivi - SYNTHETIQUE',
-              'Follow-up report - SYNTHETIC',
-              'تقرير متابعة تجريبي',
-              size: 17,
-            ),
-            pw.SizedBox(height: 6),
-            label(
-              'Document de démonstration - NON CLINIQUE',
-              'Demonstration document - NOT FOR CLINICAL USE',
-              'وثيقة تجريبية - غير صالحة للاستخدام الطبي',
-              size: 11,
-            ),
-            pw.SizedBox(height: 18),
-            label('Début de période (UTC)', 'Period start (UTC)',
-                'بداية الفترة (UTC)'),
-            ltrValue(report.periodStartUtc.toIso8601String()),
-            pw.SizedBox(height: 7),
-            label('Fin de période (UTC)', 'Period end (UTC)',
-                'نهاية الفترة (UTC)'),
-            ltrValue(report.periodEndUtc.toIso8601String()),
-            pw.SizedBox(height: 7),
-            label('Généré à (UTC)', 'Generated at (UTC)',
-                'تاريخ الإنشاء (UTC)'),
-            ltrValue(report.generatedAtUtc.toIso8601String()),
-            pw.SizedBox(height: 14),
-            pw.Divider(),
-            label('Mesures manuelles synthétiques', 'Synthetic manual readings',
-                'قياسات يدوية تجريبية', size: 12),
-            pw.SizedBox(height: 8),
-            for (final row in report.observations)
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(vertical: 5),
-                child: pw.Row(
-                  children: [
-                    pw.Expanded(
-                      flex: 5,
-                      child: ltrValue(row.recordedAtUtc.toIso8601String()),
-                    ),
-                    pw.Expanded(
-                      flex: 2,
-                      child: ltrValue(
-                        row.mgDl == null
-                            ? 'N/A'
-                            : '${row.mgDl} mg/dL',
-                      ),
-                    ),
-                    pw.Expanded(
-                      flex: 3,
-                      child: label('Manuel / synthétique',
-                          'Manual / synthetic', 'يدوي / تجريبي', size: 9),
-                    ),
-                  ],
-                ),
-              ),
-            pw.SizedBox(height: 16),
-            label(
-              'Aucune conclusion, prédiction ou cible clinique.',
-              'No clinical conclusion, prediction or target.',
-              'لا يحتوي على استنتاجات أو توقعات أو أهداف طبية.',
-              size: 10,
-            ),
-          ],
-        ),
-      ),
-    );
-    return pdf.save();
+    html
+      ..writeln('</tbody></table>')
+      ..writeln('<section class="footer">')
+      ..writeln('<p>${label('N/A = mesure absente. Aucun calcul, cible ou diagnostic clinique.', 'N/A = missing reading. No clinical calculation, target or diagnosis.', 'N/A = قياس غير متوفر. لا توجد حسابات أو أهداف أو تشخيصات طبية.')}</p>')
+      ..writeln('</section>')
+      ..writeln('</body></html>');
+    return html.toString();
   }
 }
