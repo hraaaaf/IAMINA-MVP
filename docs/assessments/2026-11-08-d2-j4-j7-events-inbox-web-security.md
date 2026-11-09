@@ -53,3 +53,17 @@ Tests :
 **NEXT exact :** vérifier le nouveau SHA de la PR et les tests/migration drift ; diagnostiquer/corriger tout FAIL. Puis renforcer auth session A/B sans activer patient ; avancer vers review indépendante avant toute fusion/déploiement.
 
 **Canonique Notion :** [01 — ROADMAP IAMINA](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b).
+
+## 09/11/2026 — D2 J7 FUE HTTP locale, décision de validation actualisée
+
+**Décision utilisateur du 09/11 :** retirer la *revue indépendante supplémentaire* de la checklist D2 ; la remplacer par des FUE et des CI à HEAD exact. Les anciennes occurrences du gate de revue sont des archives de décisions précédentes, non le gate J7 courant. Les invariants de sécurité, consentement, confidentialité, données et les approbations humaines légalement nécessaires ne disparaissent pas.
+
+**GOAL / SUCCESS :** prouver des parcours HTTP intégrés sur utilisateurs synthétiques avec sessions réelles Django Client et contrôles middleware/CSRF, puis obtenir sur le nouveau SHA des jobs SQLite, PostgreSQL, Flutter et Chrome. Pas de données patients ni d'écriture Neon réelle.
+
+**PREUVE locale initiale** sur le clone séparé `DESKTOP-3MAJEEH` au `bc5fd9f4e0dc5aaf52349c69c4db765de7058f89` : `19 passed in 2.90s` sur `test_d2_fue_http.py` (3 nouveaux parcours) + `test_d2_notifications.py` + `test_d2_http_session_a_b_a.py` (16 précédents). Cas fonctionnels : compte A→B→A, GET inbox, badge lu/non-lu, refus anonyme, CSRF absent, credential bearer concurrent, mauvais propriétaire 404, marquer lu/supprimer, préférence FR/EN/AR, consentement D2 version/hash exact, ON→OFF→ON sans réémission malgré reconnexion, vrai consentement global via HTTP POST/DELETE avec `on_commit` et `AIConsentReceipt`. Database SQLite temporaire synthétique. Après modification des fichiers, cette preuve doit être rejouée sur le **nouveau** HEAD et confirmée sur CI, sans héritage abusif du 19/19 historique.
+
+**TRACE:** `backend/core/tests/test_d2_fue_http.py` ajouté ; workflow `.github/workflows/d2-j4-j7-candidate.yml` inclut désormais FUE HTTP explicitement dans les jobs SQLite et PostgreSQL. État à vérifier après push : nouveau SHA, 2 CI D2 et workflow Chrome, toutes les collections et skips. Aucun déploiement Vercel permis ; manifests root et frontend ont `git.deploymentEnabled=false` dans la copie locale.
+
+**LIMITES :** tests HTTP Django internes ≠ FUE Flutter Web navigateur authentifié ; Chrome historique teste des écrans avec fixtures, pas de parcours hébergé A→B→A. Pas de Flutter SDK ni navigateur prouvé sur le PC, donc ne pas revendiquer de validation UI réelle par Desktop Commander. Reste à traiter : FUE Web utilisateur avec état session authentifié, cas réseau offline/retour, contrôle visuel 390/430/768/1280 FR/EN/AR, conflit migration `0020` avec PR #1135, purge/rétention/backup/erasure vérifiable, autorisation expresse pour tout Vercel preview/prod. **D2 PATIENT : NO-GO, PR DRAFT**, pas de merge.
+
+**Notion canonique :** https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b

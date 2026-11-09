@@ -50,6 +50,8 @@ jobs:
         run: python manage.py makemigrations --check --dry-run
       - name: D2 adversarial test suite
         run: pytest -v --tb=short core/tests/test_d2_notifications.py
+      - name: D2 FUE HTTP session journeys (A-B-A / CSRF / consent)
+        run: pytest -v --tb=short core/tests/test_d2_fue_http.py core/tests/test_d2_http_session_a_b_a.py
       - name: Full backend SQLite regression
         run: pytest --tb=short -q
       - name: Export updated OpenAPI for review
@@ -104,6 +106,8 @@ jobs:
         run: python manage.py migrate --noinput
       - name: D2 owner isolation and concurrency tests
         run: pytest -v --tb=short core/tests/test_d2_notifications.py
+      - name: D2 FUE HTTP PostgreSQL journeys (synthetic only)
+        run: pytest -v --tb=short core/tests/test_d2_fue_http.py core/tests/test_d2_http_session_a_b_a.py
       - name: Full backend PostgreSQL regression
         run: pytest --tb=short -q
 
