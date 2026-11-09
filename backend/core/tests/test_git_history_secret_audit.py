@@ -181,3 +181,46 @@ def test_shallow_repository_is_rejected(tmp_path):
     result = _audit(clone)
     assert result.returncode == 2
     assert "non-shallow checkout" in result.stderr
+
+
+def test_large_git_cat_file_request_stream_cannot_deadlock(tmp_path):
+    """A full scan must drain each blob before queuing another Git request."""
+    repo = _init_repo(tmp_path)
+    blob_path = repo / "large-clean.txt"
+    blob_path.write_bytes(b"synthetic-safe-marker-" * 180)
+    _commit_all(repo, "add benign synthetic blob")
+
+    object_id = subprocess.run(
+        ["git", "hash-object", str(blob_path)],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ).stdout.strip()
+
+    # Thousands of object IDs exceed typical stdin pipe capacity, while their
+    # large repeated responses fill stdout. The old write-all/read-all order
+    # deadlocked. A subprocess timeout makes future regressions fail safely.
+    driver = (
+        "import runpy, sys\n"
+        "from pathlib import Path\n"
+        "scanner = runpy.run_path(sys.argv[1])\n"
+        "repo, blob_file, object_id = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]\n"
+        "expected = blob_file.read_bytes()\n"
+        "count = 0\n"
+        "for actual_id, data in scanner[\'_read_blobs\'](repo, [object_id] * 2500):\n"
+        "    assert actual_id == object_id and data == expected\n"
+        "    count += 1\n"
+        "assert count == 2500\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", driver, str(SCRIPT), str(repo), str(blob_path), object_id],
+        cwd=repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr

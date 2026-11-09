@@ -124,27 +124,35 @@ def _read_blobs(repo: Path, object_ids: list[str]):
     )
     assert process.stdin is not None
     assert process.stdout is not None
-    for object_id in object_ids:
-        process.stdin.write(f"{object_id}\n".encode("ascii"))
-    process.stdin.close()
-
+    # Send one request and fully consume its response before sending another.
+    # Writing all object IDs first can deadlock: Git fills stdout while the
+    # parent blocks filling stdin. Never disable this historical secret scan.
+    completed = False
     try:
         for expected_id in object_ids:
+            process.stdin.write(f"{expected_id}\n".encode("ascii"))
+            process.stdin.flush()
             header = process.stdout.readline().decode("ascii", errors="replace").strip()
             parts = header.split()
             if len(parts) != 3 or parts[1] != "blob":
                 raise RuntimeError(f"unexpected cat-file response for {expected_id}")
             object_id, _, raw_size = parts
+            if object_id != expected_id:
+                raise RuntimeError(f"unexpected cat-file object for {expected_id}")
             size = int(raw_size)
             content = process.stdout.read(size)
             separator = process.stdout.read(1)
             if separator != b"\n":
                 raise RuntimeError(f"invalid cat-file blob terminator for {object_id}")
             yield object_id, content
+        completed = True
     finally:
+        process.stdin.close()
+        if not completed and process.poll() is None:
+            process.kill()
         stderr = process.stderr.read() if process.stderr is not None else b""
         return_code = process.wait()
-        if return_code != 0:
+        if completed and return_code != 0:
             raise RuntimeError(
                 "git cat-file --batch failed: "
                 + stderr.decode("utf-8", errors="replace").strip()
