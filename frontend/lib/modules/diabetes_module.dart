@@ -10,6 +10,7 @@ import '../features/journal/edit_log_screen.dart';
 import '../features/import/cgm_screen.dart';
 import '../features/documents/document_import_premium_screen.dart';
 import '../features/medications/medication_screen.dart';
+import '../features/notifications/d2_notifications_screen.dart';
 import '../features/reminders/reminders_screen.dart';
 import '../l10n/app_localizations.dart';
 import 'module_config.dart';
@@ -90,6 +91,10 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ModuleFullScreenRoute(
       path: '/medications',
       builder: (s) => const MedicationScreen(),
+    ),
+    ModuleFullScreenRoute(
+      path: '/notifications',
+      builder: (s) => const D2NotificationsScreen(),
     ),
     ModuleFullScreenRoute(
       path: '/reminders',

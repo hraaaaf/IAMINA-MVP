@@ -19,6 +19,7 @@ flutter pub get
 IAMINA_REVIEW_VERCEL_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
 IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
 IAMINA_W01_SESSION_PROBE=false
+IAMINA_D2_PREVIEW_SAME_ORIGIN=false
 
 # Fail closed on Vercel if this Flutter build is ever invoked by another
 # project. This prevents the certified backend project from accidentally
@@ -45,6 +46,11 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       # requests are now same-origin; the server-side OIDC bridge forwards
       # them to the immutable synthetic API deployment above.
       API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"
+      # Only the D2 QA branch routes the patient account API to its own
+      # immutable page origin. Existing W01 previews and production are unchanged.
+      if [ "${VERCEL_GIT_COMMIT_REF:-}" = "fix/d2-main-integrated-20261109" ]; then
+        IAMINA_D2_PREVIEW_SAME_ORIGIN=true
+      fi
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
       IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
       if [ "${VERCEL_GIT_COMMIT_REF:-}" = "preview/w01-current-main-synthetic-20261104" ]; then
@@ -83,6 +89,7 @@ if [ -n "${API_BASE_URL:-}" ]; then
     --dart-define=API_BASE_URL="$API_BASE_URL" \
     --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}" \
     --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN="${IAMINA_REMOTE_ACCOUNT_SIGN_IN:-false}" \
+    --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED="${IAMINA_D2_PREVIEW_SAME_ORIGIN}" \
     --dart-define=IAMINA_W01_SESSION_PROBE="${IAMINA_W01_SESSION_PROBE:-false}"
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
