@@ -31,6 +31,10 @@ class Command(BaseCommand):
             raise CommandError("Output already exists; use --overwrite explicitly")
         if not output.parent.exists() or not output.parent.is_dir():
             raise CommandError("Output parent directory does not exist")
+        # A POSIX mode-0600 file is essential for patient exports. Windows
+        # chmod does not provide equivalent ACL isolation; fail before writing.
+        if os.name != "posix" or not hasattr(os, "fchmod"):
+            raise CommandError("Secure patient export requires POSIX file permissions")
 
         user_model = get_user_model()
         try:
