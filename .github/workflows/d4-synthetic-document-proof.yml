@@ -36,6 +36,10 @@ jobs:
       - name: Print offline synthetic HTML to FR EN AR PDFs with Chromium
         working-directory: frontend
         run: dart run tool/d4_generate_synthetic_pdf.dart
+      - name: Install Poppler PDF verification tools on the runner
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Render real PDFs and prove nonblank glyph pages
         working-directory: frontend
         run: |
