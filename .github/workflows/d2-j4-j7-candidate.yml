@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feat/d2-j4-j7-notifications-stack-20261108
+      - fix/d2-main-integrated-20261109
   pull_request:
     branches:
       - feat/d2-notification-center-web-20261108
+      - main
   workflow_dispatch:
 
 permissions:
