@@ -149,7 +149,7 @@ final class SyntheticDoctorHtml {
       ..writeln('</style></head><body>')
       ..writeln('<header class="masthead">')
       ..writeln('<h1>${label('Rapport de suivi', 'Follow-up report', 'تقرير متابعة')}</h1>')
-      ..writeln('<p class="banner">SYNTHETIC ONLY - NOT FOR CLINICAL USE</p>')
+      ..writeln('<p class="banner">${label('DONNÉES SYNTHÉTIQUES UNIQUEMENT - NON CLINIQUE', 'SYNTHETIC ONLY - NOT FOR CLINICAL USE', 'بيانات تجريبية فقط - غير صالحة للاستخدام الطبي')}</p>')
       ..writeln('<p>${label('Exemple fictif pour validation technique', 'Fictitious example for technical verification', 'مثال افتراضي للتحقق التقني')}</p>')
       ..writeln('</header>')
       ..writeln('<section class="facts">')

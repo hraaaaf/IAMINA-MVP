@@ -131,7 +131,8 @@ void main() {
         report: report, languageCode: locale,
       ));
       expect(html, startsWith('<!doctype html>'));
-      expect(html, contains('SYNTHETIC ONLY - NOT FOR CLINICAL USE'));
+      expect(html, contains(locale == 'fr' ? 'NON CLINIQUE' :
+          locale == 'ar' ? 'غير صالحة للاستخدام الطبي' : 'NOT FOR CLINICAL USE'));
       expect(html, contains('<html lang="$locale"'));
       expect(html, contains('2026-11-02T08:00:00.000Z'));
       expect(html, contains('142 mg/dL'));

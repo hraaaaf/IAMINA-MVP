@@ -28,3 +28,8 @@ To connect this primitive to actual Reports, resolve **CAL-12**: typed clinical 
 
 **Success evidence needed:** Flutter pub get on existing locked dependencies, analyzer/full tests, dedicated D4 workflow PDF Chrome/Poppler render, inspect artifacts FR/AR/EN and CI status at exact SHA. Keep #954 Draft / unmerged until all applicable proofs.
 
+
+
+## 09/11/2026 — Locale warning parity amendment (synthetic-only)
+
+The CI HTML report disclaimer is localized in French and Arabic (alongside the existing English wording). The focused Flutter contract tests assert each locale warning. CI Poppler validates both French and English extraction and numerical content in all three PDFs; Arabic screenshot/glyph extraction still requires the MENA native-human CAL-12 gate before any patient-facing use. This text-only safety clarification does not connect reports to patient data or grant merge/deploy approval.

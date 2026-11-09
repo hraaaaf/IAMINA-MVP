@@ -51,7 +51,9 @@ jobs:
             test -s "$path"
             pdfinfo "$path" | grep -q 'Pages:'
             pdftotext "$path" "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"
-            grep -q 'SYNTHETIC ONLY' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"
+            grep -q '142' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"
+            if [ "$locale" = fr ]; then grep -q 'NON CLINIQUE' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"; fi
+            if [ "$locale" = en ]; then grep -q 'NOT FOR CLINICAL USE' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"; fi
             pdftoppm -f 1 -l 1 -singlefile -scale-to 1400 -png "$path" "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}"
             test -s "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.png"
           done
