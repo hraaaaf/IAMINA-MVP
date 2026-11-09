@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from core.data_portability import build_patient_export
 from core.models import AuditLog
+from core.private_file_mode import supports_private_file_mode
 
 
 class Command(BaseCommand):
@@ -31,6 +32,10 @@ class Command(BaseCommand):
             raise CommandError("Output already exists; use --overwrite explicitly")
         if not output.parent.exists() or not output.parent.is_dir():
             raise CommandError("Output parent directory does not exist")
+        # A POSIX mode-0600 file is essential for patient exports. Windows
+        # chmod does not provide equivalent ACL isolation; fail before writing.
+        if not supports_private_file_mode():
+            raise CommandError("Secure patient export requires POSIX file permissions")
 
         user_model = get_user_model()
         try:

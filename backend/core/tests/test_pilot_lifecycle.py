@@ -1,4 +1,5 @@
 import json
+import os
 import stat
 from datetime import datetime, timezone
 from io import StringIO
@@ -79,6 +80,7 @@ def test_pass_requires_owner_role_and_opaque_evidence_reference():
         validate_completed_checklist(payload)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions required")
 def test_create_checklist_command_writes_mode_0600(tmp_path):
     output = tmp_path / "pilot-checklist.json"
     call_command(
@@ -91,6 +93,19 @@ def test_create_checklist_command_writes_mode_0600(tmp_path):
     assert payload["cohort_id"] == "PILOT_002"
     assert payload["status"] == "PENDING"
     assert stat.S_IMODE(output.stat().st_mode) == 0o600
+
+
+@pytest.mark.skipif(os.name == "posix", reason="Windows-only fail-closed check")
+def test_create_checklist_command_refuses_insecure_export(tmp_path):
+    output = tmp_path / "pilot-checklist.json"
+    with pytest.raises(CommandError, match="requires POSIX file permissions"):
+        call_command(
+            "create_pilot_checklist",
+            cohort_id="PILOT_002",
+            output=str(output),
+        )
+    assert not output.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_validate_checklist_command_fails_pending_and_passes_completed(tmp_path):

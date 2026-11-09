@@ -17,6 +17,7 @@ from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 
+from core.private_file_mode import supports_private_file_mode
 from core.safety_corpora import SafetyCorpusCase, all_safety_corpus_cases
 
 SCHEMA_VERSION = "2026-08-04.1"
@@ -288,6 +289,8 @@ def required_parity_dimensions() -> set[tuple[str, str, str]]:
 
 
 def write_safety_corpus_packet(path: str | os.PathLike[str]) -> Path:
+    if not supports_private_file_mode():
+        raise OSError("Secure safety review packet requires POSIX file permissions")
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(
