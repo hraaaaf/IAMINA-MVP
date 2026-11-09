@@ -10,6 +10,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from core.incident_response import CATEGORIES, SEV1, SEV2, SEV3, SEV4, create_incident_payload
+from core.private_file_mode import supports_private_file_mode
 
 
 class Command(BaseCommand):
@@ -28,7 +29,6 @@ class Command(BaseCommand):
             raise CommandError("Incident output already exists")
         if not output.parent.is_dir():
             raise CommandError("Incident output parent directory does not exist")
-
         systems = tuple(
             item.strip() for item in options["systems"].split(",") if item.strip()
         )
@@ -41,6 +41,8 @@ class Command(BaseCommand):
             )
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
+        if not supports_private_file_mode():
+            raise CommandError("Secure incident record requires POSIX file permissions")
 
         encoded = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         temp_name: str | None = None

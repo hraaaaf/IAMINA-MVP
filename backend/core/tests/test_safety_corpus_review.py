@@ -1,4 +1,5 @@
 import json
+import os
 import stat
 from copy import deepcopy
 from datetime import date
@@ -218,12 +219,22 @@ def test_stale_manifest_is_rejected(tmp_path):
         native_review_readiness_payload(manifest_path=path, today=TODAY)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions required")
 def test_packet_export_is_mode_0600_and_fingerprint_stable(tmp_path):
     destination = write_safety_corpus_packet(tmp_path / "review-packet.json")
     exported = json.loads(destination.read_text(encoding="utf-8"))
 
     assert stat.S_IMODE(destination.stat().st_mode) == 0o600
     assert exported["corpus_fingerprint"] == safety_corpus_packet_payload()["corpus_fingerprint"]
+
+
+@pytest.mark.skipif(os.name == "posix", reason="Windows-only fail-closed check")
+def test_packet_export_refuses_insecure_windows_filesystem(tmp_path):
+    destination = tmp_path / "review-packet.json"
+    with pytest.raises(OSError, match="requires POSIX file permissions"):
+        write_safety_corpus_packet(destination)
+    assert not destination.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_manifest_loader_rejects_unknown_keys(tmp_path):
@@ -237,9 +248,15 @@ def test_manifest_loader_rejects_unknown_keys(tmp_path):
 
 def test_commands_export_and_fail_closed_without_approval(tmp_path, capsys, monkeypatch):
     output = tmp_path / "packet.json"
-    call_command("export_safety_corpus_review_packet", "--output", str(output))
-    assert output.exists()
-    assert capsys.readouterr().out.strip().endswith("packet.json")
+    if os.name == "posix":
+        call_command("export_safety_corpus_review_packet", "--output", str(output))
+        assert output.exists()
+        assert capsys.readouterr().out.strip().endswith("packet.json")
+    else:
+        with pytest.raises(CommandError, match="requires POSIX file permissions"):
+            call_command("export_safety_corpus_review_packet", "--output", str(output))
+        assert not output.exists()
+        capsys.readouterr()
 
     monkeypatch.delenv("SAFETY_CORPUS_REVIEW_MANIFEST_PATH", raising=False)
     call_command("audit_safety_corpus_review")
