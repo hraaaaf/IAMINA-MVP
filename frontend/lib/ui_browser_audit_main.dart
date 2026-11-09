@@ -30,6 +30,7 @@ import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
 import 'features/journal/widgets/meal_capture_panel.dart';
 import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
+import 'features/notifications/d2_notifications_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
 import 'firebase_options.dart';
@@ -311,6 +312,10 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const MedicationScreen(),
         ),
         GoRoute(
+          path: '/notifications',
+          builder: (context, state) => const D2NotificationsScreen(),
+        ),
+        GoRoute(
           path: '/reminders',
           builder: (context, state) => const RemindersScreen(),
         ),
@@ -459,6 +464,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'add-log-meal' => '/add-log-meal',
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
+  'notifications' => '/notifications',
   'reminders' => '/reminders',
   'companion' => '/companion',
   'companion-unavailable' => '/companion-unavailable',
