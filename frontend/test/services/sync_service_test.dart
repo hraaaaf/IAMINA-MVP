@@ -1,7 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:amina/services/sync_service.dart';
+import 'package:amina/services/api_client.dart';
+import 'package:amina/services/auth_epoch.dart';
+import 'dart:async';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
+import 'package:amina/data/drift/patient_treatment_declaration_store.dart';
+import 'package:drift/drift.dart' as drift;
+import 'package:drift/native.dart';
 import '../mocks.dart';
 
 void main() {
@@ -29,7 +36,42 @@ void main() {
   setUp(() {
     mockDb = MockAppDatabase();
     mockApi = MockApiClient();
+    when(() => mockApi.canSyncClinicalData).thenReturn(true);
     syncService = SyncService(mockDb, mockApi);
+  });
+
+  test('Pilot A retains local declarations and skips all clinical outbox work',
+      () async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    addTearDown(db.close);
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(734),
+        updatedAt: DateTime.utc(2026, 10, 14),
+      ),
+    );
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    when(() => mockApi.canSyncClinicalData).thenReturn(false);
+    final localOnly = SyncService(db, mockApi);
+    addTearDown(localOnly.dispose);
+    localOnly.init();
+    await localOnly.refreshState();
+    await localOnly.syncPendingLogs();
+    expect(await localOnly.sendPendingTreatmentDeclaration(), isFalse);
+    await localOnly.restorePatientTreatmentDeclaration();
+    expect(localOnly.state.value, SyncUiState.localOnly);
+    expect((await store.read())?.syncStatus, 'pending');
+    expect((await store.read())?.codes, ['lifestyle']);
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+    verifyNever(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    ));
+    verifyNever(() => mockApi.getProfile());
   });
 
   test('syncPendingLogs does nothing when no pending logs', () async {
@@ -109,6 +151,43 @@ void main() {
     verify(() => mockDb.reportSyncFailure(testLog.id, testLog.syncAttempts)).called(1);
   });
 
+
+  test('D7 account switch while pending-read awaits blocks cross-owner egress', () async {
+    final pending = Completer<List<LogEntryData>>();
+    when(() => mockDb.getPendingLogs()).thenAnswer((_) => pending.future);
+
+    final running = syncService.syncPendingLogs();
+    AuthEpoch.advance(); // synthetic A -> B before the Drift read resolves
+    pending.complete([testLog]);
+    await running;
+
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+    verifyNever(() => mockDb.markLogAsSynced(any()));
+    verifyNever(() => mockDb.reportSyncFailure(any(), any()));
+  });
+
+  test('D7 account switch during network await blocks stale local writes', () async {
+    final confirmation = Completer<List<String>>();
+    when(() => mockDb.getPendingLogs()).thenAnswer((_) async => [testLog]);
+    when(() => mockApi.batchSyncLogs(any())).thenAnswer((_) => confirmation.future);
+    final running = syncService.syncPendingLogs();
+    // Let the initial Drift pending read complete and batch dispatch begin.
+    await Future<void>.delayed(Duration.zero);
+    AuthEpoch.advance(); // synthetic A -> B before server response
+    confirmation.complete(['test-uuid-1']);
+    await running;
+
+    verifyNever(() => mockDb.markLogAsSynced(any()));
+    verifyNever(() => mockDb.reportSyncFailure(any(), any()));
+  });
+
+  test('D7 stale synchronizer cannot upload after owner switch', () async {
+    AuthEpoch.advance();
+    await syncService.syncPendingLogs();
+    verifyNever(() => mockDb.getPendingLogs());
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+  });
+
   test('malformed meal JSON uses typed fallback and remains syncable', () async {
     final malformedLog = LogEntryData(
       id: 3,
@@ -161,4 +240,387 @@ void main() {
     );
     expect(syncService.state.value, SyncUiState.upToDate);
   });
+  Future<AppDatabase> nativeVault(int userId) async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(),
+      PatientVaultScope.nativeDjango(userId),
+    );
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: drift.Value(userId),
+        updatedAt: DateTime.utc(2026, 10, 13),
+      ),
+    );
+    return db;
+  }
+
+  test('D7 server receipt must match exact declaration and timezone', () {
+    final expected = <String, dynamic>{
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': <String>['lifestyle', 'oral_meds'],
+      'treatment_declaration_updated_at': '2026-10-13T17:00:00Z',
+    };
+    expect(treatmentMirrorMatches(
+      expected, 'declared', ['lifestyle', 'oral_meds'],
+    ), isTrue);
+    expect(treatmentMirrorMatches(
+      expected, 'declared', ['insulin'],
+    ), isFalse);
+    expect(treatmentMirrorMatches(
+      {...expected, 'treatment_declaration_source': null},
+      'declared', ['lifestyle', 'oral_meds'],
+    ), isFalse);
+    expect(verifiedServerTreatmentRevision(expected),
+      DateTime.utc(2026, 10, 13, 17));
+    expect(verifiedServerTreatmentRevision({
+      ...expected,
+      'treatment_declaration_updated_at': '2026-10-13T17:00:00',
+    }), isNull);
+  });
+
+  test('D7 log retry cannot mark pending treatment as up to date', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    await PatientTreatmentDeclarationStore(db).write(
+      state: 'declared', codes: ['lifestyle'],
+    );
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    await sender.syncPendingLogs();
+    expect(sender.state.value, SyncUiState.pending);
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+  });
+
+  test('D7 log retry cannot hide unresolved treatment conflict', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['insulin']);
+    final declaration = (await store.read())!;
+    expect(await store.markConflictIfUnchanged(declaration.localGeneration), isTrue);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    await sender.syncPendingLogs();
+    expect(sender.state.value, SyncUiState.error);
+    expect((await store.read())?.codes, ['insulin']);
+    verifyNever(() => mockApi.batchSyncLogs(any()));
+  });
+
+  test('D7 app-lock closure before outbox read prevents medical egress', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    await PatientTreatmentDeclarationStore(db).write(
+      state: 'declared', codes: ['insulin'],
+    );
+    var unlocked = false;
+    final sender = SyncService(db, mockApi, canUseNetwork: () => unlocked);
+    addTearDown(sender.dispose);
+    expect(await sender.sendPendingTreatmentDeclaration(), isFalse);
+    verifyNever(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    ));
+    expect((await PatientTreatmentDeclarationStore(db).read())?.syncStatus,
+        'pending');
+  });
+
+  test('D7 app-lock closure while HTTP pending blocks stale ACK', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    var unlocked = true;
+    final sender = SyncService(db, mockApi, canUseNetwork: () => unlocked);
+    addTearDown(sender.dispose);
+    final reply = Completer<TreatmentMirrorResult>();
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) => reply.future);
+    final inFlight = sender.sendPendingTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    unlocked = false;
+    reply.complete(TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: DateTime.utc(2026, 10, 13, 17),
+    ));
+    expect(await inFlight, isFalse);
+    expect((await store.read())?.syncStatus, 'pending');
+  });
+
+  test('D7 pending treatment requires matching server receipt to be confirmed', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final serverTime = DateTime.utc(2026, 10, 13, 17);
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) async => TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: serverTime,
+    ));
+    expect(await sender.sendPendingTreatmentDeclaration(), isTrue);
+    expect((await store.read())?.syncStatus, 'confirmed');
+    expect((await store.read())?.baseServerUpdatedAtUtc, serverTime);
+    verify(() => mockApi.mirrorTreatmentDeclaration(
+      state: 'declared',
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: null,
+    )).called(1);
+  });
+
+  test('D7 edit during upload preserves pending and rebases next CAS', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final firstResponse = Completer<TreatmentMirrorResult>();
+    final serverAt = DateTime.utc(2026, 10, 13, 17);
+    final newerAt = DateTime.utc(2026, 10, 13, 18);
+    var requests = 0;
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) {
+      requests += 1;
+      return requests == 1
+          ? firstResponse.future
+          : Future.value(TreatmentMirrorResult(
+              TreatmentMirrorStatus.confirmed,
+              serverUpdatedAtUtc: newerAt,
+            ));
+    });
+    final firstUpload = sender.sendPendingTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    firstResponse.complete(TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: serverAt,
+    ));
+    expect(await firstUpload, isFalse);
+    final pending = (await store.read())!;
+    expect(pending.codes, ['lifestyle', 'oral_meds']);
+    expect(pending.syncStatus, 'pending');
+    expect(pending.baseServerUpdatedAtUtc, serverAt);
+    expect(await sender.sendPendingTreatmentDeclaration(), isTrue);
+    expect((await store.read())?.syncStatus, 'confirmed');
+    verify(() => mockApi.mirrorTreatmentDeclaration(
+      state: 'declared',
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: serverAt,
+    )).called(1);
+  });
+
+  test('D7 offline upload remains pending and later retry confirms receipt',
+      () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle', 'oral_meds']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final serverAt = DateTime.utc(2026, 10, 13, 22, 30, 0, 123, 456);
+    var tries = 0;
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) async {
+      tries++;
+      if (tries == 1) {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      return TreatmentMirrorResult(
+        TreatmentMirrorStatus.confirmed,
+        serverUpdatedAtUtc: serverAt,
+      );
+    });
+
+    expect(await sender.sendPendingTreatmentDeclaration(), isFalse);
+    final pending = (await store.read())!;
+    expect(pending.codes, ['lifestyle', 'oral_meds']);
+    expect(pending.syncStatus, 'pending');
+    expect(pending.localGeneration, 1);
+    expect(pending.baseServerUpdatedAtUtc, isNull);
+
+    expect(await sender.sendPendingTreatmentDeclaration(), isTrue);
+    final confirmed = (await store.read())!;
+    expect(confirmed.codes, pending.codes);
+    expect(confirmed.localGeneration, pending.localGeneration);
+    expect(confirmed.syncStatus, 'confirmed');
+    expect(confirmed.baseServerUpdatedAtUtc, serverAt);
+    expect(tries, 2);
+  });
+
+  test('D7 409 conflict never overwrites local treatment choices', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['lifestyle']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) async =>
+        const TreatmentMirrorResult(TreatmentMirrorStatus.conflict));
+    expect(await sender.sendPendingTreatmentDeclaration(), isFalse);
+    expect((await store.read())?.syncStatus, 'conflict');
+    expect((await store.read())?.codes, ['lifestyle']);
+    expect(sender.state.value, SyncUiState.error);
+  });
+
+  test('D7 epoch change before acknowledgement leaves local pending', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final store = PatientTreatmentDeclarationStore(db);
+    await store.write(state: 'declared', codes: ['oral_meds']);
+    final sender = SyncService(db, mockApi);
+    addTearDown(sender.dispose);
+    final confirmation = Completer<TreatmentMirrorResult>();
+    when(() => mockApi.mirrorTreatmentDeclaration(
+      state: any(named: 'state'),
+      codes: any(named: 'codes'),
+      expectedUpdatedAtUtc: any(named: 'expectedUpdatedAtUtc'),
+    )).thenAnswer((_) => confirmation.future);
+    final running = sender.sendPendingTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    AuthEpoch.advance();
+    confirmation.complete(TreatmentMirrorResult(
+      TreatmentMirrorStatus.confirmed,
+      serverUpdatedAtUtc: DateTime.utc(2026, 10, 13),
+    ));
+    expect(await running, isFalse);
+    expect((await store.read())?.syncStatus, 'pending');
+  });
+
+  test('D7 new native device restores after real first-use profile, not before', () async {
+    final db = AppDatabase.testPatientVault(
+      NativeDatabase.memory(),
+      PatientVaultScope.nativeDjango(734),
+    );
+    addTearDown(db.close);
+    final sync = SyncService(db, mockApi);
+    addTearDown(sync.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': <String>['oral_meds'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00Z',
+    });
+    await sync.restorePatientTreatmentDeclaration();
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+    expect(await db.getProfileForLocalUserId(734), isNull);
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(734),
+        updatedAt: DateTime.utc(2026, 10, 13),
+      ),
+    );
+    await sync.restorePatientTreatmentDeclaration();
+    final recovered = await PatientTreatmentDeclarationStore(db).read();
+    expect(recovered?.codes, ['oral_meds']);
+    expect(recovered?.syncStatus, 'confirmed');
+    verify(() => mockApi.getProfile()).called(2);
+  });
+
+  test('D7 remote explicit declaration restores into own empty native vault', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': ['insulin', 'oral_meds'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00Z',
+    });
+    await restoration.restorePatientTreatmentDeclaration();
+    final saved = await PatientTreatmentDeclarationStore(db).read();
+    expect(saved?.ownerId, 734);
+    expect(saved?.codes, ['insulin', 'oral_meds']);
+    verify(() => mockApi.getProfile()).called(1);
+  });
+
+  test('D7 server defaults must not invent patient-reported treatment', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': null,
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'not_answered',
+      'treatment_declarations': <String>[],
+      'treatment_declaration_updated_at': null,
+    });
+    await restoration.restorePatientTreatmentDeclaration();
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+  });
+
+  test('D7 remote GET with naive timestamp is not a confirmed declaration',
+      () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final receiver = SyncService(db, mockApi);
+    addTearDown(receiver.dispose);
+    when(() => mockApi.getProfile()).thenAnswer((_) async => {
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': <String>['insulin'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00',
+    });
+    await receiver.restorePatientTreatmentDeclaration();
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+  });
+
+  test('D7 a local offline declaration takes precedence over a server GET', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final local = PatientTreatmentDeclarationStore(db);
+    await local.write(state: 'declared', codes: ['lifestyle']);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    await restoration.restorePatientTreatmentDeclaration();
+    verifyNever(() => mockApi.getProfile());
+    expect((await local.read())?.codes, ['lifestyle']);
+  });
+
+  test('D7 auth epoch switch during remote GET prevents stale vault restoration', () async {
+    final db = await nativeVault(734);
+    addTearDown(db.close);
+    final fetching = Completer<Map<String, dynamic>?>();
+    when(() => mockApi.getProfile()).thenAnswer((_) => fetching.future);
+    final restoration = SyncService(db, mockApi);
+    addTearDown(restoration.dispose);
+    final running = restoration.restorePatientTreatmentDeclaration();
+    await Future<void>.delayed(Duration.zero);
+    AuthEpoch.advance();
+    fetching.complete({
+      'treatment_declaration_source': 'patient_declared',
+      'treatment_declaration_version': 1,
+      'treatment_declaration_state': 'declared',
+      'treatment_declarations': ['insulin'],
+      'treatment_declaration_updated_at': '2026-10-13T14:00:00Z',
+    });
+    await running;
+    expect(await PatientTreatmentDeclarationStore(db).read(), isNull);
+  });
+
 }

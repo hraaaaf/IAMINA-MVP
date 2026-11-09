@@ -11,6 +11,19 @@ from core.pilot_release_provider_scope import (
 )
 
 TODAY = date(2026, 8, 4)
+
+
+class _HistoricalAuditDate(date):
+    """Freeze only historical command assertions, never runtime policy."""
+
+    @classmethod
+    def today(cls):
+        return TODAY
+
+
+@pytest.fixture
+def historical_audit_clock(monkeypatch):
+    monkeypatch.setattr("core.pilot_consent_governance.date", _HistoricalAuditDate)
 SOURCE_SHA = "e8955e9793fd35d8f605b5ec444136131b4653b2"
 
 
@@ -86,7 +99,7 @@ def test_release_scope_rejects_unknown_or_local_provider_as_external():
         )
 
 
-def test_local_only_audit_command_reports_only_release_applicable_blocker(capsys):
+def test_local_only_audit_command_reports_only_release_applicable_blocker(capsys, historical_audit_clock):
     call_command("audit_pilot_consent_governance", "--local-only")
     payload = json.loads(capsys.readouterr().out)
 
@@ -97,7 +110,7 @@ def test_local_only_audit_command_reports_only_release_applicable_blocker(capsys
     assert any("gemini.contract_dpa" in item for item in gemini["blockers"])
 
 
-def test_local_only_audit_require_approved_remains_fail_closed():
+def test_local_only_audit_require_approved_remains_fail_closed(historical_audit_clock):
     with pytest.raises(CommandError, match="cndp_health_processing_authorization"):
         call_command(
             "audit_pilot_consent_governance",
@@ -123,6 +136,7 @@ def _approved_residency_payload(source_sha=SOURCE_SHA):
 def test_local_only_audit_can_bind_validated_residency_health_evidence(
     monkeypatch,
     capsys,
+    historical_audit_clock,
 ):
     monkeypatch.setattr(
         "core.management.commands.audit_pilot_consent_governance.residency_readiness_payload",

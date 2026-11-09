@@ -1,0 +1,43 @@
+name: IAMINA full app council baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/iamina-full-app-agent-council-20261015
+    paths:
+      - '.github/agents/iamina-*.md'
+      - '.skills/full-app-agent-council/**'
+      - 'scripts/ci_full_app_agent_council.py'
+      - 'scripts/tests/test_ci_full_app_agent_council.py'
+      - '.github/workflows/iamina-full-app-agent-council.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/agents/iamina-*.md'
+      - '.skills/full-app-agent-council/**'
+      - 'scripts/ci_full_app_agent_council.py'
+      - 'scripts/tests/test_ci_full_app_agent_council.py'
+      - '.github/workflows/iamina-full-app-agent-council.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  council-static-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify council tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_ci_full_app_agent_council.py' -v
+      - name: Execute all 15 separated static evidence probes
+        run: python3 scripts/ci_full_app_agent_council.py --all --output-dir artifacts/full-app-council
+      - name: Upload exact-run read-only discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-full-app-council-static-evidence
+          path: artifacts/full-app-council
+          if-no-files-found: error
+          retention-days: 14

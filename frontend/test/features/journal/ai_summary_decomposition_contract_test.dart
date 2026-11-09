@@ -14,7 +14,9 @@ void main() {
     expect(state, contains("part 'ai_summary_screen_presentation.dart';"));
     expect(state, contains('class _AISummaryScreenState'));
     expect(state, contains('context.read<AppDatabase>()'));
-    expect(state, contains('context.read<ApiClient>()'));
+    // D22 Gate A: personalized KPI/AI access is deliberately disabled.
+    expect(state, isNot(contains('context.read<ApiClient>()')));
+    expect(state, contains("d22-ai-summary-target-unverified"));
     expect(state, contains('Future<void> _fetchData()'));
     expect(state, isNot(contains('class _SummaryTopBar')));
     expect(state, isNot(contains('class _HeroInsightCard')));

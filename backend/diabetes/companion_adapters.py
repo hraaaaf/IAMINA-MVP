@@ -65,7 +65,9 @@ class DiabetesConversationStore(ConversationStore):
         qs = self._model().objects.filter(patient_id=patient_id)
         if role is not None:
             qs = qs.filter(role=role)
-        qs = qs.order_by("-created_at")[offset:offset + limit]
+        # Equal timestamps are possible (SQLite precision, rapid inserts).
+        # Break ties by insertion PK so pagination stays newest-first.
+        qs = qs.order_by("-created_at", "-pk")[offset:offset + limit]
         return [ChatTurn(role=m.role, message=m.message) for m in qs]
 
     def count(self, patient_id: int) -> int:

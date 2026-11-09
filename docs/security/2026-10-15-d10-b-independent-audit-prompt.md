@@ -1,0 +1,34 @@
+# IAMINA D10-B — Prompt d'audit indépendant sécurité & confidentialité
+
+**Mission à envoyer telle quelle à deux réviseurs professionnels distincts** : (1) expert sécurité mobile/web ; (2) expert privacy/compliance données de santé (Maroc et pays de déploiement). Ne pas remplacer leurs signatures par un modèle d'IA ou par l'auteur du code.
+
+> **Rôle** : Agis comme évaluateur externe, sans dépendance avec l'équipe qui a développé IAMINA. Tu n'as aucune obligation de faire passer la release. Ton verdict doit être adversarial, traçable et reproductible. N'utilise pas les conclusions des handovers comme preuves sans relire le code exact. Aucun accès à des données de vrais patients ni à une base de production n'est autorisé.
+>
+> **Goal exact** : déterminer **pour iOS, Android et Web, séparément** si IAmina peut proposer le choix utilisateur D10-B (« ne pas demander de verrouillage supplémentaire IAmina même si des données médicales locales existent ») **sans accès non autorisé, fuite via stockage/cache/backup/export, confusion d'identité, bypass de récupération ou nouveau transport médical**. Le choix B est un objectif produit, **pas une preuve de sécurité**.
+>
+> **Base de référence à épingler** : repo `hraaaaf/IAMINA-MVP`, commit de départ `de2afee9f5b8fe11fa806c361f246eae6854bbd0`, issue D10 [#968](https://github.com/hraaaaf/IAMINA-MVP/issues/968), gate humain [#1013](https://github.com/hraaaaf/IAMINA-MVP/issues/1013), dossier `docs/handovers/2026-10-14-iamina-d10-option-b.md`. Si `main` a avancé, indiquer le nouveau SHA, le diff exact, et réexaminer.
+>
+> **Sources obligatoires** (pouvoir vérifier chaque affirmation) : `.agents/security-auditor.md`, `.skills/security-review/SKILL.md`, `docs/CONTRIBUTING.md`, `frontend/lib/services/app_lock_service.dart`, `app_lock_authenticator_factory.dart`, `app_lock_authenticator_stub.dart`, `app_lock_authenticator_web.dart`, `frontend/web/iamina_app_lock.js`, `frontend/lib/routes/app_router.dart`, `frontend/lib/main.dart`, `frontend/lib/services/auth_service.dart`, `patient_vault_app_host.dart`, `patient_vault_session_controller.dart`, `frontend/lib/data/drift/database.dart`, `local_backup.dart`, `frontend/android/app/src/main/AndroidManifest.xml`, `frontend/ios/Runner/Info.plist`, `Runner.xcodeproj/project.pbxproj`, les tests `frontend/test/services/app_lock_service_test.dart` et les CI TD-014/D10.
+>
+> **Déroulé contradictoire en deux passes indépendantes** :
+> 1. **Security reviewer** : classer les actifs (mesures, profil, traitements, messages, tokens, PDF/photos, clé/backup), attaquants (tiers qui tient le téléphone déverrouillé, autre utilisateur du navigateur partagé, extension/XSS, application locale, appareil volé, sauvegarde, compte B après A), et les frontières de confiance (authentification serveur, auth locale, coffre Drift, permissions OS, WebAuthn, IndexedDB, transport clinique, consentement). Tester la proposition **sans app-lock** contre les standards OWASP MASVS-STORAGE-1/2, MASVS-AUTH et MASWE-0017/0020. Démontrer en code/build/test le chiffrement et les protections au repos ; ne pas les présumer du seul sandbox OS. Vérifier qu'une préférence falsifiée, supprimée, périmée, héritée ou associée à un mauvais compte/device ne permet aucun accès, egress ou ré-enrôlement. Vérifier `AuthEpoch`, A→B→A, recovery, arrière-plan, captures d'écran, OS sans verrou, backups Android/iOS, export JSON, version web/native. Les tests CI précédemment verts doivent être rattachés à des SHA et ne prouvent pas l'opt-out si le code n'existe pas.
+> 2. **Privacy reviewer (séparément)** : décrire les catégories de données de santé et leurs finalités ; vérifier accès, minimisation, consentements indépendants, conservation, suppression/sauvegardes, destinataires/sous-traitants, transferts éventuels et nécessité de formalités CNDP (loi 09-08), sans confondre règle générale et autorisation IAMINA effectivement obtenue. Qualifier le risque de divulgation des données sur appareil partagé, définir le libellé et les preuves d'un opt-out libre/informé et la réactivation. Exiger les éléments juridiques et organisationnels manquants.
+>
+> **Sources externes primaires** : [OWASP MASVS-STORAGE-1](https://mas.owasp.org/MASVS/controls/MASVS-STORAGE-1/), [OWASP MASVS-STORAGE-2](https://mas.owasp.org/MASVS/controls/MASVS-STORAGE-2/), [OWASP MASWE-0017](https://mas.owasp.org/MASWE-0017/), [Apple Data Protection](https://developer.apple.com/documentation/uikit/encrypting-your-app-s-files), [Android Keystore](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder.html), [Android backup protection](https://developer.android.com/privacy-and-security/risks/backup-best-practices), [MDN IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Basic_Terminology), [CNDP traitements sensibles](https://www.cndp.ma/notifier-un-traitement/). Si les sources contredisent l'implémentation, le signaler.
+>
+> **Livrable IMPÉRATIF** :
+> - Tableau iOS/Android/Web avec **GO / CONDITIONAL / NO-GO**, conditions précises et niveau de confiance.
+> - Constats **F-01...** : gravité, preuve code `SHA:path:line`, standard de référence, impact, scénario d'échec non offensif, remédiation minimale et test observable.
+> - Distinction stricte **VÉRIFIÉ / INFÉRÉ / NON VÉRIFIÉ**, ne jamais prétendre avoir exécuté un test ou visité un site sans preuve.
+> - Matrice des scénarios à éprouver (fresh, ancien coffre, OS PIN absent, WebAuthn manquant, A/B/A, hors-ligne, perte credential, fermeture/reprise, export/backups, autorisations réseau).
+> - Comparaison de l'avant, cible visuelle, et plan AFTER aux mêmes viewports 390×844 / 768×1024 / 1280×900, accessibilité FR/EN/AR RTL, sans score visuel non observé.
+> - Conclure `PASS` ou `CHANGES_REQUIRED`, **sans équivoque**. Le rapport doit indiquer l'identité du réviseur, sa qualification, son indépendance, sa signature et date ; s'ils manquent, mettre `NON SIGNÉ — NE PAS LIBÉRER`.
+> - Aucune recommandation de bypass `isUnlocked=true` ou de désactivation des protections pour faire passer la CI. Ne pas activer la release ni changer de base patient.
+>
+> **Critère de succès** : les deux rapports indépendants (security ET privacy) doivent être signés, chaque blocage doit être corrigé et testé sur SHA final, puis un certifieur distinct confirme le build et la matrice de tests avant merge/activation. **À défaut, D10-B demeure OPEN / NO-GO.**
+
+---
+
+## Exécution dans ChatGPT — limite d'indépendance
+
+Ce prompt peut être exécuté ici comme **pré-audit technique contradictoire IA**, avec relecture directe du code et confrontation à des normes publiées. **La même instance d'IA ne devient pas deux humains indépendants** en adoptant deux rôles. Toute sortie ChatGPT est `UNSIGNED / ADVISORY`. L'issue #1013 garde la preuve des deux véritables sign-offs externes à recueillir.

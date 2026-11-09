@@ -166,7 +166,17 @@ class AminaFirstUsePanel extends StatelessWidget {
                             ),
                           ),
                         ),
-                        child: Text(secondaryActionLabel!),
+                        child: Text(
+                          secondaryActionLabel!,
+                          // Prevent tofu/offline font fallback on AR buttons.
+                          style: TextStyle(
+                            fontFamily:
+                                Localizations.localeOf(context).languageCode == 'ar'
+                                    ? 'NotoSansArabic'
+                                    : null,
+                            fontFamilyFallback: kOfflineFontFallbacks,
+                          ),
+                        ),
                       ),
                     ),
                   ],

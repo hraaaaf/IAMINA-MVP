@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:chopper/chopper.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'auth_epoch.dart';
 import 'auth_service.dart';
 import 'document_ingest_minimizer.dart';
 import 'sync_api_contract.dart';
@@ -73,15 +75,80 @@ class ProviderApiException implements Exception {
       'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
+void requireCurrentAuthEpoch(int originEpoch) {
+  if (AuthEpoch.value != originEpoch) {
+    throw StateError('Authentication changed before patient request egress');
+  }
+}
+
+/// Pin the identity while waiting for an asynchronous credential lookup.
+/// Without this check, A's prepared clinical payload could get B's bearer.
+Future<T> readForStableAuthEpoch<T>(Future<T> Function() read) async {
+  final epoch = AuthEpoch.value;
+  final value = await read();
+  requireCurrentAuthEpoch(epoch);
+  return value;
+}
+
+/// Patient-owned sync must not leave the device after the app-lock closes,
+/// including while a bearer or retry timer is resolving asynchronously.
+/// Public login/enrollment endpoints are deliberately excluded.
+void requireUnlockedPatientSyncTransport(
+  Uri url,
+  bool Function()? canUsePatientSyncTransport,
+) {
+  // All API v1 routes other than public credential/recovery endpoints can
+  // carry or mutate medical state (including AI, documents and consent).
+  // The demo route is also protected outside explicit local audit sessions.
+  final protected = url.path.startsWith('/api/v1/') &&
+      !url.path.startsWith('/api/v1/auth/');
+  if (protected &&
+      canUsePatientSyncTransport != null &&
+      !canUsePatientSyncTransport()) {
+    throw StateError('Patient sync blocked while device is locked');
+  }
+}
+
+/// Patient-controlled consent is not clinical data synchronization.
+/// Only the exact versioned-consent endpoint may pass the Pilot A gate.
+/// Authentication epoch and app-lock checks still apply independently.
+void requirePilotClinicalTransport(Uri url, bool Function()? allowed) {
+  final path = url.path;
+  final isConsentControl = path == '/api/v1/account/consent';
+  // D2 is account-owned, code-only and non-clinical. It may use the patient
+  // account control plane, but still requires authenticated epoch and unlock.
+  final isD2AccountNotifications = path == '/api/v1/account/notifications' ||
+      path.startsWith('/api/v1/account/notifications/');
+  if (allowed != null && !allowed() &&
+      path.startsWith('/api/v1/') &&
+      !path.startsWith('/api/v1/auth/') &&
+      !isConsentControl &&
+      !isD2AccountNotifications) {
+    throw StateError('Clinical transport disabled: local-only pilot');
+  }
+}
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
-  AuthInterceptor(this.authService);
+  final bool Function()? canUsePatientSyncTransport;
+  final bool Function()? canUseClinicalTransport;
+  AuthInterceptor(this.authService, {
+    this.canUsePatientSyncTransport,
+    this.canUseClinicalTransport,
+  });
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
-    final token = await authService.getIdToken();
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+    final token = await readForStableAuthEpoch(authService.getIdToken);
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+    // This executes AFTER any async credential lookup and immediately before
+    // the Chopper chain is allowed to dispatch the medical request.
+    requireUnlockedPatientSyncTransport(
+      chain.request.url, canUsePatientSyncTransport,
+    );
     Request request = chain.request;
     if (token != null && token.isNotEmpty) {
       request = applyHeader(
@@ -110,19 +177,31 @@ class TimeoutInterceptor implements Interceptor {
 
 class RetryInterceptor implements Interceptor {
   final AuthService authService;
+  final bool Function()? canUsePatientSyncTransport;
   static const int _maxRetries = 3;
 
-  RetryInterceptor(this.authService);
+  final bool Function()? canUseClinicalTransport;
+  RetryInterceptor(this.authService, {
+    this.canUsePatientSyncTransport,
+    this.canUseClinicalTransport,
+  });
 
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(
     Chain<BodyType> chain,
   ) async {
+    final epoch = AuthEpoch.value;
+    requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+    requireUnlockedPatientSyncTransport(
+      chain.request.url, canUsePatientSyncTransport,
+    );
     Response<BodyType> response = await chain.proceed(chain.request);
+    requireCurrentAuthEpoch(epoch);
 
     // 401 — refresh token and retry once
     if (response.statusCode == 401) {
-      final newToken = await authService.refreshToken();
+      final newToken = await readForStableAuthEpoch(authService.refreshToken);
+      requireCurrentAuthEpoch(epoch);
       if (newToken != null && newToken.isNotEmpty) {
         final retryRequest = applyHeader(
           chain.request,
@@ -130,7 +209,12 @@ class RetryInterceptor implements Interceptor {
           'Bearer $newToken',
           override: true,
         );
+        requirePilotClinicalTransport(retryRequest.url, canUseClinicalTransport);
+        requireUnlockedPatientSyncTransport(
+          retryRequest.url, canUsePatientSyncTransport,
+        );
         response = await chain.proceed(retryRequest);
+        requireCurrentAuthEpoch(epoch);
       }
       return response;
     }
@@ -139,7 +223,13 @@ class RetryInterceptor implements Interceptor {
     int attempt = 0;
     while (_isServerError(response.statusCode) && attempt < _maxRetries) {
       await Future.delayed(Duration(seconds: 1 << attempt));
+      requireCurrentAuthEpoch(epoch);
+      requirePilotClinicalTransport(chain.request.url, canUseClinicalTransport);
+      requireUnlockedPatientSyncTransport(
+        chain.request.url, canUsePatientSyncTransport,
+      );
       response = await chain.proceed(chain.request);
+      requireCurrentAuthEpoch(epoch);
       attempt++;
     }
 
@@ -154,34 +244,197 @@ const String kBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+// Native QA Web login and the Chopper patient control plane must target the
+// same browser origin. A compile-time branch alias is NOT necessarily the
+// user's immutable Vercel deployment hostname; mismatching it triggers
+// cross-origin preflights and invalidates the preview's same-origin gate.
+String resolvePatientApiOrigin({
+  required bool isWeb,
+  required bool remoteAccountLogin,
+  required Uri pageUri,
+  required String configuredBaseUrl,
+}) {
+  return resolveAuthApiOrigin(
+    isWeb: isWeb,
+    remoteAccountLogin: remoteAccountLogin,
+    pageUri: pageUri,
+    configuredBaseUrl: configuredBaseUrl,
+  );
+}
+
 const int kMaxDocumentUploadBytes = 15 * 1024 * 1024;
 
 bool isDocumentUploadSizeAllowed(int byteLength) =>
     byteLength > 0 && byteLength <= kMaxDocumentUploadBytes;
 
+enum TreatmentMirrorStatus { confirmed, conflict, unavailable }
+
+final class TreatmentMirrorResult {
+  final TreatmentMirrorStatus status;
+  final DateTime? serverUpdatedAtUtc;
+  const TreatmentMirrorResult(this.status, {this.serverUpdatedAtUtc});
+}
+
+/// The backend must acknowledge exactly the declared state and codes.
+bool treatmentMirrorMatches(
+  Map<String, dynamic> profile,
+  String state,
+  List<String> codes,
+) {
+  final remoteCodes = profile['treatment_declarations'];
+  if (profile['treatment_declaration_source'] != 'patient_declared' ||
+      profile['treatment_declaration_version'] != 1 ||
+      profile['treatment_declaration_state'] != state ||
+      remoteCodes is! List ||
+      remoteCodes.length != codes.length) return false;
+  for (var i = 0; i < codes.length; i++) {
+    if (remoteCodes[i] != codes[i]) return false;
+  }
+  return true;
+}
+
+DateTime? verifiedServerTreatmentRevision(Map<String, dynamic> profile) {
+  final raw = profile['treatment_declaration_updated_at'];
+  if (raw is! String ||
+      !RegExp(r'(Z|[+-][0-9]{2}:[0-9]{2})$').hasMatch(raw)) return null;
+  return DateTime.tryParse(raw)?.toUtc();
+}
+
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final bool Function()? _canUsePatientSyncTransport;
+  final bool Function()? _allowClinicalTransportForSyntheticTests;
+  /// Local-only by default, including when a native bearer exists.
+  bool get canSyncClinicalData =>
+      _allowClinicalTransportForSyntheticTests?.call() ?? false;
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({
+    String? baseUrl,
+    AuthService? authService,
+    bool Function()? canUsePatientSyncTransport,
+    bool Function()? allowClinicalTransportForSyntheticTests,
+  }) : baseUrl = baseUrl ?? resolvePatientApiOrigin(
+         isWeb: kIsWeb,
+         // Main does not define the D7-only remote-login symbol. Keep
+         // local-first/production transport unchanged unless explicitly built
+         // for an isolated remote-login QA Preview.
+         remoteAccountLogin: const bool.fromEnvironment(
+           'IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED',
+           defaultValue: false,
+         ),
+         pageUri: Uri.base,
+         configuredBaseUrl: kBaseUrl,
+       ),
+       _authService = authService ?? AuthService(),
+       _canUsePatientSyncTransport = canUsePatientSyncTransport,
+       _allowClinicalTransportForSyntheticTests =
+           allowClinicalTransportForSyntheticTests;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
     interceptors: [
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
-      AuthInterceptor(_authService),
-      RetryInterceptor(_authService),
-      CurlInterceptor(),
+      AuthInterceptor(
+        _authService,
+        canUsePatientSyncTransport: _canUsePatientSyncTransport,
+        canUseClinicalTransport: () => canSyncClinicalData,
+      ),
+      RetryInterceptor(
+        _authService,
+        canUsePatientSyncTransport: _canUsePatientSyncTransport,
+        canUseClinicalTransport: () => canSyncClinicalData,
+      ),
     ],
     converter: const JsonConverter(),
   );
 
   ChopperClient get client => _client;
 
+  /// A response from the previous auth epoch is never exposed to its caller.
+  Future<Map<String, dynamic>?> getProfile() async {
+    if (!canSyncClinicalData) return null;
+    final epoch = AuthEpoch.value;
+    try {
+      final response = await _client.get(Uri.parse('/api/v1/profile'));
+      requireCurrentAuthEpoch(epoch);
+      final body = response.body;
+      return response.isSuccessful && body is Map<String, dynamic>
+          ? body
+          : null;
+    } on StateError {
+      rethrow;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Strict opt-in CAS mirror. An HTTP 200 without matching server evidence
+  /// is NOT acknowledgement. 409 never overwrites a competing declaration.
+  Future<TreatmentMirrorResult> mirrorTreatmentDeclaration({
+    required String state,
+    required List<String> codes,
+    required DateTime? expectedUpdatedAtUtc,
+  }) async {
+    final epoch = AuthEpoch.value;
+    if (!canSyncClinicalData) {
+      return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+    }
+    final payload = <String, dynamic>{
+      'treatment_declaration': {
+        'version': 1,
+        'state': state,
+        'codes': codes,
+      },
+    };
+    try {
+      final response = await _client.patch(
+        Uri.parse('/api/v1/profile'),
+        body: payload,
+        headers: {
+          'X-Iamina-Treatment-Expected-Updated-At':
+              expectedUpdatedAtUtc?.toUtc().toIso8601String() ?? 'none',
+        },
+      );
+      requireCurrentAuthEpoch(epoch);
+      Map<String, dynamic>? confirmed;
+      if (response.statusCode == 409) {
+        // A lost 200 followed by a retry can legitimately hit 409.
+        // Read back owner-scoped server state before calling it a conflict.
+        confirmed = await getProfile();
+        requireCurrentAuthEpoch(epoch);
+        if (confirmed == null ||
+            !treatmentMirrorMatches(confirmed, state, codes)) {
+          return const TreatmentMirrorResult(TreatmentMirrorStatus.conflict);
+        }
+      } else if (response.isSuccessful && response.body is Map) {
+        confirmed = Map<String, dynamic>.from(response.body as Map);
+      } else {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      // Both accepted branches guarantee a non-null server snapshot.
+      if (!treatmentMirrorMatches(confirmed, state, codes)) {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      final serverAt = verifiedServerTreatmentRevision(confirmed);
+      if (serverAt == null) {
+        return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+      }
+      return TreatmentMirrorResult(
+        TreatmentMirrorStatus.confirmed,
+        serverUpdatedAtUtc: serverAt,
+      );
+    } on StateError {
+      rethrow;
+    } catch (_) {
+      return const TreatmentMirrorResult(TreatmentMirrorStatus.unavailable);
+    }
+  }
+
   Future<bool> patchProfile(Map<String, dynamic> patch) async {
+    if (!canSyncClinicalData) return false;
     try {
       final response = await _client.patch(
         Uri.parse('/api/v1/profile'),
@@ -210,6 +463,7 @@ class ApiClient {
 
   /// Envoie un log unique au backend.
   Future<bool> syncLogEntry(Map<String, dynamic> log) {
+    if (!canSyncClinicalData) return Future.value(false);
     return guardSyncApiCall<bool>('sync_log_entry', () async {
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
@@ -218,6 +472,7 @@ class ApiClient {
 
   /// Envoie une liste de logs en une seule requête (Batch).
   Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
+    if (!canSyncClinicalData) return Future.value(const <String>[]);
     return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
       final response = await _client.post(
         Uri.parse('/api/v1/logs/batch'),
@@ -270,7 +525,9 @@ class ApiClient {
 
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
-    final token = await _authService.getIdToken();
+    if (!canSyncClinicalData) return;
+    final epoch = AuthEpoch.value;
+    final token = await readForStableAuthEpoch(_authService.getIdToken);
     final uri = Uri.parse(
       '$baseUrl/api/v1/ai/chat/stream',
     ).replace(queryParameters: {'message': message});
@@ -282,12 +539,17 @@ class ApiClient {
 
     final client = http.Client();
     try {
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await client
           .send(request)
           .timeout(TimeoutInterceptor._kTimeout);
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
 
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
         try {
           final payload = jsonDecode(body) as Map<String, dynamic>;
           throw ProviderApiException.fromJson(
@@ -303,6 +565,8 @@ class ApiClient {
 
       String buffer = '';
       await for (final chunk in streamed.stream.transform(utf8.decoder)) {
+        requireCurrentAuthEpoch(epoch);
+        requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
         buffer += chunk;
         final lines = buffer.split('\n');
         buffer = lines.removeLast(); // last may be incomplete
@@ -313,7 +577,13 @@ class ApiClient {
             try {
               final json = jsonDecode(payload) as Map<String, dynamic>;
               final tok = json['token'] as String?;
-              if (tok != null) yield tok;
+              if (tok != null) {
+                requireCurrentAuthEpoch(epoch);
+                requireUnlockedPatientSyncTransport(
+                  uri, _canUsePatientSyncTransport,
+                );
+                yield tok;
+              }
             } catch (_) {}
           }
         }
@@ -385,8 +655,10 @@ class ApiClient {
     String mimeType, {
     int contextDays = 14,
   }) async {
+    if (!canSyncClinicalData) return null;
     try {
-      final token = await _authService.getIdToken();
+      final epoch = AuthEpoch.value;
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse(
         '$baseUrl/api/v1/ai/voice?context_days=$contextDays',
       );
@@ -406,8 +678,11 @@ class ApiClient {
         ),
       );
 
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
 
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;
@@ -425,8 +700,10 @@ class ApiClient {
     String base64Image,
     String mimeType,
   ) async {
+    if (!canSyncClinicalData) return null;
     try {
-      final token = await _authService.getIdToken();
+      final epoch = AuthEpoch.value;
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
       final req = http.Request('POST', uri)
         ..headers['Content-Type'] = 'application/json'
@@ -437,8 +714,11 @@ class ApiClient {
       if (token != null && token.isNotEmpty) {
         req.headers['Authorization'] = 'Bearer $token';
       }
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await req.send();
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         return GlucometerOcrResponse.fromJson(
           jsonDecode(body) as Map<String, dynamic>,
@@ -453,8 +733,10 @@ class ApiClient {
   /// Transcribe audio to text (STT only — no IAmina pipeline).
   /// Used for vocal input in the add-log page meal note field.
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
+    if (!canSyncClinicalData) return null;
     try {
-      final token = await _authService.getIdToken();
+      final epoch = AuthEpoch.value;
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
       final request = http.MultipartRequest('POST', uri);
       if (token != null && token.isNotEmpty) {
@@ -468,8 +750,11 @@ class ApiClient {
           contentType: MediaType.parse(mimeType),
         ),
       );
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;
         return json['transcript'] as String?;
@@ -511,10 +796,17 @@ class ApiClient {
   /// Withdraw AI consent — AI features disabled until re-consent.
   Future<bool> withdrawConsent() async {
     try {
-      final response = await _client.delete(
+      final response = await client.delete(
         Uri.parse('/api/v1/account/consent'),
       );
-      return response.isSuccessful;
+      // A 2xx alone is not a verified server revocation.
+      final body = response.body;
+      return response.isSuccessful &&
+          body is Map &&
+          body['ai_consent_given'] == false &&
+          body['notice_version'] == null &&
+          body['notice_hash'] == null &&
+          body['locale'] == null;
     } catch (_) {
       return false;
     }
@@ -604,6 +896,7 @@ class ApiClient {
     String filename,
     String mimeType,
   ) async {
+    if (!canSyncClinicalData) return null;
     if (!isDocumentUploadSizeAllowed(byteLength)) return null;
     if (!isMinimizableDocumentImage(filename: filename, mimeType: mimeType)) {
       return _ingestDocumentStreamRaw(
@@ -652,12 +945,14 @@ class ApiClient {
     String filename,
     String mimeType,
   ) async {
+    if (!canSyncClinicalData) return null;
     if (!isDocumentUploadSizeAllowed(byteLength)) {
       return null;
     }
 
     try {
-      final token = await _authService.getIdToken();
+      final epoch = AuthEpoch.value;
+      final token = await readForStableAuthEpoch(_authService.getIdToken);
       final uri = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
 
       final request = http.MultipartRequest('POST', uri);
@@ -674,10 +969,13 @@ class ApiClient {
         ),
       );
 
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
       final streamed = await request.send().timeout(
         const Duration(seconds: 60),
       ); // extraction can take time
       final body = await streamed.stream.bytesToString();
+      requireCurrentAuthEpoch(epoch);
+      requireUnlockedPatientSyncTransport(uri, _canUsePatientSyncTransport);
 
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;

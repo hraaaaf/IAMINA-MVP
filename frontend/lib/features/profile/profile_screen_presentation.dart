@@ -16,6 +16,7 @@ String _profileActionCopy(
 extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildPresentation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final localePreferences = context.watch<LocalePreferenceService?>();
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     return Scaffold(
       appBar: isMobile
@@ -46,10 +47,73 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           ),
                           const SizedBox(height: 14),
                         ],
+                        if (shouldShowReturningCountryPrompt(
+                          hasProfile: _hasPersistedProfile,
+                          preferenceLoaded: (localePreferences?.loaded ?? false) &&
+                              (localePreferences?.countryScopeReady ?? false),
+                          confirmedCountry: localePreferences?.country,
+                          dismissed: _countryReminderDismissed,
+                        )) ...[
+                          Card(
+                            key: const ValueKey('d5-country-legacy-prompt'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _profileActionCopy(context,
+                                      fr: 'Précisez votre pays d’utilisation',
+                                      en: 'Confirm your country of use',
+                                      ar: 'حدّد بلد استخدامك',
+                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(_profileActionCopy(context,
+                                    fr: 'Cette information est facultative pour continuer. Vous pouvez la renseigner plus tard.',
+                                    en: 'You can keep using the app and choose your country later.',
+                                    ar: 'يمكنك متابعة استخدام التطبيق واختيار البلد لاحقًا.',
+                                  )),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      TextButton(
+                                        key: const ValueKey('d5-country-later'),
+                                        onPressed: () => _setPresentationState(
+                                          () => _countryReminderDismissed = true,
+                                        ),
+                                        child: Text(_profileActionCopy(context,
+                                          fr: 'Plus tard',
+                                          en: 'Later',
+                                          ar: 'لاحقًا',
+                                        )),
+                                      ),
+                                      OutlinedButton(
+                                        key: const ValueKey('d5-country-choose'),
+                                        onPressed: () => context.push('/preferences'),
+                                        child: Text(_profileActionCopy(context,
+                                          fr: 'Choisir mon pays',
+                                          en: 'Choose my country',
+                                          ar: 'اختر بلدي',
+                                        )),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         _buildMedicalSection(l10n),
                         const SizedBox(height: 14),
-                        _buildRamadanSection(l10n),
-                        const SizedBox(height: 14),
+                        if (shouldShowRamadanProfileSection(isWeb: kIsWeb)) ...[
+                          _buildRamadanSection(l10n),
+                          const SizedBox(height: 14),
+                        ],
                         _buildProfileSection(
                           key: const ValueKey('profile-iamina-section'),
                           icon: Icons.auto_awesome_outlined,
@@ -102,28 +166,104 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             l10n.diabetesType2,
             l10n.diabetesGestational,
             l10n.diabetesPreDiabetes,
+            _profileUiText(context,
+              fr: 'Autre diagnostic déclaré',
+              en: 'Another declared condition',
+              ar: 'تشخيص آخر مصرّح به',
+            ),
+            _profileUiText(context,
+              fr: 'Je ne sais pas / plus tard',
+              en: 'Not sure / later',
+              ar: 'لا أعرف / لاحقًا',
+            ),
           ],
-          ['type1', 'type2', 'gestational', 'pre'],
+          ['type1', 'type2', 'gestational', 'pre', 'other', 'unknown'],
           _diabetesType,
           (val) => _setPresentationState(() => _diabetesType = val),
         ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.science_outlined, l10n.treatment),
         const SizedBox(height: 12),
+        MedicalTreatmentMultiSelector(
+          diabetesType: _diabetesType,
+          value: _declaredTreatments,
+          onChanged: (value) => _setPresentationState(() {
+            _declaredTreatments = value;
+            _treatmentTouched = true;
+          }),
+        ),
+        if (_treatmentConflict && _canResolveRemoteTreatmentConflict)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const Key('d7-resolve-treatment-conflict'),
+                onPressed: (_resolvingTreatmentConflict || _treatmentTouched)
+                    ? null : _resolveTreatmentConflict,
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_problem, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _profileUiText(context,
+                          fr: 'Comparer et résoudre le conflit',
+                          en: 'Review and resolve conflict',
+                          ar: 'مراجعة التعارض وحلّه',
+                        ),
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 28),
+        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
+        const SizedBox(height: 12),
         _buildChoiceGrid(
-          [
-            l10n.treatmentInsulin,
-            l10n.treatmentTablets,
-            l10n.treatmentLifestyle,
-          ],
-          ['insulin', 'tablets', 'lifestyle'],
-          _treatment,
-          (val) => _setPresentationState(() => _treatment = val),
+          ['mg/dL', 'mmol/L'],
+          ['mg/dL', 'mmol/L'],
+          _unit,
+          (val) => _setPresentationState(() => _unit = val),
         ),
         const SizedBox(height: 28),
-        _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
+        // D22 Gate A: a display preference cannot label legacy targets as
+        // verified or imply that their source unit has been certified.
+        // The verified-target branch remains gated pending G1/G2/G4 review.
+        _buildSectionTitle(
+          Icons.show_chart,
+          _d22TargetsEditable
+              ? l10n.glucoseTarget
+              : _profileUiText(
+                  context,
+                  fr: 'Objectifs non vérifiés',
+                  en: 'Glucose targets unverified',
+                  ar: 'أهداف سكر الدم غير مؤكدة',
+                ),
+        ),
         const SizedBox(height: 12),
-        LayoutBuilder(
+        if (!_d22TargetsEditable)
+          Container(
+            key: const Key('d22-unverified-target-blocked'),
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(_profileUiText(
+              context,
+              fr: 'Objectifs non vérifiés. Aucun classement médical avant validation.',
+              en: 'Targets unverified. No medical classification before review.',
+              ar: 'الأهداف غير مؤكدة. لا تصنيف طبي قبل التحقق.',
+            )),
+          )
+        else
+          LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 460;
             final low = _buildTextField(
@@ -147,15 +287,6 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               ],
             );
           },
-        ),
-        const SizedBox(height: 28),
-        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
-        const SizedBox(height: 12),
-        _buildChoiceGrid(
-          ['mg/dL', 'mmol/L'],
-          ['mg/dL', 'mmol/L'],
-          _unit,
-          (val) => _setPresentationState(() => _unit = val),
         ),
         const SizedBox(height: 28),
         SizedBox(
@@ -438,6 +569,96 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           icon: Icons.privacy_tip_outlined,
           label: consentLabel,
         ),
+        const SizedBox(height: 12),
+        Consumer<AppLockService>(
+          builder: (context, lock, _) {
+            final enabled = lock.isConfigured && !lock.isExplicitlySkipped;
+            return _buildSettingsAction(
+              key: const ValueKey('d30-profile-lock-preference'),
+              icon: enabled ? Icons.lock_outline : Icons.lock_open_outlined,
+              label: lock.recoveryRequired
+                  ? _profileUiText(context,
+                      fr: 'Verrouillage à récupérer',
+                      en: 'Lock recovery required',
+                      ar: 'يجب استعادة القفل')
+                  : _profileUiText(context,
+                      fr: enabled ? 'Désactiver le verrouillage' : 'Activer le verrouillage',
+                      en: enabled ? 'Disable app lock' : 'Enable app lock',
+                      ar: enabled ? 'إيقاف قفل التطبيق' : 'تفعيل قفل التطبيق'),
+              onTap: (lock.recoveryRequired || _savingLockPreference)
+                  ? () {}
+                  : _changeAppLockPreference,
+            );
+          },
+        ),
+        if (kIsWeb &&
+            kW01RevocationProbeEnabled &&
+            auth.hasRemoteApiCredential &&
+            !auth.isAuditSession) ...[
+          const SizedBox(height: 14),
+          Container(
+            key: const ValueKey('w01-revocation-probe-card'),
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AminaVisualLanguage.cardSurface(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AminaVisualLanguage.controlBorder(context),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _profileUiText(context,
+                    fr: 'W01 · Contrôle temporaire Preview',
+                    en: 'W01 · Temporary Preview check',
+                    ar: 'W01 · فحص تجريبي مؤقت',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  _profileUiText(context,
+                    fr: 'Vérifie 200 → 200 → 401 avec le même jeton. Lecture seule du Journal. Ferme votre session.',
+                    en: 'Verifies 200 → 200 → 401 with the same token. Read-only Journal. Signs you out.',
+                    ar: 'يفحص 200 ← 200 ← 401 لنفس الرمز. قراءة السجل فقط وتسجيل الخروج.',
+                  ),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  key: const Key('w01-revocation-probe-button'),
+                  onPressed: _w01ProbeRunning
+                      ? null
+                      : _runW01RevocationCheck,
+                  icon: _w01ProbeRunning
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.verified_user_outlined, size: 19),
+                  label: Text(_profileUiText(context,
+                    fr: 'Tester la révocation serveur',
+                    en: 'Test server token revocation',
+                    ar: 'اختبار إبطال رمز الخادم',
+                  )),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
@@ -488,7 +709,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               ),
               Consumer<ConsentService>(
                 builder: (context, consent, _) {
-                  if (!consent.hasConsent) return const SizedBox.shrink();
+                  if (!consent.hasConsent && !consent.hasWithdrawalPending) {
+                    return const SizedBox.shrink();
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: OutlinedButton.icon(
@@ -499,7 +722,14 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                         color: AminaTheme.dangerFg,
                       ),
                       label: Text(
-                        l10n.consentWithdraw,
+                        consent.hasWithdrawalPending
+                            ? _profileUiText(
+                                context,
+                                fr: 'Réessayer le retrait du consentement IA',
+                                en: 'Retry AI consent withdrawal',
+                                ar: 'إعادة محاولة سحب موافقة الذكاء الاصطناعي',
+                              )
+                            : l10n.consentWithdraw,
                         style: const TextStyle(
                           color: AminaTheme.dangerFg,
                           fontWeight: FontWeight.w600,
@@ -624,17 +854,65 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       'type2' => l10n.diabetesType2,
       'gestational' => l10n.diabetesGestational,
       'pre' => l10n.diabetesPreDiabetes,
+      'other' => _profileUiText(context,
+        fr: 'Autre diagnostic déclaré',
+        en: 'Another declared condition',
+        ar: 'تشخيص آخر مصرّح به',
+      ),
+      'unknown' => _profileUiText(context,
+        fr: 'Diagnostic non précisé',
+        en: 'Diagnosis not specified',
+        ar: 'لم يحدد التشخيص',
+      ),
       _ => null,
     };
     final treatment = switch (_treatment) {
       'insulin' => l10n.treatmentInsulin,
-      'tablets' => l10n.treatmentTablets,
-      'lifestyle' => l10n.treatmentLifestyle,
+      'tablets' => _profileUiText(context,
+        fr: 'Médicaments déclarés',
+        en: 'Medicines I take',
+        ar: 'أدوية أتناولها',
+      ),
+      'lifestyle' => _profileUiText(context,
+        fr: 'Habitudes de vie',
+        en: 'Lifestyle measures',
+        ar: 'نمط الحياة',
+      ),
+      'other' => _profileUiText(context,
+        fr: 'Autre traitement déclaré',
+        en: 'Other declared treatment',
+        ar: 'علاج آخر مصرّح به',
+      ),
+      'unknown' => _profileUiText(context,
+        fr: 'Traitement non précisé',
+        en: 'Treatment not specified',
+        ar: 'لم يحدد العلاج',
+      ),
       _ => null,
     };
+    final reported = _declaredTreatments.state == D7TreatmentStatus.declared
+        ? _declaredTreatments.codes.map((code) => switch (code) {
+            'insulin' => l10n.treatmentInsulin,
+            'oral_meds' => _profileUiText(context, fr: 'Médicaments oraux',
+                en: 'Oral medicines', ar: 'أدوية فموية'),
+            'lifestyle' => _profileUiText(context, fr: 'Habitudes de vie',
+                en: 'Lifestyle measures', ar: 'نمط الحياة'),
+            'other' => _profileUiText(context, fr: 'Autre traitement déclaré',
+                en: 'Other reported treatment', ar: 'علاج آخر مصرّح به'),
+            _ => code,
+          }).join(' + ')
+        : switch (_declaredTreatments.state) {
+            D7TreatmentStatus.unsure => _profileUiText(context,
+                fr: 'Traitements inconnus', en: 'Treatments unknown',
+                ar: 'العلاجات غير معروفة'),
+            D7TreatmentStatus.noneDeclared => _profileUiText(context,
+                fr: 'Aucun traitement déclaré', en: 'No treatment reported',
+                ar: 'لا يوجد علاج مصرّح به'),
+            _ => treatment,
+          };
     final parts = <String>[
       if (diabetes != null) diabetes,
-      if (treatment != null) treatment,
+      if (reported != null) reported,
       _unit,
     ];
     return parts.join(' · ');
@@ -677,9 +955,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Préférences IAmina',
-                      en: 'IAmina preferences',
-                      ar: 'تفضيلات IAmina',
+                      fr: 'Langue et pays',
+                      en: 'Language & country',
+                      ar: 'اللغة والبلد',
                     ),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
@@ -689,9 +967,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Langue, pays et ton. Vos réglages médicaux restent dans le profil.',
-                      en: 'Language, country and tone. Medical settings stay in your profile.',
-                      ar: 'اللغة والبلد والنبرة. تبقى الإعدادات الطبية في ملفك الشخصي.',
+                      fr: 'Français · English · العربية',
+                      en: 'Français · English · العربية',
+                      ar: 'Français · English · العربية',
                     ),
                     style: TextStyle(
                       color: AminaVisualLanguage.secondary(context),
@@ -713,9 +991,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        Expanded(
+          child: Text(
+            title,
+            softWrap: true,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     );

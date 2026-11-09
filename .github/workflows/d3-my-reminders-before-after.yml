@@ -1,0 +1,189 @@
+name: D3 Web add another reminder BEFORE AFTER Chrome proof
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d3-my-reminders-before-after.yml'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/lib/features/dashboard/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d3-before-after:
+    name: D3 local reminders FR AR 390 768 1280 before-after
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout immutable D3 baseline
+        uses: actions/checkout@v4
+        with:
+          path: before
+          ref: 578250e21e798c6f1b9ea52a23678f2ed8c03be8
+
+      - name: Checkout candidate PR HEAD
+        uses: actions/checkout@v4
+        with:
+          path: after
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Build before and after with same real Web fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          for version in before after; do
+            (cd "$version/frontend" &&
+              flutter pub get &&
+              flutter build web --release -t lib/ui_browser_audit_main.dart)
+            test -s "$version/frontend/build/web/main.dart.js"
+          done
+
+      - name: Capture 12 real Chrome before-after cards with three synthetic reminders
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet websocket-client pillow
+          mkdir -p "$GITHUB_WORKSPACE/d3-visual-proof"
+          cat >/tmp/d3_post_save_capture.py <<'PY'
+          import base64
+          import json
+          import os
+          import shutil
+          import subprocess
+          import tempfile
+          import time
+          import urllib.request
+          from pathlib import Path
+          from websocket import create_connection
+          from PIL import Image, ImageChops
+
+          root = Path(os.environ['GITHUB_WORKSPACE'])
+          output = root / 'd3-visual-proof'
+          chrome = shutil.which('google-chrome') or shutil.which('chromium') or shutil.which('chromium-browser')
+          if not chrome:
+              raise RuntimeError('Chrome executable not installed')
+
+          def wait_for(url, attempts=80):
+              for _ in range(attempts):
+                  try:
+                      with urllib.request.urlopen(url, timeout=2) as resp:
+                          return resp.read()
+                  except Exception:
+                      time.sleep(.25)
+              raise RuntimeError(f'Service did not start: {url}')
+
+          def capture(target, url, width, height, mobile):
+              profile = tempfile.mkdtemp(prefix='d3-chrome-')
+              cmd = [chrome, '--headless=new', '--no-sandbox', '--disable-dev-shm-usage',
+                     '--enable-unsafe-swiftshader', '--hide-scrollbars',
+                     '--remote-allow-origins=*', '--remote-debugging-port=9343',
+                     f'--user-data-dir={profile}', f'--window-size={width},{height}', url]
+              browser = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+              try:
+                  pages = json.loads(wait_for('http://127.0.0.1:9343/json/list'))
+                  page = next(p for p in pages if p.get('type') == 'page')
+                  ws = create_connection(page['webSocketDebuggerUrl'], timeout=30)
+                  counter = 0
+                  def call(method, params=None):
+                      nonlocal counter
+                      counter += 1
+                      ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+                      while True:
+                          result = json.loads(ws.recv())
+                          if result.get('id') == counter:
+                              if result.get('error'):
+                                  raise RuntimeError(f'{method} failed: {result}')
+                              return result
+                  call('Page.enable')
+                  call('Emulation.setDeviceMetricsOverride',
+                       {'width': width, 'height': height, 'deviceScaleFactor': 1, 'mobile': mobile})
+                  call('Page.reload', {'ignoreCache': True})
+                  # Flutter CanvasKit may still be rasterizing on a cold
+                  # headless Chrome reload. Never accept a blank/undersized
+                  # frame; retry the *same* viewport before failing the gate.
+                  time.sleep(12)
+                  last_problem = 'no frame captured'
+                  for attempt in range(1, 5):
+                      result = call('Page.captureScreenshot',
+                                    {'format': 'png', 'captureBeyondViewport': False, 'fromSurface': True})
+                      encoded = result.get('result', {}).get('data')
+                      if encoded:
+                          target.write_bytes(base64.b64decode(encoded))
+                          im = Image.open(target).convert('RGB')
+                          bounds_ok = im.size == (width, height)
+                          bytes_ok = target.stat().st_size >= 10000
+                          # The empty white Flutter canvas can have the
+                          # correct dimensions and a valid PNG signature.
+                          colors = im.getcolors(maxcolors=1000000)
+                          nontrivial = colors is None or len(colors) >= 24
+                          if bounds_ok and bytes_ok and nontrivial:
+                              print(f'FRAME_OK {target.name} attempt={attempt} bytes={target.stat().st_size}', flush=True)
+                              break
+                          last_problem = f'size={im.size}, bytes={target.stat().st_size}, colors={len(colors) if colors is not None else ">1000000"}'
+                      else:
+                          last_problem = 'no encoded screenshot data'
+                      print(f'FRAME_RETRY {target.name} attempt={attempt}: {last_problem}', flush=True)
+                      if attempt < 4:
+                          call('Page.reload', {'ignoreCache': True})
+                          time.sleep(8)
+                  else:
+                      raise RuntimeError(f'Invalid screenshot {target}: {last_problem}')
+                  ws.close()
+              finally:
+                  browser.terminate()
+                  try:
+                      browser.wait(timeout=8)
+                  except subprocess.TimeoutExpired:
+                      browser.kill()
+                      browser.wait()
+                  shutil.rmtree(profile, ignore_errors=True)
+
+          for version in ('before', 'after'):
+              directory = root / version / 'frontend' / 'build' / 'web'
+              server = subprocess.Popen(
+                  ['python3', '-m', 'http.server', '7361', '--directory', str(directory)],
+                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+              try:
+                  wait_for('http://127.0.0.1:7361/')
+                  for locale in ('fr', 'ar'):
+                      for width, height in ((390, 844), (768, 1024), (1280, 900)):
+                          surface = 'd3-reminders'  # Identical D3 fixture, old vs new header
+                          url = f'http://127.0.0.1:7361/?surface={surface}&seed=0&locale={locale}'
+                          name = f'{version}-{locale}-{width}x{height}.png'
+                          capture(output / name, url, width, height, width == 390)
+                          print('CAPTURED', name, flush=True)
+              finally:
+                  server.terminate()
+                  server.wait(timeout=8)
+          for locale in ('fr', 'ar'):
+              for width, height in ((390, 844), (768, 1024), (1280, 900)):
+                  label = f'{locale}-{width}x{height}'
+                  before = Image.open(output / f'before-{label}.png').convert('RGB')
+                  after = Image.open(output / f'after-{label}.png').convert('RGB')
+                  difference = ImageChops.difference(before, after)
+                  changed = sum(1 for pixel in difference.getdata() if pixel != (0, 0, 0))
+                  ratio = changed / (width * height) * 100
+                  print(f'BEFORE_AFTER_DIFF {label}: {ratio:.2f}% pixels changed', flush=True)
+                  if changed < 100:
+                      raise RuntimeError(f'Candidate and baseline unexpectedly identical: {label}')
+          assert len(list(output.glob('*.png'))) == 12
+          PY
+          python3 /tmp/d3_post_save_capture.py
+
+      - name: Upload six same-viewport replaced-card comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-add-another-before-after-6-pairs
+          path: d3-visual-proof/*.png
+          retention-days: 14
+          if-no-files-found: warn

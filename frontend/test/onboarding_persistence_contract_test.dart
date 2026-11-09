@@ -19,12 +19,13 @@ void main() {
     expect(source, contains('setState(() => _saving = false)'));
     expect(source, contains("context.go('/dashboard')"));
   });
-  test('onboarding finish uses AuthService Firebase fallback', () {
+  test('D7 onboarding resolves the scoped patient row, not a Firebase hash', () {
     final source = File(
       'lib/features/auth/onboarding_chat_screen.dart',
     ).readAsStringSync();
 
-    expect(source, contains("context.read<AuthService>().firebaseUser"));
+    expect(source, contains('db.activeProfileRowId'));
+    expect(source, isNot(contains('firebaseUser?.uid.hashCode.abs()')));
     expect(source, isNot(contains('FirebaseAuth.instance.currentUser')));
   });
 

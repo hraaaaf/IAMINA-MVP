@@ -41,11 +41,17 @@ def test_request_contains_only_locale_script_and_opaque_token():
 
     assert request.locale == "fr"
     assert request.protected_body_token == envelope.protected_body_token
-    assert "Réponse clinique déterministe" not in prompt
-    assert "142" not in prompt
-    assert "mg/dL" not in prompt
-    assert "certified_consultation_brief" not in prompt
-    assert "diabetes.clinician_prep" not in prompt
+    # The token contains random hex. A coincidental "142" inside the opaque
+    # token is not leakage of the clinical value; remove only that EXACT token
+    # before proving the remaining payload is free from patient-linked text.
+    assert prompt.count(envelope.protected_body_token) == 1
+    exposed_payload = prompt.replace(envelope.protected_body_token, "")
+    assert exposed_payload == "locale=fr\nscript=default\nprotected_body_token="
+    assert "Réponse clinique déterministe" not in exposed_payload
+    assert "142" not in exposed_payload
+    assert "mg/dL" not in exposed_payload
+    assert "certified_consultation_brief" not in exposed_payload
+    assert "diabetes.clinician_prep" not in exposed_payload
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=False)

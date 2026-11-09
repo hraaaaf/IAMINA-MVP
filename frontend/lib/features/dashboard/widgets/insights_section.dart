@@ -2,6 +2,8 @@ part of '../dashboard_screen.dart';
 
 // ── Insights Section ──────────────────────────────────────────────────────────
 
+// D22 Gate A: legacy personalized insights are intentionally unmounted.
+// ignore: unused_element
 class _InsightsSection extends StatelessWidget {
   final List<LogEntryData> logs;
   final SummaryResponse? summary;
@@ -9,7 +11,10 @@ class _InsightsSection extends StatelessWidget {
 
   const _InsightsSection({
     required this.logs,
+    // D22 Gate A: future-only parameters not used by authorized runtime.
+    // ignore: unused_element_parameter
     this.summary,
+    // ignore: unused_element_parameter
     this.isLoading = false,
   });
 

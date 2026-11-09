@@ -17,7 +17,17 @@ void main() {
     expect(onboarding, contains("label: 'English'"));
     expect(onboarding, contains("selected: _language == 'en'"));
     expect(onboarding, contains("onTap: () => _selectLanguage('en')"));
-    expect(onboarding, contains('LocalePreferenceService>().setExperience('));
+    // Immediate language selection is deliberately independent of country:
+    // complete setExperience is reserved for _finish after explicit selection.
+    final selectionStart = onboarding.indexOf('void _selectLanguage(');
+    final finishStart = onboarding.indexOf('Future<void> _finish(');
+    expect(selectionStart, greaterThanOrEqualTo(0));
+    expect(finishStart, greaterThan(selectionStart));
+    final selectionOnly = onboarding.substring(selectionStart, finishStart);
+    expect(selectionOnly, contains('setLanguageOnly(value)'));
+    expect(selectionOnly, contains('_revealStep(_countryStepKey)'));
+    expect(selectionOnly, isNot(contains('setExperience(')));
+    expect(selectionOnly, isNot(contains("country: _country ?? 'MA'")));
   });
 
   test('explicit English selection is persisted and restored deterministically', () {
@@ -28,8 +38,13 @@ void main() {
     expect(service, contains("static const _supportedLanguages = {'ar', 'en', 'fr'}"));
     expect(service, contains('_storage.write(key: _languageKey, value: locale.languageCode)'));
     expect(service, contains("_storage.write(key: _explicitKey, value: 'true')"));
-    expect(service, contains('final localLanguage = await _storage.read(key: _languageKey)'));
-    expect(service, contains("final isExplicit = await _storage.read(key: _explicitKey) == 'true'"));
+    // The non-clinical UI preference now uses a fail-soft read wrapper:
+    // unreadable WebCrypto bytes must not blank a previously enrolled app.
+    expect(service, contains('final localLanguage = await _readUiPreference(_languageKey)'));
+    expect(service, contains("final isExplicit = await _readUiPreference(_explicitKey) == 'true'"));
+    expect(service, contains('return await _storage.read(key: key)'));
+    expect(service, contains('} catch (error) {'));
+    expect(service, contains('return null;'));
     expect(service, contains('explicitLocalLanguage: isExplicit ? localLanguage : null'));
   });
 

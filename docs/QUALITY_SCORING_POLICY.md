@@ -36,11 +36,17 @@ A LOT cannot become `VERIFIED` while such a discrepancy remains unresolved.
 
 Caps stack by taking the lowest applicable cap.
 
+## FUE as required binary gate for product decisions D
+
+Every D must run a **case-adaptive FUE (FIRST USER EXPERIENCE)** covering **all in-scope features of that D**. Build the required journey matrix from that decision's actual actions, user states and risks, not from a universal script: use relevant entry/return states, affected real-Web viewports (390×844 / 768×1024 / 1280×900), FR/AR RTL, keyboard/navigation, positive-negative-recovery states, and permission/persistence/offline/account checks **where applicable**. **the cross-account isolation check is a targeted W02-style owner/session-isolation security regression, never a default FUE prerequisite**; run or reuse it only when cross-owner boundaries are affected or existing evidence fails to cover the risk. Mark excluded cases N/A with justification, not PASS. Record `D feature → journey → expected → observed → evidence → PASS/FAIL/NOT_RUN`. **100% required PASS** is a binary gate for `VERIFIED`; any missing, failed or not-run required case means `FUE_NO_GO` regardless of CI.
+
+An independent code Reviewer is **not a blanket D gate**; FUE may be executed by the Builder in a separate adversarial pass. Existing risk-specific approvals remain mandatory. The `>=9.5` independent-review score rule remains a **score-specific constraint**, not a default requirement to close a D at an admissible `9.0–9.4`.
+
 ## Binary gates
 
 Scores never override binary gates. A LOT may be `VERIFIED` only when:
 
-1. every required binary gate is green on the exact applicable HEAD/evidence set;
+1. every required binary gate is green on the exact applicable HEAD/evidence set (**including full FUE for any D**);
 2. no blocking finding remains;
 3. every material step has both required scores;
 4. all score discrepancies `> 0.5` have been investigated and resolved;
@@ -81,7 +87,7 @@ Remaining weaknesses:
 Next exact action:
 ```
 
-For LOT closeout, record the lowest retained step score, binary-gate state, independent-review status, Perfection Pass result, and the exact evidence/HEAD used.
+For LOT closeout, record retained scores, binary gates, **for D the full FUE feature matrix + verdict**, risk-specialist approvals if required, independent-review status only when claimed/score-required, Perfection Pass result, and exact evidence/HEAD.
 
 ## Independence definition
 

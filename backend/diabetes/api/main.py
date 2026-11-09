@@ -23,6 +23,8 @@ from ai.api.v1.voice import router as voice_router  # noqa: E402
 from core.api.v1.account import router as account_router  # noqa: E402
 from core.api.v1.auth import router as auth_router  # noqa: E402
 from core.api.v1.compatibility import router as compatibility_router  # noqa: E402
+from core.api.v1.country_suggestion import router as country_suggestion_router  # noqa: E402
+from core.api.v1.d2_notifications import router as d2_notifications_router  # noqa: E402
 from core.api.v1.health import router as health_router  # noqa: E402
 from core.api.v1.locale import router as locale_router  # noqa: E402
 from core.api.v1.modules import router as modules_router  # noqa: E402
@@ -76,6 +78,7 @@ api.add_router("/v1", auth_router)
 api.add_router("/v1", demo_router)
 api.add_router("/v1", health_router)
 api.add_router("/v1", compatibility_router)
+api.add_router("/v1", country_suggestion_router)
 
 # v1 Protected routers — Bearer (mobile) OR session cookie (web/PWA)
 api.add_router("/v1", logs_router, auth=_auth)
@@ -87,6 +90,7 @@ api.add_router("/v1", proactive_router, auth=_auth)
 api.add_router("/v1", companion_router, auth=_auth)
 api.add_router("/v1", cgm_router, auth=_auth)
 api.add_router("/v1", account_router, auth=_auth)
+api.add_router("/v1", d2_notifications_router, auth=_auth)
 api.add_router("/v1", modules_router, auth=_auth)
 api.add_router("/v1", imports_router, auth=_auth)
 api.add_router("/v1", documents_router, auth=_auth)

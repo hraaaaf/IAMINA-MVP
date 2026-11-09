@@ -1,0 +1,220 @@
+name: W01 G7 Web FUE - synthetic A/B privacy gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/w01-g7-web-fue.yml'
+      - 'frontend/lib/ui_w01_g7_preview_fue_main.dart'
+      - 'frontend/lib/features/auth/**'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/lib/features/profile/**'
+      - 'frontend/lib/features/navigation/main_shell.dart'
+      - 'tools/w01_g7_preview_fue_browser_check.js'
+      - 'scripts/w01_g7_fue_seed.py'
+      - 'backend/core/tests/test_w01_g7_fue_privacy.py'
+      - 'backend/core/tests/test_w01_native_logout_http.py'
+      - 'backend/core/tests/test_w01_protected_router_auth_contract.py'
+      - 'backend/core/api/v1/auth.py'
+      - 'backend/diabetes/api/v1/logs.py'
+      - 'backend/diabetes/api/v1/security.py'
+      - 'backend/amina/vercel_session_auth.py'
+      - 'backend/amina/middleware/csrf_exempt_api.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w01-g7-fue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-web-fue:
+    if: github.event_name == 'pull_request'
+    name: Web FR/AR synthetic PG16 FUE (${{ matrix.locale }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [fr, ar]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_w01_g7_fue
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_w01_g7_fue"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      G7_FUE_LOCALE: ${{ matrix.locale }}
+      DJANGO_SETTINGS_MODULE: amina.settings
+      IAMINA_ENV: preview
+      IAMINA_PREVIEW_ALLOW_REGISTRATION: "false"
+      SECRET_KEY: ci-w01-g7-fue-fictitious-ephemeral-only
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:7383
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_w01_g7_fue
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      GROQ_API_KEY: ""
+      OPENAI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Generate and mask disposable A/B credentials
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,secrets
+          password=secrets.token_urlsafe(32)+'_Aa1!'
+          print('::add-mask::'+password)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('G7_FUE_PASSWORD='+password+'\n')
+          PY
+      - name: Install real Django PG16 and browser test dependencies
+        run: |
+          python3 -m pip install -r backend/requirements.txt
+          python3 -m py_compile scripts/w01_g7_fue_seed.py
+          node --check tools/w01_g7_preview_fue_browser_check.js
+      - name: Migrate disposable PostgreSQL
+        working-directory: backend
+        run: |
+          python manage.py migrate --noinput
+          python manage.py shell -c "from django.db import connection; assert connection.vendor=='postgresql'"
+      - name: Execute negative security/CSRF/registration and A/B HTTP tests
+        working-directory: backend
+        run: |
+          python3 -m pytest -q \
+            core/tests/test_w01_g7_fue_privacy.py \
+            core/tests/test_w01_native_logout_http.py \
+            core/tests/test_w01_protected_router_auth_contract.py
+      - name: Seed exactly two synthetic A/B patients with distinct log values
+        run: PYTHONPATH=backend python3 scripts/w01_g7_fue_seed.py
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build actual Flutter Web Preview sign-in only UI
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_w01_g7_preview_fue_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/ui_w01_g7_preview_fue_main.dart \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true \
+            --dart-define=API_BASE_URL=http://127.0.0.1:8000
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Real browser A logout B logout A FUE
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && python manage.py runserver 127.0.0.1:8000 --noreload) > /tmp/w01-g7-api.log 2>&1 &
+          API_PID=$!
+          python3 -m http.server 7383 --bind 127.0.0.1 --directory frontend/build/web > /tmp/w01-g7-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" "$API_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/api/v1/health > /dev/null
+          curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7383/ > /dev/null
+          node tools/w01_g7_preview_fue_browser_check.js
+      - name: Verify exact PNG dimensions, distinct captures and no FUE failures
+        if: success()
+        run: |
+          python3 - <<'PY'
+          import json,struct,hashlib
+          from pathlib import Path
+          root=Path('w01-g7-fue-proof')
+          report=json.loads((root/('report-'+__import__('os').environ['G7_FUE_LOCALE']+'.json')).read_text())
+          assert not report['failures'] and len(report['tests'])==2
+          for test in report['tests']:
+              assert test['result']=='PASS'
+              assert len(test['captures'])==9
+              assert len(set(test['captures']))==9
+              checks=set(test['checks'])
+              assert {'a-token-revoked','b-token-revoked','idor-get-patch-delete-404','old-tokens-still-revoked'} <= checks
+              # In the real W01 test-only Flutter UI, A, B and returning A
+              # intentionally share the same static dashboard. The chooser
+              # and login screen also repeat after each sign-out. Do not
+              # demand five unrelated visual states from three real screens.
+              stages=(
+                  '01-local-choice',
+                  '02-preview-login-only',
+                  '03-signed-in-a',
+                  '04-a-logout',
+                  '04b-preview-login-only',
+                  '05-signed-in-b',
+                  '06-b-logout',
+                  '06b-preview-login-only',
+                  '07-a-returned',
+              )
+              assert all(name.endswith('-'+stage+'.png') for name,stage
+                         in zip(test['captures'],stages)), 'Missing ordered journey screenshot'
+              assert test['captured'] is True
+              assert test['external_request_count']==0 and test['browser_error_count']==0
+              digests=[]
+              for filename in test['captures']:
+                  raw=(root/filename).read_bytes()
+                  assert len(raw)>=10000 and raw[:8]==bytes.fromhex('89504e470d0a1a0a')
+                  w,h=struct.unpack('>II',raw[16:24])
+                  assert w==test['width'] and h==test['height']
+                  digests.append(hashlib.sha256(raw).hexdigest())
+              assert len(set(digests[:3]))==3, 'Chooser, login and dashboard must differ'
+              assert digests[1]==digests[4]==digests[7], 'Real login screen must return after logout'
+              assert digests[2]==digests[5]==digests[8], 'Real test-only dashboard must be stable A/B/A'
+              # Use visual equivalence rather than byte-for-byte PNG
+              # equality: CanvasKit Arabic anti-aliasing may shift slightly
+              # between identical chooser screens. Real archived FR/AR
+              # screenshots show <=0.44% changed pixels for these two
+              # logged-out states. Require >=99% pixels within 2 RGB levels
+              # and keep exact login/dashboard phase checks unchanged.
+              from PIL import Image, ImageChops
+              first=Image.open(root/test['captures'][3]).convert('RGB')
+              second=Image.open(root/test['captures'][6]).convert('RGB')
+              assert first.size==second.size
+              bands=ImageChops.difference(first,second).split()
+              max_difference=ImageChops.lighter(ImageChops.lighter(bands[0],bands[1]),bands[2])
+              changed=sum(max_difference.histogram()[3:])
+              total=first.width*first.height
+              assert changed/total <=0.01, (
+                  f'Logout screens visually diverged: {changed}/{total} pixels'
+              )
+              assert digests[3] not in {digests[1],digests[2]}, 'Logout screen must differ from login/dashboard'
+          print('W01_G7_FUE_SCREENSHOTS=PASS 18 PNG per locale, 3 distinct phases + A/B/A visual return, 2 viewports')
+          PY
+      - name: Verify PG16 patient A/B isolation after FUE
+        if: always()
+        run: PYTHONPATH=backend python3 scripts/w01_g7_fue_seed.py --verify
+      - name: Upload fail-closed reports and synthetic Chrome screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w01-g7-web-fue-${{ matrix.locale }}
+          path: |
+            w01-g7-fue-proof/report-*.json
+            w01-g7-fue-proof/*.png
+          if-no-files-found: warn
+          retention-days: 7

@@ -39,6 +39,12 @@ on:
 permissions:
   contents: read
 
+# CI capacity: replace obsolete runs of this workflow for the same PR only.
+# Keep dispatch and main branch certifications non-cancelable.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   browser-cert:
     name: Real Chrome patient surfaces mobile + desktop
@@ -49,6 +55,7 @@ jobs:
       matrix:
         include:
           - { width: 390, height: 844, mobile: true }
+          - { width: 430, height: 932, mobile: true }
           - { width: 768, height: 1024, mobile: false }
           - { width: 1280, height: 900, mobile: false }
 
@@ -162,43 +169,72 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
+          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders notifications notifications-ar)
           viewports=("${{ matrix.width }} ${{ matrix.height }} ${{ matrix.mobile }}")
 
           for viewport in "${viewports[@]}"; do
             read -r width height mobile <<< "$viewport"
             for surface in "${surfaces[@]}"; do
               target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-${width}x${height}.png"
-              profile_dir="$(mktemp -d)"
-              "$CHROME" \
-                --headless=new \
-                --no-sandbox \
-                --disable-dev-shm-usage \
-                --enable-unsafe-swiftshader \
-                --hide-scrollbars \
-                --remote-allow-origins='*' \
-                --remote-debugging-port=9222 \
-                --user-data-dir="$profile_dir" \
-                --window-size=${width},${height} \
-                "http://127.0.0.1:7358/?surface=${surface}" \
-                >/tmp/iamina-chrome-${surface}-${width}x${height}.log 2>&1 &
-              CHROME_PID=$!
-
+              # Only D2 RTL capture selects Arabic; all existing surfaces stay FR.
+              browser_url="http://127.0.0.1:7358/?surface=${surface}"
+              if [ "$surface" = "notifications" ]; then
+                browser_url="http://127.0.0.1:7358/?surface=notifications&locale=fr&seed=0"
+              elif [ "$surface" = "notifications-ar" ]; then
+                browser_url="http://127.0.0.1:7358/?surface=notifications&locale=ar&seed=0"
+              fi
+              # On GitHub runners Chromium can fail to expose DevTools during
+              # cold startup. Retry with a fresh profile, never skip a screenshot.
+              # The full surface set, including D2 FR+AR, is always captured.
               DEVTOOLS=0
-              for _ in $(seq 1 30); do
-                if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
-                  DEVTOOLS=1
+              for launch_attempt in 1 2 3; do
+                profile_dir="$(mktemp -d)"
+                chrome_log="/tmp/iamina-chrome-${surface}-${width}x${height}-try${launch_attempt}.log"
+                "$CHROME" \
+                  --headless=new \
+                  --no-sandbox \
+                  --disable-dev-shm-usage \
+                  --disable-background-networking \
+                  --disable-extensions \
+                  --no-first-run \
+                  --no-default-browser-check \
+                  --enable-unsafe-swiftshader \
+                  --hide-scrollbars \
+                  --remote-allow-origins='*' \
+                  --remote-debugging-port=9222 \
+                  --user-data-dir="$profile_dir" \
+                  --window-size=${width},${height} \
+                  "$browser_url" \
+                  >"$chrome_log" 2>&1 &
+                CHROME_PID=$!
+
+                for _ in $(seq 1 45); do
+                  if curl -fsS --connect-timeout 1 --max-time 2 http://127.0.0.1:9222/json/list >/dev/null 2>&1; then
+                    DEVTOOLS=1
+                    break
+                  fi
+                  if ! kill -0 "$CHROME_PID" 2>/dev/null; then
+                    break
+                  fi
+                  sleep 1
+                done
+                if [ "$DEVTOOLS" = "1" ]; then
                   break
                 fi
-                sleep 1
+
+                echo "Chrome DevTools unavailable for ${surface} ${width}x${height} (launch ${launch_attempt}/3)" >&2
+                tail -n 35 "$chrome_log" >&2 || true
+                cleanup_chrome "$CHROME_PID" "$profile_dir"
               done
               if [ "$DEVTOOLS" != "1" ]; then
-                cat "/tmp/iamina-chrome-${surface}-${width}x${height}.log" >&2 || true
-                cleanup_chrome "$CHROME_PID" "$profile_dir"
+                echo "FAIL: real browser capture unavailable after 3 launches (${surface} ${width}x${height})" >&2
                 exit 1
               fi
 
-              python3 /tmp/capture_cdp.py "$target" "$width" "$height" "$mobile"
+              if ! python3 /tmp/capture_cdp.py "$target" "$width" "$height" "$mobile"; then
+                cleanup_chrome "$CHROME_PID" "$profile_dir"
+                exit 1
+              fi
               cleanup_chrome "$CHROME_PID" "$profile_dir"
 
               test -s "$target"

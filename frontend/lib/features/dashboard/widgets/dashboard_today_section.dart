@@ -38,14 +38,26 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
   late final CompanionService _service = widget.service ?? CompanionService();
   late Future<CompanionOverview?> _overviewFuture;
 
+  // D22 Gate A: a numeric target or legacy profile is not clinical authority.
+  // Do not even initiate a personalized companion request until Gate B.
+  bool get _d22OverviewAuthorized => false;
+
+  Future<CompanionOverview?> _loadAuthorizedOverview() {
+    if (!_d22OverviewAuthorized || !widget.targetConfigured) {
+      return Future<CompanionOverview?>.value(null);
+    }
+    return _service.fetchOverview();
+  }
+
   @override
   void initState() {
     super.initState();
-    _overviewFuture = _service.fetchOverview();
+    _overviewFuture = _loadAuthorizedOverview();
   }
 
   void _reload() {
-    setState(() => _overviewFuture = _service.fetchOverview());
+    if (!_d22OverviewAuthorized || !widget.targetConfigured) return;
+    setState(() => _overviewFuture = _loadAuthorizedOverview());
   }
 
   @override
@@ -80,21 +92,32 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
               ),
             ),
             const SizedBox(height: 10),
+            if (!widget.targetConfigured)
+              _TodayStateStrip(
+                icon: Icons.info_outline_rounded,
+                text: _todayActionCopy(
+                  context,
+                  fr: 'Objectifs glycémiques non vérifiés.',
+                  en: 'Glucose targets unverified.',
+                  ar: 'أهداف سكر الدم غير مؤكدة.',
+                ),
+              ),
             if (signals.isNotEmpty)
               ...signals.map((signal) => _TodaySignalCard(signal: signal)),
-            if (loading)
+            if (_d22OverviewAuthorized && widget.targetConfigured && loading)
               _TodayStateStrip(
                 loading: true,
                 text: l10n.dashboardTodayLoading,
               )
-            else if (unavailable)
+            else if (_d22OverviewAuthorized && widget.targetConfigured && unavailable)
               _TodayStateStrip(
                 icon: Icons.cloud_off_outlined,
                 text: l10n.dashboardTodayUnavailable,
                 actionLabel: l10n.dashboardRetry,
                 onAction: _reload,
               )
-            else if (signals.isEmpty && snapshot.data != null)
+            else if (_d22OverviewAuthorized && widget.targetConfigured &&
+                signals.isEmpty && snapshot.data != null)
               _TodaySignalCard(
                 signal: _TodaySignal(
                   icon: Icons.check_circle_outline_rounded,
@@ -103,8 +126,6 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
                   onTap: () => context.go('/companion'),
                 ),
               ),
-            const SizedBox(height: 2),
-            const _SecondaryActions(),
             const SizedBox(height: 10),
             const _TrustStrip(),
           ],
@@ -119,15 +140,9 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
   ) {
     final signals = <_TodaySignal>[];
 
-    if (!widget.targetConfigured) {
-      signals.add(
-        _TodaySignal(
-          icon: Icons.tune_rounded,
-          title: l10n.dashboardConfigureTargetSignal,
-          actionLabel: l10n.dashboardConfigureTargetAction,
-          onTap: () => context.go('/profile'),
-        ),
-      );
+    if (!_d22OverviewAuthorized || !widget.targetConfigured) {
+      // Suppress any target-based suggestions until a trusted goal exists.
+      return signals;
     }
 
     if (overview != null) {
@@ -293,30 +308,6 @@ class _TodayStateStrip extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _SecondaryActions extends StatelessWidget {
-  const _SecondaryActions();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        key: const ValueKey('dashboard-secondary-companion'),
-        onPressed: () => context.go('/companion/chat'),
-        icon: const Icon(Icons.auto_awesome_rounded, size: 17),
-        label: Text(
-          _todayActionCopy(
-            context,
-            fr: 'Parler avec IAmina',
-            en: 'Ask IAmina',
-            ar: 'تحدث مع IAmina',
-          ),
-        ),
       ),
     );
   }

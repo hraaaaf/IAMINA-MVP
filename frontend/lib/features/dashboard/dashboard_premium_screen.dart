@@ -9,6 +9,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
+import 'widgets/dashboard_my_reminders_card.dart';
 import 'widgets/dashboard_responsive_sections.dart';
 import 'widgets/dashboard_today_section.dart';
 
@@ -89,8 +90,9 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow;
-        final high = profile?.targetRangeHigh;
+        // v12 numeric bounds do not establish patient target authority.
+        const double? low = null;
+        const double? high = null;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),
@@ -214,7 +216,7 @@ class _DashboardBody extends StatelessWidget {
                       ),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
-                          const _PremiumBrandHeader(),
+                          const PremiumDashboardBrandHeader(),
                           const SizedBox(height: 22),
                           Text(
                             _t(context, 'Bonjour', 'Welcome back', 'مرحباً'),
@@ -334,64 +336,58 @@ class _DataTools extends StatelessWidget {
   }
 }
 
-class _PremiumBrandHeader extends StatelessWidget {
-  const _PremiumBrandHeader();
+/// The real dashboard brand header and D2 bell; testable without patient data.
+class PremiumDashboardBrandHeader extends StatelessWidget {
+  const PremiumDashboardBrandHeader();
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 72,
-          height: 72,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .86),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withValues(alpha: .95)),
-            boxShadow: AminaVisualLanguage.cardShadowLight,
-          ),
-          child: Image.asset(
-            'assets/images/logo_amina.png',
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'IAmina',
-                style: TextStyle(
-                  fontSize: 22,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -.6,
-                  color: AminaVisualLanguage.primaryText(context),
+              Semantics(
+                label: 'IAMINA',
+                image: true,
+                child: Image.asset(
+                  'assets/images/iamina_logo_horizontal.png',
+                  width: 198,
+                  height: 52,
+                  alignment: AlignmentDirectional.centerStart,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  color: AminaTheme.isDark(context) ? Colors.white : null,
+                  colorBlendMode: BlendMode.srcIn,
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(
-                _t(
-                  context,
-                  'Votre compagnon du diabète',
-                  'Your diabetes companion',
-                  'رفيقك لمرض السكري',
-                ),
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: AminaVisualLanguage.secondary(context),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 53),
+                child: Text(
+                  _t(
+                    context,
+                    'Votre compagnon du diabète',
+                    'Your diabetes companion',
+                    'رفيقك لمرض السكري',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
                 ),
               ),
             ],
           ),
         ),
         IconButton(
-          key: const ValueKey('dashboard-reminders-action'),
-          onPressed: () => context.go('/reminders'),
+          key: const ValueKey('dashboard-notifications-action'),
+          tooltip: _t(context, 'Notifications', 'Notifications', 'الإشعارات'),
+          onPressed: () => context.go('/notifications'),
           icon: const Icon(Icons.notifications_none_rounded),
           style: IconButton.styleFrom(
             minimumSize: const Size(48, 48),
@@ -485,7 +481,8 @@ class _LatestReadingCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              Flexible(
+                child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
@@ -511,6 +508,7 @@ class _LatestReadingCard extends StatelessWidget {
                     color: statusForeground,
                   ),
                 ),
+              ),
               ),
             ],
           ),
@@ -700,7 +698,7 @@ class _PremiumState extends StatelessWidget {
               padding: const EdgeInsets.all(22),
               child: Column(
                 children: [
-                  const _PremiumBrandHeader(),
+                  const PremiumDashboardBrandHeader(),
                   const Spacer(),
                   Container(
                     width: double.infinity,
@@ -781,7 +779,7 @@ class _EmptyPremiumDashboard extends StatelessWidget {
                   padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 128),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      const _PremiumBrandHeader(),
+                      const PremiumDashboardBrandHeader(),
                       const SizedBox(height: 28),
                       Text(
                         _t(
@@ -950,6 +948,8 @@ class _EmptyPremiumDashboard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 20),
+                      const DashboardMyRemindersCard(),
                     ]),
                   ),
                 ),

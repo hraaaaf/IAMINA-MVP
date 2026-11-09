@@ -19,6 +19,9 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
     required this.high,
   });
 
+  // Gate B must provide independently verified provenance before enabling this.
+  bool get _d22HasVerifiedTargetAuthority => false;
+
   DateTime _recordedAt(LogEntryData log) => log.loggedAt ?? log.createdAt;
 
   String _displayValue(double mgDl) => unit == 'mmol/L'
@@ -39,7 +42,8 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final start = today.subtract(const Duration(days: 6));
-    final targetConfigured = low != null && high != null && low! < high!;
+    // A naked numeric pair is not an authorized patient target.
+    final targetConfigured = _d22HasVerifiedTargetAuthority;
 
     return StreamBuilder<List<LogEntryData>>(
       stream: db.watchDashboardTrendLogs(start, now),

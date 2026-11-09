@@ -111,7 +111,7 @@ class AminaMobilePageHeader extends StatelessWidget {
                 boxShadow: AminaVisualLanguage.cardShadowLight,
               ),
               child: Image.asset(
-                'assets/images/logo_amina.png',
+                'assets/images/iamina_logo_mark.png',
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
               ),

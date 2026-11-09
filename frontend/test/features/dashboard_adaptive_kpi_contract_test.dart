@@ -22,7 +22,7 @@ void main() {
     expect(source, isNot(contains('250.0')));
   });
 
-  test('Personal-target count is explicit and never presented as time in range', () {
+  test('Unverified numeric targets never authorize an in-range count', () {
     final source = File(
       'lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart',
     ).readAsStringSync();
@@ -30,9 +30,9 @@ void main() {
       'lib/core/localization/dashboard_kpi_localized_copy.dart',
     ).readAsStringSync();
 
-    expect(source, contains('final targetConfigured = low != null && high != null'));
-    expect(source, contains('log.bloodSugar >= low!'));
-    expect(source, contains('log.bloodSugar <= high!'));
+    expect(source, contains('bool get _d22HasVerifiedTargetAuthority => false;'));
+    expect(source, contains('final targetConfigured = _d22HasVerifiedTargetAuthority;'));
+    expect(source, isNot(contains('final targetConfigured = low != null')));
     expect(source, contains("value: targetConfigured ? '\$readingsInTarget/\$count' : '—'"));
     expect(copy, contains('dashboardKpiNotTimeInRange'));
     expect(copy, contains('pas du temps dans la cible'));
@@ -79,6 +79,13 @@ void main() {
     expect(responsive, contains('DashboardTrendSection('));
     expect(responsive, isNot(contains('DashboardAdaptiveKpiSection(')));
     expect(responsive, contains('DashboardInsightSection('));
-    expect(responsive, contains('DashboardNextActionSection('));
+    // D3 replaces the non-clinical Next Action block with genuine local
+    // reminders; clinical Trend/Insight and KPI non-duplication remain.
+    expect(responsive, contains('DashboardMyRemindersCard()'));
+    expect(responsive, isNot(contains('DashboardNextActionSection(')));
+    expect(
+      responsive.indexOf('DashboardMyRemindersCard()'),
+      greaterThan(responsive.indexOf('DashboardTrendSection(')),
+    );
   });
 }

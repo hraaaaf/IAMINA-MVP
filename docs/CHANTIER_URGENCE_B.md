@@ -1,0 +1,207 @@
+# IAMINA — CHANTIER D’URGENCE B — Reprise canonique Web/PWA
+
+**Autorité d'exécution :** [Notion — Chantier d'urgence B, décisions dépendantes](https://app.notion.com/p/40777c66336281729c03c9bb294e71b7) ; [Chantier A, décisions autonomes](https://app.notion.com/p/40777c6633628173b672cd02104a0003) est exécuté séparément. [Tri D1–D30](https://app.notion.com/p/40777c6633628177b325d3cb5412fc18) est un registre de distribution. **Décision explicite du propriétaire le 29/10/2026 : A et B, et non `docs/ROADMAP.md` / W00–W14, dictent désormais l'ordre.** Conserver l'ancien fichier comme historique technique ; il ne justifie aucun changement de priorité dans B. Ce Markdown est un **miroir/handover B**, non une troisième roadmap.
+
+**Dépôt :** `hraaaaf/IAMINA-MVP`. **Base de l'audit D8 :** `main@9ba0f737e184e1c65ca83a4db14b3b22f220c0ae` (29/10/2026). **Cible exclusive :** Flutter Web/PWA. **Aucun déploiement Vercel** sans autorisation explicite.
+
+## 04/11/2026 — RELEASE D8 WEB PRODUCTION — STATUT ACTUEL
+
+**Goal D8 ratifié :** aucun défaut pays/IP. Le premier onboarding Web demande explicitement au patient de choisir `mg/dL` ou `mmol/L`; profil existant non écrasé, mesures/targets historiques non convertis. Cette décision **remplace** l'idée initiale « suggestion selon pays » présentée dans les anciens audits ci-dessous. **g/L et calculs médicaux D32 hors scope.**
+
+**Preuves :** [PR #1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269) squash MERGED `main@92f61c34522950c62f90c82dbcbc522c9cdd9c4a`; exact PR HEAD 9/9 SUCCESS, postmerge [CI #41837872070](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41837872070) + 2 UI 3/3 SUCCESS (971 tests Flutter PASS, 7 SKIPPED sur SHA runtime) ; Preview Safari iPhone **5/5 OK déclaré par le propriétaire** ; Vercel `iamina-review`, deployment production **`dpl_CkvF3r9mUMvZe6Mpwp4e5grRoZ7c`** READY, Git SHA `92f61c34`, alias [iamina-review.vercel.app](https://iamina-review.vercel.app) vérifié attaché à ce déploiement et 4 assets PWA HTTP 200. Le backend `iamina-certified` est inchangé.
+
+**Canonique D8 détaillé :** [`docs/assessments/2026-11-04-d8-web-explicit-unit-first-use.md`](assessments/2026-11-04-d8-web-explicit-unit-first-use.md). Anciennes sections de ce miroir conservées comme historique daté ; toute mention `D8 OPEN` / `mapping pays→unité` antérieure à ce closeout ne représente pas la décision approuvée. **Chantier B livré borné : 3/17 ≈17,6 %** après D8, sans certifier D22 ni D32. **Next :** revoir ordre / gates du prochain lot dans Notion B avant de reprendre D10.
+
+## Périmètre / ordre strict B (17 décisions)
+
+1. **D7** — Type de diabète et traitements modifiables
+2. **D22** — Unité avant objectifs glycémiques
+3. **D8** — Unité de glycémie **choisie explicitement** par le patient ; aucune suggestion ni présélection pays/IP (**D8 Web LIVRÉE le 04/11/2026**)
+4. **D10** — Récupération et verrouillage facultatif
+5. **D9** — Retour patient existant sans onboarding imposé
+6. **D24** — Désactivation IA effective côté API
+7. **D26** — Confidentialité, déconnexion, suppression
+8. **D28** — Intelligence déterministe gouvernée
+9. **D2** — Notifications intelligentes consenties
+10. **D4** — Rapports PDF/CSV/XLSX
+11. **D14** — Photo repas : suggestion IA incertaine et validation patient
+12. **D15** — Brouillon repas multimodal unique
+13. **D20** — Tendances pondérales et alertes descriptives optionnelles
+14. **D23** — Paramètres Application et IAmina centralisés
+15. **D29** — Retour de première utilisation facultatif
+16. **D1** — CGM sans Nightscout obligatoire
+17. **D25** — Données/appareils : connexion et révocation
+
+**Ne jamais emprunter D16/W03 ni les autres décisions du chantier A.** Le travail sur A (D30, D19, D5, D16…) est hors de notre propriété d'exécution ; son code/CI peut être consulté uniquement pour vérifier les dépendances de B. Un seul lot produit actif par chantier ; audit/preflight d'une décision future permis, **pas de fermeture hors ordre**.
+
+## État vérifié, sans confusion des sous-lots
+
+| Décision B | Statut précis | Dépendance / preuve | Next |
+| --- | --- | --- | --- |
+| **D7** | **OPEN / FUE_NO_GO** ; tests limités et documentation fusionnés, pas D7 produit | [#1164](https://github.com/hraaaaf/IAMINA-MVP/pull/1164), [#1172](https://github.com/hraaaaf/IAMINA-MVP/pull/1172) ; verdict D30 du chantier A et FUE patients/profils encore à vérifier | Après clôture D30, prouver les parcours réels D7 Web (types, traitements, persistance, FR/AR RTL, A/B, offline) |
+| **D22** | **OPEN / FUE_NO_GO** ; préflight uniquement terminé | [#1173](https://github.com/hraaaaf/IAMINA-MVP/pull/1173), [#1174](https://github.com/hraaaaf/IAMINA-MVP/pull/1174), [#1175](https://github.com/hraaaaf/IAMINA-MVP/pull/1175) : préflight tests/docs fusionnés et exact-SHA CI/postmerge verts, **sans correctif produit** ; D19 clinique [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) sous autorité A, décisions G1–G7 sans approbation | Contrat clinique et privacy/RTL validés, puis correction Web des unités/objectifs avec FUE complète |
+| **D8** | **WEB PROD LIVRÉE (04/11/2026)** ; politique approuvée différente de l'audit historique | [PR #1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269) MERGED, `main@92f61c34`, [CI #41837872070](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/41837872070) + UI postmerge **3/3 SUCCESS**, Preview Safari utilisateur **5/5 OK**, Vercel `dpl_CkvF3r9mUMvZe6Mpwp4e5grRoZ7c` READY, domaine `iamina-review.vercel.app` pointant vers ce déploiement, 4 assets PWA HTTP 200 | D8 clôturée Web borné ; conventions `g/L`, objectifs/conversions cliniques D32 hors-scope ; passer à la prochaine décision selon ordre Notion B |
+| **D10…D25** | Non examinées dans ce sous-lot | Respecter l'ordre et les dépendances propres détaillées dans Notion B | Auditer à tour de rôle après gates, sans anticipation de clôture |
+
+**Événement externe observé :** PR D30 [#1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169) du chantier A **MERGED** à `main@9ba0f737e184e1c65ca83a4db14b3b22f220c0ae`. **Cela ne prouve pas que D30 est complètement certifiée** (postmerge, sécurité/privacy, FUE et statuts canoniques doivent être contrôlés par A). Aucune mutation D30 par le chantier B.
+
+## D8 — préflight source statique, sans implementation
+
+**Goal D8 fonctionnel (ultérieur) :** après D5 + D22, suggérer au besoin une unité de glycémie en fonction du pays **explicitement choisi**, selon une convention documentée/validée, tout en laissant chaque personne choisir et changer librement l'unité. **Le pays n'est ni une ordonnance, ni une géolocalisation vérifiée, ni un fuseau horaire implicite.**
+
+**Source sur main `9ba0f737` :**
+
+| Source | Constat dans code principal | Conséquence |
+| --- | --- | --- |
+| `frontend/lib/features/auth/onboarding_chat_screen.dart` | `String _unit = 'mg/dL'`, indépendamment de `_country` ; deux choix UI `mg/dL`/`mmol/L` ; la sélection `_unit` reste explicite et éditable | **Aucune suggestion conditionnelle pays→unité prouvée** ; le défaut de valeur de départ universelle doit être étudié avant un changement |
+| Même écran `didChangeDependencies` | En mode `preferencesOnly`, relit `profile?.unitPreference` et le pays local connu ; IP peut seulement suggérer le pays non encore touché | Une suggestion D8 ne doit **jamais écraser une préférence persistée** |
+| Même écran `_finish()` | Enregistre séparément `country: _country!` et `unitPreference: _unit` ; les bornes `targetRangeLow:70` et `targetRangeHigh:180` sont toujours écrites, quelle que soit l'unité | **GATE D22 obligatoire** : ne pas introduire de conversion ou objectif implicite |
+| `frontend/lib/services/locale_preference_service.dart` | `suggestCountryFromIp()` est faillible et ne persiste pas le pays ; `setExperience` vérifie le code ISO choisi et le stocke explicitement ; pas de politique pays→unité dans ce service | Séparer géo-IP indicative, choix de pays D5, préférence unité D8 ; ne pas dépendre du réseau |
+| `frontend/lib/services/country_choices.dart` | Liste ISO hors-ligne de pays/territoires ; pas de matrice d'unité clinique approuvée | Ne pas supposer `MA=mg/dL` ou `FR=mmol/L` |
+| Tests actuels `onboarding_ip_country_test.dart`, `onboarding_explicit_country_boundary_test.dart` | 249 entrées ISO attendues ; échec de pays `OTHER` et `ZZ` ; langue seule n'écrit jamais un pays ; choix explicite de pays conservé | Tests D5 existants utiles mais **ne sont pas une validation de suggestion D8** |
+
+**Choix non autorisés :** inventer une table `MA/FR/autres → unité` fondée sur la langue ou l'adresse IP, déduire la cible clinique, changer les seuils ou interpréter les valeurs legacy sans provenance, activer `g/L` sans contrat complet, auto-écraser une sélection ancienne. Voir [#964](https://github.com/hraaaaf/IAMINA-MVP/issues/964) : la France utilise également le g/L dans certaines pratiques ; la conformité d'une suggestion locale précise demande une validation. Le mapping D8 est donc **PENDING** et n'est pas inclus dans cette PR.
+
+### Tests de réception D8 à exécuter ultérieurement
+
+| Cas | Attendu | Statut |
+| --- | --- | --- |
+| Pays réellement choisi, policy approuvée disponible | Suggestion libellée comme suggestion, deux unités manuellement sélectionnables | NOT_RUN |
+| Pays inconnu / IP non disponible / politique absente | Aucune suggestion mensongère ; choix utilisateur disponible | NOT_RUN |
+| Pays modifié après une sélection manuelle | Préférence explicite jamais effacée ni remplacée à l'insu du patient | NOT_RUN |
+| Ancien compte / profil déjà configuré | Préférence persistée conservée ; aucune réinterprétation des objectifs/mesures | NOT_RUN |
+| Objectifs hérités sans unité/provenance | Pas de classification ou conversion clinique par simple convention pays | NOT_RUN |
+| FR/AR RTL, clavier et mobiles/tablettes/desktop | BEFORE → Goal → mockup → AFTER mêmes viewports 390×844, 768×1024, 1280×900 ; navigation, offline/reload, isolation A→B | NOT_RUN |
+| Home/Reports/IAmina/exports et synchronisation | Même unité affichée sans altérer quantité/source ni introduire d'effective target | NOT_RUN |
+
+**Human gates :** D5 contrat pays réellement sélectionné, D19/D22 contrat clinique des cibles/calculs approuvé, politique de suggestion par pays sourcée et validée par les spécialistes compétents, privacy/FR-AR-RTL ; FUE produit complète, CI exact HEAD, merge/postmerge. **Aucune FUE D8 exécutée par ce preflight.**
+
+## Closeout et continuité
+
+- **Sous-lot actuel :** cadrage de priorité B et audit D8 **documentation uniquement**, pas de code clinique ni UI, DB ou Vercel. [PR #1176](https://github.com/hraaaaf/IAMINA-MVP/pull/1176) **MERGED** par squash `main@4c91748c2f09a2f0c3836a85e786297dba35dcf3`. Diff : **1 Markdown ajouté**, aucun fichier runtime/CI/schéma/API modifié. Prémerge exact HEAD `dcd7fc143b13ce3d1c55c7851737ed91cb139abf` : [CI #40852496845](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852496845) **SUCCESS**. Postmerge sur le SHA exact : [CI #40852619779](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40852619779) **SUCCESS** (scope et secret verts ; tests frontend/backend volontairement SKIPPED, car documentation uniquement). `main` a été vérifiée sur le SHA du merge. Aucun Vercel : `vercel.json` `git.deploymentEnabled=false` relu.
+- **Revue critique bornée :** la distribution A/B concorde avec les deux pages Notion ; l'ancienne roadmap est gardée en archive, non supprimée ; la preuve D8 est statique et non un contrat de suggestion, une FUE ou une approbation clinique. L'analyse n'est pas une revue de sécurité/clinique indépendante. Succès observable : provenance des 17 décisions B et audit D8 traçables, CI pré/post exactes vertes, aucune mutation produit. Le sous-lot **documentaire** peut être clos ; **D7, D22 et D8 restent OPEN/FUE_NO_GO ou NOT_RUN** sans transfert de score ou de certification.
+- **Next exact :** vérifier le closeout D30 du chantier A, sans intervenir sur A. Dès preuve des gates A, reprendre **D7** avec FUE Web ; **D22** seulement après les signatures cliniques D19, puis **D8** après D5 et D22. Si ces gates restent ouverts, continuer seulement une préparation B indépendante et non une implémentation clinique.
+- **Verdict décisions B :** aucune fermeture produit D7/D22/D8 revendiquée par le présent fichier. Aucun pourcentage chantier calculé sans périmètre prouvé. Aucun Vercel sans accord explicite.
+
+
+## 29/10/2026 — D7 : régressions Web réelles vs certification clinique (post-D30)
+
+**Goal D7 :** le patient peut modifier son type de diabète et déclarer librement les traitements **qu'il suit déjà** ; ces modifications appartiennent exclusivement au coffre du patient, persistent, n'infèrent jamais un traitement et ne sont jamais annoncées comme synchronisées sans accusé validé.
+
+**D30/A :** [#1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169) fusionnée, closeout Web du choix compte/verrou facultatifs documenté dans `docs/assessments/2026-10-29-d30-web-local-first-candidate.md` ; ne pas extrapoler au gate clinique ou à l'isolation clinique complète. Le chantier B n'a pas modifié A.
+
+| Preuve D7 Web | SHA / CI exacte | Conclusion bornée |
+| --- | --- | --- |
+| [PR #1179](https://github.com/hraaaaf/IAMINA-MVP/pull/1179) **MERGED** | Prémerge `f2abbddb392c97c59ccee430b9c7a6432c4e6a15` : [Chrome widget #40854287805](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40854287805) **SUCCESS**, [Flutter analyze + tests + build PWA #40854287690](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40854287690) **SUCCESS**, [E2E pilote #40854287644](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40854287644) **SUCCESS** ; squash `main@6c84447fa849af89e66b8f183bb02d8340924dca` | Test **synthetique** du sélecteur D7 type2→type1→unknown→gestational, 390×844 / 768×1024 / 1280×900, FR/EN/AR RTL ; aucun traitement déclaré ne change sans interaction. 2 nouveaux fichiers de test/workflow seulement |
+| #1179 postmerge | [E2E #40855016788](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40855016788) **SUCCESS** sur `6c84447f` ; [CI générale #40855016852](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40855016852) **CANCELLED** après nouveau commit main | Ne **pas** compter CI cancelled comme verte |
+| [PR #1180](https://github.com/hraaaaf/IAMINA-MVP/pull/1180) **MERGED** | Prémerge `676a71e86d38671e8d0d4b7d5344ba63945cdf19` : [CI #40855399739](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40855399739) **SUCCESS**, [E2E #40855399717](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40855399717) **SUCCESS** ; squash `main@8bd92d3276a3f1db898575504d8a1c17068519f2` | Nouveau **test Flutter widget intégrant ProfileScreen** : changement de type synthétique et sauvegarde du profil 734, traitements préservés, une autre ligne profil 812 non modifiée, fermeture/réouverture écran, puis `none_declared` écrit après choix explicite en état `pending`. Un fichier de test seulement |
+| #1180 postmerge | [CI #40856299121](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40856299121), [E2E #40856299440](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40856299440) | **COMPLETED/SUCCESS les deux au SHA exact `8bd92d3276a3f1db898575504d8a1c17068519f2`**. Sous-lot test-only #1180 : merge + postmerge vérifiés ; D7 produit toujours ouverte. |
+| [PR #1182](https://github.com/hraaaaf/IAMINA-MVP/pull/1182) **MERGED** | Source `c94c0e18e21373984d2668693c61f884ecaf0c0c` : [Chrome IndexedDB #40857425023](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40857425023) **SUCCESS** et [CI Flutter/tests/PWA #40857425106](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40857425106) **SUCCESS** ; merge exact `main@563788f58d62dcadef89b12017376de18843c2b7` | 3 fichiers de **harness synthétique CI-only**. Coffres physiques IndexedDB A/B distincts ; permutation de comptes et retour, hard reload ; type2→type1 n'altère pas les traitements d'A ; B passe à `none_declared` par action explicite uniquement ; `sync_status=pending` et `patient_declared` contrôlés. **Ni authentification ni FUE UI patient prouvées.** |
+| #1182 postmerge | [CI #40858356581](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40858356581) | **COMPLETED/SUCCESS sur le SHA exact `563788f58d62dcadef89b12017376de18843c2b7`**. Sous-lot de tests Chrome/IndexedDB clôturé techniquement, **D7 produit toujours OPEN/FUE_NO_GO**. |
+
+**Sécurité des conclusions :** le test #1180 utilise des coffres/records synthétiques et `NativeDatabase.memory()` ; le Chrome #1179 vérifie le widget/renderer sans coffre persistant ni authentification. Le #1182 apporte **en complément une vraie preuve Chrome/IndexedDB synthétique**, mais son application/entrée de test n'est **pas** le parcours utilisateur produit, ne se connecte pas à une identité Django, n'exerce pas le consentement patient ni le login hébergé, ne démontre pas le zéro egress en session ni la sécurité clinique. Les preuves ne sont **pas** une FUE D7 complète. Aucun nouveau traitement, posologie, unité ou objectif clinique n'a été mis en production par ces PR ; pas de changements de code produit ni Vercel.
+
+### D7 — critères de clôture produit encore **NOT_RUN** / NON CERTIFIÉS
+
+1. **FUE Chrome intégrée adaptée à D7** : commencer depuis l'état réellement pertinent (Profil existant ou nouvel arrivant **si l'onboarding est dans le périmètre modifié**), éditer le type déclaré et les traitements, enregistrer, quitter/revenir, recharger et vérifier la conservation des déclarations. FR/AR RTL et 390×844 / 768×1024 / 1280×900 **sur les écrans concernés** ; affichage, clavier et choix accessibles. Captures BEFORE/AFTER aux mêmes états/viewports si UI modifiée. **Aucun onboarding ni scénario de permutation de comptes systématique**.
+2. **Persistance navigateur/offline** : fermer/recharger le navigateur, vérifier `PatientTreatmentDeclarationStore` et le type dans le même coffre IndexedDB réel, sans code/heure/valeur imputée à tort ; traitement `not_answered` / `unsure` / `none_declared` distinct.
+3. **Isolation et gestion de session (contrôle sécurité lié au risque, pas étape FUE universelle)** : ne voir ni écrire les données d'un autre patient ; vérifier le refus sans identité/coffre et la protection epoch. **Le test de permutation de comptes** appartient notamment à W02 et peut servir de régression ciblée **si D7 modifie l'isolation, les sessions ou le stockage multi-propriétaires, ou si la preuve disponible ne couvre pas le risque**. Ne pas exiger ce parcours par défaut dans la recette fonctionnelle de changement de type/traitements ; conserver toute preuve de sécurité pertinente et son SHA.
+4. **Confidentialité / clinique** : prouver garde-fou egress des données déclarées en local-only, absence de confirmation serveur fictive ; avis qualifiés clinique, sécurité/privacy et libellés arabes natifs si nécessaire avant tout GO santé.
+5. **Revue et CI FUE exact SHA, fusion et postmerge** pour chaque lot ; résultat documenté, pas de verdict basé seulement sur le nombre de tests verts.
+
+**Verdict actuel : D7 OPEN / FUE_NO_GO ; sous-lots #1179, #1180 et #1182 test-only MERGED ; aucune fermeture de décision complète.** D22 OPEN/FUE_NO_GO dépend toujours de D19 (chantier A) et des décisions G1–G7. D8 OPEN dépend D5 (A) et D22 (B). **Next exact :** sous-lot #1182 techniquement clos avec CI pré/postmerge exact SHA SUCCESS. Compléter FUE **vraie application Web** avec comptes tests et environnements QA explicitement attestés, ou déclarer chaque gate inaccessible au lieu d'inventer un PASS ; revue clinique/privacy requise. Aucun Vercel sans autorisation et aucune intervention sur A.
+
+
+## 29/10/2026 — D7 Web : FUE réelle, verdict borné après postmerge #1182
+
+**Décision D7 : FUE_NO_GO / OPEN.** Les sous-lots test-only **#1179**, **#1180**, **#1182** sont **MERGED**, et leurs tests ciblés Chrome/Flutter/SQLite WASM/IndexedDB sont verts. [#1182 postmerge CI #40858356581](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40858356581) **SUCCESS sur `563788f58d62dcadef89b12017376de18843c2b7`** ; [closeout #1184](https://github.com/hraaaaf/IAMINA-MVP/pull/1184) **MERGED** `main@b30eb164099e83756c30bfae89a6fae8f4f04509`, [CI prémerge #40859289298](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40859289298) et [postmerge #40859345133](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40859345133) **SUCCESS** (docs-only).
+
+**Rapport FUE Web / matrice F01–F08 :** [`docs/assessments/2026-10-29-d7-web-fue-coverage-gate.md`](assessments/2026-10-29-d7-web-fue-coverage-gate.md). Ce rapport distingue chaque preuve synthétique du parcours authentifié hébergé **NOT_RUN**. Le SSO Vercel Preview est encore actif ; l'unique Preview QA W01+D2 observée, deployment `dpl_4o5sLYhZywjthETgPbmtAmbo6SNr` au SHA `8a417041...`, **ne correspond pas** au `main@b30eb164...` courant. La Preview contient 2 comptes fictifs et 2 profils confirmés par SQL SELECT **seulement**, aucune session QA A/B exécutée ni mot de passe inspecté.
+
+**BLOQUÉ HUMAN GATE :** accès privé SSO QA pour un navigateur autorisé **et** GO distinct Vercel Preview au SHA courant avant FUE hébergée certifiante ; ensuite préflight BFF/Neon 4/4, F01–F06 sur 390/768/1280 FR/AR, F07 sécurité/clinique/privacy, closeout F08. Sans ces gates, **ne pas déclarer la FUE terminée**. Ni déploiement Vercel, ni code runtime, ni mutation Neon lors de cette consolidation.
+
+
+### 29/10/2026 — FUE Web D7 : closeout CI documentaire #1186
+
+- [PR #1186](https://github.com/hraaaaf/IAMINA-MVP/pull/1186) **MERGED** `main@54bf418ec451dcd45a942bdacef23bba376148ea`, [CI prémerge #40860142061](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40860142061) **SUCCESS** sur `266e7811028ea2b569caad16879eb50fdb0d67a1` ; [CI postmerge #40860238260](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40860238260) **COMPLETED/SUCCESS** sur exact merge SHA. **Tests Flutter/build SKIPPED** par conception : deux Markdown seulement. Les tests du produit demeurent ceux des #1179/#1180/#1182 au SHA documenté.
+- **État de la vraie FUE Web hébergée : NON EXÉCUTÉE / NO-GO.** Uniquement la matrice de [preuves/gates F01–F08](assessments/2026-10-29-d7-web-fue-coverage-gate.md) a été fusionnée : Preview QA sous SSO au SHA ancien `8a417041...`, `main@54bf418e...` non déployé en Preview QA. Pas d'accès SSO automatisé qualifié, ni revue clinique/privacy. Aucune activation patient, aucun usage de mots de passe, aucun déploiement ou mutation DB.
+- **Next exact :** human gate explicite pour un accès navigateur privé SSO et un **GO Vercel Preview distinct au SHA exact** ; préflight BFF/Neon QA 4/4, puis F01–F06, F07 avis qualifié, F08 closeout et décision D7. Aucun % de FUE complet attribué.
+
+
+### 29/10/2026 — D7 Web, alternative Chrome gratuite : #1188 MERGED, postmerge à vérifier
+
+- **Décision :** remplacer la dépendance au crédit TinyFish pour les contrôles reproductibles du front Web par un banc GitHub Actions/Chrome headless, **sans paiement**. [PR #1188](https://github.com/hraaaaf/IAMINA-MVP/pull/1188) **MERGED**, squash `main@9862389939dd5fcdb80b428bdb5a1bb6751382e7`. Tests exact HEAD `ad93e0ce6833df4d65facdb76d976328e8d635dd` : [CI générale #40889058062](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40889058062) **SUCCESS** et [Chrome gratuit #40889058139](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40889058139) **SUCCESS**.
+- **Preuve limitée mais réelle :** `ProfileScreen` owner/save sur DB synthétique en mémoire, D7 sélecteur en vrai Chrome sur 3 viewports FR/EN/AR, compilation de l'application **Web réelle** locale et contrôle de l'amorçage Flutter, hard reload, maintien de la coquille déjà chargée lors de la déconnexion réseau. Un échec initial [#40882903610](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40882903610) venait d'un oracle de casse `IAMINA` contre `IAmina`; corrigé uniquement dans le script test puis contrôles verts sur nouveau HEAD. Le test offline ne certifie **pas** le redémarrage PWA hors ligne à froid.
+- **CI postmerge générale :** [#40889689991](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40889689991), `main@98623899`, **COMPLETED/SUCCESS sur le SHA exact `9862389939dd5fcdb80b428bdb5a1bb6751382e7`** ; lot technique #1188 clôturé, décision D7 réelle toujours OPEN/FUE_NO_GO.
+- **D7 reste OPEN / FUE_NO_GO** : ce lot CI gratuit ne remplace pas F01–F08 authentifiés dans la Preview réelle, l'isolation clinique serveur A/B, les contrôles privacy, la validation de consentement et les signatures qualifiées. Preview isolée READY au SHA précédent `a80bf804...` : une preuve sur ce site ne qualifie pas automatiquement le dernier `main`. Aucun déploiement Vercel/Production, aucun mot de passe patient ou écriture Neon dans #1188.
+- **Next exact :** valider CI et fusionner ce closeout documentaire, puis vérifier son postmerge ; en parallèle poursuivre D7 FUE Web avec vraie authentification A/B seulement sous mapping QA confirmé et environnement prévu, sans confondre banc local et recette hébergée.
+
+### 29/10/2026 — D7 Web : captures responsive du produit réel via Chrome gratuit #1190
+
+- **Goal :** vérifier gratuitement le rendu du vrai bundle Flutter Web à `390×844`, `768×1024`, `1280×900` et produire des PNG vérifiables dans GitHub Actions, sans navigateur payant et sans secrets QA.
+- **Résultat vérifié :** [PR #1190](https://github.com/hraaaaf/IAMINA-MVP/pull/1190) **MERGED** à `main@9054e14f6be11e916ec850799595df05d5e34676` ; HEAD `427b84b19dd5a4da180cf0a1742cec062fa9a011`. [Chrome #40895929763](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40895929763) **SUCCESS**, [CI #40895929677](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40895929677) **SUCCESS** sur exact source SHA. L'artefact `d7-free-web-app-smoke-evidence` ID `12907755708` existe (captures PNG et JSON), taille 376922 octets.
+- **Échec puis correction test-only :** premier Chrome [#40895391347](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40895391347) **FAIL** sur mauvaise signature PNG échappée ; correction en comparant aux octets de `bytes.fromhex("89504e470d0a1a0a")` ; second run vert. Aucun code produit modifié.
+- **Post-merge :** [CI #40896464898](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40896464898) sur `main@9054e14f6be11e916ec850799595df05d5e34676` **COMPLETED/SUCCESS sur SHA exact `9054e14f6be11e916ec850799595df05d5e34676`** ; sous-lot technique #1190 vérifié postmerge.
+- **Limites à respecter :** capture ≠ score visuel ni preuve d'absence de défaut graphique ; tests sur vrai frontend local, mais **aucune vraie authentification hébergée A/B, séquences patient F01–F08, contrôle privacy/clinique qualifié**. D7 reste **OPEN/FUE_NO_GO**. Aucun déploiement Vercel et aucune mutation Neon.
+- **Next exact :** valider la CI de cette PR docs, fusionner et contrôler son postmerge ; faire revue BEFORE/AFTER des captures si référence disponible, puis poursuivre Web FUE authentifié sur environnement QA isolé dans un banc gratuit à garanties appropriées ; ne pas assimiler preuve locale et recette hébergée.
+
+### 29/10/2026 — D7 Web : session A→B→déconnexion→A, Chrome gratuit + vrai contrôleur (PR #1192)
+
+- **Décision / Goal :** combler la lacune entre tests de coffres purs et vraie logique de retrait de session : exercer le vrai `PatientVaultSessionController`, le vrai `PatientVaultScope.nativeDjango`, le vrai `PatientTreatmentDeclarationStore` et Drift SQLite WASM/IndexedDB dans Chrome, en utilisant uniquement des identités synthétiques 734/812.
+- **Preuve test :** [Chrome #40901459053](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40901459053) **COMPLETED/SUCCESS** exact source HEAD `76bccea3a07dff3e51e8da5eab594dfa528880b8`, artefact `d7-controller-indexeddb-aba-synthetic` ID `12910026658`. Séquence seed A/B → verify A/B → type2→type1 en conservant traitement → verify après navigation → A→B→logout→A en même session → verify B/A → hard reload A. Vérification `sync_status=pending` sans faux ACK. Les identités B et A n'empruntent pas la même base physique.
+- **Sécurité et portée :** `FakePrincipal` **synthetique**, pas d'appel aux vrais `AuthService.signInWithEmail`, Django, API/Neon, ni vrai parcours `ProfileScreen` dans Chrome. Pas d'accès Vercel ou de secrets. **Ne pas** déclarer FUE hébergée ni certification clinique/privacy. D7 global **OPEN/FUE_NO_GO**.
+- [PR #1192](https://github.com/hraaaaf/IAMINA-MVP/pull/1192) **MERGED**, main `4605ac0d40f344e1d8986c72a25a2a05aa9048d5` ; [CI générale prémerge #40901459054](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40901459054) **SUCCESS** sur source SHA exact. [CI postmerge #40902295263](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40902295263) **COMPLETED/SUCCESS**, merge SHA exact `4605ac0d40f344e1d8986c72a25a2a05aa9048d5`.
+- **Next exact :** fusionner documentation après CI source puis vérifier son postmerge ; poursuivre prochain lot de vrai AuthService Django + Web Profil avec serveur synthétique local et tests sécurité/clinical gate.
+
+### 29/10/2026 — D7 Web : vraie authentification Django/PostgreSQL 16 en Chrome local gratuit (PR #1194)
+
+- **Décision / Goal :** prouver le flux natif authentifié en local CI avec le vrai `AuthService.signInWithEmail`, Django/PostgreSQL 16 jetable, le vrai `PatientVaultSessionController` et Drift SQLite/IndexedDB dans Chrome ; comptes A/B fictifs, mot de passe aléatoire masqué dans logs, zéro Neon et zéro Production.
+- **Preuve source :** [PR #1194](https://github.com/hraaaaf/IAMINA-MVP/pull/1194) au SHA `c0b1969c846c6888e174b843a02c7b1e0a403b06` ; [Chrome #40905311195](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40905311195) **SUCCESS** exact HEAD, dix phases sur dix ; contrôles backend auth, A/B, Type2→Type1 conservant les traitements, génération `pending`, logout, réouverture A et hard reload ; `external_http_hosts=[]` selon driver CDP. Artefact JSON borné `d7-real-native-django-pg16-chrome-synthetic` ID `12912005530`. Ne pas assimiler un run CI à un examen du contenu patient distant.
+- **Merge vérifié :** [CI générale prémerge #40905311044](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40905311044) **SUCCESS** au SHA source exact ; [PR #1194](https://github.com/hraaaaf/IAMINA-MVP/pull/1194) **MERGED** à `main@5f006bf40f3c92901963571db778e73f65ed5e3e`. [CI générale postmerge #40906393038](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/40906393038) **IN_PROGRESS au premier relevé**, verdict requis.
+- **Limites :** c'est le vrai AuthService dans **une application instrumentée CI-only** sur loopback, mais pas le vrai parcours UI `ProfileScreen` de la Preview Vercel, ni des comptes hébergés QA A/B. `frontend/vercel_build.sh` met `IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false` en Preview, masquant le login natif dans `LoginScreen`. Une correction du build Preview protégée et son déploiement demandent un gate Vercel séparé. Aucune signature sécurité, clinique, privacy qualifiée. **D7 global : OPEN / FUE_NO_GO.**
+- **Next exact :** vérifier postmerge #40906393038 puis clôture documentaire/Notion avec CI exacte → progression vers vrai `ProfileScreen`/sécurité, avant toute certification D7 Web.
+
+
+## 01/11/2026 — Release D7 #1212 prod (correctif sécurité, non-certification globale)
+
+**Décision / Goal :** à la demande explicite du propriétaire (« merge to main et deploy to prod »), livrer exclusivement le patch Web D7 qui impose le refus de consentement IA lorsque `AppLockService` est absent, sans modifier les données patients ni prétendre certifier tout D7.
+
+**Résultat produit vérifié :**
+- [PR #1212](https://github.com/hraaaaf/IAMINA-MVP/pull/1212) **MERGED squash** dans `main` : `d4fdf6d4b2046b0633ca77c7de80be4d3b53bb60`. Source `ConsentScreen` contient `lock == null || !lock.isUnlocked`; 2 fichiers Flutter modifiés, zéro migration/API.
+- GitHub PR HEAD `f776817d` : **8/8 workflows SUCCESS** (Flutter, local Web D7 FUE, auth/app-lock et visuels), test négatif explicite PASS ; backend et PostgreSQL SKIPPED par scope, pas crédités.
+- Vercel projet `iamina-review`, déploiement Production **`dpl_DyVNLd3dA4EuUk4aiYaX1HRGqhSz` READY**, source `main@d4fdf6d4`; alias `https://iamina-review.vercel.app` indépendamment vérifié affecté à ce déploiement. Vercel commit status success. Erreurs runtime agrégées récentes : aucune observée, trafic réel non prouvé. Smoke HTTP public externe non effectué à cause de contraintes réseau.
+- Rollback possible vers ancien déploiement `dpl_9LQqNzbj9RbN51cFLcajifxzq3dm` (référence uniquement, pas exécuté).
+- Fichier de preuve détaillée : [`docs/assessments/2026-10-31-d7-first-user-experience.md`](assessments/2026-10-31-d7-first-user-experience.md).
+
+**Niveau de décision B :** `D7_SECURITY_PATCH_RELEASED_TO_PRODUCTION=YES` ; `D7_GLOBAL_CERTIFIED=NO` et **B 0/17 décisions closes**. La confirmation utilisateur de recette iPhone (5/5 ancienne Preview) et son accord de release n'équivalent pas aux tests négatifs de session QA hébergés et à une relecture clinique/privacy qualifiée, ni à la FUE FR/AR et Perfection Pass complets.
+
+**Next exact / séquence :** collecter preuve applicative Production avec données fictives, finir QA hébergée A/B + erreur/retry/retrait avec preuve, FR/AR RTL et accessibilité aux trois viewports, revue de risque clinique/privacy, scoring exécution/adversarial, Perfection Pass sur le code livré, clôture D7 vérifiée ; puis D22 uniquement selon gates D19 G1–G7 de chantier A. Toute nouvelle modification clinique exige ses validations avant release.
+
+
+## 01/11/2026 — Owner acceptance D7 (1/17 operational) and D22 handoff
+
+**Décision de gouvernance explicite du propriétaire :** « Tout marche allez on valide 1/17 et on avance ! ». Le propriétaire confirme le parcours Web fonctionnel D7 après [patch #1212](https://github.com/hraaaaf/IAMINA-MVP/pull/1212) livré en Production `dpl_DyVNLd3dA4EuUk4aiYaX1HRGqhSz` / app SHA `d4fdf6d4b2046b0633ca77c7de80be4d3b53bb60`, avec validation manuelle antérieure 5/5 iPhone + retest ciblé déclaré réussi. Ceci **ouvre le compteur opérationnel** `1/17 DECISIONS OWNER_ACCEPTED` (= 5,88 %), **sans effacer les exigences de certification** : `0/17 D-CERTIFIED` jusqu'aux preuves hosted, FR/AR, clinical/privacy et Perfection Pass. Afficher impérativement les deux libellés distinctement ; ne jamais écrire `D7_GLOBAL_VERIFIED` sans preuves. Le code D7 livré reste en Production ; aucune promotion supplémentaire autorisée par ce statut.
+
+**Décision D22 — unité avant objectifs glycémiques / prochaine priorité B :** objectif exact = afficher la préférence d'unité avant toute présentation/saisie de cible, sans **inventer une cible individuelle**, classer avec une borne sans provenance ni réécrire le legacy. Le code actuel reste à risque : onboarding `_unit='mmol/L'` peut coexister avec sauvegarde inconditionnelle des nombres `70/180` ; profil présente `glucoseTarget` avant `measureUnit`, relit les bornes avec `toStringAsFixed(0)` et sauvegarde les nombres bruts, la colonne Drift n'a pas d'unité/provenance de quantité attachée. Le problème est une **ambiguïté source vérifiée**, non un préjudice patient prouvé.
+
+**Sous-lots indépendants exécutés :**
+- [PR #1211](https://github.com/hraaaaf/IAMINA-MVP/pull/1211), **MERGED squash** `main@c44233022bf7cafcc5ac1f746666ccef7fa923ed` : un test-only `frontend/test/core/utils/d22_target_authority_candidate_oracle_test.dart`, six oracles synthétiques (legacy inconnu, absence d'autorité dérivée d'une préférence, non-mutation de brut, unité inconnue, A/B, valeurs invalides). CI PR `#41261674295` **COMPLETED/SUCCESS** : Flutter analyze, tests, PWA build réussis ; backend PostgreSQL skipped. Ces tests définissent un **contrat candidat dans le fichier de test**, ils **ne prouvent pas que l'application respecte déjà D22**.
+- [PR #1210](https://github.com/hraaaaf/IAMINA-MVP/pull/1210), **MERGED squash** `main@df42460b1966125176a9ad3c6be216bc324fac0d` : enrichit `docs/assessments/2026-10-29-d22-web-unit-target-preflight.md` d'une référence wireframe FR/AR, garde de provenance, points de revue RTL/accessibilité et dossier G4 métrologique. CI PR `#41261901535` **COMPLETED/SUCCESS**, jobs Flutter/backend **SKIPPED** par scope documentaire.
+- Après fusion, compare `df42460b..main` = **identical** au premier contrôle. Seuls fichier test synthétique et Markdown ont changé, **aucune modification UI/Flutter runtime/DB/backend**, **aucun nouveau Vercel**. Les runs PR ne prouvent pas la CI postmerge sur les nouveaux SHAs (endpoint utilisé ne liste que `pull_request`).
+
+**Human gates D22 réellement non satisfaits :** [fiche D19→D22 G1–G7](assessments/2026-10-29-d19-d22-web-clinical-decision-gate.md) non signée ; [PR D19 #920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) `OPEN / DRAFT / mergeable=false` au contrôle. G1 représentation unité/source, G2 autorité des cibles, G3 legacy, G4 facteur/arrondi, G5 classification, G6 FR/AR et UX, G7 migration/privacy. **Ne pas fusionner 59 fichiers D19, ni modifier cibles/données patient sur une supposition.**
+
+**Statuts et Next exact :** `D7_OWNER_ACCEPTED=YES`, `D7_GLOBAL_CERTIFIED=NO`, `B_OWNER_ACCEPTED=1/17`, `B_FORMALLY_CERTIFIED=0/17` ; `D22_PREP_TESTS_DOCS=MERGED`, `D22_PRODUCT=BLOCKED_D19`, `D22_FUE=NOT_RUN`. Séquence critique : obtenir décisions qualifiées/traçables G1–G7 et signatures (clinique, data/privacy, FR/AR), THEN UI BEFORE 390/768/1280 → mockup confirmé → implémentation à valeurs typées/autorité documentée → AFTER mêmes états, test négatif legacy + FUE Web FR/AR/a11y, score + Perfection Pass → merge seulement après CI/verdict, déploiement Vercel seulement sur nouveau GO. **D8 vient après D22 et D5**, sans mapping automatique pays→unité avant contrat approuvé.
+
+
+## 02/11/2026 — D22-B sous-lot autonome « Nouvelle mesure » publié (UI seulement)
+
+**Décision et Goal exact :** isoler et publier **uniquement** la jauge tactile/visuelle de saisie glycémique Web approuvée par le propriétaire, sans activer de cibles personnalisées D22 ou calculs cliniques D19. **Succès observables :** validation UX propriétaire 6/6, 8/8 CI sur la PR isolée, fusion GitHub en un commit, Vercel `iamina-review` production READY au SHA attendu et alias `iamina-review.vercel.app` confirmé. **La recette sur navigateur public réel après déploiement n'est PAS vérifiée dans ce constat** (outil HTTP externe indisponible) : ne pas écrire `FUE_PROD_COMPLETE`.
+
+- **GitHub :** [PR #1218](https://github.com/hraaaaf/IAMINA-MVP/pull/1218) **MERGED** vers `main@f78f0fad6f26b3a8cfc344cb22b87932e684f140`, une seule consolidation de **8 fichiers** (3 code Flutter : `add_log_sheet.dart`, `add_log_view.dart`, `glucose_half_dial_input.dart` ; 5 tests). CI du HEAD PR `fd7711c32c2fe4d66b6e6ccd0c80fcb39d5f3b6e` : **8/8 SUCCESS**, 0 failure. Owner validé **6/6** : bas rouge/ambre, centre vert, haut ambre/rouge, transition fluide. Aucun score UX sur 10 supplémentaire obtenu.
+- **Vercel Web production (projet `iamina-review`, pas backend) :** déploiement existant `dpl_9NDSeoz18VLEdG6V4NNF1znFuFMv` sur SHA exact **`f78f0fa`**, **READY**, `target=production`, zéro erreur de déploiement. L'API Vercel `list_deployment_aliases` a vérifié **`iamina-review.vercel.app` assigné à ce nouveau déploiement**, et **retiré** de l'ancien `dpl_DyVNLd3dA4EuUk4aiYaX1HRGqhSz`. Ancienne version conservée comme **rollback candidate** `d4fdf6d4`. Il s'agit d'une preuve de mise en production Vercel et de routage d'alias, pas d'un test manuel de bout en bout sur le site.
+- **Double livraison évitée :** une exécution parallèle avait préparé PR [#1219](https://github.com/hraaaaf/IAMINA-MVP/pull/1219), 1 commit `950f643`, 8/8 CI + Preview READY, mais une comparaison **8/8 SHA de blobs identiques** avec `main@f78f0fa` a prouvé que la PR #1218 portait le même code exact. **#1219 CLOSED sans merge**, aucun déploiement production doublon.
+- **Périmètre sécurité/clinique :** aucun changement `profile`, `clinical_engine`, `onboarding`, `database`, API, backend, modèle Drift, migration ou synchronisation dans PR #1218. Les zones vert/orange/rouge demeurent des **repères généraux illustratifs, non une cible individuelle ni un diagnostic** ; alerte existante basse <70 préservée. `unitPreference` est distincte d'une preuve d'unité de source ; facteur `18.0` existant conservé localement, G4 **non approuvé globalement**.
+- **D22 clinique non clos :** [PR #1213 D22-A](https://github.com/hraaaaf/IAMINA-MVP/pull/1213) et [PR #1214 D22-B](https://github.com/hraaaaf/IAMINA-MVP/pull/1214) restent DRAFT / non fusionnées ; D19 [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) non fusionnée. G1/G4/G7, legacy 70/180, TIR manuel, privacy A/B, F02/F04/F05/F06 et FR/AR/RTL complet non certifiés. **Ne pas convertir ce sous-lot UI en `D22_CLINICAL_APPROVED` ni augmenter le compteur global B** sans décision établie.
+
+**Next exact :** tester la version [production Web](https://iamina-review.vercel.app) sur iPhone avec **une mesure fictive** (40/80/140/170/240 mg/dL, bascule mg/dL ↔ mmol/L, édition/drag tactile, sauvegarde et lecture Journal) et consigner le verdict ; si régression, rollback Vercel vers `dpl_DyVNLd3dA4EuUk4aiYaX1HRGqhSz` et nouveau patch ciblé. Ensuite reprendre la **Décision D22** au gate G1/G4/G7 et aux scénarios FUE encore manquants ; D8 vient seulement selon ordre strict B.

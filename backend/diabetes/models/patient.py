@@ -28,6 +28,8 @@ class DiabetesProfile(models.Model):
         ('type2', 'Type 2'),
         ('gestational', 'Gestationnel'),
         ('prediabetes', 'Prediabete'),
+        ('other', 'Another patient-declared diagnosis'),
+        ('unknown', 'Patient unsure or answering later'),
     ]
 
     TREATMENT_TYPE_CHOICES = [
@@ -37,6 +39,19 @@ class DiabetesProfile(models.Model):
         ('diet_exercise', 'Regime et exercice'),
         # Legacy value kept for data compatibility
         ('insulin', 'Insuline'),
+    ]
+
+    # D7: patient declarations ONLY. No clinical authority or automatic
+    # migration of legacy treatment_type into these fields.
+    DECLARATION_STATE_CHOICES = [
+        ("not_answered", "Not answered"),
+        ("unsure", "Patient unsure"),
+        ("declared", "Patient declarations"),
+        ("none_declared", "Patient explicitly declared none"),
+    ]
+
+    DECLARATION_SOURCE_CHOICES = [
+        ("patient_declared", "Patient declared"),
     ]
 
     UNIT_CHOICES = [
@@ -79,6 +94,36 @@ class DiabetesProfile(models.Model):
         null=True,
         blank=True,
         help_text="Patient-declared current treatment approach. NULL = unknown.",
+    )
+
+    # Versioned, additive D7 declaration. Keep the old scalar treatment_type
+    # verbatim for legacy consumers; never flatten multi-valued declarations.
+    treatment_declaration_state = models.CharField(
+        max_length=24,
+        choices=DECLARATION_STATE_CHOICES,
+        default="not_answered",
+        help_text="D7 declaration state, separate from clinical profile completeness.",
+    )
+    treatment_declarations = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Patient-declared treatment codes (v1), never prescriptions.",
+    )
+    treatment_declaration_version = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Version of D7 treatment declaration vocabulary.",
+    )
+    treatment_declaration_source = models.CharField(
+        max_length=24,
+        choices=DECLARATION_SOURCE_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Provenance of an explicit D7 declaration; NULL for legacy rows.",
+    )
+    treatment_declaration_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Server timestamp of explicit patient D7 declaration.",
     )
 
     target_range_low = models.IntegerField(
@@ -179,7 +224,12 @@ class DiabetesProfile(models.Model):
     @property
     def clinical_profile_complete(self) -> bool:
         """True only when core diabetes identity fields were actually provided."""
-        return bool(self.diabetes_type and self.treatment_type)
+        # "unknown" and "other" cannot authorize diabetes-specific clinical
+        # interpretation even when the patient reports a legacy treatment.
+        return bool(
+            self.diabetes_type in {'type1', 'type2', 'gestational', 'prediabetes'}
+            and self.treatment_type
+        )
 
     # ── Convenience accessors for backward-compat code paths ─────────────────
     # These proxy to base_profile so callers that do profile.preferred_language

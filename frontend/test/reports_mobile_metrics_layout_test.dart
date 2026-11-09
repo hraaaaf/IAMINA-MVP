@@ -60,7 +60,9 @@ void main() {
       expect(first, findsOneWidget);
       expect(second, findsOneWidget);
       expect(find.text('Jours renseignés'), findsOneWidget);
-      expect(find.text('Mesures dans la cible'), findsOneWidget);
+      // D22 Gate A: legacy numeric bounds cannot claim a verified target.
+      expect(find.text('Mesures dans la cible'), findsNothing);
+      expect(find.text('Objectifs non vérifiés'), findsOneWidget);
       expect(find.text('Répartition des mesures'), findsOneWidget);
 
       final a = tester.getRect(first);

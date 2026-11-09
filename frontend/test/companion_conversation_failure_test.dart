@@ -117,7 +117,7 @@ void main() {
 
       expect(find.byKey(const Key('companion-chat-failure')), findsOneWidget);
       expect(
-        find.text('IAmina met trop de temps à répondre. Réessaie dans un instant.'),
+        find.text('IAMINA met trop de temps à répondre. Réessaie dans un instant.'),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -139,7 +139,7 @@ void main() {
     await _submit(tester);
 
     expect(
-      find.text('IAmina has reached its temporary limit. Try again later.'),
+      find.text('IAMINA has reached its temporary limit. Try again later.'),
       findsOneWidget,
     );
   });

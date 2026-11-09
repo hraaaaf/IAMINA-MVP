@@ -168,6 +168,43 @@ class DiabetesConversationAdapterTests(TestCase):
         self.assertEqual([t.message for t in offset], ["second", "first"])
 
 
+    def test_timestamp_ties_are_stable_and_patient_scoped(self):
+        from django.utils import timezone
+
+        from diabetes.models import AIChatMessage
+
+        patient_a = User.objects.create(username="ports_tie_a")
+        patient_b = User.objects.create(username="ports_tie_b")
+        store = get_conversation_store()
+        self.assertIsNotNone(store)
+
+        store.append(patient_a.id, "user", "a-first")
+        store.append(patient_b.id, "user", "b-secret")
+        store.append(patient_a.id, "assistant", "a-second")
+        store.append(patient_a.id, "user", "a-third")
+
+        # Reproduce identical creation timestamps, which occur on some DBs.
+        AIChatMessage.objects.filter(
+            patient_id__in=[patient_a.id, patient_b.id]
+        ).update(created_at=timezone.now())
+
+        expected = ["a-third", "a-second", "a-first"]
+        self.assertEqual([t.message for t in store.recent(patient_a.id, 10)], expected)
+        self.assertEqual([t.message for t in store.recent(patient_a.id, 1)], expected[:1])
+        self.assertEqual(
+            [t.message for t in store.recent(patient_a.id, 1, offset=1)],
+            expected[1:2],
+        )
+        self.assertEqual(
+            [t.message for t in store.recent(patient_a.id, 10, role="user")],
+            ["a-third", "a-first"],
+        )
+        self.assertEqual(store.count(patient_a.id), 3)
+        self.assertEqual(
+            [t.message for t in store.recent(patient_b.id, 10)], ["b-secret"]
+        )
+
+
 class SeamGuardTests(SimpleTestCase):
     """Static guard: the companion package must import no module package."""
 

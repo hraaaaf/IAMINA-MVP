@@ -16,6 +16,7 @@ import 'features/auth/onboarding_chat_screen.dart';
 import 'features/companion/companion_conversation_screen.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
+import 'features/dashboard/widgets/dashboard_my_reminders_card.dart';
 import 'features/dashboard/widgets/add_log_sheet.dart';
 import 'features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
 import 'features/dashboard/widgets/dashboard_insight_section.dart';
@@ -29,11 +30,13 @@ import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
 import 'features/journal/widgets/meal_capture_panel.dart';
 import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
+import 'features/notifications/d2_notifications_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
+import 'services/app_lock_service.dart';
 import 'services/auth_service.dart';
 import 'services/companion_service.dart';
 import 'services/consent_service.dart';
@@ -167,8 +170,29 @@ Future<void> main() async {
     debugPrint('Browser audit Firebase init unavailable: $error');
   }
 
+  // Synthetic D3 browser fixture only; never used by production main.dart.
+  final isD3Audit = Uri.base.queryParameters['surface'] == 'd3-reminders';
   final db = AppDatabase.defaults();
+  if (isD3Audit) {
+    final now = DateTime.now();
+    await db.addReminder(
+      title: 'Contrôle synthétique',
+      dueAt: now.add(const Duration(hours: 4)),
+    );
+    await db.addReminder(
+      title: 'Rendez-vous fictif',
+      dueAt: now.add(const Duration(days: 1)),
+    );
+    await db.addReminder(
+      title: 'Vérification test',
+      dueAt: now.add(const Duration(days: 2)),
+    );
+  }
   final auth = AuthService();
+  // The synthetic screenshot fixture must use the same profile dependencies
+  // as the real application; no patient identity or backend auth is created.
+  final appLock = AppLockService();
+  await appLock.initialize();
   final api = ApiClient(authService: auth);
   final consent = ConsentService()
     ..seedInitialProfile(null)
@@ -185,6 +209,7 @@ Future<void> main() async {
       providers: [
         Provider<AppDatabase>.value(value: db),
         ChangeNotifierProvider<AuthService>.value(value: auth),
+        ChangeNotifierProvider<AppLockService>.value(value: appLock),
         Provider<ApiClient>.value(value: api),
         Provider<SyncService>.value(value: sync),
         ChangeNotifierProvider<ConsentService>.value(value: consent),
@@ -287,6 +312,10 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const MedicationScreen(),
         ),
         GoRoute(
+          path: '/notifications',
+          builder: (context, state) => const D2NotificationsScreen(),
+        ),
+        GoRoute(
           path: '/reminders',
           builder: (context, state) => const RemindersScreen(),
         ),
@@ -309,6 +338,10 @@ class _BrowserAuditApp extends StatelessWidget {
           path: '/amina-chat',
           builder: (context, state) =>
               CompanionConversationScreen(service: visualCompanion),
+        ),
+        GoRoute(
+          path: '/d3-reminders',
+          builder: (context, state) => const _BrowserD3RemindersSurface(),
         ),
         GoRoute(
           path: '/first-use-receipt',
@@ -347,7 +380,11 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      // Browser-only Arabic/RTL certification fixture. Production app locale
+      // remains owned by LocalePreferenceService; no runtime change.
+      locale: Uri.base.queryParameters['locale'] == 'ar'
+          ? const Locale('ar')
+          : const Locale('fr'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -427,10 +464,12 @@ String _pathForSurface(String surface) => switch (surface) {
   'add-log-meal' => '/add-log-meal',
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
+  'notifications' => '/notifications',
   'reminders' => '/reminders',
   'companion' => '/companion',
   'companion-unavailable' => '/companion-unavailable',
   'amina-chat' => '/amina-chat',
+  'd3-reminders' => '/d3-reminders',
   'first-use-receipt' => '/first-use-receipt',
   'first-use-chat' => '/first-use-chat',
   'trend' => '/trend',
@@ -612,6 +651,22 @@ class _BrowserNextActionSurface extends StatelessWidget {
   }
 }
 
+
+/// Dedicated synthetic fixture isolates the actual D3 card for Chrome proof.
+class _BrowserD3RemindersSurface extends StatelessWidget {
+  const _BrowserD3RemindersSurface();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AminaTheme.bg(context),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: const DashboardMyRemindersCard(),
+      ),
+    ),
+  );
+}
 
 class _BrowserFirstUseReceiptSurface extends StatefulWidget {
   const _BrowserFirstUseReceiptSurface();

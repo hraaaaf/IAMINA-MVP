@@ -18,8 +18,8 @@ import '../../services/sync_service.dart';
 import 'clinical_engine.dart';
 import 'widgets/glucose_chart_with_events.dart';
 import '../journal/widgets/amina_chat_view.dart';
+// Imported for part-of dashboard insights widgets; not an eager network call.
 import '../../data/models/ai_models.dart';
-import '../../services/api_client.dart';
 
 part 'widgets/top_bar.dart';
 part 'widgets/hero_section.dart';
@@ -50,9 +50,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   final List<Animation<double>> _fadeAnims = [];
   final List<Animation<Offset>> _slideAnims = [];
   static const _itemCount = 6;
-
-  SummaryResponse? _aiSummary;
-  bool _isLoadingSummary = false;
 
   List<LogEntryData> _cachedLogs = [];
   String? _cachedUnit;
@@ -91,22 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       final db = context.read<AppDatabase>();
       final count = await db.select(db.logEntries).get().then((r) => r.length);
       if (count == 0 && kDebugMode) await db.seedDemoData();
-      _fetchAiSummary();
     });
-  }
-
-  Future<void> _fetchAiSummary() async {
-    if (!mounted) return;
-    setState(() => _isLoadingSummary = true);
-    try {
-      final api = context.read<ApiClient>();
-      final res = await api.getAiSummary(days: _range);
-      if (mounted) setState(() => _aiSummary = res);
-    } catch (e) {
-      debugPrint('Error fetching AI summary: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingSummary = false);
-    }
   }
 
   @override
@@ -169,8 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow ?? 70.0;
-        final high = profile?.targetRangeHigh ?? 180.0;
+        // Legacy target source and unit are unverified.
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchLogsInRange(start, now),
@@ -187,8 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             final prevStart = start.subtract(Duration(days: _range));
             return StreamBuilder<List<LogEntryData>>(
               stream: db.watchLogsInRange(prevStart, start),
-              builder: (context, prevSnap) {
-                final prevLogs = prevSnap.data ?? [];
+              builder: (context, _) {
 
                 final screenW = MediaQuery.of(context).size.width;
                 final hPad = screenW >= 1400
@@ -211,7 +191,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           range: _range,
                           onRangeChanged: (r) {
                             setState(() => _range = r);
-                            _fetchAiSummary();
                           },
                           syncService: context.read<SyncService>(),
                           onChatTap: _openChat,
@@ -262,52 +241,26 @@ class _DashboardScreenState extends State<DashboardScreen>
                               const SizedBox(height: 14),
                               _staggered(
                                 1,
-                                _HeroContextual(
-                                  logs: logs,
-                                  unit: unit,
-                                  low: low,
-                                  high: high,
-                                  range: _range,
+                                ClinicalCard(
+                                  padding: const EdgeInsets.all(18),
+                                  child: Text(
+                                    switch (Localizations.localeOf(context).languageCode) {
+                                      'ar' => 'الأهداف غير مؤكدة. لا يمكن حساب الوقت ضمن النطاق من قياسات متفرقة.',
+                                      'en' => 'Targets unverified. Time in range cannot be calculated from individual readings.',
+                                      _ => 'Objectifs non vérifiés. Impossible de calculer le temps dans la cible à partir de relevés ponctuels.',
+                                    },
+                                    key: const Key('d22-manual-tir-unavailable'),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 18),
+                              // Recent observations remain available without
+                              // inventing any patient-specific target status.
                               _staggered(
                                 2,
-                                _MetricRow(
-                                  logs: logs,
-                                  prevLogs: prevLogs,
-                                  low: low,
-                                  high: high,
-                                  range: _range,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              _staggered(
-                                3,
-                                _ChartSection(
-                                  logs: logs,
-                                  low: low,
-                                  high: high,
-                                  unit: unit,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              _staggered(
-                                4,
-                                _InsightsSection(
-                                  logs: logs,
-                                  summary: _aiSummary,
-                                  isLoading: _isLoadingSummary,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              _staggered(
-                                5,
                                 _RecentEntries(
                                   logs: logs,
                                   unit: unit,
-                                  low: low,
-                                  high: high,
                                   isDesktop: screenW >= 900,
                                 ),
                               ),
@@ -494,8 +447,9 @@ class _EmptyDashboard extends StatelessWidget {
     return ValueListenableBuilder<SyncUiState>(
       valueListenable: context.read<SyncService>().state,
       builder: (context, state, _) {
-        final note = state == SyncUiState.offline
-            ? '${AuditedPageCopy.of(context).sync('offline')} · ${l10n.firstUseTruthNote}'
+        final note = state == SyncUiState.offline ||
+                state == SyncUiState.localOnly
+            ? '${AuditedPageCopy.of(context).sync(state == SyncUiState.localOnly ? 'localOnly' : 'offline')} · ${l10n.firstUseTruthNote}'
             : l10n.firstUseTruthNote;
         return AminaFirstUsePanel(
           icon: Icons.monitor_heart_outlined,

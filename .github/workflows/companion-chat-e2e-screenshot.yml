@@ -142,12 +142,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet websocket-client
+          python3 -m pip install --quiet websocket-client pillow
 
           cat > /tmp/iamina_proxy.py <<'PY'
           import http.client
           import http.server
           import os
+          import time
           from pathlib import Path
 
           root = Path(os.environ['STATIC_ROOT'])
@@ -176,6 +177,11 @@ jobs:
                   )
                   response = conn.getresponse()
                   payload = response.read()
+                  # Synthetic E2E-only delay: prove the real Flutter waiting UI
+                  # at distinct phases of the official Kufic mark animation.
+                  # No change to backend behavior, clinical policy, or production.
+                  if self.path == '/api/v1/ai/chat':
+                      time.sleep(3.0)
                   self.send_response(response.status)
                   self.send_header(
                       'Content-Type',
@@ -331,6 +337,13 @@ jobs:
           time.sleep(1)
           screenshot('chat-typed-390x844.png')
           click(354, 793)
+          # Three actual Chrome frames while the synthetic proxy holds the reply.
+          time.sleep(0.3)
+          screenshot('chat-thinking-early-390x844.png')
+          time.sleep(0.45)
+          screenshot('chat-thinking-separated-390x844.png')
+          time.sleep(0.55)
+          screenshot('chat-thinking-reforming-390x844.png')
 
           deadline = time.time() + 15
           while time.time() < deadline:
@@ -361,6 +374,7 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
+          from PIL import Image, ImageChops
 
           request = json.loads(Path('companion-chat-e2e/chat-request.json').read_text())
           response = json.loads(Path('companion-chat-e2e/chat-response.json').read_text())
@@ -374,11 +388,31 @@ jobs:
           for name in (
               'chat-empty-390x844.png',
               'chat-typed-390x844.png',
+              'chat-thinking-early-390x844.png',
+              'chat-thinking-separated-390x844.png',
+              'chat-thinking-reforming-390x844.png',
               'chat-reply-390x844.png',
               'p1-after-390x844.png',
           ):
               path = Path('companion-chat-e2e') / name
               assert path.stat().st_size > 10000, (name, path.stat().st_size)
+          # Screenshot pixel proof: the Arabic mark must already be visible
+          # on the FIRST thinking frame (no loading flash), must then move,
+          # and must remain present through the recomposition.
+          frames = [Image.open(Path('companion-chat-e2e') / n).convert('RGB') for n in (
+              'chat-thinking-early-390x844.png',
+              'chat-thinking-separated-390x844.png',
+              'chat-thinking-reforming-390x844.png',
+          )]
+          logos = [im.crop((35, 197, 72, 236)) for im in frames]
+          def ink_pixels(im):
+              return sum(1 for r, g, b in im.getdata()
+                         if r < 90 and g < 130 and b < 120)
+          inks = [ink_pixels(im) for im in logos]
+          assert min(inks) > 30, f'Kufic symbol blank/loading in thinking frame: {inks}'
+          assert ImageChops.difference(logos[0], logos[1]).getbbox(), 'Kufic symbol did not animate'
+          assert ImageChops.difference(logos[1], logos[2]).getbbox(), 'Kufic symbol did not recompose'
+          print(f'Real Chrome Kufic phases: {inks} visible ink pixels; all frames distinct.')
           print('Real UI -> IAMINA API -> certified Companion exchange verified.')
           PY
 

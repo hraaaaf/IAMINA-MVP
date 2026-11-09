@@ -26,6 +26,12 @@ class EditLogScreen extends StatefulWidget {
 
 class _EditLogScreenState extends State<EditLogScreen> {
   final TextEditingController _glucoseController = TextEditingController();
+  // F04: display text is rounded; it must never become the source of truth
+  // for an unchanged glucose measurement. Both snapshots are local to
+  // this editor instance; no schema change or conversion policy implied.
+  double? _loadedRawGlucose;
+  double? _loadedDisplayGlucose;
+  String? _loadedGlucoseUnit;
   final TextEditingController _insulinController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
   final List<String> _selectedMealItemIds = <String>[];
@@ -69,6 +75,9 @@ class _EditLogScreenState extends State<EditLogScreen> {
     final unit = profile?.unitPreference ?? 'mg/dL';
     final display = unit == 'mmol/L' ? log.bloodSugar / 18.0 : log.bloodSugar;
     _glucoseController.text = display.toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
+    _loadedRawGlucose = log.bloodSugar;
+    _loadedDisplayGlucose = _displayGlucose();
+    _loadedGlucoseUnit = unit;
     _insulinController.text = log.insulinUnits == null
         ? ''
         : formatTakenInsulinUnits(log.insulinUnits!);
@@ -110,7 +119,9 @@ class _EditLogScreenState extends State<EditLogScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
+    // Freeze the edit unit to the one used to render the loaded value:
+    // another profile preference update must not reinterpret this field.
+    final unit = _loadedGlucoseUnit ?? profile?.unitPreference ?? 'mg/dL';
     final desktop = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
@@ -463,7 +474,13 @@ class _EditLogScreenState extends State<EditLogScreen> {
 
   Future<void> _saveChanges(String unit, AppLocalizations l10n) async {
     final glucose = _displayGlucose();
-    final mgdl = _mgdlGlucose(unit);
+    // Compare the *parsed display numbers*, not raw text: "5,70" and "5.7"
+    // mean the same displayed value. An unchanged rounded display must not
+    // rewrite an original 103 mg/dL as 5.7 * 18.0 = 102.6 mg/dL.
+    final glucoseUnchanged = glucose != null &&
+        _loadedDisplayGlucose != null &&
+        glucose == _loadedDisplayGlucose;
+    final mgdl = glucoseUnchanged ? _loadedRawGlucose : _mgdlGlucose(unit);
     if (glucose == null || mgdl == null || glucose <= 0) {
       _message(l10n.journalInvalidGlucose);
       return;
@@ -480,7 +497,12 @@ class _EditLogScreenState extends State<EditLogScreen> {
       await db.updateLog(
         widget.logId,
         LogEntriesCompanion(
-          bloodSugar: drift.Value(mgdl),
+          // Drift Value.absent means no SQL UPDATE to the glucose column.
+          // It also preserves a newer concurrent raw reading, rather than
+          // writing a stale rounded copy from this editor's initial load.
+          bloodSugar: glucoseUnchanged
+              ? const drift.Value.absent()
+              : drift.Value(mgdl),
           insulinUnits: drift.Value(
             parseTakenInsulinUnits(_insulinController.text),
           ),

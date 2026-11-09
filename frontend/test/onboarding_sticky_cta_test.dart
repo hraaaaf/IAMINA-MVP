@@ -14,6 +14,15 @@ import 'package:provider/provider.dart';
 class _LocalPreferences extends LocalePreferenceService {
   _LocalPreferences() : super(ApiClient(baseUrl: 'http://localhost:8000'));
 
+  // This viewport test isolates layout/navigation from secure-storage I/O.
+  // The real setLanguageOnly country-write behavior is covered separately by
+  // onboarding_explicit_country_boundary_test.dart with mocked storage.
+  @override
+  Future<void> setLanguageOnly(String language) async {}
+
+  @override
+  Future<String?> suggestCountryFromIp() async => null;
+
   @override
   Future<void> setExperience({
     required String language,
@@ -74,10 +83,24 @@ void main() {
     }
 
     await select('Français');
-    await select('Maroc');
-    await select('Simple et chaleureux');
+    final search = find.byKey(const Key('onboarding-country-search'));
+    expect(search, findsOneWidget);
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+    // Validate real Flutter autocomplete filtering, not merely that a
+    // country can be selected from an unfiltered alphabetical list.
+    expect(find.text('Afghanistan'), findsWidgets);
+    await tester.enterText(find.byType(TextField).last, 'Maroc');
+    await tester.pumpAndSettle();
+    expect(find.text('Maroc'), findsWidgets);
+    expect(find.text('Afghanistan'), findsNothing);
+    expect(find.text('France'), findsNothing);
+    await tester.tap(find.text('Maroc').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Quel ton préférez-vous ?'), findsNothing);
     await select('Diabète Type 2');
-    await select('Comprimés');
+    await select('Médicaments oraux pris');
+    await select('mg/dL'); // Explicit first-use unit required by D8.
 
     final start = find.byKey(const Key('onboarding-sticky-start'));
     expect(start, findsOneWidget);
@@ -91,4 +114,81 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Dashboard'), findsOneWidget);
   });
+
+  testWidgets('D7 patient can skip both medical choices at 390x844',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    final prefs = _LocalPreferences();
+    final auth = AuthService();
+    addTearDown(db.close);
+    addTearDown(prefs.dispose);
+    addTearDown(auth.dispose);
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(path: '/onboarding',
+            builder: (_, __) => const OnboardingChatScreen()),
+        GoRoute(path: '/dashboard',
+            builder: (_, __) => const Scaffold(body: Text('Dashboard'))),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        Provider<AppDatabase>.value(value: db),
+        ChangeNotifierProvider<AuthService>.value(value: auth),
+        ChangeNotifierProvider<LocalePreferenceService>.value(value: prefs),
+      ],
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('fr'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Français'));
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const Key('onboarding-country-search'));
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Maroc');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Maroc').last);
+    await tester.pumpAndSettle();
+
+    // Medical options are still visible, not answered or coerced to a default.
+    expect(find.text('Diabète Type 2'), findsOneWidget);
+    final start = find.byKey(const Key('onboarding-sticky-start'));
+    expect(start, findsOneWidget);
+    expect(tester.widget<FilledButton>(start).onPressed, isNull);
+    expect(await db.getProfileForLocalUserId(1), isNull);
+    await tester.ensureVisible(find.text('mmol/L'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('mmol/L'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(start).onPressed, isNotNull);
+    await tester.tap(start);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    final profile = await db.getProfileForLocalUserId(1);
+    expect(profile, isNotNull);
+    expect(profile!.diabetesType, isNull);
+    expect(profile.treatment, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
 }

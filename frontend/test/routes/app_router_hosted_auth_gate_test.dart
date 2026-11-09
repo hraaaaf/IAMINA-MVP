@@ -2,7 +2,7 @@ import 'package:amina/routes/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('hosted remote flow rejects local-only authenticated session', () {
+  test('hosted remote flow offers optional account without blocking local session', () {
     expect(
       hostedRemoteLoginRequired(
         remoteAccountEnrollmentEnabled: true,
@@ -10,19 +10,19 @@ void main() {
         isAuditSession: false,
         hasRemoteApiCredential: false,
       ),
-      isTrue,
+      isFalse,
     );
   });
 
-  test('hosted local-only session cannot enter app-lock before remote login', () {
+  test('hosted local-only session can choose an app lock without remote login', () {
     expect(
       shouldApplyAppLockGate(
         isLoggedIn: true,
-        requiresHostedRemoteLogin: true,
+        requiresHostedRemoteLogin: false,
         isAuditSession: false,
         hasLockService: true,
       ),
-      isFalse,
+      isTrue,
     );
   });
 

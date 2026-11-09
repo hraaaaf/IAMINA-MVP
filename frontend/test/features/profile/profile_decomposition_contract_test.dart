@@ -18,8 +18,16 @@ void main() {
     expect(state, contains('context.read<AuthService>()'));
     expect(state, contains('context.read<ConsentService>()'));
     expect(state, contains('patchProfile('));
-    expect(state, contains('withdrawConsent()'));
-    expect(state, contains('insertOnConflictUpdate('));
+    // The state owns the fail-closed revocation workflow, not a raw
+    // DELETE followed by an unconditional confirmation.
+    expect(state, contains('withdrawD7AiConsent('));
+    expect(state, contains('revokeServer: api.withdrawConsent'));
+    expect(state, contains('clearPending: evidence.clearWithdrawalPending'));
+    // D22 Gate A: a unit preference save must not overwrite legacy bounds.
+    expect(state, contains('getProfileForLocalUserId(userId)'));
+    expect(state, contains('.write(PatientProfilesCompanion('));
+    expect(state, isNot(contains('targetRangeLow: drift.Value(')));
+    expect(state, isNot(contains('targetRangeHigh: drift.Value(')));
     expect(state, contains('Widget build(BuildContext context) => _buildPresentation(context);'));
     expect(state, isNot(contains('Widget _buildMedicalSection(')));
     expect(state, isNot(contains('Widget _buildAccountSection(')));

@@ -141,8 +141,9 @@ void main() {
     expect(source, isNot(contains('bloodSugar < 70')));
     expect(source, isNot(contains('bloodSugar > 250')));
     expect(source, isNot(contains('bloodSugar > 180')));
-    expect(section, contains('widget.low != null && widget.high != null'));
-    expect(section, contains('widget.low! < widget.high!'));
+    expect(section, contains('bool get _d22HasVerifiedTargetAuthority => false;'));
+    expect(section, contains('final hasTarget = _d22HasVerifiedTargetAuthority;'));
+    expect(section, isNot(contains('widget.low != null && widget.high != null')));
     expect(section, contains('low: hasTarget ? widget.low : null'));
     expect(section, contains('high: hasTarget ? widget.high : null'));
   });

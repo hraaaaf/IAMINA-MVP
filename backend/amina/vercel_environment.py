@@ -13,3 +13,74 @@ def is_vercel_production() -> bool:
     vercel_env = os.environ.get("VERCEL_ENV", "").strip().lower()
     iamina_env = os.environ.get("IAMINA_ENV", "development").strip().lower()
     return vercel_env == "production" and iamina_env == "production"
+
+def validate_vercel_database_identity(database_url: str) -> None:
+    """Fail closed before Django can use a mismapped Neon DATABASE_URL.
+
+    Expected host/database are *non-secret* independent Vercel per-target
+    settings. The URL (including credentials) must never appear in exceptions.
+    Existing deployments retain their old environment until redeployed.
+    """
+    import re
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    iamina_env = os.environ.get("IAMINA_ENV", "").strip().lower()
+    if iamina_env not in {"development", "production"}:
+        raise ValueError("IAMINA_ENV must explicitly be development or production on Vercel")
+
+    vercel_env = os.environ.get("VERCEL_ENV", "").strip().lower()
+    if vercel_env not in {"production", "preview", "development"}:
+        raise ValueError("VERCEL_ENV must explicitly identify the deployment target")
+
+    expected_host = os.environ.get("IAMINA_EXPECTED_DB_HOST", "").strip().lower()
+    expected_name = os.environ.get("IAMINA_EXPECTED_DB_NAME", "").strip()
+    if not expected_host or not expected_name:
+        raise ValueError("IAMINA_EXPECTED_DB_HOST and IAMINA_EXPECTED_DB_NAME are required")
+
+    parsed = urlsplit(database_url)
+    host = (parsed.hostname or "").lower()
+    dbname = parsed.path.lstrip("/")
+    # Neon offers direct and transaction-pooler names for the same compute.
+    pooled_host = expected_host.replace(".c-", "-pooler.c-", 1)
+    if host not in {expected_host, pooled_host} or dbname != expected_name:
+        raise ValueError("DATABASE_URL does not match the expected Neon environment")
+
+    # Preview must never reuse the Neon owner role, which can BYPASSRLS and
+    # administer roles. The approved role name is an independent, non-secret
+    # Vercel setting; neither the URI nor its password is logged.
+    if vercel_env == "preview":
+        expected_role = os.environ.get("IAMINA_EXPECTED_DB_ROLE", "").strip()
+        actual_role = unquote(parsed.username or "")
+        if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", expected_role):
+            raise ValueError("IAMINA_EXPECTED_DB_ROLE is required on Preview")
+        if (
+            actual_role != expected_role
+            or actual_role in {"postgres", "neondb_owner"}
+            or actual_role.endswith("_owner")
+        ):
+            raise ValueError("DATABASE_URL uses an unapproved PostgreSQL Preview role")
+
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    # libpq supports connection routing parameters in the query string.
+    # Never let them silently override the host or database we authenticated.
+    forbidden_overrides = {
+        "host", "hostaddr", "dbname", "service", "servicefile", "port",
+        "user", "password", "passfile", "options",
+    }
+    if forbidden_overrides.intersection(params):
+        raise ValueError("DATABASE_URL cannot override PostgreSQL routing in query parameters")
+
+    tls_mode = params.get("sslmode", [])
+    if len(tls_mode) != 1 or tls_mode[0] not in {"require", "verify-ca", "verify-full"}:
+        raise ValueError("DATABASE_URL must explicitly enforce PostgreSQL TLS")
+
+    # Clinical/patient production must authenticate the PostgreSQL server too.
+    # sslmode=require encrypts, but does not ensure server identity (MITM).
+    # The production connection additionally uses the system-trusted CA set.
+    if iamina_env == "production":
+        if vercel_env != "production":
+            raise ValueError("IAMINA patient production cannot run on a Vercel preview")
+        if tls_mode[0] != "verify-full":
+            raise ValueError("IAMINA patient production requires sslmode=verify-full")
+        if params.get("sslrootcert") != ["system"]:
+            raise ValueError("IAMINA patient production requires sslrootcert=system")

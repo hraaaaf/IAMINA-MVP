@@ -1,0 +1,41 @@
+name: D7 Web treatment choices — Chrome real renderer
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/test/features/profile/d7_web_treatment_choice_responsive_test.dart'
+      - 'frontend/lib/features/profile/medical_treatment_multi_selector.dart'
+      - 'frontend/lib/features/profile/medical_treatment_declaration_v1.dart'
+      - '.github/workflows/d7-web-treatment-choice-browser.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d7-web-choice-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-browser-choice:
+    name: D7 treatment widget | 3 viewports x FR/EN/AR in Chrome
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Dart VM widget checks
+        run: flutter test --no-pub --reporter expanded test/features/profile/d7_web_treatment_choice_responsive_test.dart
+      - name: Chrome widget checks (real browser renderer, synthetic declarations)
+        run: flutter test --no-pub --platform chrome --reporter expanded test/features/profile/d7_web_treatment_choice_responsive_test.dart

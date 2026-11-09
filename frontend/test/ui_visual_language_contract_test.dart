@@ -46,7 +46,7 @@ void main() {
   });
 
   test('active premium patient surfaces use one canonical mobile chrome', () {
-    const logo = "assets/images/logo_amina.png";
+    const logo = "assets/images/iamina_logo_mark.png";
     final dashboardEntry = _read(
       'lib/features/dashboard/dashboard_companion_entry_screen.dart',
     );
@@ -68,8 +68,10 @@ void main() {
       contains("ValueKey('dashboard-companion-primary-entry')"),
     );
     expect(module, contains('const DashboardCompanionEntryScreen()'));
-    expect(dashboard, contains(logo));
-    expect(companion, contains(logo));
+    expect(dashboard, contains('assets/images/iamina_logo_horizontal.png'));
+    expect(dashboard, contains("label: 'IAMINA'"));
+    expect(companion, contains('assets/images/iamina_logo_horizontal.png'));
+    expect(companion, contains("label: 'IAMINA'"));
     expect(header, contains(logo));
     expect(header, contains('width: 64'));
     expect(header, contains('height: 64'));

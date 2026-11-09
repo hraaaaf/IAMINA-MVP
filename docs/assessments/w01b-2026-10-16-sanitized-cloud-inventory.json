@@ -1,0 +1,66 @@
+{
+  "snapshot_date": "2026-10-16",
+  "provenance": "Read-only connected Vercel/Neon metadata; synthetic Neon SELECT only. Static snapshot, NOT a live deployment authorization.",
+  "github_main_sha": "5275d9618962d1ebc10d33ef9cb7e35cb2c77194",
+  "vercel": {
+    "frontend": {
+      "name": "iamina-review",
+      "id": "prj_AYaUi32KTDHak8I7dmdQpDrqd8SI",
+      "domain": "iamina-review.vercel.app",
+      "production_target_commit": "60de80ec070157f912cb62c80a7ded1e9bde75a6",
+      "root_directory_verified": false,
+      "release_candidate_verified": false
+    },
+    "backend": {
+      "name": "iamina-certified",
+      "id": "prj_Pn9FnyconF3h2w9gOU74iV98kJoU",
+      "domain": "iamina-certified.vercel.app",
+      "production_target_commit": "9d24cff11fc422fe0c6235757dbf317eebe32912",
+      "root_directory_verified": false,
+      "release_candidate_verified": false,
+      "declared_env_names": [
+        "ALLOWED_HOSTS",
+        "CORS_ALLOWED_ORIGINS",
+        "CSRF_TRUSTED_ORIGINS",
+        "DATABASE_URL",
+        "DEBUG",
+        "GROQ_API_KEY",
+        "IAMINA_DEMO_EXTERNAL_AI_ENABLED",
+        "IAMINA_DEMO_LLM_PROVIDER",
+        "SECRET_KEY"
+      ],
+      "iamina_env_declared": false,
+      "preview_db_isolated_verified": false
+    }
+  },
+  "neon": {
+    "production": {
+      "project_id": "square-sun-82359137",
+      "region": "aws-eu-central-1",
+      "postgres_version": 16,
+      "branch_name": "production",
+      "branch_id": "br-fragrant-frost-b1lbdfzs",
+      "branch_protected": false,
+      "public_connections_blocked": false,
+      "network_and_processors_approved": false
+    },
+    "synthetic": {
+      "project_id": "noisy-truth-00115950",
+      "region": "aws-eu-central-1",
+      "branch_name": "synthetic-only",
+      "branch_id": "br-sweet-frog-b9ok6ptp",
+      "database_name": "iamina925_empty",
+      "server_version_num": "160015",
+      "read_only_query_passed": true,
+      "vercel_to_neon_verified": false
+    }
+  },
+  "remaining_proofs": {
+    "live_web_api_postgres": false,
+    "migration_restore_rollback": false,
+    "patient_A_B_A_offline": false,
+    "local_vault_encryption_keys_recovery": false,
+    "W02_human_approval": false,
+    "W14_clinical_legal_security_approval": false
+  }
+}

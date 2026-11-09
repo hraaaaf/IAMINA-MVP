@@ -1,10 +1,12 @@
 import json
+import os
 import stat
 from datetime import datetime, timezone
 
 import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
+from django.core.management.base import CommandError
 
 from core.data_portability import build_patient_export
 from core.models import AuditLog
@@ -83,6 +85,7 @@ def test_export_fingerprint_is_stable_across_generation_times():
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(os.name != "posix", reason="POSIX mode 0600 unavailable")
 def test_management_command_writes_mode_0600_and_audits(tmp_path):
     user = User.objects.create_user(username="portable", password="not-exported")
     output = tmp_path / "patient-export.json"
@@ -103,6 +106,26 @@ def test_management_command_writes_mode_0600_and_audits(tmp_path):
         resource_type="PatientDataExport",
     )
     assert audit.metadata["sha256"] == payload["sha256"]
+
+
+@pytest.mark.django_db
+@pytest.mark.skipif(os.name == "posix", reason="Windows export must fail closed")
+def test_management_command_refuses_insecure_windows_export(tmp_path):
+    user = User.objects.create_user(username="windows_export", password="not-exported")
+    output = tmp_path / "patient-export.json"
+
+    with pytest.raises(CommandError, match="requires POSIX file permissions"):
+        call_command(
+            "export_patient_data",
+            user_id=user.id,
+            output=str(output),
+        )
+
+    assert not output.exists()
+    assert list(tmp_path.iterdir()) == []
+    assert not AuditLog.objects.filter(
+        actor=user, action="export", resource_type="PatientDataExport"
+    ).exists()
 
 
 @pytest.mark.django_db

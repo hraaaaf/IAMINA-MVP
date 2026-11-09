@@ -153,14 +153,9 @@ class PostSaveReceipt extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    l10n.journalPostSaveSummaryTitle,
-                    style: TextStyle(
-                      color: AminaTheme.textSecondary(context),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: .45,
-                    ),
+                  _D17ReceiptSummary(
+                    title: l10n.journalPostSaveSummaryTitle,
+                    notice: l10n.journalPostSaveNotice,
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -260,35 +255,7 @@ class PostSaveReceipt extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AminaTheme.teal600.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 18,
-                    color: AminaTheme.teal600,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.journalPostSaveNotice,
-                      style: TextStyle(
-                        color: AminaTheme.textSecondary(context),
-                        fontSize: 11.5,
-                        height: 1.45,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+
           ],
         ),
       ),
@@ -388,6 +355,94 @@ class _FactRow extends StatelessWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+ 
+// D17: the technical explanation is opt-in; the saved state, glucose,
+// measurement context and actions above are never hidden behind this control.
+class _D17ReceiptSummary extends StatefulWidget {
+  final String title;
+  final String notice;
+
+  const _D17ReceiptSummary({required this.title, required this.notice});
+
+  @override
+  State<_D17ReceiptSummary> createState() => _D17ReceiptSummaryState();
+}
+
+class _D17ReceiptSummaryState extends State<_D17ReceiptSummary> {
+  bool _expanded = false;
+
+  String _actionLabel(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    if (locale == 'ar') {
+      return _expanded ? 'إخفاء المعلومات الإضافية' : 'عرض المعلومات الإضافية';
+    }
+    if (locale == 'en') {
+      return _expanded ? 'Hide additional information' : 'Show additional information';
+    }
+    return _expanded
+        ? 'Masquer les informations complémentaires'
+        : 'Afficher les informations complémentaires';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                widget.title,
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .45,
+                ),
+              ),
+            ),
+            Tooltip(
+              message: widget.notice,
+              // Desktop hover or long-press reveals the original explanation.
+              // Tap and keyboard activation reveal it inline below the title.
+              excludeFromSemantics: true,
+              child: Semantics(
+                label: _actionLabel(context),
+                toggled: _expanded,
+                child: IconButton(
+                  key: const Key('d17-receipt-info'),
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(
+                    _expanded
+                        ? Icons.info_rounded
+                        : Icons.info_outline_rounded,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (_expanded)
+          Padding(
+            key: const Key('d17-receipt-help'),
+            padding: const EdgeInsetsDirectional.only(top: 4),
+            child: Text(
+              widget.notice,
+              style: TextStyle(
+                color: AminaTheme.textSecondary(context),
+                fontSize: 11.5,
+                height: 1.45,
+              ),
+            ),
+          ),
       ],
     );
   }

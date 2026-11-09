@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -27,21 +28,21 @@ String _failureText(BuildContext context, ProviderApiException failure) {
   return switch (failure.code) {
     'provider_timeout' => _chatText(
       context,
-      'IAmina met trop de temps à répondre. Réessaie dans un instant.',
-      'IAmina is taking too long to respond. Try again in a moment.',
-      'تستغرق IAmina وقتًا أطول من المعتاد للرد. حاول مجددًا بعد لحظة.',
+      'IAMINA met trop de temps à répondre. Réessaie dans un instant.',
+      'IAMINA is taking too long to respond. Try again in a moment.',
+      'تستغرق IAMINA وقتًا أطول من المعتاد للرد. حاول مجددًا بعد لحظة.',
     ),
     'provider_unavailable' => _chatText(
       context,
-      'Le service IAmina est temporairement indisponible. Réessaie dans un instant.',
-      'IAmina is temporarily unavailable. Try again in a moment.',
-      'خدمة IAmina غير متاحة مؤقتًا. حاول مجددًا بعد لحظة.',
+      'Le service IAMINA est temporairement indisponible. Réessaie dans un instant.',
+      'IAMINA is temporarily unavailable. Try again in a moment.',
+      'خدمة IAMINA غير متاحة مؤقتًا. حاول مجددًا بعد لحظة.',
     ),
     'provider_quota_exceeded' => _chatText(
       context,
-      'IAmina a atteint sa limite temporaire. Réessaie plus tard.',
-      'IAmina has reached its temporary limit. Try again later.',
-      'بلغت IAmina الحد المؤقت للخدمة. حاول مجددًا لاحقًا.',
+      'IAMINA a atteint sa limite temporaire. Réessaie plus tard.',
+      'IAMINA has reached its temporary limit. Try again later.',
+      'بلغت IAMINA الحد المؤقت للخدمة. حاول مجددًا لاحقًا.',
     ),
     'authentication_required' => _chatText(
       context,
@@ -84,6 +85,7 @@ class _CompanionConversationScreenState
   late CompanionService _service;
   bool _serviceInitialized = false;
   bool _ownsService = false;
+  bool _kuficMarkPreloaded = false;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _inputFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -112,6 +114,17 @@ class _CompanionConversationScreenState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Predecode the canonical Kufic mark while the chat is idle. Otherwise
+    // the first waiting frame can show a blank square during PNG decoding.
+    if (!_kuficMarkPreloaded) {
+      _kuficMarkPreloaded = true;
+      unawaited(
+        precacheImage(
+          const AssetImage('assets/images/iamina_logo_mark.png'),
+          context,
+        ),
+      );
+    }
     if (_serviceInitialized) return;
     final injected = widget.service;
     if (injected != null) {
@@ -392,7 +405,7 @@ class _CompanionConversationScreenState
         _scrollToBottom();
       } catch (error) {
         // No patient value or identifier is included in the diagnostic.
-        debugPrint('IAmina local reading unavailable: ${error.runtimeType}');
+        debugPrint('IAMINA local reading unavailable: ${error.runtimeType}');
       }
     }
 
@@ -464,7 +477,7 @@ class _CompanionConversationScreenState
                   },
                 ),
                 Expanded(
-                  child: _messages.isEmpty
+                  child: _messages.isEmpty && !waitingForReply
                       ? _EmptyConversation(
                           onSuggestionSelected: (suggestion) {
                             _controller.text = suggestion;
@@ -488,7 +501,9 @@ class _CompanionConversationScreenState
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             if (waitingForReply && index == _messages.length) {
-                              return const _TypingBubble();
+                              return _TypingBubble(
+                                voiceProcessing: _voiceState == _VoiceState.processing,
+                              );
                             }
                             return _MessageBubble(message: _messages[index]);
                           },
@@ -525,11 +540,31 @@ class _CompanionConversationScreenState
               ],
             );
 
+            final animatedConversation = TweenAnimationBuilder<double>(
+              key: const Key('companion-chat-entry-motion'),
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              child: conversation,
+              builder: (context, progress, child) {
+                if (MediaQuery.disableAnimationsOf(context)) return child!;
+                return Opacity(
+                  opacity: progress,
+                  // Preserve actual 48px touch targets during the entrance.
+                  // A scale transform shrank them to 47.28px at t=0.
+                  child: Transform.translate(
+                    offset: Offset(0, 16 * (1 - progress)),
+                    child: child,
+                  ),
+                );
+              },
+            );
+
             if (!desktop) {
               return Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 960),
-                  child: conversation,
+                  child: animatedConversation,
                 ),
               );
             }
@@ -553,7 +588,7 @@ class _CompanionConversationScreenState
                           ),
                           boxShadow: AminaVisualLanguage.cardShadowLight,
                         ),
-                        child: conversation,
+                        child: animatedConversation,
                       ),
                     ),
                   ),
@@ -586,48 +621,26 @@ class _ConversationHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .9),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: AminaVisualLanguage.cardShadowLight,
-            ),
-            child: Image.asset(
-              'assets/images/logo_amina.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-          const SizedBox(width: 11),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'IAmina',
-                  style: TextStyle(
-                    color: AminaVisualLanguage.primaryText(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.35,
+            child: Hero(
+              tag: 'dashboard-companion-chat-action',
+              child: Material(
+                type: MaterialType.transparency,
+                child: Semantics(
+                  label: 'IAMINA',
+                  image: true,
+                  child: Image.asset(
+                    'assets/images/iamina_logo_horizontal.png',
+                    width: 168,
+                    height: 38,
+                    fit: BoxFit.contain,
+                    alignment: AlignmentDirectional.centerStart,
+                    filterQuality: FilterQuality.high,
+                    color: AminaTheme.isDark(context) ? Colors.white : null,
+                    colorBlendMode: BlendMode.srcIn,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _chatText(
-                    context,
-                    'Conversation gouvernée',
-                    'Governed conversation',
-                    'محادثة محكومة',
-                  ),
-                  style: TextStyle(
-                    color: AminaVisualLanguage.secondary(context),
-                    fontSize: 11.5,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           Semantics(
@@ -674,39 +687,12 @@ class _EmptyConversation extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: AminaVisualLanguage.mintIconDecoration(context),
-                child: const Icon(
-                  Icons.forum_outlined,
-                  color: AminaVisualLanguage.actionGreen,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 18),
               Text(
                 _chatText(
                   context,
-                  'Parler avec IAmina',
-                  'Talk with IAmina',
-                  'تحدث مع IAmina',
-                ),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Georgia',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AminaVisualLanguage.primaryText(context),
-                ),
-              ),
-              const SizedBox(height: 9),
-              Text(
-                _chatText(
-                  context,
-                  'Pose une question avec tes mots. IAmina peut organiser et reformuler, mais ne remplace pas ton professionnel de santé.',
-                  'Ask in your own words. IAmina can organize and rephrase, but does not replace your clinician.',
-                  'اكتب سؤالك بطريقتك. يمكن لـ IAmina التنظيم وإعادة الصياغة، لكنها لا تستبدل طبيبك.',
+                  'Pose une question avec tes mots. IAMINA peut organiser et reformuler, mais ne remplace pas ton professionnel de santé.',
+                  'Ask in your own words. IAMINA can organize and rephrase, but does not replace your clinician.',
+                  'اكتب سؤالك بطريقتك. يمكن لـ IAMINA التنظيم وإعادة الصياغة، لكنها لا تستبدل طبيبك.',
                 ),
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -861,9 +847,9 @@ class _Composer extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: _chatText(
                   context,
-                  'Écrire à IAmina…',
-                  'Write to IAmina…',
-                  'اكتب إلى IAmina…',
+                  'Écrire à IAMINA…',
+                  'Write to IAMINA…',
+                  'اكتب إلى IAMINA…',
                 ),
                 filled: true,
                 fillColor: AminaVisualLanguage.controlSurface(context),
@@ -1060,7 +1046,8 @@ class _MessageBubble extends StatelessWidget {
             : Border.all(color: AminaVisualLanguage.controlBorder(context)),
         boxShadow: isUser ? null : AminaVisualLanguage.cardShadowLight,
       ),
-      child: Text(
+      // User-initiated native selection/copy only; never copy automatically.
+      child: SelectableText(
         message.text,
         style: TextStyle(
           height: 1.42,
@@ -1079,16 +1066,16 @@ class _MessageBubble extends StatelessWidget {
         ? _chatText(context, 'Vous', 'You', 'أنت')
         : isLocal
         ? _chatText(context, 'Sur cet appareil', 'On this device', 'على هذا الجهاز')
-        : 'IAmina';
+        : 'IAMINA';
 
     final renderedBubble = emergency
         ? Semantics(
             liveRegion: true,
             label: _chatText(
               context,
-              'Alerte urgente IAmina. ${message.text}',
-              'Urgent IAmina alert. ${message.text}',
-              'تنبيه عاجل من IAmina. ${message.text}',
+              'Alerte urgente IAMINA. ${message.text}',
+              'Urgent IAMINA alert. ${message.text}',
+              'تنبيه عاجل من IAMINA. ${message.text}',
             ),
             child: ExcludeSemantics(child: bubble),
           )
@@ -1144,28 +1131,206 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _TypingBubble extends StatelessWidget {
-  const _TypingBubble();
+class _TypingBubble extends StatefulWidget {
+  final bool voiceProcessing;
+
+  const _TypingBubble({this.voiceProcessing = false});
+
+  @override
+  State<_TypingBubble> createState() => _TypingBubbleState();
+}
+
+class _TypingBubbleState extends State<_TypingBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _motion;
+
+  @override
+  void initState() {
+    super.initState();
+    _motion = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+  }
+
+  void _syncMotion() {
+    // Only thinking animates. Voice processing and reduced-motion stay static.
+    if (widget.voiceProcessing || MediaQuery.disableAnimationsOf(context)) {
+      _motion.stop();
+      _motion.value = 0;
+    } else if (!_motion.isAnimating) {
+      _motion.repeat();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TypingBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.voiceProcessing != oldWidget.voiceProcessing) {
+      _syncMotion();
+    }
+  }
+
+  @override
+  void dispose() {
+    _motion.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final status = widget.voiceProcessing
+        ? _chatText(
+            context,
+            'IAMINA traite le message vocal…',
+            'IAMINA is processing your voice message…',
+            'تعالج IAMINA الرسالة الصوتية…',
+          )
+        : _chatText(
+            context,
+            'IAMINA prépare sa réponse…',
+            'IAMINA is preparing a reply…',
+            'تُحضّر IAMINA ردّها…',
+          );
+    final staticMark =
+        widget.voiceProcessing || MediaQuery.disableAnimationsOf(context);
+
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Container(
-        key: const Key('companion-typing-bubble'),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          color: AminaVisualLanguage.controlSurface(context),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
-        ),
-        child: const SizedBox(
-          width: 42,
-          child: LinearProgressIndicator(minHeight: 3),
+      child: Semantics(
+        liveRegion: true,
+        label: status,
+        child: ExcludeSemantics(
+          child: Container(
+            key: const Key('companion-typing-bubble'),
+            padding: const EdgeInsetsDirectional.fromSTEB(12, 11, 18, 11),
+            decoration: BoxDecoration(
+              color: AminaVisualLanguage.controlSurface(context),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AminaVisualLanguage.controlBorder(context),
+              ),
+              boxShadow: AminaVisualLanguage.cardShadowLight,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                KuficThinkingMark(animation: _motion, staticMark: staticMark),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AminaVisualLanguage.primaryText(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+/// Exact canonical Arabic/Kufic IAMINA mark. Its pixels are never redrawn.
+/// Only the four clipped quadrants gently separate and rejoin while thinking.
+class KuficThinkingMark extends StatelessWidget {
+  final Animation<double> animation;
+  final bool staticMark;
+
+  const KuficThinkingMark({
+    super.key,
+    required this.animation,
+    required this.staticMark,
+  });
+
+  static const _asset = 'assets/images/iamina_logo_mark.png';
+
+  @override
+  Widget build(BuildContext context) {
+    if (staticMark) {
+      return SizedBox.square(
+        key: const Key('companion-kufic-static'),
+        dimension: 34,
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Image.asset(
+            _asset,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            excludeFromSemantics: true,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox.square(
+      key: const Key('companion-kufic-thinking'),
+      dimension: 34,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          // sin² has zero velocity at both ends of the loop: no jump or flash.
+          final separation =
+              math.pow(math.sin(math.pi * animation.value), 2).toDouble() *
+              2.0;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: List.generate(4, (index) {
+              final x = index.isEven ? -separation : separation;
+              final y = index < 2 ? -separation : separation;
+              return Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Transform.translate(
+                    key: Key('companion-kufic-segment-$index'),
+                    offset: Offset(x, y),
+                    child: ClipRect(
+                      clipper: _KuficQuarterClipper(index),
+                      child: Image.asset(
+                        _asset,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _KuficQuarterClipper extends CustomClipper<Rect> {
+  final int quarter;
+
+  const _KuficQuarterClipper(this.quarter);
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(
+    quarter.isOdd ? size.width / 2 : 0,
+    quarter >= 2 ? size.height / 2 : 0,
+    size.width / 2,
+    size.height / 2,
+  );
+
+  @override
+  bool shouldReclip(covariant _KuficQuarterClipper oldClipper) =>
+      oldClipper.quarter != quarter;
 }
 
 enum _ConversationRole { user, assistant, localFact }

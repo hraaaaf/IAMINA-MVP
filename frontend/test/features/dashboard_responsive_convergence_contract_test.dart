@@ -25,7 +25,11 @@ void main() {
     expect(responsive, contains('DashboardTrendSection('));
     expect(responsive, isNot(contains('DashboardAdaptiveKpiSection(')));
     expect(responsive, contains('DashboardInsightSection('));
-    expect(responsive, contains('DashboardNextActionSection('));
+    expect(responsive, contains('DashboardMyRemindersCard()'));
+    expect(responsive, isNot(contains('DashboardNextActionSection(')));
+    expect(responsive.indexOf('DashboardMyRemindersCard()'),
+        greaterThan(responsive.indexOf('DashboardTrendSection(')));
+    expect(responsive, contains('DashboardInsightSection('));
     expect(responsive, isNot(contains('DashboardScreen')));
     expect(responsive, isNot(contains('ClinicalEngine')));
     expect(responsive, isNot(contains('calcGMI')));

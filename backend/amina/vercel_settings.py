@@ -8,7 +8,7 @@ import dj_database_url
 
 from .middleware.vercel_csrf import IAMINA_FRONTEND_STABLE_ORIGIN
 from .settings import *  # noqa: F403,F401
-from .vercel_environment import is_vercel_production
+from .vercel_environment import is_vercel_production, validate_vercel_database_identity
 
 if DEBUG:  # noqa: F405
     raise ValueError("IAMINA Vercel backend requires DEBUG=False")
@@ -20,6 +20,8 @@ if not _database_url:
 _database_scheme = urlparse(_database_url).scheme.lower()
 if _database_scheme not in {"postgres", "postgresql"}:
     raise ValueError("IAMINA Vercel backend requires PostgreSQL DATABASE_URL")
+
+validate_vercel_database_identity(_database_url)
 
 DATABASES = {  # noqa: F405
     "default": dj_database_url.parse(

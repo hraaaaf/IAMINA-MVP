@@ -46,6 +46,23 @@ void _wide(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
 }
 
+/// The D22 dial increases entry height: below-fold chips and the meal
+/// action must be scrolled CLEAR of the persistent save bar before tapping.
+Future<void> _tapFormItem(WidgetTester tester, Finder target) async {
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
+  await tester.drag(
+    find.byType(SingleChildScrollView).first,
+    const Offset(0, -175),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapOptionalMeal(WidgetTester tester) =>
+    _tapFormItem(tester, find.byKey(const Key('add-meal-button')));
+
 void main() {
   late AppDatabase db;
 
@@ -58,6 +75,30 @@ void main() {
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(69), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(70), GlucoseEntrySafety.nonLow);
+      expect(classifyGlucoseEntrySafety(112), GlucoseEntrySafety.nonLow);
+    });
+
+    testWidgets('112 mg/dL is saved without a low-glucose warning', (tester) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('glucose-input')), '112');
+      await tester.pumpAndSettle();
+      final input = tester.widget<TextField>(
+        find.byKey(const Key('glucose-input')),
+      );
+      expect(input.controller?.text, '112');
+
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('level2-low-dialog')), findsNothing);
+      expect(find.byKey(const Key('level1-low-dialog')), findsNothing);
+      final logs = await db.select(db.logEntries).get();
+      expect(logs, hasLength(1));
+      expect(logs.single.bloodSugar, 112);
+      expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
     });
 
     test('uses Opus/WebM on web and AAC/MP4 on mobile', () {
@@ -127,8 +168,7 @@ void main() {
       expect(find.byKey(const Key('add-meal-button')), findsOneWidget);
       expect(find.byKey(const Key('meal-section')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
 
       expect(find.byKey(const Key('meal-section')), findsOneWidget);
       expect(find.byKey(const Key('meal-type-breakfast')), findsOneWidget);
@@ -166,8 +206,7 @@ void main() {
         await tester.pumpWidget(_sheet(db, sheet: sheet));
         await tester.pumpAndSettle();
         await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-        await tester.tap(find.byKey(const Key('add-meal-button')));
-        await tester.pumpAndSettle();
+        await _tapOptionalMeal(tester);
 
         final voiceButton = find.byKey(
           const Key('meal-note-voice-button'),
@@ -287,9 +326,10 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-      await tester.tap(find.byKey(const Key('glycemic-context-pre_meal')));
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapFormItem(tester,
+        find.byKey(const Key('glycemic-context-pre_meal')),
+      );
+      await _tapOptionalMeal(tester);
       await tester.tap(find.byKey(const Key('meal-type-lunch')));
       await tester.enterText(
         find.byKey(const Key('meal-note-input')),
@@ -335,8 +375,7 @@ void main() {
       expect(find.text('سياق القياس'), findsOneWidget);
       expect(find.text('إضافة وجبة · اختياري'), findsOneWidget);
       expect(find.text('Nouvelle mesure'), findsNothing);
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
       expect(find.byTooltip('إملاء ملاحظة الوجبة'), findsOneWidget);
       expect(
         Directionality.of(tester.element(find.text('قياس جديد'))),
@@ -368,9 +407,10 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-      await tester.tap(find.byKey(const Key('glycemic-context-post_meal')));
-      await tester.tap(find.byKey(const Key('add-meal-button')));
-      await tester.pumpAndSettle();
+      await _tapFormItem(tester,
+        find.byKey(const Key('glycemic-context-post_meal')),
+      );
+      await _tapOptionalMeal(tester);
       await tester.tap(find.byKey(const Key('meal-type-lunch')));
       await tester.tap(find.byKey(const Key('save-log-button')));
       await tester.pumpAndSettle();
@@ -385,6 +425,14 @@ void main() {
       expect(find.textContaining('Après repas'), findsOneWidget);
       expect(find.textContaining('Déjeuner'), findsOneWidget);
       expect(find.textContaining(' U'), findsNothing);
+      expect(
+        find.textContaining('n’interprète pas la mesure'),
+        findsNothing,
+      );
+      final d17Info = find.byKey(const Key('d17-receipt-info'));
+      await tester.ensureVisible(d17Info);
+      await tester.tap(d17Info);
+      await tester.pumpAndSettle();
       expect(
         find.textContaining('n’interprète pas la mesure'),
         findsOneWidget,

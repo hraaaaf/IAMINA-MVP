@@ -19,6 +19,24 @@ import '../../../services/api_client.dart';
 import '../../journal/widgets/post_save_receipt.dart';
 import 'add_log_view.dart';
 
+/// Accept only finite positive numbers entered by the patient. Do not
+/// substitute defaults or silently convert malformed input into a reading.
+double? parsePositiveFiniteGlucoseInput(String raw) {
+  final value = double.tryParse(raw.trim().replaceAll(',', '.'));
+  if (value == null || !value.isFinite || value <= 0) return null;
+  return value;
+}
+
+/// Keep the existing D22 unit factor. Conversion overflow and unsupported
+/// units must fail closed before a patient record is persisted.
+double? normalizeFiniteGlucoseMgdl(String raw, String unit) {
+  if (unit != 'mg/dL' && unit != 'mmol/L') return null;
+  final value = parsePositiveFiniteGlucoseInput(raw);
+  if (value == null) return null;
+  final converted = unit == 'mmol/L' ? value * 18.0 : value;
+  return converted.isFinite && converted > 0 ? converted : null;
+}
+
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
 /// Threshold source: American Diabetes Association, Standards of Care in
@@ -83,6 +101,12 @@ class AddLogSheet extends StatefulWidget {
 
 class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _glucoseController = TextEditingController();
+  // The entry unit changes only this draft; changing it must not mutate the
+  // patient's profile preference, legacy target bounds, or recorded readings.
+  String? _entryUnit;
+  double? _canonicalUnitSwitchMgdl;
+  String? _canonicalUnitSwitchText;
+
   final TextEditingController _mealNoteController = TextEditingController();
   AudioRecorder? _mealVoiceRecorder;
   final List<Uint8List> _mealVoiceChunks = <Uint8List>[];
@@ -123,17 +147,52 @@ class _AddLogSheetState extends State<AddLogSheet> {
   bool get _mealVoiceBusy => _mealVoiceRecording || _mealVoiceTranscribing;
 
   double? _displayGlucose() =>
-      double.tryParse(_glucoseController.text.trim().replaceAll(',', '.'));
+      parsePositiveFiniteGlucoseInput(_glucoseController.text);
 
   double? _mgdlGlucose(String unit) {
-    final value = _displayGlucose();
-    if (value == null) return null;
-    return unit == 'mmol/L' ? value * 18.0 : value;
+    // Validate the selected unit even when the presentation switch cached a
+    // previous canonical value. The cache cannot bypass the numeric gate.
+    if (unit != 'mg/dL' && unit != 'mmol/L') return null;
+    if (_displayGlucose() == null) return null;
+    if (_canonicalUnitSwitchMgdl != null &&
+        _canonicalUnitSwitchText == _glucoseController.text) {
+      final canonical = _canonicalUnitSwitchMgdl!;
+      return canonical.isFinite && canonical > 0 ? canonical : null;
+    }
+    return normalizeFiniteGlucoseMgdl(_glucoseController.text, unit);
   }
 
-  bool get _hasValidGlucose {
-    final value = _displayGlucose();
-    return value != null && value > 0;
+  void _setGlucoseFromDial(double mgdl, String unit) {
+    final text = unit == 'mmol/L'
+        ? (mgdl / 18.0).toStringAsFixed(1)
+        : mgdl.round().toString();
+    setState(() {
+      _glucoseController.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+      _canonicalUnitSwitchMgdl = mgdl;
+      _canonicalUnitSwitchText = text;
+    });
+  }
+
+  void _changeEntryUnit(String oldUnit) {
+    final next = oldUnit == 'mg/dL' ? 'mmol/L' : 'mg/dL';
+    final sourceMgdl = _mgdlGlucose(oldUnit);
+    setState(() {
+      _entryUnit = next;
+      if (sourceMgdl != null && sourceMgdl > 0 && sourceMgdl.isFinite) {
+        final display = next == 'mmol/L'
+            ? (sourceMgdl / 18.0).toStringAsFixed(1)
+            : sourceMgdl.round().toString();
+        _glucoseController.value = TextEditingValue(
+          text: display,
+          selection: TextSelection.collapsed(offset: display.length),
+        );
+        _canonicalUnitSwitchMgdl = sourceMgdl;
+        _canonicalUnitSwitchText = display;
+      }
+    });
   }
 
   bool get _hasUnsavedData =>
@@ -349,7 +408,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
+    final unit = _entryUnit ?? profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
 
     final savedReceipt = _savedReceipt;
@@ -363,15 +422,18 @@ class _AddLogSheetState extends State<AddLogSheet> {
       );
     }
 
-    final ramadanActive = isRamadanProfileDate(
+    final ramadanActive =
+        shouldApplyRamadanProfileContext(isWeb: kIsWeb) &&
+        isRamadanProfileDate(
       _selectedTime,
       profile?.ramadanStartDate,
       profile?.ramadanEndDate,
     );
-    final mealTypes = mealTypesForProfileDate(
+    final mealTypes = mealTypesForSurfaceDate(
       _selectedTime,
       profile?.ramadanStartDate,
       profile?.ramadanEndDate,
+      isWeb: kIsWeb,
     );
 
     final primaryEvent = Column(
@@ -381,7 +443,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
           controller: _glucoseController,
           unit: unit,
           mgdl: _mgdlGlucose(unit),
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) => setState(() {
+            _canonicalUnitSwitchMgdl = null;
+            _canonicalUnitSwitchText = null;
+          }),
+          onValueSelected: (mgdl) => _setGlucoseFromDial(mgdl, unit),
+          onToggleUnit: () => _changeEntryUnit(unit),
         ),
         const SizedBox(height: 18),
         AddLogMeasurementContext(
@@ -457,7 +524,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         detailsCard: detailsCard,
         saveBar: AddLogSaveBar(
           saving: _saving,
-          enabled: _hasValidGlucose && !_mealVoiceBusy,
+          enabled: _mgdlGlucose(unit) != null && !_mealVoiceBusy,
           onSave: () => _saveLog(db, unit, l10n),
         ),
       ),
@@ -486,10 +553,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
         time.hour,
         time.minute,
       );
-      final allowed = mealTypesForProfileDate(
+      final allowed = mealTypesForSurfaceDate(
         _selectedTime,
         profile?.ramadanStartDate,
         profile?.ramadanEndDate,
+        isWeb: kIsWeb,
       );
       if (_mealType != null && !allowed.contains(_mealType)) {
         _mealType = null;
@@ -544,7 +612,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     final glucose = _displayGlucose();
     final mgdl = _mgdlGlucose(unit);
-    if (glucose == null || mgdl == null || glucose <= 0) {
+    if (glucose == null ||
+        !glucose.isFinite ||
+        mgdl == null ||
+        !mgdl.isFinite ||
+        mgdl <= 0) {
       _message(l10n.journalInvalidGlucose);
       return;
     }
@@ -610,6 +682,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   void _clearDraftForNextEntry() {
     _glucoseController.clear();
+    _canonicalUnitSwitchMgdl = null;
+    _canonicalUnitSwitchText = null;
     _mealNoteController.clear();
     _selectedMealItemIds.clear();
     _mealPortionSelections.clear();

@@ -110,8 +110,9 @@ jobs:
 
           broken = root / 'v2-broken' / 'iamina_service_worker.js'
           text = broken.read_text(encoding='utf-8')
-          needle = "  './drift_worker.js',\n];"
-          replacement = "  './drift_worker.js',\n  './missing-v2.asset',\n];"
+          # Keep broken-v2 fixture stable when new precache fonts are appended.
+          needle = "  './drift_worker.js',\n"
+          replacement = needle + "  './missing-v2.asset',\n"
           if needle not in text:
               raise SystemExit('unable to inject deterministic broken-v2 precache entry')
           broken.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
@@ -127,13 +128,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet websocket-client
+          # Use the same pinned Chromium family as the successful Web FUE
+          # jobs: system google-chrome startup is not reliable on runner images.
+          python3 -m pip install --quiet websocket-client playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
 
           python3 -m http.server 7362 --directory p5-4a-pwa-update/served >/tmp/iamina-pwa-update-http.log 2>&1 &
           SERVER_PID=$!
           PROFILE_BROKEN="$(mktemp -d)"
           PROFILE_HEALTHY="$(mktemp -d)"
-          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          CHROME="$(python3 -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')"
           test -n "$CHROME"
           CHROME_PID=''
 
@@ -165,6 +169,7 @@ jobs:
             "$CHROME" \
               --headless=new \
               --no-sandbox \
+              --disable-dev-shm-usage \
               --no-first-run \
               --disable-session-crashed-bubble \
               --enable-unsafe-swiftshader \
@@ -174,7 +179,7 @@ jobs:
               "http://127.0.0.1:7362/?phase=$phase" \
               >/tmp/iamina-pwa-update-chrome.log 2>&1 &
             CHROME_PID=$!
-            for _ in $(seq 1 50); do
+            for _ in $(seq 1 150); do
               if curl -fsS http://127.0.0.1:9225/json/list >/dev/null; then return 0; fi
               sleep 0.2
             done

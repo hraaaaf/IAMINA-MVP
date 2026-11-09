@@ -83,7 +83,7 @@ void main() {
       await tester.pumpAndSettle();
 
       const failure =
-          'IAmina met trop de temps à répondre. Réessaie dans un instant.';
+          'IAMINA met trop de temps à répondre. Réessaie dans un instant.';
       final failureFinder = find.bySemanticsLabel(failure);
       expect(failureFinder, findsOneWidget);
 

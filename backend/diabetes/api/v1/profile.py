@@ -8,11 +8,14 @@ PUT    /api/v1/profile/ai-media-consents/{purpose}/{modality}
 DELETE /api/v1/profile/ai-media-consents/{purpose}/{modality}
 """
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
+from django.db import transaction
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.ai_egress import grant_media_consent, revoke_media_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
@@ -48,12 +51,35 @@ _MEDIA_CONSENT_OPTIONS: tuple[tuple[str, str], ...] = (
 _MEDIA_CONSENT_OPTION_SET = frozenset(_MEDIA_CONSENT_OPTIONS)
 
 
+# Input-only declaration DTO. Codes are descriptive, not medication instructions.
+# Unsupported values and unknown extra keys are refused instead of coerced.
+class PatientTreatmentDeclarationPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: Literal[1]
+    state: Literal["not_answered", "unsure", "declared", "none_declared"]
+    codes: list[Literal["insulin", "oral_meds", "lifestyle", "other"]] = Field(
+        max_length=4
+    )
+
+    @model_validator(mode="after")
+    def require_consistent_declaration(self):
+        if len(self.codes) != len(set(self.codes)):
+            raise ValueError("Duplicate declared treatment")
+        if self.state == "declared" and not self.codes:
+            raise ValueError("Declared treatment requires explicit codes")
+        if self.state != "declared" and self.codes:
+            raise ValueError("Non-declared state requires empty codes")
+        return self
+
+
 class ProfilePatchSchema(BaseModel):
     """All fields optional; supplied values are treated as patient declarations."""
 
     preferred_language: Optional[str] = None
     diabetes_type: Optional[str] = None
     treatment_type: Optional[str] = None
+    treatment_declaration: Optional[PatientTreatmentDeclarationPatch] = None
     unit_preference: Optional[str] = None
     target_range_low: Optional[float] = None
     target_range_high: Optional[float] = None
@@ -63,6 +89,15 @@ class ProfilePatchSchema(BaseModel):
     height: Optional[int] = None
     ramadan_start_date: Optional[date] = None
     ramadan_end_date: Optional[date] = None
+
+    @model_validator(mode="after")
+    def reject_null_declaration_patch(self):
+        if (
+            "treatment_declaration" in self.model_fields_set
+            and self.treatment_declaration is None
+        ):
+            raise ValueError("Explicit null treatment declaration is unsupported")
+        return self
 
     @field_validator("preferred_language")
     @classmethod
@@ -173,6 +208,16 @@ def _get_diabetes_profile(user) -> DiabetesProfile:
         raise HttpError(404, "Diabetes profile not found") from exc
 
 
+def _get_diabetes_profile_for_update(user) -> DiabetesProfile:
+    """Lock this patient's row before any treatment write or CAS comparison."""
+    try:
+        return DiabetesProfile.objects.select_for_update().get(
+            base_profile__patient=user
+        )
+    except DiabetesProfile.DoesNotExist as exc:
+        raise HttpError(404, "Diabetes profile not found") from exc
+
+
 def _validate_media_consent_option(purpose: str, modality: str) -> None:
     if (purpose, modality) not in _MEDIA_CONSENT_OPTION_SET:
         raise HttpError(422, "Unsupported media consent purpose/modality pair")
@@ -198,11 +243,37 @@ def get_profile(request):
 
 
 @router.patch("/profile", response=PatientProfileSchema)
+@transaction.atomic
 def patch_profile(request, data: ProfilePatchSchema):
     """Persist only explicitly supplied patient-declared profile fields."""
-    profile = _get_diabetes_profile(request.user)
+    profile = _get_diabetes_profile_for_update(request.user)
     base = profile.base_profile
     payload = data.model_dump(exclude_unset=True)
+    declaration = payload.pop("treatment_declaration", None)
+
+    # D7 declarations always use compare-and-swap: a missing revision must
+    # never bypass a competing device's update. Legacy profile-only PATCH
+    # callers remain compatible because they do not submit a declaration.
+    # "none" explicitly means no declaration has yet been persisted.
+    expected_text = getattr(request, "headers", {}).get(
+        "X-Iamina-Treatment-Expected-Updated-At"
+    )
+    if declaration is not None and expected_text is None:
+        raise HttpError(428, "Treatment revision required")
+    if expected_text is not None:
+        if declaration is None:
+            raise HttpError(422, "Treatment revision without a declaration")
+        if expected_text == "none":
+            expected_at = None
+        else:
+            try:
+                expected_at = parse_datetime(expected_text)
+            except ValueError as exc:
+                raise HttpError(422, "Invalid treatment revision") from exc
+            if expected_at is None or timezone.is_naive(expected_at):
+                raise HttpError(422, "Invalid treatment revision")
+        if expected_at != profile.treatment_declaration_updated_at:
+            raise HttpError(409, "Treatment declaration was changed on another device")
 
     proposed_low = payload.get("target_range_low", profile.target_range_low)
     proposed_high = payload.get("target_range_high", profile.target_range_high)
@@ -247,6 +318,24 @@ def patch_profile(request, data: ProfilePatchSchema):
             "date_of_birth",
         }:
             needs_cache_invalidation = True
+
+    if declaration is not None:
+        # No clinical inference. The legacy scalar and targets stay unchanged.
+        profile.treatment_declaration_state = declaration["state"]
+        profile.treatment_declarations = declaration["codes"]
+        profile.treatment_declaration_version = declaration["version"]
+        profile.treatment_declaration_source = "patient_declared"
+        profile.treatment_declaration_updated_at = timezone.now()
+        diabetes_changed.extend(
+            [
+                "treatment_declaration_state",
+                "treatment_declarations",
+                "treatment_declaration_version",
+                "treatment_declaration_source",
+                "treatment_declaration_updated_at",
+            ]
+        )
+        needs_cache_invalidation = True
 
     target_range_touched = bool(
         {"target_range_low", "target_range_high"} & payload.keys()

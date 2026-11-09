@@ -2,7 +2,7 @@ name: amina
 description: IAmina — Diabetes companion mobile + web app.
 publish_to: 'none'
 
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
@@ -13,6 +13,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.2
+  # D4: synthetic-only PDF proof; no patient export or OS sharing.
+  pdf: ^3.13.1
 
   # Routing
   go_router: ^14.1.0
@@ -86,6 +88,26 @@ flutter:
     - assets/food/pictograms/v1/
 
   fonts:
+    # Locally vendored OFL fonts — no network dependency for English/French,
+    # Arabic and common UI symbol glyphs on Web/PWA.
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+    - family: Inter Tight
+      fonts:
+        - asset: assets/fonts/InterTight.ttf
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto.ttf
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic.ttf
+    - family: NotoSansSymbols
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols.ttf
+    - family: NotoSansSymbols2
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols2.ttf
     - family: Georgia
       fonts:
         - asset: assets/fonts/IAMINASerif-Bold-subset.ttf

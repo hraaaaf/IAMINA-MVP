@@ -760,6 +760,12 @@ abstract class AppLocalizations {
   /// **'Offline · data kept on this device'**
   String get syncOffline;
 
+  /// No description provided for @syncLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline pilot · saved on this device, not synchronized'**
+  String get syncLocalOnly;
+
   /// No description provided for @syncFailed.
   ///
   /// In en, this message translates to:

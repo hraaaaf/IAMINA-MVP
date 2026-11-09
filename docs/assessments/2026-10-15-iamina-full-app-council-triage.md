@@ -1,0 +1,58 @@
+# IAMINA — revue préliminaire de toute l'application par conseil IA (15 domaines)
+
+Date: 15 octobre 2026. SHA produit examiné: 4bf3d855da1e10629ee35613d0ddf52fd3c45f92.
+
+## Résultat observable
+
+- Profils de 15 agents IA + 1 orchestrateur créés dans .github/agents/ ; skill dans .skills/full-app-agent-council/SKILL.md.
+- Anciennes conventions AGENTS.md, sept rôles .agents/ et dix skills préexistants préservés.
+- GitHub Action https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38697828722 : SUCCESS, 3 tests et 15 sondes déterministes dans des processus séparés, artefact 11954772942.
+- PREUVE HONNÊTE: llm_subagents_executed = 0. Ces processus sont des sondes de code, NON des sessions de modèles IA.
+- PR d'installation https://github.com/hraaaaf/IAMINA-MVP/pull/1025 fusionnée; CI finale main https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38698003185 SUCCESS.
+- Tentative d'affectation du cloud agent Copilot: GitHub API a répondu HTTP 422 (Copilot non assignable dans ce dépôt). Ordinateur Remote Desktop connecté: OFFLINE. Aucune preuve d'un runtime multi-agent réellement disponible.
+- Les observations ci-dessous résultent d'une lecture transversale dans cette même session ChatGPT, PAS de quinze agents autonomes et indépendants.
+
+## Résultats exploratoires par spécialité
+
+| Agent | Preuves source lues | Résultat favorable | Incertitude / risque | Statut |
+| --- | --- | --- | --- | --- |
+| **IA01 architecture** | [AGENTS.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/AGENTS.md), [docs/architecture/ARCHITECTURE.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/architecture/ARCHITECTURE.md) | Flutter/Django module boundaries described | Full route and trust-boundary parity not exhaustively tested | PARTIAL |
+| **IA02 clinical safety** | [backend/diabetes/services/clinical/symptom_triage_decision.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/diabetes/services/clinical/symptom_triage_decision.py), [backend/diabetes/services/clinical/shield.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/diabetes/services/clinical/shield.py) | Urgent classification delegated to core safety and safety shield exists | Reproduce synthetic extreme-low/high, missing data and every emergency path | REVIEW |
+| **IA03 diabetes clinical** | [docs/COMPANION_INTELLIGENCE_CONTRACT.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/COMPANION_INTELLIGENCE_CONTRACT.md) | Generative diagnosis, prescribing, dose changes forbidden in contract | Population-specific ADA 2026 applicability and runtime clinical branches need case matrix | REVIEW |
+| **IA04 CGM and glucose** | [backend/diabetes/services/clinical/cgm_eligibility.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/diabetes/services/clinical/cgm_eligibility.py), [frontend/lib/core/utils/glucose_formatter.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/core/utils/glucose_formatter.dart) | CGM gap/coverage checks and mg/dL↔mmol/L formatter present | Live provenance and UI display parity not instrumented | PARTIAL |
+| **IA05 medication** | [backend/diabetes/services/clinical/food_decision.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/diabetes/services/clinical/food_decision.py), [frontend/lib/data/drift/patient_treatment_declaration_store.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/data/drift/patient_treatment_declaration_store.dart) | No-dose/no-treatment-change path and treatment declarations exist | Medication unknown vs zero, sync, dose leakage negative tests incomplete | PARTIAL |
+| **IA06 nutrition** | [frontend/lib/core/data/meal_food_catalog.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/core/data/meal_food_catalog.dart), [backend/diabetes/services/clinical/food_decision.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/diabetes/services/clinical/food_decision.py) | MENA food catalog and bounded food decision exist | Numerical macro/portion provenance and regional validation not proven | REVIEW |
+| **IA07 MENA linguistic** | [docs/DARIJA_CLINICAL_LEXICON_WORKING.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/DARIJA_CLINICAL_LEXICON_WORKING.md), [.skills/mena-clinical-linguistic-safety/SKILL.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/.skills/mena-clinical-linguistic-safety/SKILL.md) | MENA safety workflow and lexicon exist | FR/EN/AR/Darija high-severity semantic parity and RTL on real UI not reproduced | REVIEW |
+| **IA08 security privacy** | [frontend/lib/services/app_lock_service.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/services/app_lock_service.dart), [frontend/lib/services/api_client.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/services/api_client.dart) | Fail-closed lock and default-deny clinical sync present | D10-B storage/backup/native authenticator blockers remain #1013 | BLOCKER_B |
+| **IA09 data offline** | [frontend/lib/data/drift/patient_vault_scope.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/data/drift/patient_vault_scope.dart), [frontend/lib/data/drift/local_backup.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/data/drift/local_backup.dart) | Owner-scoped vault names and guarded backup protocol exist | JSON export protection, complete A→B→A restore, migration/erasure not certified | REVIEW |
+| **IA10 companion AI** | [backend/diabetes/services/clinical/companion_smart_suggestions.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/diabetes/services/clinical/companion_smart_suggestions.py), [backend/core/phi_privacy.py](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/backend/core/phi_privacy.py) | Bounded deterministic suggestion layer and PHI redaction helper present | Whole-provider prompt/model failure and egress routes not exhaustively scanned | REVIEW |
+| **IA11 QA reliability** | [docs/QUALITY_SCORING_POLICY.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/QUALITY_SCORING_POLICY.md), [.github/workflows/](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/.github/workflows/) | Exact-head CI and test-scoring policy exist | Pattern-presence probes are not runtime tests; 15 true LLM subagent sessions absent | PARTIAL |
+| **IA12 UX accessibility** | [frontend/lib/features/auth/consent_screen.dart](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/lib/features/auth/consent_screen.dart), [.skills/ux-ui-certification/SKILL.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/.skills/ux-ui-certification/SKILL.md) | Consent flow and UX certification skill present | BEFORE/AFTER all screens and assistive tech parity not observed | REVIEW |
+| **IA13 release PWA** | [docs/ROADMAP.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/ROADMAP.md), [frontend/vercel_build.sh](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/frontend/vercel_build.sh) | Roadmap says NOT_RELEASE_AUTHORIZED; Vercel build boundary exists | No authorized clinical production release, native artifact or full rollback audit | NO_RELEASE |
+| **IA14 regulatory QMS** | [docs/architecture/PILOT_EXTERNAL_APPROVAL_HANDOFF.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/architecture/PILOT_EXTERNAL_APPROVAL_HANDOFF.md), [docs/ROADMAP.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/ROADMAP.md) | Handoff marks approval conditions open and product-only decisions distinct | CNDP law arts 21/22 applicability and device qualification unresolved; no regulatory attestation | UNKNOWN |
+| **IA15 adversarial** | [docs/QUALITY_SCORING_POLICY.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/QUALITY_SCORING_POLICY.md), [docs/security/2026-10-15-d10-b-exact-head-security-privacy-execution.md](https://github.com/hraaaaf/IAMINA-MVP/blob/4bf3d855da1e10629ee35613d0ddf52fd3c45f92/docs/security/2026-10-15-d10-b-exact-head-security-privacy-execution.md) | Policy forbids fabricated scores and D10 counterevidence is documented | No independently spawned adversarial agent; safety contradictions not converged | BLOCKER_AGENT |
+
+## Synthèse des risques et vérification restante
+
+**Bloqueurs de mise en service identifiés ou non résolus :** D10-B option sans verrou toujours non implémentée, coffre SQLite/IndexedDB sans chiffrement applicatif démontré, backups Android/iOS et authentificateur mobile non qualifiés, vérification d'identité propriétaire et egress distincts à démontrer. Aucune fuite de données n'a été mesurée. Voir https://github.com/hraaaaf/IAMINA-MVP/issues/1013.
+
+**D31** : protocole physique D7/D9 sur deux smartphones reporté, non prétendu exécuté, https://github.com/hraaaaf/IAMINA-MVP/issues/1006.
+
+**Références officielles à affecter aux futurs sous-agents** :
+- Agent Skills : https://agentskills.io/specification et profils GitHub Copilot : https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-custom-agents
+- OWASP MASVS : https://mas.owasp.org/MASVS/ et NIST AI RMF : https://www.nist.gov/itl/ai-risk-management-framework
+- Diabetes ADA 2026 : https://professional.diabetes.org/standards-of-care
+- Accessibilité W3C WCAG : https://www.w3.org/TR/WCAG22/
+- ISO 14971 page publique : https://www.iso.org/standard/72704.html (ne pas prétendre lire les clauses sous licence)
+- Maroc CNDP Loi 09-08 art. 21/22 : https://www.cndp.ma/images/lois/Loi-09-08-Fr.pdf (statut applicable à IAMINA à qualifier, ne pas réduire toutes les données de santé à une obligation unique)
+
+## Next exact et contrat de preuve
+
+1. Démarrer l'orchestrateur iamina-council-coordinator dans un véritable environnement Copilot CLI/agent runtime connecté, contre le SHA exact; ouvrir 15 contextes spécialistes isolés et collecter 15 IDs de session et rapports indépendants.
+2. Chaque spécialiste réexécute lecture code + sources externes primaires + tests ciblés; IA15 recherche les contradictions sans hériter des conclusions du builder. Évaluer BLOCKER/MAJOR/UNKNOWN et différencier preuve de code / norme externe / hypothèse.
+3. Publier résultats réels dans https://github.com/hraaaaf/IAMINA-MVP/issues/1026 ; si le runtime refuse de créer des subagents, garder leur statut NOT_EXECUTED. Ne pas inventer 15 approbations.
+4. Ne pas envoyer des données cliniques réelles, ni déployer Vercel, ni activer la préférence B sans permission et preuve proportionnée aux risques; les autorisations réglementaires requises restent distinctes des revues IA.
+
+**Verdict interne initial : PARTIAL / NOT_CERTIFIED.** 15/15 profils définis et sondes exécutées; **0/15 modèles sous-agents démontrés**. Ce document est un triage de code et non une vérification fonctionnelle intégrale.
+
+**État P5 historique : 50 %** (6/12 lots) d'après docs/ROADMAP.md, non recalculé.

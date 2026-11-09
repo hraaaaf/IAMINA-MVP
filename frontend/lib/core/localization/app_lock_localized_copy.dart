@@ -28,9 +28,9 @@ extension AppLockLocalizedCopy on AppLocalizations {
       );
 
   String get appLockSetupSubtitle => _appLockPick(
-        en: 'Use this device’s secure unlock before opening your health space.',
-        fr: 'Utilisez le déverrouillage sécurisé de cet appareil avant d’ouvrir votre espace santé.',
-        ar: 'استخدم قفل هذا الجهاز الآمن قبل فتح مساحتك الصحية.',
+        en: 'Choose whether to protect your health space with this device’s secure unlock, or continue without an app lock after reviewing the risks.',
+        fr: 'Choisissez de protéger votre espace santé avec le verrou sécurisé de cet appareil, ou de continuer sans après avoir pris connaissance des risques.',
+        ar: 'اختر حماية مساحتك الصحية بقفل الجهاز الآمن أو المتابعة بدونه بعد مراجعة المخاطر.',
       );
 
   String get appLockOffline => _appLockPick(
@@ -58,9 +58,9 @@ extension AppLockLocalizedCopy on AppLocalizations {
       );
 
   String get appLockUnavailable => _appLockPick(
-        en: 'Strong local unlock is not available in this browser or device. Use a supported secure browser/device before patient use.',
-        fr: 'Le déverrouillage local fort n’est pas disponible sur ce navigateur ou cet appareil. Utilisez un navigateur/appareil sécurisé compatible avant tout usage patient.',
-        ar: 'فتح القفل المحلي القوي غير متاح على هذا المتصفح أو الجهاز. استخدم متصفحاً أو جهازاً آمناً ومتوافقاً قبل استعماله مع المريض.',
+        en: 'Secure app locking is unavailable on this browser or device. You may continue without it after acknowledging the privacy risks.',
+        fr: 'Le verrouillage local sécurisé n’est pas disponible sur ce navigateur ou cet appareil. Vous pouvez continuer sans verrouillage après avoir accepté les risques de confidentialité.',
+        ar: 'القفل المحلي الآمن غير متاح على هذا المتصفح أو الجهاز. يمكنك المتابعة بدونه بعد الإقرار بمخاطر الخصوصية.',
       );
 
   String get appLockInsecureContext => _appLockPick(

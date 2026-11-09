@@ -40,6 +40,67 @@ async function choose(page, label) {
   throw new Error('Cannot select onboarding choice: ' + label);
 }
 
+async function assertStepInViewport(page, label, width, height, name) {
+  // Flutter CanvasKit renders text inside an accessibility node. Inspect
+  // role-bound chips first, without any test-induced scrolling.
+  const candidates = [
+    page.getByRole('checkbox', {name:label, exact:true}),
+    page.getByRole('button', {name:label, exact:true}),
+    page.getByRole('radio', {name:label, exact:true}),
+    page.getByText(label, {exact:false}),
+  ];
+  let rect = null;
+  for (const candidate of candidates) {
+    if (!(await candidate.count())) continue;
+    for (let index = 0; index < await candidate.count(); index++) {
+      const control = candidate.nth(index);
+      if (!(await control.isVisible().catch(() => false))) continue;
+      rect = await control.boundingBox().catch(() => null);
+      if (rect) break;
+    }
+    if (rect) break;
+  }
+  if (!rect || rect.y < -1 || rect.y > height - 60) {
+    throw new Error('Next onboarding step not revealed: ' +
+      JSON.stringify({name, label, width, height, rect}));
+  }
+  await page.screenshot({
+    path: out + '/onboarding-step-' + name + '-' + width + 'x' + height + '.png',
+    fullPage:false,
+  });
+  return rect;
+}
+
+async function chooseCountry(page, width, height) {
+  const probes = [
+    page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
+    page.getByRole('combobox', {name:/Rechercher un pays|Pays/i}),
+    page.getByText('Rechercher un pays', {exact:false}),
+  ];
+  let field = null;
+  for (const probe of probes) {
+    if (await probe.count() && await probe.first().isVisible().catch(()=>false)) {
+      field = probe.first();
+      break;
+    }
+  }
+  if (!field) throw new Error('Country search control unavailable');
+  await field.click({timeout:5000});
+  // Flutter's text-editing host can detach between count() and fill().
+  // Use the focused keyboard path; assert that the suggestion is rendered.
+  await page.keyboard.type('Mar');
+  await page.waitForTimeout(250);
+  // The open search suggestions must be visible at the same three viewport
+  // sizes; capture *before* selecting, so the user can validate UX.
+  const proposed = page.getByText('Maroc', {exact:true});
+  await proposed.last().waitFor({state:'visible',timeout:8000});
+  await page.screenshot({
+    path: out + '/onboarding-country-suggestions-' + width + 'x' + height + '.png',
+    fullPage:false,
+  });
+  await choose(page, 'Maroc');
+}
+
 (async () => {
   const browser = await chromium.launch({
     headless: true, args: ['--force-renderer-accessibility'],
@@ -75,10 +136,116 @@ async function choose(page, label) {
             url: page.url(), placeholderCount, semantics: sem.slice(0, 80),
             visibleText: body.slice(0, 2000),
           }, null, 2));
-        for (const choice of [
-          'Français', 'Maroc', 'Simple et chaleureux',
-          'Diabète Type 2', 'Comprimés',
-        ]) await choose(page, choice);
+        // V1 decision #6 removes tone selection entirely. Explicitly assert
+        // that neither legacy tone choice nor its question is present.
+        const obsoleteTone = ['Quel ton préférez-vous ?', 'Simple et chaleureux',
+                              'Neutre et professionnel'];
+        for (const legacy of obsoleteTone) {
+          const match = page.getByText(legacy, {exact: true});
+          if (await match.count()) {
+            throw new Error('Obsolete tone picker still exposed: ' + legacy);
+          }
+        }
+        await choose(page, 'Français');
+        // Country should be revealed by the PRODUCT, not by test scrolling.
+        await sleep(500);
+        const countryCandidates = [
+          page.getByRole('textbox', {name:/Rechercher un pays|Pays/i}),
+          page.getByRole('combobox', {name:/Rechercher un pays|Pays/i}),
+          page.getByText('Rechercher un pays', {exact:false}),
+        ];
+        let countryRect = null;
+        for (const candidate of countryCandidates) {
+          if (!(await candidate.count())) continue;
+          countryRect = await candidate.first().boundingBox().catch(() => null);
+          if (countryRect) break;
+        }
+        if (!countryRect || countryRect.y < -1 ||
+            countryRect.y > height - 60) {
+          throw new Error('Country not visible after language: ' +
+            JSON.stringify({width,height,countryRect}));
+        }
+        await page.screenshot({
+          path:out+'/onboarding-step-country-'+width+'x'+height+'.png',
+          fullPage:false,
+        });
+        await chooseCountry(page, width, height);
+        await sleep(500);
+        // Snapshot the actual browser state before asserting the next step.
+        await page.screenshot({
+          path:out+'/debug-after-country-'+width+'x'+height+'.png',
+          fullPage:false,
+        });
+        await assertStepInViewport(page,
+          'Pré-diabète',
+          width, height, 'diabetes');
+        await choose(page, 'Pré-diabète');
+        await sleep(500);
+        await assertStepInViewport(page,
+          'Habitudes de vie',
+          width, height, 'treatments');
+        // D7: the FIRST view must not present insulin as a routine prediabetes
+        // choice; the user may still explicitly report a treatment they take.
+        const insulin = page.getByText('Insuline', {exact:true});
+        if (await insulin.first().isVisible().catch(() => false)) {
+          throw new Error('D7: prediabetes first view foregrounds insulin');
+        }
+        await page.getByText('Habitudes de vie', {exact:true}).last()
+          .scrollIntoViewIfNeeded().catch(()=>{});
+        await page.screenshot({
+          path: out + '/d7-prediabetes-first-view-' + width + 'x' + height + '.png',
+          fullPage: false,
+        });
+        await choose(page, 'Déclarer un autre traitement');
+        await page.screenshot({
+          path: out + '/d7-prediabetes-expanded-' + width + 'x' + height + '.png',
+          fullPage: false,
+        });
+        await choose(page, 'Diabète Type 2');
+        await choose(page, 'Médicaments oraux pris');
+        // The treatment multi-selector never auto-jumps on individual chips.
+        // The explicit continue action reveals units without selecting one.
+        if (width < 900) {
+          await choose(page, 'Continuer vers les unités');
+          await sleep(500);
+          await assertStepInViewport(page,
+            'mg/dL',
+            width, height, 'units');
+        } else {
+          const unexpected = page.getByText('Continuer vers les unités');
+          if (await unexpected.count()) {
+            throw new Error('Redundant scroll-to-units link on desktop');
+          }
+          await page.screenshot({
+            path:out+'/onboarding-step-units-'+width+'x'+height+'.png',
+            fullPage:false,
+          });
+        }
+        // Actual Chrome debug DOM: compact viewports merge step copy into a
+        // parent ARIA label; desktop exposes it as visible text without ARIA.
+        // Both must state exactly five steps after the four required choices.
+        let stepEvidence;
+        if (width < 900) {
+          const progress = page.locator(
+            'flt-semantics[aria-label*="Étape 5 sur 5"]',
+          );
+          await progress.first().waitFor({state:'attached', timeout:15000});
+          stepEvidence = await progress.first().getAttribute('aria-label');
+        } else {
+          await page.getByText('Étape 5 sur 5', {exact:false}).first()
+            .waitFor({state:'visible', timeout:15000});
+          stepEvidence = await page.locator('body').innerText();
+        }
+        if (!stepEvidence || !stepEvidence.includes('Étape 5 sur 5')) {
+          throw new Error('Expected five-step progress on ' + width + 'x' +
+            height + ', got ' + JSON.stringify(stepEvidence));
+        }
+        const beforeUnitAction = page.getByRole('button', {name: 'Commencer', exact: true});
+        if (width < 900 && await beforeUnitAction.count() &&
+            await beforeUnitAction.first().isEnabled()) {
+          throw new Error('D8: first-use CTA enabled without a chosen unit');
+        }
+        await choose(page, 'mg/dL');
         const action = page.getByRole('button', {name: 'Commencer', exact: true});
         await action.first().waitFor({state:'visible', timeout: 15000});
         const count = await action.count();

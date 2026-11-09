@@ -6,10 +6,12 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/drift/database.dart';
+import '../data/drift/patient_treatment_declaration_store.dart';
+import 'auth_epoch.dart';
 import 'api_client.dart';
 import 'sync_api_contract.dart';
 
-enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
+enum SyncUiState { checking, upToDate, pending, syncing, offline, error, localOnly }
 
 typedef SyncFailureLogger =
     void Function(String operation, String errorType, StackTrace stackTrace);
@@ -34,7 +36,17 @@ class SyncService {
   final AppDatabase _db;
   final ApiClient _apiClient;
   final SyncFailureLogger _failureLogger;
+  final bool Function()? _canUseNetwork;
   final Connectivity _connectivity = Connectivity();
+  // One synchronizer is bound to one auth epoch: a retired session may never
+  // upload its pending medical rows under a new patient's bearer.
+  final int _ownerAuthEpoch = AuthEpoch.value;
+  bool _disposed = false;
+  bool _treatmentSyncing = false;
+  bool get _sessionActive =>
+      !_disposed &&
+      AuthEpoch.value == _ownerAuthEpoch &&
+      (_canUseNetwork?.call() ?? true);
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   /// Kept for compatibility with existing consumers that only need activity.
@@ -50,7 +62,9 @@ class SyncService {
     this._db,
     this._apiClient, {
     SyncFailureLogger? failureLogger,
-  }) : _failureLogger = failureLogger ?? _defaultFailureLogger;
+    bool Function()? canUseNetwork,
+  }) : _failureLogger = failureLogger ?? _defaultFailureLogger,
+       _canUseNetwork = canUseNetwork;
 
   static void _defaultFailureLogger(
     String operation,
@@ -65,16 +79,47 @@ class SyncService {
   }
 
   void init() {
-    unawaited(refreshState());
+    if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
+    unawaited(_resumeTreatmentOnAuthenticatedStartup());
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
       results,
     ) {
+      if (!_sessionActive) return;
       if (_isOffline(results)) {
         state.value = SyncUiState.offline;
         return;
       }
       unawaited(syncPendingLogs());
+      unawaited(sendPendingTreatmentDeclaration());
     });
+  }
+
+  /// Started only by the unlocked, native-authenticated vault host.
+  /// Restore never overwrites a pending local edit. Then retry any durable
+  /// outbox row and check combined log/treatment status.
+  /// The host calls this when an app-lock is unlocked again. Retired vaults
+  /// and sessions must never resume, even if an old connectivity event fires.
+  Future<void> resumeAfterUnlock() async {
+    if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
+    await _resumeTreatmentOnAuthenticatedStartup();
+    if (!_sessionActive) return;
+    await syncPendingLogs();
+  }
+
+  Future<void> _resumeTreatmentOnAuthenticatedStartup() async {
+    await restorePatientTreatmentDeclaration();
+    if (!_sessionActive) return;
+    await sendPendingTreatmentDeclaration();
+    if (!_sessionActive) return;
+    await refreshState();
   }
 
   bool _isOffline(List<ConnectivityResult> results) {
@@ -82,26 +127,193 @@ class SyncService {
         results.every((result) => result == ConnectivityResult.none);
   }
 
+  /// Recover an explicit patient declaration on a newly authenticated device.
+  /// Never treat an empty server default as a patient-reported answer.
+  Future<void> restorePatientTreatmentDeclaration() async {
+    if (!_apiClient.canSyncClinicalData) return;
+    if (!_sessionActive || _db.patientVaultScope?.nativeDjangoUserId == null) {
+      return;
+    }
+    try {
+      final store = PatientTreatmentDeclarationStore(_db);
+      if (await store.read() != null || !_sessionActive) return;
+      final profile = await _apiClient.getProfile();
+      if (!_sessionActive || profile == null) return;
+      if (profile['treatment_declaration_source'] != 'patient_declared' ||
+          profile['treatment_declaration_version'] != 1) return;
+      final status = profile['treatment_declaration_state'];
+      final codes = profile['treatment_declarations'];
+      final timestamp = profile['treatment_declaration_updated_at'];
+      if (status is! String || codes is! List ||
+          codes.any((item) => item is! String) ||
+          timestamp is! String) return;
+      // Remote CAS evidence must be timezone-aware, exactly like the
+      // acknowledgement path. A naive timestamp is not server proof.
+      final updatedAt = verifiedServerTreatmentRevision(profile);
+      if (updatedAt == null || !_sessionActive) return;
+      await store.restoreRemoteIfAbsent(
+        state: status,
+        codes: codes.cast<String>(),
+        updatedAtUtc: updatedAt,
+      );
+    } catch (error, stackTrace) {
+      if (_sessionActive) {
+        _failureLogger(
+          'restore_treatment_declaration',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
+    }
+  }
+
+  /// Attempt one optimistic upload, preserving local data until a matching
+  /// server receipt is observed. Call only while the native vault is unlocked.
+  Future<bool> sendPendingTreatmentDeclaration() async {
+    if (!_apiClient.canSyncClinicalData) {
+      if (_sessionActive) state.value = SyncUiState.localOnly;
+      return false;
+    }
+    if (!_sessionActive || _treatmentSyncing ||
+        _db.patientVaultScope?.nativeDjangoUserId == null) return false;
+    _treatmentSyncing = true;
+    try {
+      final store = PatientTreatmentDeclarationStore(_db);
+      final local = await store.read();
+      if (!_sessionActive) return false;
+      if (local == null || local.syncStatus == 'confirmed') return true;
+      if (local.syncStatus == 'conflict') {
+        state.value = SyncUiState.error;
+        return false;
+      }
+      state.value = SyncUiState.syncing;
+      final result = await _apiClient.mirrorTreatmentDeclaration(
+        state: local.state,
+        codes: local.codes,
+        expectedUpdatedAtUtc: local.baseServerUpdatedAtUtc,
+      );
+      if (!_sessionActive) return false;
+      if (result.status == TreatmentMirrorStatus.confirmed &&
+          result.serverUpdatedAtUtc != null) {
+        final acknowledged = await store.acknowledgeIfUnchanged(
+          expectedGeneration: local.localGeneration,
+          serverUpdatedAtUtc: result.serverUpdatedAtUtc!,
+        );
+        if (!_sessionActive) return false;
+        if (!acknowledged) {
+          // This reply may be for an older generation. Preserve the newer
+          // patient edit and only advance its CAS baseline when unchanged
+          // since this request began; otherwise keep a real conflict intact.
+          await store.rebasePendingAfterStaleAck(
+            acknowledgedGeneration: local.localGeneration,
+            sentBaseUpdatedAtUtc: local.baseServerUpdatedAtUtc,
+            serverUpdatedAtUtc: result.serverUpdatedAtUtc!,
+          );
+          if (!_sessionActive) return false;
+          state.value = SyncUiState.pending;
+          return false;
+        }
+        await _refreshLocalSyncState();
+        return _sessionActive;
+      }
+      if (result.status == TreatmentMirrorStatus.conflict) {
+        final marked = await store.markConflictIfUnchanged(
+          local.localGeneration,
+        );
+        if (!_sessionActive) return false;
+        state.value = marked ? SyncUiState.error : SyncUiState.pending;
+        return false;
+      }
+      state.value = SyncUiState.pending;
+      return false;
+    } catch (error, stackTrace) {
+      if (_sessionActive) {
+        state.value = SyncUiState.error;
+        _failureLogger(
+          'sync_treatment_declaration',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
+      return false;
+    } finally {
+      _treatmentSyncing = false;
+    }
+  }
+
   Future<void> refreshState() async {
+    if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
     final connectivity = await _connectivity.checkConnectivity();
+    if (!_sessionActive) return;
     if (_isOffline(connectivity)) {
       state.value = SyncUiState.offline;
       return;
     }
 
-    final pending = await _db.getPendingLogs();
-    state.value = pending.isEmpty ? SyncUiState.upToDate : SyncUiState.pending;
+    await _refreshLocalSyncState();
+  }
+
+  /// Both queues contribute to the patient-facing sync state. In particular,
+  /// a log-only retry must never claim 'up to date' while the treatment outbox
+  /// contains pending or conflicted clinical declarations.
+  Future<void> _refreshLocalSyncState({
+    bool logsFailed = false,
+    List<LogEntryData>? knownPendingLogs,
+  }) async {
+    if (!_sessionActive) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
+    try {
+      // Reuse an already verified snapshot for a no-op log synchronization.
+      // The treatment outbox still gets checked independently.
+      final pendingLogs = knownPendingLogs ?? await _db.getPendingLogs();
+      if (!_sessionActive) return;
+      if (_db.patientVaultScope?.nativeDjangoUserId != null) {
+        final declaration = await PatientTreatmentDeclarationStore(_db).read();
+        if (!_sessionActive) return;
+        if (declaration?.syncStatus == 'conflict') {
+          state.value = SyncUiState.error;
+          return;
+        }
+        if (declaration?.syncStatus == 'pending') {
+          state.value = logsFailed ? SyncUiState.error : SyncUiState.pending;
+          return;
+        }
+      }
+      state.value = logsFailed
+          ? SyncUiState.error
+          : pendingLogs.isEmpty ? SyncUiState.upToDate : SyncUiState.pending;
+    } catch (error, stackTrace) {
+      if (!_sessionActive) return;
+      state.value = SyncUiState.error;
+      _failureLogger(
+        'read_combined_sync_status',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
+    }
   }
 
   Future<void> syncPendingLogs() async {
-    if (isSyncing.value) return;
+    if (!_sessionActive || isSyncing.value) return;
+    if (!_apiClient.canSyncClinicalData) {
+      state.value = SyncUiState.localOnly;
+      return;
+    }
 
     // An explicit retry must remain usable and testable without consulting a
     // platform channel first. Connectivity events set the offline state; the
     // network request itself is the source of truth for reachability.
     final pending = await _db.getPendingLogs();
+    if (!_sessionActive) return;
     if (pending.isEmpty) {
-      state.value = SyncUiState.upToDate;
+      await _refreshLocalSyncState(knownPendingLogs: pending);
       return;
     }
 
@@ -138,9 +350,13 @@ class SyncService {
         };
       }).toList();
 
+      // Recheck immediately before network egress, after every async read.
+      if (!_sessionActive) return;
       final syncedUuids = await _apiClient.batchSyncLogs(batch);
+      if (!_sessionActive) return;
 
       for (final log in pending) {
+        if (!_sessionActive) return;
         if (syncedUuids.contains(log.clientUuid)) {
           await _db.markLogAsSynced(log.id);
         } else {
@@ -149,11 +365,9 @@ class SyncService {
         }
       }
 
-      final stillPending = await _db.getPendingLogs();
-      state.value = hadFailure || stillPending.isNotEmpty
-          ? SyncUiState.error
-          : SyncUiState.upToDate;
+      await _refreshLocalSyncState(logsFailed: hadFailure);
     } catch (error, stackTrace) {
+      if (!_sessionActive) return;
       hadFailure = true;
       state.value = SyncUiState.error;
       final errorType = error is SyncApiException
@@ -161,12 +375,18 @@ class SyncService {
           : error.runtimeType.toString();
       _failureLogger('sync_pending_logs', errorType, stackTrace);
       for (final log in pending) {
+        if (!_sessionActive) return;
         await _db.reportSyncFailure(log.id, log.syncAttempts);
       }
     } finally {
-      isSyncing.value = false;
-      if (!hadFailure && state.value == SyncUiState.syncing) {
-        state.value = SyncUiState.upToDate;
+      if (!_disposed) {
+        isSyncing.value = false;
+        if (!_sessionActive) {
+          state.value = SyncUiState.checking;
+        } else if (state.value == SyncUiState.syncing) {
+          // Unknown outcome is never proof of server acknowledgement.
+          state.value = SyncUiState.error;
+        }
       }
     }
   }
@@ -228,6 +448,7 @@ class SyncService {
   }
 
   void dispose() {
+    _disposed = true;
     _connectivitySubscription?.cancel();
     isSyncing.dispose();
     state.dispose();

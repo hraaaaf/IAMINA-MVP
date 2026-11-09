@@ -3,7 +3,7 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 from ninja import Schema
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
 from diabetes.contracts import log_entry as log_input
 
@@ -51,6 +51,11 @@ def validate_meal_portion_links(
 class PatientProfileSchema(Schema):
     diabetes_type: Optional[str] = None
     treatment_type: Optional[str] = None
+    treatment_declaration_state: str = "not_answered"
+    treatment_declarations: List[str] = Field(default_factory=list)
+    treatment_declaration_version: int = 1
+    treatment_declaration_source: Optional[str] = None
+    treatment_declaration_updated_at: Optional[datetime] = None
     clinical_profile_complete: bool = False
     target_range_low: float
     target_range_high: float
@@ -62,6 +67,11 @@ class PatientProfileSchema(Schema):
     height: Optional[float] = None
     ramadan_start_date: Optional[date] = None
     ramadan_end_date: Optional[date] = None
+
+    @field_serializer("treatment_declaration_updated_at", when_used="always")
+    def serialize_treatment_revision(self, value: Optional[datetime]) -> Optional[str]:
+        # This exact-precision wire token is used as the CAS precondition.
+        return value.isoformat(timespec="microseconds") if value else None
 
 
 class _CanonicalLogInputMixin:

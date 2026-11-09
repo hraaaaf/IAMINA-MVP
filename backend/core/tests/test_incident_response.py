@@ -1,4 +1,5 @@
 import json
+import os
 import stat
 from datetime import date, datetime, timezone
 
@@ -13,6 +14,11 @@ from core.incident_response import (
     create_incident_payload,
     policy_payload,
 )
+
+
+def test_incident_policy_review_expiry_fails_closed():
+    with pytest.raises(ValueError, match="incident policy is stale"):
+        POLICY.validate(today=POLICY.review_due_on.replace(year=POLICY.review_due_on.year + 1))
 
 
 def test_policy_is_current_complete_and_machine_readable():
@@ -67,6 +73,7 @@ def test_incident_metadata_rejects_direct_identifiers(summary):
         )
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions required")
 def test_create_incident_command_writes_mode_0600(tmp_path):
     output = tmp_path / "incident.json"
     call_command(
@@ -81,6 +88,21 @@ def test_create_incident_command_writes_mode_0600(tmp_path):
     assert payload["severity"] == SEV1
     assert payload["affected_systems"] == ["auth-api", "mobile-session"]
     assert stat.S_IMODE(output.stat().st_mode) == 0o600
+
+
+@pytest.mark.skipif(os.name == "posix", reason="Windows-only fail-closed check")
+def test_create_incident_command_refuses_insecure_export(tmp_path):
+    output = tmp_path / "incident.json"
+    with pytest.raises(CommandError, match="requires POSIX file permissions"):
+        call_command(
+            "create_incident_record",
+            category="authentication_compromise",
+            summary="Synthetic incident with no patient identifiers.",
+            systems="auth-api",
+            output=str(output),
+        )
+    assert not output.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_create_incident_command_refuses_identifying_metadata(tmp_path):

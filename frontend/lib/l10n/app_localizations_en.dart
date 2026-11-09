@@ -347,6 +347,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncOffline => 'Offline · data kept on this device';
 
   @override
+  String get syncLocalOnly => 'Offline pilot · saved on this device, not synchronized';
+
+  @override
   String get syncFailed => 'Synchronization failed · tap to retry';
 
   @override

@@ -9,6 +9,7 @@ void main() {
     expect(source, contains("import '../../services/auth_service.dart';"));
     expect(source, contains("import 'local_device_enrollment_screen.dart'"));
     expect(source, isNot(contains("../features/auth/")));
+    expect(source, contains('kRemoteAccountSignInEnabled'));
     expect(source, contains('kRemoteAccountEnrollmentEnabled'));
     expect(source, contains('LocalDeviceEnrollmentScreen'));
     expect(source, contains('certified_fr.LoginScreen'));
@@ -49,6 +50,10 @@ void main() {
     for (final getter in getters) {
       expect(source, contains('String get $getter'));
     }
+    // The local choice must say explicitly that no account is required.
+    expect(source, contains("en: 'Continue without an account'"));
+    expect(source, contains("fr: 'Continuer sans compte'"));
+    expect(source, contains("ar: 'المتابعة بدون حساب'"));
     expect(source, contains("'ar' => ar"));
     expect(source, contains("'fr' => fr"));
     expect(source, contains('_ => en'));

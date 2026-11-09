@@ -349,6 +349,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get syncOffline => 'غير متصل · البيانات محفوظة على هذا الجهاز';
 
   @override
+  String get syncLocalOnly => 'الوضع المحلي · محفوظ على هذا الجهاز، غير متزامن';
+
+  @override
   String get syncFailed => 'فشلت المزامنة · اضغط لإعادة المحاولة';
 
   @override

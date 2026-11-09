@@ -131,8 +131,9 @@ class GeminiSTTBackend:
             return (response.text or "").strip()
         except (AIEgressDenied, AIProcessorPolicyDenied, LLMProviderError):
             raise
-        except Exception:
-            logger.exception("STT: Gemini transcription failed (lang=%s)", language)
+        except Exception as exc:
+            # Provider exceptions can embed request/media content or credentials.
+            logger.error("STT: provider failure (exception_type=%s)", type(exc).__name__)
             raise TranscriptionError(
                 "STT request could not be completed safely."
             ) from None

@@ -8,7 +8,8 @@ import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
 
 class LocalDeviceEnrollmentScreen extends StatefulWidget {
-  const LocalDeviceEnrollmentScreen({super.key});
+  final VoidCallback? onChooseAccount;
+  const LocalDeviceEnrollmentScreen({super.key, this.onChooseAccount});
 
   @override
   State<LocalDeviceEnrollmentScreen> createState() =>
@@ -42,6 +43,7 @@ class _LocalDeviceEnrollmentScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final arabic = l10n.localeName.split(RegExp('[-_]')).first == 'ar';
     final dark = AminaTheme.isDark(context);
 
     return Scaffold(
@@ -65,9 +67,11 @@ class _LocalDeviceEnrollmentScreenState
                           width: 132,
                           height: 132,
                           child: Image.asset(
-                            'assets/images/logo_amina.png',
+                            'assets/images/iamina_logo_vertical.png',
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.high,
+                            color: AminaTheme.isDark(context) ? Colors.white : null,
+                            colorBlendMode: BlendMode.srcIn,
                             errorBuilder: (_, __, ___) => const _LogoFallback(),
                           ),
                         ),
@@ -166,11 +170,10 @@ class _LocalDeviceEnrollmentScreenState
                                       Text(
                                         l10n.localEnrollmentTitle,
                                         style: TextStyle(
-                                          fontFamily: 'Georgia',
-                                          fontFamilyFallback: const [
-                                            'Times New Roman',
-                                            'serif',
-                                          ],
+                                          fontFamily: arabic ? 'NotoSansArabic' : 'Georgia',
+                                          fontFamilyFallback: arabic
+                                              ? kOfflineFontFallbacks
+                                              : const ['Times New Roman', 'serif'],
                                           fontSize: 27,
                                           height: 1.08,
                                           fontWeight: FontWeight.w700,
@@ -236,7 +239,12 @@ class _LocalDeviceEnrollmentScreenState
                                       ),
                                     )
                                   : const Icon(Icons.arrow_forward_rounded),
-                              label: Text(l10n.localEnrollmentAction),
+                              label: Text(
+                                l10n.localEnrollmentAction,
+                                style: arabic
+                                    ? const TextStyle(fontFamily: 'NotoSansArabic')
+                                    : null,
+                              ),
                               style: FilledButton.styleFrom(
                                 minimumSize: const Size.fromHeight(52),
                                 backgroundColor: AminaTheme.teal700,
@@ -250,6 +258,32 @@ class _LocalDeviceEnrollmentScreenState
                                 ),
                               ),
                             ),
+                            if (widget.onChooseAccount != null) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                key: const Key('d30-choose-account'),
+                                onPressed: _isLoading ? null : widget.onChooseAccount,
+                                icon: const Icon(Icons.person_outline_rounded),
+                                label: Text(switch (Localizations.localeOf(context).languageCode) {
+                                  'fr' => kRemoteAccountEnrollmentEnabled
+                                       ? 'Se connecter ou créer un compte'
+                                       : 'Se connecter avec un compte existant',
+                                  'ar' => kRemoteAccountEnrollmentEnabled
+                                       ? 'تسجيل الدخول أو إنشاء حساب'
+                                       : 'تسجيل الدخول بحساب موجود',
+                                  _ => kRemoteAccountEnrollmentEnabled
+                                       ? 'Sign in or create an account'
+                                       : 'Sign in with an existing account',
+                                }),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(52),
+                                  foregroundColor: AminaTheme.teal700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

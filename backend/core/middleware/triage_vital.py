@@ -331,11 +331,7 @@ class TriageVitalMiddleware:
         return _message_language(message)
 
     def _log_emergency(self, request, message: str, kind: str = "legacy") -> None:
-        user_id = getattr(request.user, "id", "anonymous")
-        logger.critical(
-            "TriageVital: EMERGENCY DETECTED — kind=%s | user_id=%s | path=%s | snippet='%s'",
-            kind,
-            user_id,
-            request.path,
-            message[:120],
-        )
+        # Deliberately do not log the patient's message, identifier or URL.
+        # Only the deterministic classification is safe for this log boundary.
+        del request, message
+        logger.critical("TriageVital: EMERGENCY DETECTED — kind=%s", kind)

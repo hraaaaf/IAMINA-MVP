@@ -8,6 +8,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/auth/consent_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
+import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 import 'package:amina/services/consent_service.dart';
@@ -32,8 +33,31 @@ final class _TestApiClient extends ApiClient {
   ChopperClient get client => _testClient;
 }
 
+class _UnlockedLock extends AppLockService {
+  @override
+  bool get isUnlocked => true;
+}
+
+class _SkippedLock extends AppLockService {
+  @override
+  bool get isExplicitlySkipped => true;
+
+  @override
+  bool get isUnlocked => false;
+}
+
 class _FakeConsentEvidenceStore extends ConsentEvidenceStore {
   ConsentNoticeClaim? written;
+  bool withdrawalPending = false;
+
+  @override
+  Future<void> markWithdrawalPending() async { withdrawalPending = true; }
+
+  @override
+  Future<bool> hasWithdrawalPending() async => withdrawalPending;
+
+  @override
+  Future<void> clearWithdrawalPending() async { withdrawalPending = false; }
 
   @override
   Future<ConsentNoticeClaim?> readCurrent() async => written;
@@ -57,6 +81,7 @@ Widget _makeApp({
   required ApiClient apiClient,
   required ConsentService consentService,
   required ConsentEvidenceStore evidenceStore,
+  AppLockService? appLockService,
 }) {
   final router = GoRouter(
     initialLocation: '/consent',
@@ -69,6 +94,10 @@ Widget _makeApp({
         path: '/dashboard',
         builder: (_, __) => const Scaffold(body: Text('Dashboard')),
       ),
+      GoRoute(
+        path: '/app-lock/setup',
+        builder: (_, __) => const Scaffold(body: Text('Lock setup')),
+      ),
     ],
   );
 
@@ -78,6 +107,8 @@ Widget _makeApp({
       Provider<ApiClient>.value(value: apiClient),
       Provider<ConsentEvidenceStore>.value(value: evidenceStore),
       ChangeNotifierProvider<ConsentService>.value(value: consentService),
+      if (appLockService != null)
+        ChangeNotifierProvider<AppLockService>.value(value: appLockService),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -99,6 +130,7 @@ void main() {
   late _TestApiClient apiClient;
   late ConsentService consentService;
   late _FakeConsentEvidenceStore evidenceStore;
+  late _UnlockedLock unlockedLock;
   late ConsentNoticeClaim claim;
   late http.Request? capturedRequest;
   late bool responseSuccess;
@@ -123,6 +155,7 @@ void main() {
     responseCompleter = null;
     consentService = ConsentService();
     evidenceStore = _FakeConsentEvidenceStore();
+    unlockedLock = _UnlockedLock();
 
     chopper = ChopperClient(
       baseUrl: Uri.parse('http://localhost:8000'),
@@ -146,6 +179,7 @@ void main() {
 
   tearDown(() async {
     consentService.dispose();
+    unlockedLock.dispose();
     chopper.dispose();
     await db.close();
   });
@@ -155,6 +189,7 @@ void main() {
     apiClient: apiClient,
     consentService: consentService,
     evidenceStore: evidenceStore,
+    appLockService: unlockedLock,
   );
 
   testWidgets('renders without error (smoke test)', (tester) async {
@@ -253,6 +288,50 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
+  testWidgets('missing app-lock service cannot grant consent even with valid API', (tester) async {
+    await tester.pumpWidget(_makeApp(
+      db: db,
+      apiClient: apiClient,
+      consentService: consentService,
+      evidenceStore: evidenceStore,
+      // Unavailable provider must NOT default to a valid unlocked vault.
+    ));
+    await tester.pumpAndSettle();
+    final accept = find.text('Accepter et continuer');
+    await tester.ensureVisible(accept);
+    await tester.tap(accept);
+    await tester.pump();
+    expect(capturedRequest, isNull);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.textContaining('activez d’abord le verrouillage'), findsOneWidget);
+  });
+
+  testWidgets('no-lock choice cannot consent and offers explicit lock setup', (tester) async {
+    final lock = _SkippedLock();
+    addTearDown(lock.dispose);
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: apiClient, consentService: consentService,
+      evidenceStore: evidenceStore, appLockService: lock,
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('consent-lock-required-note')), findsOneWidget);
+    expect(find.byKey(const Key('consent-enable-app-lock')), findsOneWidget);
+    final accept = find.text('Accepter et continuer');
+    await tester.ensureVisible(accept);
+    await tester.tap(accept);
+    await tester.pump();
+    expect(capturedRequest, isNull);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.textContaining('activez d’abord le verrouillage'), findsOneWidget);
+    final setup = find.byKey(const Key('consent-enable-app-lock'));
+    await tester.ensureVisible(setup);
+    await tester.tap(setup);
+    await tester.pumpAndSettle();
+    expect(find.text('Lock setup'), findsOneWidget);
+  });
+
   testWidgets('failed consent response stays fail-closed', (tester) async {
     responseSuccess = false;
 
@@ -267,5 +346,7 @@ void main() {
     expect(evidenceStore.written, isNull);
     expect(consentService.hasConsent, isFalse);
     expect(find.byType(ConsentScreen), findsOneWidget);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.textContaining('Consentement non enregistré'), findsOneWidget);
   });
 }

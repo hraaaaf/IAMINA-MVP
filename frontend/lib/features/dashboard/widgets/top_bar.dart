@@ -96,7 +96,8 @@ class _TopBar extends StatelessWidget {
       valueListenable: syncService.state,
       builder: (_, state, __) => _SyncStatusButton(
         state: state,
-        onRetry: state == SyncUiState.syncing
+        onRetry: state == SyncUiState.syncing ||
+                state == SyncUiState.localOnly
             ? null
             : syncService.syncPendingLogs,
       ),
@@ -223,6 +224,11 @@ class _SyncStatusButton extends StatelessWidget {
       SyncUiState.offline => (
         Icons.cloud_off_outlined,
         AuditedPageCopy.of(context).sync('offline'),
+        AminaTheme.ink500,
+      ),
+      SyncUiState.localOnly => (
+        Icons.smartphone_outlined,
+        AuditedPageCopy.of(context).sync('localOnly'),
         AminaTheme.ink500,
       ),
       SyncUiState.error => (

@@ -1,0 +1,80 @@
+name: D22 F04 raw glucose preservation — real local Web Chrome
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d22-f04-web-raw-integrity.yml'
+      - 'frontend/lib/features/journal/edit_log_screen.dart'
+      - 'frontend/lib/ui_d22_f04_web_probe_main.dart'
+      - 'frontend/test/features/d22_f04_raw_glucose_integrity_test.dart'
+      - 'scripts/d22_f04_web_chrome.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d22-f04-real-chrome-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-chrome-drift-web:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Compile real local EditLogScreen against browser-backed Drift
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --target lib/ui_d22_f04_web_probe_main.dart \
+            --no-web-resources-cdn \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Run real Chromium F04 local synthetic preservation at 390 and 1280
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+          python3 -m py_compile scripts/d22_f04_web_chrome.py
+          python3 scripts/d22_f04_web_chrome.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib, struct
+          folder = Path("d22-f04-web-proof")
+          proof = json.loads((folder/"proof.json").read_text())
+          assert proof["result"] == "PASS_BOUNDED_SYNTHETIC_WEB"
+          assert len(proof["checks"]) == 2
+          assert len(proof["screens"]) == 4
+          for case in proof["checks"]:
+              assert case["raw_before"] == case["raw_after"] == 103.25
+              assert case["stress_after"] is True
+          for shot in proof["screens"]:
+              data = (folder/shot["file"]).read_bytes()
+              assert data[:8] == bytes.fromhex("89504e470d0a1a0a")
+              assert hashlib.sha256(data).hexdigest() == shot["sha256"]
+              w, h = struct.unpack(">II", data[16:24])
+              assert f"{w}x{h}" == shot["viewport"]
+          PY
+      - name: Preserve evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d22-f04-real-chrome-drift-proof
+          path: |
+            d22-f04-web-proof/proof.json
+            d22-f04-web-proof/*.png
+          retention-days: 14
+          if-no-files-found: warn

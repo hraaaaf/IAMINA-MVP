@@ -10,6 +10,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from core.pilot_lifecycle import build_cohort_checklist
+from core.private_file_mode import supports_private_file_mode
 
 
 class Command(BaseCommand):
@@ -25,6 +26,8 @@ class Command(BaseCommand):
             raise CommandError("Checklist output already exists")
         if not output.parent.is_dir():
             raise CommandError("Checklist output parent directory does not exist")
+        if not supports_private_file_mode():
+            raise CommandError("Secure pilot checklist requires POSIX file permissions")
         try:
             payload = build_cohort_checklist(options["cohort_id"])
         except ValueError as exc:
