@@ -19,6 +19,24 @@ import '../../../services/api_client.dart';
 import '../../journal/widgets/post_save_receipt.dart';
 import 'add_log_view.dart';
 
+/// Accept only finite positive numbers entered by the patient. Do not
+/// substitute defaults or silently convert malformed input into a reading.
+double? parsePositiveFiniteGlucoseInput(String raw) {
+  final value = double.tryParse(raw.trim().replaceAll(',', '.'));
+  if (value == null || !value.isFinite || value <= 0) return null;
+  return value;
+}
+
+/// Keep the existing D22 unit factor. Conversion overflow and unsupported
+/// units must fail closed before a patient record is persisted.
+double? normalizeFiniteGlucoseMgdl(String raw, String unit) {
+  if (unit != 'mg/dL' && unit != 'mmol/L') return null;
+  final value = parsePositiveFiniteGlucoseInput(raw);
+  if (value == null) return null;
+  final converted = unit == 'mmol/L' ? value * 18.0 : value;
+  return converted.isFinite && converted > 0 ? converted : null;
+}
+
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
 /// Threshold source: American Diabetes Association, Standards of Care in
@@ -129,18 +147,19 @@ class _AddLogSheetState extends State<AddLogSheet> {
   bool get _mealVoiceBusy => _mealVoiceRecording || _mealVoiceTranscribing;
 
   double? _displayGlucose() =>
-      double.tryParse(_glucoseController.text.trim().replaceAll(',', '.'));
+      parsePositiveFiniteGlucoseInput(_glucoseController.text);
 
   double? _mgdlGlucose(String unit) {
-    final value = _displayGlucose();
-    if (value == null) return null;
-    // A unit switch is a presentation change. Preserve the pre-switch
-    // source measurement exactly rather than repeatedly re-rounding it.
+    // Validate the selected unit even when the presentation switch cached a
+    // previous canonical value. The cache cannot bypass the numeric gate.
+    if (unit != 'mg/dL' && unit != 'mmol/L') return null;
+    if (_displayGlucose() == null) return null;
     if (_canonicalUnitSwitchMgdl != null &&
         _canonicalUnitSwitchText == _glucoseController.text) {
-      return _canonicalUnitSwitchMgdl;
+      final canonical = _canonicalUnitSwitchMgdl!;
+      return canonical.isFinite && canonical > 0 ? canonical : null;
     }
-    return unit == 'mmol/L' ? value * 18.0 : value;
+    return normalizeFiniteGlucoseMgdl(_glucoseController.text, unit);
   }
 
   void _setGlucoseFromDial(double mgdl, String unit) {
@@ -174,11 +193,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
         _canonicalUnitSwitchText = display;
       }
     });
-  }
-
-  bool get _hasValidGlucose {
-    final value = _displayGlucose();
-    return value != null && value > 0;
   }
 
   bool get _hasUnsavedData =>
@@ -510,7 +524,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         detailsCard: detailsCard,
         saveBar: AddLogSaveBar(
           saving: _saving,
-          enabled: _hasValidGlucose && !_mealVoiceBusy,
+          enabled: _mgdlGlucose(unit) != null && !_mealVoiceBusy,
           onSave: () => _saveLog(db, unit, l10n),
         ),
       ),
@@ -598,7 +612,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     final glucose = _displayGlucose();
     final mgdl = _mgdlGlucose(unit);
-    if (glucose == null || mgdl == null || glucose <= 0) {
+    if (glucose == null ||
+        !glucose.isFinite ||
+        mgdl == null ||
+        !mgdl.isFinite ||
+        mgdl <= 0) {
       _message(l10n.journalInvalidGlucose);
       return;
     }
