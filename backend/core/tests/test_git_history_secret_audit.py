@@ -203,17 +203,17 @@ def test_large_git_cat_file_request_stream_cannot_deadlock(tmp_path):
     # large repeated responses fill stdout. The old write-all/read-all order
     # deadlocked. A subprocess timeout makes future regressions fail safely.
     driver = (
-        "import runpy, sys\\n"
-        "from pathlib import Path\\n"
-        "scanner = runpy.run_path(sys.argv[1])\\n"
-        "repo, blob_file, object_id = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]\\n"
-        "expected = blob_file.read_bytes()\\n"
-        "count = 0\\n"
-        "for actual_id, data in scanner['_read_blobs'](repo, [object_id] * 2500):\\n"
-        "    assert actual_id == object_id and data == expected\\n"
-        "    count += 1\\n"
-        "assert count == 2500\\n"
-    ).replace("\\\\n", "\\n")
+        "import runpy, sys\n"
+        "from pathlib import Path\n"
+        "scanner = runpy.run_path(sys.argv[1])\n"
+        "repo, blob_file, object_id = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]\n"
+        "expected = blob_file.read_bytes()\n"
+        "count = 0\n"
+        "for actual_id, data in scanner[\'_read_blobs\'](repo, [object_id] * 2500):\n"
+        "    assert actual_id == object_id and data == expected\n"
+        "    count += 1\n"
+        "assert count == 2500\n"
+    )
     result = subprocess.run(
         [sys.executable, "-c", driver, str(SCRIPT), str(repo), str(blob_path), object_id],
         cwd=repo,
