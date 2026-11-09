@@ -5433,6 +5433,41 @@
         "title": "DeleteConfirmSchema",
         "type": "object"
       },
+      "ProactivityGrant": {
+        "additionalProperties": false,
+        "properties": {
+          "locale": {
+            "enum": [
+              "fr",
+              "en",
+              "ar"
+            ],
+            "title": "Locale",
+            "type": "string"
+          },
+          "notice_version": {
+            "title": "Notice Version",
+            "type": "string"
+          },
+          "notice_digest": {
+            "title": "Notice Digest",
+            "type": "string"
+          },
+          "acknowledgment": {
+            "const": "ENABLE_D2_IN_APP_PROACTIVITY",
+            "title": "Acknowledgment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "locale",
+          "notice_version",
+          "notice_digest",
+          "acknowledgment"
+        ],
+        "title": "ProactivityGrant",
+        "type": "object"
+      },
       "ImportResultResponse": {
         "properties": {
           "ok": {
