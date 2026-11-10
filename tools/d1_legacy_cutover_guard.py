@@ -7,6 +7,7 @@ A cached old PWA can still write to its original IndexedDB database offline.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from collections import deque
 from pathlib import Path
 import re
@@ -81,6 +82,12 @@ def check(root: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> list[str]:
         return ["clinical vault sources unavailable — fail closed"]
     database_source = db.read_text(encoding="utf-8")
     scope_source = scope.read_text(encoding="utf-8")
+    # P0 immutable namespace boundary. Any intentional change requires a
+    # separately reviewed new fingerprint; loose substring checks were bypassed
+    # by factories aliasing the legacy 'amina' database.
+    pinned_scope_sha256 = "f60a4d1ac60f701bc4028fdd6e85ae88cf1c4a383cc14162a379430828624c02"
+    if hashlib.sha256(scope_source.encode("utf-8")).hexdigest() != pinned_scope_sha256:
+        errors.append("patient vault namespace source changed — independent security review required")
     # Stable names and distinct constructors are a precondition; no implicit adoption.
     # Bind invariants to active constructors instead of loose text tokens.
     constructor_invariants = (
