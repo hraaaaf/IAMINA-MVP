@@ -13,7 +13,7 @@ const end = source.indexOf('\n  esac', start);
 assert.ok(start >= 0 && end > start, 'Preview environment selection must exist');
 const previewPolicy = source.slice(start, end + '\n  esac'.length);
 
-function previewFor(branch, {vercelUrl = 'iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app'} = {}) {
+function previewFor(branch, {vercelUrl = 'iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app', environment = 'preview'} = {}) {
   const script = `set -euo pipefail
 IAMINA_CERTIFIED_API_BASE_URL=https://iamina-certified.vercel.app
 IAMINA_D2_PREVIEW_SAME_ORIGIN=false
@@ -25,7 +25,7 @@ printf '%s|%s|%s|%s' "$IAMINA_D2_PREVIEW_SAME_ORIGIN" "$API_BASE_URL" "$IAMINA_R
     encoding: 'utf8',
     env: {
       ...process.env,
-      VERCEL_ENV: 'preview',
+      VERCEL_ENV: environment,
       VERCEL_GIT_COMMIT_REF: branch,
       VERCEL_URL: vercelUrl,
       IAMINA_REVIEW_PREVIEW_API_BASE_URL:
@@ -50,7 +50,22 @@ test('D1 legacy gate Preview must route consent to exact same origin as login', 
   }
 });
 
-test('D1 Preview must reject missing or foreign deployment hostnames', () => {
+test('new main and feature Previews cannot regress to historical W01 origin after merge', () => {
+  for (const branch of [
+    'main',
+    'feat/new-health-feature-20261111',
+    'fix/consent-regression-20261112',
+  ]) {
+    const found = previewFor(branch);
+    assert.equal(found.sameOrigin, 'true', branch);
+    assert.equal(found.baseUrl,
+      'https://iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app', branch);
+    assert.equal(found.login, 'true', branch);
+    assert.equal(found.enrollment, 'false', branch);
+  }
+});
+
+test('D1 and future Previews reject missing or foreign deployment hostnames', () => {
   for (const vercelUrl of [
     '',
     'another-project-synthetic123-achraf-benmoussa-s-projects.vercel.app',
@@ -58,10 +73,16 @@ test('D1 Preview must reject missing or foreign deployment hostnames', () => {
     'iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app.evil.test',
     'https://iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app',
   ]) {
-    assert.throws(
-      () => previewFor('fix/preview-consent-same-origin-20261110', {vercelUrl}),
-      /Command failed|refusing|Invalid/i,
-    );
+    for (const branch of [
+      'fix/preview-consent-same-origin-20261110',
+      'main',
+      'feat/unknown-future-feature',
+    ]) {
+      assert.throws(
+        () => previewFor(branch, {vercelUrl}),
+        /Command failed|refusing|Invalid/i,
+      );
+    }
   }
 });
 
@@ -79,6 +100,14 @@ test('older W01 preview routing remains unchanged', () => {
   assert.equal(w01.sameOrigin, 'false');
   assert.equal(w01.login, 'true');
   assert.equal(w01.enrollment, 'false');
+});
+
+test('Production routing and remote enrollment remain unchanged', () => {
+  const found = previewFor('main', {environment: 'production', vercelUrl: ''});
+  assert.equal(found.sameOrigin, 'false');
+  assert.equal(found.baseUrl, 'https://iamina-certified.vercel.app');
+  assert.equal(found.login, 'true');
+  assert.equal(found.enrollment, 'true');
 });
 
 test('Flutter API and auth control planes have a shared same-origin gate', () => {
