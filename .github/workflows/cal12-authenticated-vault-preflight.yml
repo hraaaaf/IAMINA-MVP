@@ -1,0 +1,49 @@
+name: CAL-12 authenticated vault preflight (synthetic credentials only)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cal12-authenticated-vault-preflight.yml'
+      - 'frontend/lib/services/cal12_authenticated_vault_probe.dart'
+      - 'frontend/test/services/cal12_authenticated_vault_probe_test.dart'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-native-auth-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: CAL-12 patient export stays OFF and disconnected
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          for file in lib/main.dart lib/features/journal/reports_screen.dart lib/features/journal/reports_screen_presentation.dart; do
+            if grep -Fq "Cal12AuthenticatedVaultProbe" "$file" || grep -Fq "cal12_authenticated_vault_probe.dart" "$file"; then
+              echo "CAL12 FAIL: patient-facing integration not approved in $file"
+              exit 1
+            fi
+          done
+          grep -Fq 'static const bool realPatientExportEnabled = false;' lib/services/cal12_authenticated_vault_probe.dart
+      - name: Exact HEAD Flutter auth vault app-lock tests and consent regressions
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/services/cal12_authenticated_vault_probe.dart test/services/cal12_authenticated_vault_probe_test.dart
+          flutter test --no-pub test/services/cal12_authenticated_vault_probe_test.dart
+          flutter test --no-pub test/services/clinical_export_consent_contract_test.dart test/services/synthetic_doctor_export_gate_test.dart
