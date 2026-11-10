@@ -20,7 +20,9 @@ class AppDatabase {
 }
 """)
         self._put("data/drift/patient_vault_scope.dart",
-                  "'amina_vault_v1_native_' 'amina_vault_v1_device_' 'amina_vault_v1_audit'")
+                  (Path(__file__).resolve().parents[2] /
+                   "frontend/lib/data/drift/patient_vault_scope.dart"
+                  ).read_text(encoding="utf-8"))
         self._put("main.dart", "import 'services/patient_vault_app_host.dart';")
         self._put("services/patient_vault_app_host.dart",
                   "import '../data/drift/database.dart';")
@@ -94,6 +96,23 @@ class AppDatabase {
         self._put("services/patient_vault_app_host.dart",
                   "const sql = \"\"\"\\npart 'id'\\n\"\"\";")
         self.assertEqual(check(self.root), [])
+
+
+    def test_native_scope_cannot_alias_historical_legacy_name(self):
+        p = self.lib / "data/drift/patient_vault_scope.dart"
+        original = p.read_text(encoding="utf-8")
+        self.assertIn("'amina_vault_v1_native_$userId'", original)
+        p.write_text(original.replace(
+            "'amina_vault_v1_native_$userId'",
+            "'amina' /* amina_vault_v1_native_ */"
+        ), encoding="utf-8")
+        self.assertTrue(any("namespace source changed" in e for e in check(self.root)))
+
+    def test_unreviewed_scope_change_fails_closed(self):
+        p = self.lib / "data/drift/patient_vault_scope.dart"
+        p.write_text(p.read_text(encoding="utf-8") + "\\n// unreviewed change\\n",
+                     encoding="utf-8")
+        self.assertTrue(any("namespace source changed" in e for e in check(self.root)))
 
 if __name__ == "__main__":
     unittest.main()
