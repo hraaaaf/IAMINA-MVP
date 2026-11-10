@@ -176,7 +176,7 @@ if(!state.token||!state.receipt){status('NO_CONSENT');return;}
 const r=await post('/_cal12_fixture/revoke',{record:state.receipt.id,owner_scope:state.owner},state.token);
 status(r.code===200&&r.data.revoked===true?'REVOKED':'REVOKE_DENIED');
 }
-function bind(id,action){el(id).addEventListener('click',async()=>{try{await action();}catch(e){status('NETWORK_DENIED');}});}
+function bind(id,action){el(id).addEventListener('click',async()=>{status('PENDING');try{await action();}catch(e){status('NETWORK_DENIED');}});}
 bind('login',login);
 bind('logout',logout);
 bind('grant',grant);

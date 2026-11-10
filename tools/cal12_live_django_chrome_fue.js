@@ -37,7 +37,32 @@ const digest=buf=>crypto.createHash('sha256').update(buf).digest('hex');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 
 async function statusClick(page,testid,expected,checks){
+  const routes={
+    login:'/api/v1/auth/login',logout:'/api/v1/auth/logout',
+    'old-token':'/api/v1/auth/session/verify',
+    'no-bearer':'/api/v1/auth/session/verify',
+    grant:'/_cal12_fixture/grant',check:'/_cal12_fixture/check',
+    stale:'/_cal12_fixture/check',revoke:'/_cal12_fixture/revoke',
+  };
+  // CLIENT_STALE_DENIED is the only intentionally network-free guard.
+  const shouldRequest=!(testid==='check'&&expected==='CLIENT_STALE_DENIED');
+  const awaited=shouldRequest?page.waitForResponse(
+    r=>new URL(r.url()).pathname===routes[testid],{timeout:12000}
+  ):null;
   await page.getByTestId(testid).click({timeout:10000});
+  const response=await awaited;
+  if(response){
+    const expectedHttp=['old-token','no-bearer'].includes(testid)?401:200;
+    assert.equal(response.status(),expectedHttp,
+      'Expected actual HTTP response for '+testid+' / '+expected);
+    if(testid==='check'||testid==='stale'){
+      const body=await response.json();
+      const expectedAllowed=expected==='READY_YES';
+      assert.equal(body.allowed,expectedAllowed,
+        'Cannot substitute old UI status for fresh backend response');
+    }
+    if(testid==='revoke')assert.equal((await response.json()).revoked,true);
+  }
   await page.waitForFunction((text)=>{
     const target=document.querySelector('[data-testid="status"]');
     return target&&target.textContent===text;
