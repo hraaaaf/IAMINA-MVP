@@ -18,8 +18,11 @@ ENTRYPOINTS = (
     "services/patient_vault_app_host.dart",
     "services/patient_vault_session_controller.dart",
 )
-DIRECTIVE = re.compile(r"""^[ \t]*(?:import|export|part)[ \t]+['"]([^'"]+\.dart)['"]""", re.M)
-CONDITIONAL = re.compile(r"""\bif\s*\([^)]*\)\s*['"]([^'"]+)['"]""")
+DIRECTIVE = re.compile(
+    r"""^[ \t]*(?:import|export|part)[ \t]+['"]([^'"]+\.dart)['"]([^;]*);""",
+    re.M,
+)
+CONDITIONAL = re.compile(r"""\bif\s*\([^)]*\)\s*['"]([^'"]+\.dart)['"]""")
 D18_CUTOVER = re.compile(r"(?:^|/)d18_[^/]*\.dart$")
 DESTRUCTIVE = re.compile(
     r"\b(?:deleteDatabase|deleteDatabaseSync|clearIndexedDb|"
@@ -56,8 +59,13 @@ def reachable_sources(lib: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> 
             raise ValueError(f"missing source in production import graph: {source}")
         seen.add(source)
         content = source.read_text(encoding="utf-8")
-        # Conditional imports and generated Dart parts can execute real code too.
-        for uri in DIRECTIVE.findall(content) + CONDITIONAL.findall(content):
+        # Parse conditional URIs only inside a real Dart import/export/part
+        # statement, never from unrelated executable code or a SQL string.
+        uris: list[str] = []
+        for statement in DIRECTIVE.finditer(content):
+            uris.append(statement.group(1))
+            uris.extend(CONDITIONAL.findall(statement.group(2)))
+        for uri in uris:
             target = _local_import(lib, source, uri)
             if target is not None:
                 todo.append(target)
