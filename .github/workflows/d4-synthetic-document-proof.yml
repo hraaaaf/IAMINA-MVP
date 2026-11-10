@@ -27,6 +27,18 @@ jobs:
           flutter-version: '3.41.0'
           channel: stable
           cache: true
+      - name: CAL-12 source guard - patient Reports export stays disabled
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          for file in lib/features/journal/reports_screen.dart lib/features/journal/reports_screen_presentation.dart; do
+            if grep -En 'synthetic_doctor_report|synthetic_report_formatter|SyntheticDoctorReport|SyntheticReportFormatter|SyntheticDoctorHtml|LocalReportPdf|share_plus|Printing[.]layoutPdf|Share[.]share' "$file"; then
+              echo "CAL12 FAIL: unauthorized patient Reports export integration in $file"
+              exit 1
+            fi
+          done
+          echo CAL12_PATIENT_REPORT_EXPORT_OFF
+
       - name: Resolve and test pure synthetic contracts
         working-directory: frontend
         run: |
@@ -81,6 +93,47 @@ jobs:
               print('PDF_RENDER_OK', filename, width, height, len(data))
           assert len(glob.glob('build/d4-synthetic-proof/*.png')) == 6
           PY
+      - name: CAL-12 synthetic HTML isolation and no-egress proof
+        working-directory: frontend
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('build/d4-synthetic-proof')
+          pages = sorted(root.glob('D4-SYNTHETIC*.html'))
+          assert len(pages) == 6, f'expected six synthetic HTML proofs, got {len(pages)}'
+          dangerous = re.compile(
+              r'https?://|javascript:|data:|<script\b|<iframe\b|<object\b'
+              r'|<embed\b|<form\b|@import\b|on(?:load|click|error)\s*=',
+              re.I,
+          )
+          assert dangerous.search('<script>') is not None
+          assert dangerous.search('https://example.invalid') is not None
+          for path in pages:
+              source = path.read_text(encoding='utf-8')
+              locale = path.stem.rsplit('-', 1)[1]
+              density = '-MAX-' in path.name
+              expected_rows = 13 if density else 4  # table header + 12 or 3
+              assert locale in ('fr', 'en', 'ar'), path
+              direction = 'rtl' if locale == 'ar' else 'ltr'
+              assert f'<html lang="{locale}" dir="{direction}">' in source, path
+              assert source.count('<tr>') == expected_rows, path
+              assert source.count('N/A') >= 2, path
+              assert '2026-11-09T18:00:00.000Z' in source, path
+              assert 'unicode-bidi:isolate' in source, path
+              assert 'patient_id' not in source.lower(), path
+              assert dangerous.search(source) is None, path
+              assert '../../assets/fonts/Inter.ttf' in source, path
+              assert '../../assets/fonts/NotoSansArabic.ttf' in source, path
+              warning = {
+                  'fr': 'DONNÉES SYNTHÉTIQUES UNIQUEMENT - NON CLINIQUE',
+                  'en': 'SYNTHETIC ONLY - NOT FOR CLINICAL USE',
+                  'ar': 'بيانات تجريبية فقط - غير صالحة للاستخدام الطبي',
+              }[locale]
+              assert warning in source, path
+              print('CAL12_SYNTHETIC_HTML_ISOLATION_PASS', path.name)
+          PY
+
       - name: Upload synthetic-only PDF and visual artifacts
         if: always()
         uses: actions/upload-artifact@v4
