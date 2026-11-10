@@ -1,0 +1,84 @@
+name: D1 P0-A Git-history Drift v5 to current v12 (synthetic)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_d1_p0a_real_drift_legacy_probe_main.dart'
+      - 'tools/fixtures/d1_p0a_historical_v5_seed_main.dart'
+      - 'tools/d1_p0a_historical_v5_upgrade_browser_probe.js'
+      - '.github/workflows/d1-p0a-historical-v5-upgrade.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-upgrade:
+    name: Actual Git v5 bundle opens SQLite then current v12 upgrades (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Check out authentic historical v5 source into isolated directory
+        uses: actions/checkout@v4
+        with:
+          repository: hraaaaf/IAMINA-MVP
+          ref: a1d46f9be5f2190a1e8380f28fe4679954f9863f
+          persist-credentials: false
+          path: historical
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build historic v5 from git without writing back to git
+        working-directory: historical/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp ../../tools/fixtures/d1_p0a_historical_v5_seed_main.dart lib/ui_d1_p0a_historical_v5_seed_main.dart
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn --base-href /historical/ -t lib/ui_d1_p0a_historical_v5_seed_main.dart
+      - name: Build current v12 into sibling path of same browser origin
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn --base-href /current/ -t lib/ui_d1_p0a_real_drift_legacy_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Chromium browser harness
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Real old v5 JS bundle on same origin → current Drift v12, synthetic data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d1-history-web/historical" "$RUNNER_TEMP/d1-history-web/current"
+          cp -a historical/frontend/build/web/. "$RUNNER_TEMP/d1-history-web/historical/"
+          cp -a frontend/build/web/. "$RUNNER_TEMP/d1-history-web/current/"
+          python3 -m http.server 7390 --bind 127.0.0.1 --directory "$RUNNER_TEMP/d1-history-web" > /tmp/d1-v5-history.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7390/historical/ >/dev/null
+          node --check tools/d1_p0a_historical_v5_upgrade_browser_probe.js
+          node tools/d1_p0a_historical_v5_upgrade_browser_probe.js | tee d1-p0a-history-v5-proof.json
+          test -s d1-p0a-history-v5-proof.json
+      - name: Retain historical SQLite browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0a-v5-to-v12-synthetic-history
+          path: |
+            d1-p0a-history-v5-proof.json
+            d1-p0a-historical-v5-failure.png
+          if-no-files-found: warn
+          retention-days: 14
