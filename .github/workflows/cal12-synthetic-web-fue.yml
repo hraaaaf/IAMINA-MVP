@@ -10,6 +10,8 @@ on:
       - 'frontend/lib/services/synthetic_doctor_report.dart'
       - 'frontend/test/cal12_synthetic_web_flow_test.dart'
       - 'tools/cal12_synthetic_web_fue.js'
+      - 'tools/cal12_blob_url_staging_fixture.js'
+      - 'tools/cal12_blob_url_web_fue.js'
       - 'docs/assessments/2026-11-10-cal12-patient-export-readiness.md'
   workflow_dispatch:
 
@@ -87,11 +89,30 @@ jobs:
           assert.equal(p.networkEgressAllowed,false);
           assert.ok(p.cases.every(x=>x.result==='PASS'));
           NODE
+          node --check tools/cal12_blob_url_staging_fixture.js
+          node --check tools/cal12_blob_url_web_fue.js
+          NODE_PATH="$PWD/node_modules" node tools/cal12_blob_url_web_fue.js
+          node - <<'NODE'
+          const assert=require('node:assert/strict'), fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('cal12-blob-url-proof/proof.json','utf8'));
+          assert.equal(p.status,'PASS_SYNTHETIC_BLOB_URL_LIFECYCLE_ONLY');
+          assert.equal(p.cases.length,6);
+          assert.equal(p.exportEnabled,false);
+          assert.equal(p.actualFileDeletionProven,false);
+          for (const c of p.cases) {
+            assert.equal(c.status,'PASS');
+            assert.ok(c.checks.length>=19);
+            assert.equal(c.metrics.active,false);
+            assert.equal(c.metrics.created,c.metrics.revoked);
+          }
+          NODE
       - name: Retain same-viewport before-after and A-B-A evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cal12-fictional-real-chrome-fr-ar-390-768-1280
-          path: cal12-web-fue-proof/
+          path: |
+            cal12-web-fue-proof/
+            cal12-blob-url-proof/
           retention-days: 14
           if-no-files-found: warn
