@@ -61,6 +61,10 @@ class AppLockService extends ChangeNotifier {
   bool get isRequired => _required;
   bool get isExplicitlySkipped => _explicitlySkipped;
   bool get isUnlocked => _unlocked;
+  // D1 P0: Web patient SQLite is not yet certified as encrypted at rest.
+  // This is a compile-time platform refusal, NOT a browser preference,
+  // feature flag, or remotely asserted claim of encryption readiness.
+  bool get canOptOutOfAppLock => !kIsWeb;
   bool get recoveryRequired => _recoveryRequired;
   bool get needsSetup => _initialized && !_configured && !_explicitlySkipped && !_recoveryRequired;
 
@@ -80,8 +84,11 @@ class AppLockService extends ChangeNotifier {
       final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
       final ownerChoice = owner == null ? null
           : await _storage.read(key: _ownerChoiceKey(owner));
-      final chosenNoLock = ownerChoice == _skippedChoice ||
-          (choiceValue == _skippedChoice && owner == choiceOwner);
+      // Old Web skip markers are untrusted and must never override the
+      // hard crypto prerequisite. Preserve their bytes for verified recovery.
+      final chosenNoLock = canOptOutOfAppLock &&
+          (ownerChoice == _skippedChoice ||
+              (choiceValue == _skippedChoice && owner == choiceOwner));
       _required = requiredValue == _requiredValue;
 
       if (rawCredential != null && rawCredential.isNotEmpty) {
@@ -173,6 +180,9 @@ class AppLockService extends ChangeNotifier {
   /// an ambiguous/recovery vault. A compromised browser profile is out of
   /// scope for device-local data when the user deliberately declines a lock.
   Future<void> continueWithoutAppLock() async {
+    if (!canOptOutOfAppLock) {
+      throw const AppLockException('web_encrypted_vault_required');
+    }
     if (!_initialized || _configured || _required || _recoveryRequired) {
       throw const AppLockException('protected_vault_cannot_skip_lock');
     }
@@ -194,6 +204,9 @@ class AppLockService extends ChangeNotifier {
   /// verification. Keep the credential for other locally saved owners.
   /// Nothing here grants backend auth or enables clinical data sync.
   Future<void> disableForCurrentVault() async {
+    if (!canOptOutOfAppLock) {
+      throw const AppLockException('web_encrypted_vault_required');
+    }
     final auth = _authService;
     final credential = _credential;
     if (!_initialized || !_configured || !_required || _recoveryRequired ||
@@ -367,6 +380,9 @@ class AppLockService extends ChangeNotifier {
   }
 
   Future<void> _restoreChoiceForCurrentOwner(int generation) async {
+    // Never resurrect an old Web opt-out after switching A→B→A or login.
+    // The historical preference is not proof of encrypted vault protection.
+    if (!canOptOutOfAppLock) return;
     if (!_initialized || _recoveryRequired) return;
     try {
       final choice = await _storage.read(key: _choiceKey);
