@@ -46,8 +46,26 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       # requests are now same-origin; the server-side OIDC bridge forwards
       # them to the immutable synthetic API deployment above.
       API_BASE_URL="https://iamina-review-git-preview-w0-f972e4-achraf-benmoussa-s-projects.vercel.app"
-      # Only the D2 QA branch routes the patient account API to its own
-      # immutable page origin. Existing W01 previews and production are unchanged.
+      # Default for all NEW Preview branches, including main after merge:
+      # every API consumer (login, consent, CGM and companion) must target the
+      # immutable HTTPS deployment origin. An unknown future branch must NOT
+      # silently fall back to the legacy W01 alias.
+      #
+      # Explicit historical QA exceptions below preserve the older W01
+      # session probe and branch-specific D2/D7 routing. No production change.
+      case "${VERCEL_GIT_COMMIT_REF:-}" in
+        preview/w01-current-main-synthetic-20261104|fix/d2-main-integrated-20261109|qa/d7-hosted-reconcile-20261110)
+          ;;
+        *)
+          if [[ ! "${VERCEL_URL:-}" =~ ^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$ ]]; then
+            echo "ERROR: refusing Preview without the exact review deployment host" >&2
+            exit 64
+          fi
+          IAMINA_D2_PREVIEW_SAME_ORIGIN=true
+          API_BASE_URL="https://${VERCEL_URL}"
+          ;;
+      esac
+      # Existing D2 routing remains independently branch-scoped.
       if [ "${VERCEL_GIT_COMMIT_REF:-}" = "fix/d2-main-integrated-20261109" ]; then
         IAMINA_D2_PREVIEW_SAME_ORIGIN=true
       fi
