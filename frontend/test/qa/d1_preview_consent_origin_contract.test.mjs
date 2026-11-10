@@ -13,7 +13,7 @@ const end = source.indexOf('\n  esac', start);
 assert.ok(start >= 0 && end > start, 'Preview environment selection must exist');
 const previewPolicy = source.slice(start, end + '\n  esac'.length);
 
-function previewFor(branch) {
+function previewFor(branch, {vercelUrl = 'iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app'} = {}) {
   const script = `set -euo pipefail
 IAMINA_CERTIFIED_API_BASE_URL=https://iamina-certified.vercel.app
 IAMINA_D2_PREVIEW_SAME_ORIGIN=false
@@ -27,6 +27,7 @@ printf '%s|%s|%s|%s' "$IAMINA_D2_PREVIEW_SAME_ORIGIN" "$API_BASE_URL" "$IAMINA_R
       ...process.env,
       VERCEL_ENV: 'preview',
       VERCEL_GIT_COMMIT_REF: branch,
+      VERCEL_URL: vercelUrl,
       IAMINA_REVIEW_PREVIEW_API_BASE_URL:
         'https://iamina-certified-synthetic-qa-achraf-benmoussa-s-projects.vercel.app',
     },
@@ -42,9 +43,25 @@ test('D1 legacy gate Preview must route consent to exact same origin as login', 
   ]) {
     const found = previewFor(branch);
     assert.equal(found.sameOrigin, 'true', branch);
-    assert.equal(found.baseUrl, 'https://d1-qa-unrouted.invalid', branch);
+    assert.equal(found.baseUrl,
+      'https://iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app', branch);
     assert.equal(found.login, 'true');
     assert.equal(found.enrollment, 'false');
+  }
+});
+
+test('D1 Preview must reject missing or foreign deployment hostnames', () => {
+  for (const vercelUrl of [
+    '',
+    'another-project-synthetic123-achraf-benmoussa-s-projects.vercel.app',
+    'iamina-review-synthetic123-attacker.vercel.app',
+    'iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app.evil.test',
+    'https://iamina-review-synthetic123-achraf-benmoussa-s-projects.vercel.app',
+  ]) {
+    assert.throws(
+      () => previewFor('fix/preview-consent-same-origin-20261110', {vercelUrl}),
+      /Command failed|refusing|Invalid/i,
+    );
   }
 });
 
