@@ -56,14 +56,49 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function activateSemantics(page) {
   const placeholder = page.locator('flt-semantics-placeholder');
   if (await placeholder.count()) {
-    await placeholder.first().evaluate(el => el.click());
-    await sleep(250);
+    await placeholder.first().focus().catch(() => {});
+    await page.keyboard.press('Enter').catch(() => {});
+    await placeholder.first().evaluate(el => el.click()).catch(() => {});
+    await sleep(300);
   }
 }
+function probes(page, label) {
+  return [
+    page.getByRole('button', {name: label, exact:true}),
+    page.getByRole('checkbox', {name: label, exact:true}),
+    page.getByRole('radio', {name: label, exact:true}),
+    page.getByLabel(label, {exact:true}),
+    page.getByText(label, {exact:true}),
+  ];
+}
+async function visible(page, label) {
+  for (const probe of probes(page, label)) {
+    const count = Math.min(await probe.count(), 4);
+    for (let i = 0; i < count; i++) {
+      const loc = probe.nth(i);
+      if (await loc.isVisible().catch(() => false)) return loc;
+    }
+  }
+  return null;
+}
 async function text(page, label) {
-  const found = page.getByText(label, {exact: true}).first();
-  await found.waitFor({state: 'visible', timeout: 35000});
-  return found;
+  for (let round = 0; round < 70; round++) {
+    const loc = await visible(page, label);
+    if (loc) return loc;
+    await sleep(200);
+  }
+  const diagnostic = await page.evaluate(() => ({
+    title: document.title,
+    flutter: !!document.querySelector('flutter-view'),
+    placeholder: !!document.querySelector('flt-semantics-placeholder'),
+    semanticsCount: document.querySelectorAll('flt-semantics').length,
+    samples: [...document.querySelectorAll('flt-semantics')]
+      .slice(0, 15)
+      .map(x => ({label:x.getAttribute('aria-label'),
+                  text:(x.textContent||'').slice(0,80)})),
+    bodyText: (document.body?.innerText||'').slice(0,250),
+  }));
+  throw Error('Missing visible Flutter semantics: '+label+'; '+JSON.stringify(diagnostic));
 }
 async function click(page, label) {
   const item = await text(page, label);
@@ -148,20 +183,20 @@ async function runScenario(browser, locale, view) {
     await click(page, c.ownerB);
     await text(page, c.preview);
     await text(page, '119 mg/dL');
-    assert.equal(await page.getByText('142 mg/dL', {exact:true}).count(), 0);
-    assert.equal(await page.getByText(c.done, {exact:true}).count(), 0);
+    assert.equal(await visible(page, '142 mg/dL'), null);
+    assert.equal(await visible(page, c.done), null);
     record.steps.push('A->B: no A reading and authorization reset');
     await capture(page, locale, view, 'b-isolated');
 
     await click(page, c.ownerA);
     await text(page, c.preview);
     await text(page, '142 mg/dL');
-    assert.equal(await page.getByText('119 mg/dL',{exact:true}).count(),0);
-    assert.equal(await page.getByText(c.done,{exact:true}).count(),0);
+    assert.equal(await visible(page, '119 mg/dL'), null);
+    assert.equal(await visible(page, c.done), null);
     await click(page, c.next);
     await text(page, c.consent);
     // Declined consent cannot enable the next stage.
-    const consentButton = page.getByText(c.consentNext,{exact:true}).first();
+    const consentButton = await text(page, c.consentNext);
     assert.equal(await consentButton.isEnabled(), false,
       'A return must not inherit a previous consent');
     record.steps.push('B->A: prior consent/destination not reused');
