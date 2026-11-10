@@ -98,6 +98,17 @@ ar:['اختبار الويب الآمن','محاكاة فقط · لا مريض �
 };
 const ids=['title','banner','login-title','consent-title','result-title','email-label','password-label','login','logout','old-token','no-bearer','recipient-label','proof-label','notice-label','offset-label','agree-label','grant','check','stale','revoke'];
 ids.forEach((name,i)=>document.querySelector('[data-testid="'+name+'"]').textContent=text[locale][i]);
+if(locale==='ar'){
+  const pick=(id)=>document.getElementById(id).options;
+  pick('recipient')[0].textContent='طبيب تجريبي ١';
+  pick('recipient')[1].textContent='طبيب تجريبي ٢';
+  pick('proof')[0].textContent='تأكيد تجريبي ١';
+  pick('proof')[1].textContent='تأكيد تجريبي ٢';
+  pick('offset')[0].textContent='الوقت الحالي للتجربة';
+  pick('offset')[1].textContent='بعد ٢٠ دقيقة (انتهاء مُحاكى)';
+  document.querySelector('[data-testid="no-export"]').textContent=
+    'لا يوجد أي PDF أو CSV أو مشاركة أو مستلم حقيقي · هذه ليست موافقة على تصدير طبي.';
+}
 document.getElementById('session').textContent=text[locale][20];
 const sha={
 fr:'69857b01762f0bedb3b6bced0d256af2817f519e2f987f5991c346ef955c16f2',
