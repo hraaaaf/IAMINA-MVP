@@ -13,10 +13,10 @@ import re
 import sys
 
 ENTRYPOINTS = (
-    "lib/main.dart",
-    "lib/data/drift/database.dart",
-    "lib/services/patient_vault_app_host.dart",
-    "lib/services/patient_vault_session_controller.dart",
+    "main.dart",
+    "data/drift/database.dart",
+    "services/patient_vault_app_host.dart",
+    "services/patient_vault_session_controller.dart",
 )
 IMPORT = re.compile(r"""^\s*(?:import|export)\s+['"]([^'"]+)['"]""", re.M)
 D18_CUTOVER = re.compile(r"(?:^|/)d18_[^/]*\.dart$")
