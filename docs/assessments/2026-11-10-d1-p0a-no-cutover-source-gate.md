@@ -21,7 +21,7 @@ La vérification est **statique**, basée sur les imports explicites. Elle ne co
 ## Succès observable / preuves à recueillir
 1. Tests synthétiques du garde : PASS au HEAD exact.
 2. Garde sur le vrai graphe du dépôt : PASS au HEAD exact.
-3. Test navigateur réel de v1/IndexedDB/OPFS avec ancien bundle et nouvelle cible, comparaison logique et nouveaux onglets : **NOT_RUN** sur ce lot ; required avant toute migration.
+3. **Test navigateur négatif physique Chromium/WebKit sur IndexedDB synthétique** : portage du probe de PR #1265, 24 assertions par moteur à vérifier en CI ; teste le fait qu'un ancien onglet continue d'écrire malgré Web Locks et une reprise offline. **Ce n'est PAS une preuve de VFS Drift réelle, ni de compatibilité OPFS, ni de réconciliation ou de migration sûre.** Le test vrai ancien bundle Drift/OPFS, l'intégrité byte-level, les crashes et le multi-profil restent NOT_RUN.
 4. D1 chiffrement/recovery crypto et revue indépendante : **NOT_RUN**.
 5. Aucune donnée patient réelle ; aucun déploiement Vercel, aucune modification des anciennes bases.
 
