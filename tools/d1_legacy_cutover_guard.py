@@ -18,7 +18,8 @@ ENTRYPOINTS = (
     "services/patient_vault_app_host.dart",
     "services/patient_vault_session_controller.dart",
 )
-IMPORT = re.compile(r"""^\s*(?:import|export)\s+['"]([^'"]+)['"]""", re.M)
+DIRECTIVE = re.compile(r"""^\s*(?:import|export|part)\s+['"]([^'"]+)['"]""", re.M)
+CONDITIONAL = re.compile(r"""\bif\s*\([^)]*\)\s*['"]([^'"]+)['"]""")
 D18_CUTOVER = re.compile(r"(?:^|/)d18_[^/]*\.dart$")
 DESTRUCTIVE = re.compile(
     r"\b(?:deleteDatabase|deleteDatabaseSync|clearIndexedDb|"
@@ -54,7 +55,9 @@ def reachable_sources(lib: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> 
         if not source.is_file():
             raise ValueError(f"missing source in production import graph: {source}")
         seen.add(source)
-        for uri in IMPORT.findall(source.read_text(encoding="utf-8")):
+        content = source.read_text(encoding="utf-8")
+        # Conditional imports and generated Dart parts can execute real code too.
+        for uri in DIRECTIVE.findall(content) + CONDITIONAL.findall(content):
             target = _local_import(lib, source, uri)
             if target is not None:
                 todo.append(target)
@@ -71,11 +74,17 @@ def check(root: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> list[str]:
     database_source = db.read_text(encoding="utf-8")
     scope_source = scope.read_text(encoding="utf-8")
     # Stable names and distinct constructors are a precondition; no implicit adoption.
-    for token in ("AppDatabase.defaults()", "name: 'amina'",
-                  "AppDatabase.forPatientVault(PatientVaultScope scope)",
-                  "name: scope.databaseName"):
-        if token not in database_source:
-            errors.append(f"legacy or patient vault boundary changed: {token}")
+    # Bind invariants to active constructors instead of loose text tokens.
+    constructor_invariants = (
+        (r"AppDatabase\.defaults\(\).*?driftDatabase\(\s*name:\s*'amina'",
+         "legacy default constructor / database name"),
+        (r"AppDatabase\.forPatientVault\(PatientVaultScope scope\)"
+         r".*?driftDatabase\(\s*name:\s*scope\.databaseName",
+         "isolated patient constructor / database name"),
+    )
+    for pattern, label in constructor_invariants:
+        if not re.search(pattern, database_source, re.S):
+            errors.append(f"legacy or patient vault boundary changed: {label}")
     for token in ("amina_vault_v1_native_", "amina_vault_v1_device_",
                   "amina_vault_v1_audit"):
         if token not in scope_source:
@@ -88,11 +97,9 @@ def check(root: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> list[str]:
         relative = source.relative_to(lib.resolve()).as_posix()
         if D18_CUTOVER.search(relative):
             errors.append(f"experimental D18 module reachable from app: {relative}")
-        if source in {db.resolve(), (lib / "main.dart").resolve(),
-                      (lib / "services/patient_vault_session_controller.dart").resolve(),
-                      (lib / "services/patient_vault_app_host.dart").resolve()}:
-            if DESTRUCTIVE.search(source.read_text(encoding="utf-8")):
-                errors.append(f"possible destructive/cutover operation in {relative}")
+        # A helper reached through a transitive import or part can be destructive.
+        if DESTRUCTIVE.search(source.read_text(encoding="utf-8")):
+            errors.append(f"possible destructive/cutover operation in {relative}")
     return errors
 
 
