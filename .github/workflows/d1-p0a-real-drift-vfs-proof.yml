@@ -1,0 +1,56 @@
+name: D1 P0-A real Drift SQLite legacy synthetic browser proof
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_d1_p0a_real_drift_legacy_probe_main.dart'
+      - 'scripts/d1_p0a_real_drift_legacy_browser_probe.py'
+      - '.github/workflows/d1-p0a-real-drift-vfs-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-drift:
+    name: Chrome real Drift v12, legacy/scoped isolation (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build disposable Dart/Flutter Web Drift probe
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_d1_p0a_real_drift_legacy_probe_main.dart
+          flutter build web --release --no-web-resources-cdn -t lib/ui_d1_p0a_real_drift_legacy_probe_main.dart
+      - name: Verify physical SQLite integrity and legacy/scope persistence in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7388 --bind 127.0.0.1 --directory frontend/build/web >/tmp/iamina-d1-p0a-drift.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7388/ >/dev/null
+          python3 -m py_compile scripts/d1_p0a_real_drift_legacy_browser_probe.py
+          python3 scripts/d1_p0a_real_drift_legacy_browser_probe.py | tee d1-p0a-real-drift-proof.json
+          test -s d1-p0a-real-drift-proof.json
+      - name: Retain synthetic browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0a-real-drift-v12-chrome
+          path: d1-p0a-real-drift-proof.json
+          if-no-files-found: warn
+          retention-days: 14
