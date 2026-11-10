@@ -16,6 +16,7 @@ import '../../../core/data/ramadan_context.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
+import '../../../services/consent_service.dart';
 import '../../journal/widgets/post_save_receipt.dart';
 import 'add_log_view.dart';
 
@@ -464,7 +465,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           selectedMealItemIds: _selectedMealItemIds,
           mealPortionSelections: _mealPortionSelections,
           mealNoteController: _mealNoteController,
-          canUsePhotoRecognition: profile?.aiConsentGivenAt != null,
+          canUsePhotoRecognition: context.watch<ConsentService?>()?.hasConsent == true,
           voiceRecording: _mealVoiceRecording,
           voiceTranscribing: _mealVoiceTranscribing,
           onVoiceToggle: _toggleMealVoice,

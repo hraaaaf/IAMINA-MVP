@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:amina/core/data/meal_food_catalog.dart';
 import 'package:amina/features/journal/widgets/food_category_rail.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('D14 Web category icons do not require network emoji fallback', () {
+    final source=File('lib/features/journal/widgets/food_category_rail.dart').readAsStringSync();
+    expect(source, contains('kIsWeb'));
+    expect(source, contains('Icon(\n                                _webIcon(category)'));
+    expect(source, contains('ExcludeSemantics('));
+    // Native/mobile retains its prior emoji representation.
+    expect(source, contains('Text(\n                                visual,'));
+  });
   testWidgets('category rail exposes Morocco and Gulf shortcuts without losing All', (
     tester,
   ) async {

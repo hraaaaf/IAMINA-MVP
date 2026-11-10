@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -14,12 +15,16 @@ import 'food_category_rail.dart';
 import 'food_pictogram.dart';
 
 typedef MealPhotoRecognition = Future<MealAnalysisResult?> Function();
+// Test-only grant-state probe for synthetic recognition. Production recognition
+// always rechecks the owner-scoped media grant through its injected ApiClient.
+typedef MealPhotoMediaConsentProbe = Future<bool> Function();
 
 class MealCapturePanel extends StatefulWidget {
   final List<String> selectedIds;
   final ValueChanged<List<String>> onChanged;
   final bool canUsePhotoRecognition;
   final MealPhotoRecognition? photoRecognition;
+  final MealPhotoMediaConsentProbe? photoMediaConsentProbe;
   final MealFoodFavoritesRepository? favoritesRepository;
 
   const MealCapturePanel({
@@ -28,6 +33,7 @@ class MealCapturePanel extends StatefulWidget {
     required this.onChanged,
     required this.canUsePhotoRecognition,
     this.photoRecognition,
+    this.photoMediaConsentProbe,
     this.favoritesRepository,
   });
 
@@ -45,6 +51,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   bool _browseAll = false;
   int _browseLimit = _pageSize;
   bool _recognizing = false;
+  int _photoRequestGeneration = 0;
   List<MealFoodItem> _photoCandidates = const <MealFoodItem>[];
   final Set<String> _proposalSelection = <String>{};
   Set<String> _favoriteIds = <String>{};
@@ -63,6 +70,18 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _historyFuture ??= context.read<AppDatabase>().getRecentLogs(limit: 100);
+  }
+
+  @override
+  void didUpdateWidget(covariant MealCapturePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.canUsePhotoRecognition && !widget.canUsePhotoRecognition) {
+      // Never render proposals obtained under a revoked AI permission.
+      _photoRequestGeneration++;
+      _recognizing = false;
+      _photoCandidates = const <MealFoodItem>[];
+      _proposalSelection.clear();
+    }
   }
 
   @override
@@ -110,21 +129,68 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     }
   }
 
-  Future<MealAnalysisResult?> _pickAndRecognize() async {
+  Future<MealAnalysisResult?> _pickAndRecognize(int generation) async {
+    // Use the patient-vault-bound transport; never construct an unrelated
+    // AuthService/ApiClient that bypasses lock, identity or auth-epoch policy.
+    // Pilot local-only transport has to fail closed before touching the gallery.
+    final apiClient = context.read<ApiClient?>();
+    if (apiClient == null || !apiClient.canSyncClinicalData) return null;
+    if (!await apiClient.hasActiveMealPhotoMediaConsent()) return null;
+    if (!mounted || generation != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition) return null;
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
       maxWidth: 1600,
     );
-    if (file == null) return null;
+    if (file == null || !mounted || !apiClient.canSyncClinicalData ||
+        generation != _photoRequestGeneration || !widget.canUsePhotoRecognition) {
+      return null;
+    }
     final bytes = await file.readAsBytes();
+    if (!mounted || !apiClient.canSyncClinicalData ||
+        generation != _photoRequestGeneration || !widget.canUsePhotoRecognition) {
+      bytes.fillRange(0, bytes.length, 0);
+      return null;
+    }
+    // A grant can be revoked while the OS picker or file read is running.
+    if (!await apiClient.hasActiveMealPhotoMediaConsent() ||
+        !mounted || !apiClient.canSyncClinicalData ||
+        generation != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition) {
+      bytes.fillRange(0, bytes.length, 0);
+      return null;
+    }
     final lower = file.name.toLowerCase();
     final mime = lower.endsWith('.png')
         ? 'image/png'
         : lower.endsWith('.webp')
         ? 'image/webp'
         : 'image/jpeg';
-    return ApiClient().analyzeMealImage(bytes, mimeType: mime);
+    try {
+      return await apiClient.analyzeMealImage(bytes, mimeType: mime);
+    } finally {
+      bytes.fillRange(0, bytes.length, 0);
+    }
+  }
+
+  // Fail closed if the media grant is revoked while a photo request is pending
+  // or after a proposal was shown but before the patient confirms it.
+  // The synthetic callback is only for test/audit fixtures. Real photo access
+  // never trusts a caller-supplied permission boolean.
+  Future<bool> _photoMediaConsentStillValid() async {
+    try {
+      if (widget.photoRecognition != null) {
+        final fixtureProbe = widget.photoMediaConsentProbe;
+        return fixtureProbe == null || await fixtureProbe();
+      }
+      final apiClient = context.read<ApiClient?>();
+      return apiClient != null &&
+          apiClient.canSyncClinicalData &&
+          await apiClient.hasActiveMealPhotoMediaConsent();
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _recognizePhoto(AppLocalizations l10n) async {
@@ -132,10 +198,28 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       _message(l10n.journalMealPhotoConsent);
       return;
     }
+    final requestGeneration = ++_photoRequestGeneration;
     setState(() => _recognizing = true);
     try {
-      final result = await (widget.photoRecognition ?? _pickAndRecognize)();
-      if (!mounted) return;
+      final injected = widget.photoRecognition;
+      final result = await (injected != null
+          ? injected()
+          : _pickAndRecognize(requestGeneration));
+      if (!mounted || requestGeneration != _photoRequestGeneration ||
+          !widget.canUsePhotoRecognition) return;
+      // A media-only revocation does not necessarily flip the global AI
+      // consent widget flag. Check again after the pending image result.
+      if (result != null && !await _photoMediaConsentStillValid()) {
+        if (mounted && requestGeneration == _photoRequestGeneration) {
+          setState(() {
+            _photoCandidates = const <MealFoodItem>[];
+            _proposalSelection.clear();
+          });
+        }
+        return;
+      }
+      if (!mounted || requestGeneration != _photoRequestGeneration ||
+          !widget.canUsePhotoRecognition) return;
       if (result == null || result.fallback || result.foods.isEmpty) {
         setState(() {
           _photoCandidates = const <MealFoodItem>[];
@@ -151,12 +235,29 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       });
       if (matches.isEmpty) _message(l10n.journalMealPhotoUnavailable);
     } finally {
-      if (mounted) setState(() => _recognizing = false);
+      if (mounted && requestGeneration == _photoRequestGeneration) {
+        setState(() => _recognizing = false);
+      }
     }
   }
 
-  void _confirmProposal() {
-    if (_proposalSelection.isEmpty) return;
+  Future<void> _confirmProposal() async {
+    if (!widget.canUsePhotoRecognition || _proposalSelection.isEmpty ||
+        _photoCandidates.isEmpty) return;
+    final requestGeneration = _photoRequestGeneration;
+    // An already-visible proposal must never be accepted after a media-only
+    // revocation, even if global consent and the widget remain enabled.
+    if (!await _photoMediaConsentStillValid()) {
+      if (mounted && requestGeneration == _photoRequestGeneration) {
+        setState(() {
+          _photoCandidates = const <MealFoodItem>[];
+          _proposalSelection.clear();
+        });
+      }
+      return;
+    }
+    if (!mounted || requestGeneration != _photoRequestGeneration ||
+        !widget.canUsePhotoRecognition || _photoCandidates.isEmpty) return;
     final next = <String>{...widget.selectedIds, ..._proposalSelection};
     widget.onChanged(next.toList(growable: false));
     setState(() {
@@ -242,10 +343,12 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                   (item) => InputChip(
                     key: Key('meal-selected-${item.id}'),
                     avatar: ExcludeSemantics(
-                      child: Text(
-                        item.visual,
-                        style: const TextStyle(fontSize: 15),
-                      ),
+                      child: kIsWeb
+                          ? FoodPictogram(item: item, size: 24)
+                          : Text(
+                              item.visual,
+                              style: const TextStyle(fontSize: 15),
+                            ),
                     ),
                     label: Text(item.plainLabelFor(locale)),
                     onDeleted: () => _toggleItem(item.id),
@@ -429,7 +532,9 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                         (item) => FilterChip(
                           key: Key('meal-photo-candidate-${item.id}'),
                           avatar: ExcludeSemantics(
-                            child: Text(item.visual),
+                            child: kIsWeb
+                                ? FoodPictogram(item: item, size: 24)
+                                : Text(item.visual),
                           ),
                           label: Text(item.plainLabelFor(locale)),
                           selected: _proposalSelection.contains(item.id),

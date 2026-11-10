@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/add_log_view.dart';
+import 'package:amina/features/journal/widgets/meal_capture_panel.dart';
+import 'package:amina/services/consent_service.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +19,7 @@ Widget _sheet(
   AppDatabase db, {
   Locale locale = const Locale('fr'),
   AddLogSheet sheet = const AddLogSheet(),
+  ConsentService? consent,
 }) {
   return MaterialApp(
     locale: locale,
@@ -27,6 +30,8 @@ Widget _sheet(
         providers: [
           Provider<AppDatabase>.value(value: db),
           Provider<PatientProfileData?>.value(value: null),
+          if (consent != null)
+            ChangeNotifierProvider<ConsentService>.value(value: consent),
         ],
         child: sheet,
       ),
@@ -76,6 +81,36 @@ void main() {
       expect(classifyGlucoseEntrySafety(69), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(70), GlucoseEntrySafety.nonLow);
       expect(classifyGlucoseEntrySafety(112), GlucoseEntrySafety.nonLow);
+    });
+
+    testWidgets('D14 Add Log requires current verified consent for meal photo',
+        (tester) async {
+      _narrow(tester);
+      final consent = ConsentService();
+      addTearDown(consent.dispose);
+      await tester.pumpWidget(_sheet(db, consent: consent));
+      await tester.pumpAndSettle();
+      await _tapOptionalMeal(tester);
+
+      final panel = find.byType(MealCapturePanel);
+      expect(panel, findsOneWidget);
+      expect(tester.widget<MealCapturePanel>(panel).canUsePhotoRecognition,
+          isFalse, reason: 'Missing evidence must fail closed');
+
+      consent.markVerifiedConsent();
+      await tester.pump();
+      expect(tester.widget<MealCapturePanel>(panel).canUsePhotoRecognition,
+          isTrue, reason: 'Only verified consent unlocks the local photo gate');
+
+      consent.markWithdrawalPending();
+      await tester.pump();
+      expect(tester.widget<MealCapturePanel>(panel).canUsePhotoRecognition,
+          isFalse, reason: 'Pending withdrawal immediately closes the photo gate');
+
+      consent.markWithdrawalConfirmed();
+      await tester.pump();
+      expect(tester.widget<MealCapturePanel>(panel).canUsePhotoRecognition,
+          isFalse);
     });
 
     testWidgets('112 mg/dL is saved without a low-glucose warning', (tester) async {

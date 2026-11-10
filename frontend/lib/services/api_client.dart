@@ -852,10 +852,45 @@ class ApiClient {
   /// Returns [MealAnalysisResult] with identified food names (French).
   /// Returns null on network error; check [MealAnalysisResult.fallback] for
   /// LLM-side failures (server is reachable but couldn't identify the food).
+  /// Read the owner-bound, purpose-specific consent from Django. The local
+  /// timestamp/AI notice alone never authorizes a media upload.
+  /// No cached positive state is kept across auth epochs or revocations.
+  Future<bool> hasActiveMealPhotoMediaConsent() async {
+    if (!canSyncClinicalData ||
+        !_authService.hasRemoteApiCredential ||
+        !_authService.isRemoteCredentialVerified) {
+      return false;
+    }
+    final epoch = AuthEpoch.value;
+    try {
+      final response = await _client.get(
+        Uri.parse('/api/v1/profile/ai-media-consents'),
+      );
+      requireCurrentAuthEpoch(epoch);
+      if (!response.isSuccessful || response.body is! List) return false;
+      final states = (response.body as List)
+          .whereType<Map>()
+          .where((entry) =>
+              entry['purpose'] == 'meal_vision' && entry['modality'] == 'image')
+          .toList(growable: false);
+      if (states.length != 1) return false;
+      final state = states.single;
+      return state['active'] == true &&
+          state['granted_at'] is String &&
+          (state['granted_at'] as String).isNotEmpty &&
+          state['revoked_at'] == null;
+    } catch (_) {
+      // Network, owner change, malformed response and lock all deny access.
+      return false;
+    }
+  }
+
   Future<MealAnalysisResult?> analyzeMealImage(
     Uint8List imageBytes, {
     String mimeType = 'image/jpeg',
   }) async {
+    // Direct callers cannot bypass the exact media grant check.
+    if (!await hasActiveMealPhotoMediaConsent()) return null;
     try {
       final b64 = base64Encode(imageBytes);
       final response = await _client.post(

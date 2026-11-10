@@ -32,6 +32,9 @@ const PRECACHE = [
   './assets/assets/fonts/NotoSansArabic.ttf',
   './assets/assets/fonts/NotoSansSymbols.ttf',
   './assets/assets/fonts/NotoSansSymbols2.ttf',
+  // Flutter engine fallback glyphs must resolve locally, including offline.
+  './iamina-font-fallback/notosansarabic/v28/nwpxtLGrOAZMl5nJ_wfgRg3DrWFZWsnVBJ_sS6tlqHHFlhQ5l3sQWIHPqzCfyGyvvnCBFQLaig.woff2',
+  './iamina-font-fallback/notosanssymbols/v43/rP2up3q65FkAtHfwd-eIS2brbDN6gxP34F9jRRCe4W3gfQ8gb_VFRkzrbQ.woff2',
 ];
 
 const STATIC_FILES = new Set([
@@ -45,7 +48,7 @@ const STATIC_FILES = new Set([
   '/sqlite3.wasm',
   '/drift_worker.js',
 ]);
-const STATIC_PREFIXES = ['/assets/', '/canvaskit/', '/icons/'];
+const STATIC_PREFIXES = ['/assets/', '/canvaskit/', '/icons/', '/iamina-font-fallback/'];
 
 async function precacheRelease() {
   const cache = await caches.open(CACHE_NAME);

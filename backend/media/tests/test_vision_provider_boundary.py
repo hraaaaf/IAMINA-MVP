@@ -92,3 +92,31 @@ def test_invalid_backend_payload_fails_closed():
         "confidence": "low",
         "fallback": True,
     }
+
+def test_meal_vision_invalid_json_logs_no_provider_content(caplog):
+    secret = "SYNTHETIC_PRIVATE_MEAL_CONTENT_735928"
+    backend = FakeVisionBackend([secret])
+
+    with caplog.at_level("WARNING", logger="media.vision"):
+        result = analyze_meal_image(_image(), "image/jpeg", backend=backend)
+
+    assert result == {"foods": [], "confidence": "low", "fallback": True}
+    assert "returned invalid JSON" in caplog.text
+    assert secret not in caplog.text
+
+
+def test_meal_vision_provider_exception_logs_no_exception_content(caplog):
+    secret = "SYNTHETIC_PRIVATE_PROVIDER_EXCEPTION_842961"
+
+    class RaisingVisionBackend(FakeVisionBackend):
+        def generate(self, *args, **kwargs):
+            raise RuntimeError(secret)
+
+    with caplog.at_level("WARNING", logger="media.vision"):
+        result = analyze_meal_image(
+            _image(), "image/jpeg", backend=RaisingVisionBackend([])
+        )
+
+    assert result == {"foods": [], "confidence": "low", "fallback": True}
+    assert "RuntimeError" in caplog.text
+    assert secret not in caplog.text

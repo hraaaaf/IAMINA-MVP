@@ -1,0 +1,182 @@
+name: D14 Web photo consent BEFORE AFTER Chrome
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
+      - 'frontend/lib/features/journal/widgets/meal_capture_panel.dart'
+      - 'frontend/test/features/meal_capture_panel_test.dart'
+      - 'tools/d14_photo_web_cert.js'
+      - 'tools/fixtures/d14/main-6adf3fbe/**'
+      - '.github/workflows/d14-web-photo-consent-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d14-photo-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  d14-real-web-browser:
+    name: Chromium BEFORE/AFTER and synthetic consent lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source and scoped preview-only harness
+        run: |
+          set -euo pipefail
+          echo "head=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          node --check tools/d14_photo_web_cert.js
+          test -z "$(git status --porcelain)"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Flutter dependencies and isolated audit entrypoint analysis
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+
+      - name: Build exact candidate Web only (no Vercel)
+        env:
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          mkdir -p /tmp/d14-web-after
+          (
+            cd frontend
+            flutter pub get
+            rm -rf build/web
+            # Keep CanvasKit/wasm on the same origin: Chrome explicitly denies CDN egress.
+            flutter build web --release --no-web-resources-cdn -t lib/ui_browser_audit_main.dart
+            cp -a build/web/. /tmp/d14-web-after/
+          )
+          test -s /tmp/d14-web-after/index.html
+          test -s /tmp/d14-web-after/flutter_bootstrap.js
+          # A missing local engine must fail before Chrome (never silently use gstatic).
+          test -s /tmp/d14-web-after/canvaskit/canvaskit.js
+          test -s /tmp/d14-web-after/canvaskit/canvaskit.wasm
+          test -s /tmp/d14-web-after/sqlite3.wasm
+
+      - name: Restore immutable main baseline screenshots from versioned Git fixture
+        run: |
+          set -euo pipefail
+          baseline=tools/fixtures/d14/main-6adf3fbe
+          test -s "$baseline/baseline-sha256.txt"
+          # Pin the checksum manifest independently; no trust in arbitrary PR edits.
+          echo '8abd98446e69f95d44f08d7d41c44b58b62845dc43abbabb305a075fef151899  '"$baseline"'/baseline-sha256.txt' | sha256sum --check
+          mkdir -p /tmp/d14-archived-main
+          cp "$baseline"/before-*.png /tmp/d14-archived-main/
+          cp "$baseline/baseline-browser-report.json" /tmp/d14-archived-main/browser-report.json
+
+      - name: Verify baseline exact base SHA and six PNG digests before comparison
+        env:
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha || '6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7' }}
+        run: |
+          set -euo pipefail
+          # Baseline artifact was captured from this exact main SHA.
+          test "$EXPECTED_BASE_SHA" = "6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7"
+          cd /tmp/d14-archived-main
+          cat > /tmp/d14-baseline-shas.txt <<'D14BASE'
+          c0388022561a8bf9da88cfdcd89974f1afda591acbc1d573a7a84c6f8e2c7b37  before-desktop-ar-1280x900.png
+          1dbbf919dfb8035f9c7c464f93695ad0413fafbd04a476a8e161d9585439da21  before-desktop-fr-1280x900.png
+          aa75e6b245b1d96cbd82e31bffa5a424b88083b011698ef82f4e1374927872d4  before-mobile-ar-390x844.png
+          35f27230f82d30ed702ac0faa89141bf489ca711ec8b716a140cf45f1ad662c5  before-mobile-fr-390x844.png
+          f5d047b4d788f23e77252a1c861c9843616bd2ac781105b2e2cdedddd08c3181  before-tablet-ar-768x1024.png
+          24b7133483d6721b92357819b5a0bf6a005e4df3e627b731d4084646ed101ac9  before-tablet-fr-768x1024.png
+          D14BASE
+          sha256sum --check /tmp/d14-baseline-shas.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('browser-report.json').read_text())
+          assert r['base']=='6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7', 'baseline base SHA mismatch'
+          assert r['head']=='dfe2bcb315d84af8fa88280ac45d5badf29e1634', 'baseline original head SHA mismatch'
+          assert len(r['viewports'])==6 and len(r['scenarios'])==30, 'original run did not certify 6x30'
+          print('D14 versioned main baseline 6/6 SHA256 verified, provenance checked')
+          PY
+
+      - name: Install Playwright Chromium and pixel measurement
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+          python3 -m pip install --quiet Pillow
+
+      - name: Capture 6 BEFORE/AFTER pairs and 36 photo scenarios
+        env:
+          D14_BASE_SHA: ${{ github.event.pull_request.base.sha || '6adf3fbeecb0f6645f9c7a9e3934177ef9eca6c7' }}
+          D14_BASELINE_DIR: /tmp/d14-archived-main
+          D14_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7359 --bind 127.0.0.1 --directory /tmp/d14-web-after >/tmp/d14-after-http.log 2>&1 &
+          after_pid=$!
+          trap 'kill "$after_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7359/ >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          curl -fsSI http://127.0.0.1:7359/sqlite3.wasm >/dev/null
+          curl -fsSI http://127.0.0.1:7359/drift_worker.js >/dev/null
+          node tools/d14_photo_web_cert.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops
+
+          root = Path('d14-web-cert')
+          report = json.loads((root/'browser-report.json').read_text())
+          assert len(report['scenarios']) == 36, 'D14 scenario count incomplete'
+          assert len(report['viewports']) == 6, 'BEFORE/AFTER pairs missing'
+          failures = []
+          for viewport, files in report['viewports'].items():
+              before = Image.open(files['before']).convert('RGB')
+              after = Image.open(files['after']).convert('RGB')
+              assert before.size == after.size
+              difference = ImageChops.difference(before, after)
+              changed = sum(1 for p in difference.getdata() if max(p) > 16)
+              total = before.width * before.height
+              score = round(10 * (1 - changed/total), 3)
+              files['pixel_stability_score_of_10'] = score
+              files['changed_percent'] = round(changed/total*100, 4)
+              if score < 9.5:
+                  failures.append(f'{viewport}: image stability {score}/10 below 9.5')
+              print(f'D14 before/after {viewport}: pixel-stability {score}/10')
+          (root/'browser-report.json').write_text(json.dumps(report,indent=2))
+          if failures:
+              raise SystemExit('D14 UI delta requires review: ' + '; '.join(failures))
+          print('D14 WEB CHROME PASS: 36 synthetic consent scenarios, six before/after pairs')
+          PY
+
+      - name: Upload target-specific Web proofs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d14-photo-web-consent-before-after
+          path: |
+            d14-web-cert/*
+          if-no-files-found: warn
+          retention-days: 7
