@@ -16,6 +16,7 @@ on:
       - 'frontend/web/iamina_app_lock.js'
       - 'frontend/test/app_lock_ui_contract_test.dart'
       - 'frontend/test/services/app_lock_service_test.dart'
+      - 'frontend/test/services/d10_web_opt_out_browser_test.dart'
       - 'tools/td014_app_lock_browser_cert.js'
       - 'tools/td014_app_lock_visual_capture.js'
       - 'docs/TD_014_APP_LOCK_UX.md'
@@ -83,6 +84,15 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
+
+      - name: D10 Web — exercise opt-out denial in actual Chromium Dart runtime
+        working-directory: after/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CHROME_EXECUTABLE="$(node -p "require('../node_modules/playwright').chromium.executablePath()")"
+          flutter test --no-pub --platform chrome \
+            test/services/d10_web_opt_out_browser_test.dart
 
       - name: Certify real-browser WebAuthn including offline unlock
         shell: bash

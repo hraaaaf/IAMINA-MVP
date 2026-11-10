@@ -61,6 +61,10 @@ class AppLockService extends ChangeNotifier {
   bool get isRequired => _required;
   bool get isExplicitlySkipped => _explicitlySkipped;
   bool get isUnlocked => _unlocked;
+  // D10-B Web stays fail-closed until D18 proves encrypted clinical storage,
+  // per-owner key authorization and safe migration. No runtime opt-in flag:
+  // browser/local preferences cannot certify their own security.
+  bool get canOptOutOfAppLock => !kIsWeb;
   bool get recoveryRequired => _recoveryRequired;
   bool get needsSetup => _initialized && !_configured && !_explicitlySkipped && !_recoveryRequired;
 
@@ -80,8 +84,9 @@ class AppLockService extends ChangeNotifier {
       final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
       final ownerChoice = owner == null ? null
           : await _storage.read(key: _ownerChoiceKey(owner));
-      final chosenNoLock = ownerChoice == _skippedChoice ||
-          (choiceValue == _skippedChoice && owner == choiceOwner);
+      final chosenNoLock = canOptOutOfAppLock &&
+          (ownerChoice == _skippedChoice ||
+           (choiceValue == _skippedChoice && owner == choiceOwner));
       _required = requiredValue == _requiredValue;
 
       if (rawCredential != null && rawCredential.isNotEmpty) {
@@ -143,6 +148,19 @@ class AppLockService extends ChangeNotifier {
 
   Future<AppLockCapability> capability() => _authenticator.capability();
 
+  // A platform assertion can finish after logout or an A→B account switch.
+  // Revalidate the authenticated owner and epoch on both sides of awaits.
+  Future<void> _requireSameAuthenticatedVault(int epoch, String? owner) async {
+    final auth = _authService;
+    if (auth == null) return;
+    if (epoch != AuthService.authEpoch || !auth.isAuthenticated ||
+        owner == null ||
+        (await auth.resolvePatientVaultScope())?.databaseName != owner ||
+        epoch != AuthService.authEpoch) {
+      throw const AppLockException('patient_changed_during_lock_verification');
+    }
+  }
+
   Future<void> recoverWithVerifiedRemoteAccount() async {
     if (!_initialized) {
       throw StateError('App lock requires initialized state');
@@ -173,6 +191,9 @@ class AppLockService extends ChangeNotifier {
   /// an ambiguous/recovery vault. A compromised browser profile is out of
   /// scope for device-local data when the user deliberately declines a lock.
   Future<void> continueWithoutAppLock() async {
+    if (!canOptOutOfAppLock) {
+      throw const AppLockException('web_encrypted_vault_required');
+    }
     if (!_initialized || _configured || _required || _recoveryRequired) {
       throw const AppLockException('protected_vault_cannot_skip_lock');
     }
@@ -183,8 +204,17 @@ class AppLockService extends ChangeNotifier {
     if (owner == null) {
       throw const AppLockException('patient_vault_identity_required');
     }
-    // Persist owner first. A partial write cannot authorize a skip.
+    final epoch = AuthService.authEpoch;
+    await _requireSameAuthenticatedVault(epoch, owner);
+    // A local preference is not an authentication assertion. Never let a
+    // pending preference write survive a revoked or replaced session.
     await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
+    try {
+      await _requireSameAuthenticatedVault(epoch, owner);
+    } catch (_) {
+      await _storage.delete(key: _ownerChoiceKey(owner));
+      rethrow;
+    }
     _explicitlySkipped = true;
     _unlocked = false;
     notifyListeners();
@@ -194,6 +224,9 @@ class AppLockService extends ChangeNotifier {
   /// verification. Keep the credential for other locally saved owners.
   /// Nothing here grants backend auth or enables clinical data sync.
   Future<void> disableForCurrentVault() async {
+    if (!canOptOutOfAppLock) {
+      throw const AppLockException('web_encrypted_vault_required');
+    }
     final auth = _authService;
     final credential = _credential;
     if (!_initialized || !_configured || !_required || _recoveryRequired ||
@@ -216,11 +249,15 @@ class AppLockService extends ChangeNotifier {
     // Keep the anti-rollback counter current before changing protection.
     final updated = credential.copyWith(signCount: proof.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
+    await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
-    _credential = updated;
-    if (epoch != AuthService.authEpoch) {
-      throw const AppLockException('patient_changed_during_lock_verification');
+    try {
+      await _requireSameAuthenticatedVault(epoch, owner);
+    } catch (_) {
+      await _storage.delete(key: _ownerChoiceKey(owner));
+      rethrow;
     }
+    _credential = updated;
     _explicitlySkipped = true;
     _unlocked = false;
     notifyListeners();
@@ -250,6 +287,7 @@ class AppLockService extends ChangeNotifier {
       await _storage.delete(key: _ownerChoiceKey(owner));
       await _storage.delete(key: _choiceKey);
       await _storage.delete(key: _choiceOwnerKey);
+      await _requireSameAuthenticatedVault(epoch, owner);
       _credential = updated;
       _explicitlySkipped = false;
       _unlocked = true;
@@ -262,6 +300,7 @@ class AppLockService extends ChangeNotifier {
     await _storage.delete(key: _ownerChoiceKey(owner));
     await _storage.delete(key: _choiceKey);
     await _storage.delete(key: _choiceOwnerKey);
+    await _requireSameAuthenticatedVault(epoch, owner);
     _explicitlySkipped = false;
     notifyListeners();
     try {
@@ -272,6 +311,12 @@ class AppLockService extends ChangeNotifier {
       if (!_configured && !_required && !_recoveryRequired &&
           epoch == AuthService.authEpoch) {
         await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
+        try {
+          await _requireSameAuthenticatedVault(epoch, owner);
+        } catch (_) {
+          await _storage.delete(key: _ownerChoiceKey(owner));
+          rethrow;
+        }
         _explicitlySkipped = true;
         notifyListeners();
       }
@@ -286,7 +331,11 @@ class AppLockService extends ChangeNotifier {
     if (_recoveryRequired) {
       throw const AppLockException('recovery_required');
     }
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final capability = await _authenticator.capability();
+    await _requireSameAuthenticatedVault(epoch, owner);
     if (capability == AppLockCapability.insecureContext) {
       throw const AppLockException('insecure_context');
     }
@@ -295,8 +344,10 @@ class AppLockService extends ChangeNotifier {
     }
 
     final credential = await _authenticator.enroll();
+    await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _credentialKey, value: credential.encode());
     await _storage.write(key: _requiredKey, value: _requiredValue);
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = credential;
     _explicitlySkipped = false;
@@ -319,9 +370,14 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('app_lock_not_configured');
     }
 
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final assertion = await _authenticator.unlock(credential);
+    await _requireSameAuthenticatedVault(epoch, owner);
     final updated = credential.copyWith(signCount: assertion.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = updated;
     _unlocked = true;
@@ -376,9 +432,10 @@ class AppLockService extends ChangeNotifier {
           : await _storage.read(key: _ownerChoiceKey(scope.databaseName));
       if (generation != _choiceGeneration || !_initialized ||
           _recoveryRequired) return;
-      final allowed = scopedChoice == _skippedChoice ||
-          (choice == _skippedChoice &&
-              owner != null && owner == scope?.databaseName);
+      final allowed = canOptOutOfAppLock &&
+          (scopedChoice == _skippedChoice ||
+           (choice == _skippedChoice &&
+              owner != null && owner == scope?.databaseName));
       if (_explicitlySkipped != allowed) {
         _explicitlySkipped = allowed;
         notifyListeners();
