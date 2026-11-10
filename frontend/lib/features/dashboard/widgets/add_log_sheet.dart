@@ -17,6 +17,7 @@ import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
 import '../../journal/widgets/post_save_receipt.dart';
+import '../../journal/widgets/meal_capture_panel.dart' show MealPhotoRecognition;
 import 'add_log_view.dart';
 
 /// Accept only finite positive numbers entered by the patient. Do not
@@ -83,6 +84,7 @@ class AddLogSheet extends StatefulWidget {
   final MealVoiceStop? voiceStop;
   final MealVoiceTranscriber? voiceTranscriber;
   final MealVoiceStopAndRead? voiceStopAndRead;
+  final MealPhotoRecognition? photoRecognition;
 
   const AddLogSheet({
     super.key,
@@ -93,6 +95,7 @@ class AddLogSheet extends StatefulWidget {
     this.voiceStop,
     this.voiceTranscriber,
     this.voiceStopAndRead,
+    this.photoRecognition,
   });
 
   @override
@@ -465,6 +468,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           mealPortionSelections: _mealPortionSelections,
           mealNoteController: _mealNoteController,
           canUsePhotoRecognition: profile?.aiConsentGivenAt != null,
+          photoRecognition: widget.photoRecognition,
           voiceRecording: _mealVoiceRecording,
           voiceTranscribing: _mealVoiceTranscribing,
           onVoiceToggle: _toggleMealVoice,
