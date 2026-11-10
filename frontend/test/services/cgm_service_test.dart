@@ -11,6 +11,16 @@ class _FakeAuthService extends AuthService {
   Future<String?> getIdToken() async => 'test-token';
 }
 
+class _CountingAuthService extends AuthService {
+  int tokenReads = 0;
+
+  @override
+  Future<String?> getIdToken() async {
+    tokenReads += 1;
+    return 'test-token';
+  }
+}
+
 void main() {
   test('getConnection uses authenticated patient endpoint', () async {
     final client = MockClient((request) async {
@@ -36,6 +46,7 @@ void main() {
       authService: _FakeAuthService(),
       httpClient: client,
       baseUrl: 'https://iamina.test',
+      allowClinicalTransportForSyntheticTests: () => true,
     );
 
     final state = await service.getConnection();
@@ -67,6 +78,7 @@ void main() {
       authService: _FakeAuthService(),
       httpClient: client,
       baseUrl: 'https://iamina.test',
+      allowClinicalTransportForSyntheticTests: () => true,
     );
 
     final state = await service.configure(
@@ -100,6 +112,7 @@ void main() {
       authService: _FakeAuthService(),
       httpClient: client,
       baseUrl: 'https://iamina.test',
+      allowClinicalTransportForSyntheticTests: () => true,
     );
 
     final readings = await service.getReadings();
@@ -116,6 +129,7 @@ void main() {
         (_) async => http.Response(jsonEncode({'detail': 'provider_unavailable'}), 503),
       ),
       baseUrl: 'https://iamina.test',
+      allowClinicalTransportForSyntheticTests: () => true,
     );
 
     await expectLater(
@@ -126,5 +140,48 @@ void main() {
             .having((error) => error.statusCode, 'status', 503),
       ),
     );
+  });
+  test('local-only pilot blocks every CGM method before token or HTTP', () async {
+    final auth = _CountingAuthService();
+    var requestCount = 0;
+    final client = MockClient((request) async {
+      requestCount += 1;
+      return http.Response('{}', 200);
+    });
+    // The patient-facing default must never call a CGM backend, even with
+    // an authenticated bearer and a configured transport URL.
+    final service = CgmService(
+      authService: auth,
+      httpClient: client,
+      baseUrl: 'https://iamina.test',
+    );
+
+    final denied = throwsA(
+      isA<CgmServiceException>()
+          .having(
+            (error) => error.code,
+            'code',
+            'clinical_transport_disabled_local_only',
+          )
+          .having((error) => error.statusCode, 'status', 403),
+    );
+
+    await expectLater(service.getConnection(), denied);
+    await expectLater(
+      service.configure(
+        source: 'linx',
+        nightscoutUrl: 'https://nightscout.example.com',
+        authType: 'bearer',
+        credential: 'synthetic-test-secret',
+      ),
+      denied,
+    );
+    await expectLater(service.sync(), denied);
+    await expectLater(service.getReadings(), denied);
+    await expectLater(service.disconnect(), denied);
+
+    expect(auth.tokenReads, 0);
+    expect(requestCount, 0);
+    service.dispose();
   });
 }
