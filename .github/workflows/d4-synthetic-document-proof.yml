@@ -7,9 +7,12 @@ on:
       - 'docs/assessments/2026-11-10-cal12-patient-export-readiness.md'
       - 'frontend/lib/services/synthetic_doctor_report.dart'
       - 'frontend/lib/services/synthetic_doctor_export_gate.dart'
+      - 'frontend/lib/services/clinical_export_consent_contract.dart'
+      - 'frontend/lib/services/clinical_export_ephemeral_draft.dart'
       - 'frontend/lib/services/synthetic_report_formatter.dart'
       - 'frontend/test/services/synthetic_doctor_report_test.dart'
       - 'frontend/test/services/synthetic_doctor_export_gate_test.dart'
+      - 'frontend/test/services/clinical_export_consent_contract_test.dart'
       - 'frontend/test/services/synthetic_report_formatter_test.dart'
       - 'frontend/tool/d4_generate_synthetic_pdf.dart'
       - 'frontend/tool/d4_reprint_arabic_pdf_ua.py'
@@ -36,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           for file in lib/features/journal/reports_screen.dart lib/features/journal/reports_screen_presentation.dart; do
-            if grep -En 'synthetic_doctor_report|synthetic_doctor_export_gate|synthetic_report_formatter|SyntheticDoctorReport|SyntheticDoctorExportGate|SyntheticReportFormatter|SyntheticDoctorHtml|LocalReportPdf|share_plus|Printing[.]layoutPdf|Share[.]share' "$file"; then
+            if grep -En 'synthetic_doctor_report|synthetic_doctor_export_gate|clinical_export_consent_contract|clinical_export_ephemeral_draft|synthetic_report_formatter|SyntheticDoctorReport|SyntheticDoctorExportGate|DoctorExportConsentPolicy|EphemeralClinicalExportDraft|SyntheticReportFormatter|SyntheticDoctorHtml|LocalReportPdf|share_plus|Printing[.]layoutPdf|Share[.]share' "$file"; then
               echo "CAL12 FAIL: unauthorized patient Reports export integration in $file"
               exit 1
             fi
@@ -48,7 +51,7 @@ jobs:
         run: |
           flutter pub get
           flutter analyze --no-fatal-infos
-          flutter test --no-pub test/services/synthetic_report_formatter_test.dart test/services/synthetic_doctor_report_test.dart test/services/synthetic_doctor_export_gate_test.dart
+          flutter test --no-pub test/services/synthetic_report_formatter_test.dart test/services/synthetic_doctor_report_test.dart test/services/synthetic_doctor_export_gate_test.dart test/services/clinical_export_consent_contract_test.dart
       - name: Print offline synthetic HTML to FR EN AR PDFs with Chromium
         working-directory: frontend
         run: dart run tool/d4_generate_synthetic_pdf.dart
