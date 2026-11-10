@@ -84,7 +84,7 @@ void main() {
         expect(request.headers['Cache-Control'], 'no-store');
         return pending?.future ?? livenessResult(request);
       }
-      fail('Unexpected CAL-12 HTTP path: ' + request.url.path);
+      fail('Unexpected CAL-12 HTTP path: ${request.url.path}');
     });
     auth = AuthService(httpClient: transport);
     await auth.initialize();
@@ -166,7 +166,7 @@ void main() {
     for (final failure in failures) {
       livenessResult = (_) => failure;
       expect(await probe(), isFalse,
-          reason: 'Denied HTTP ' + failure.statusCode.toString());
+          reason: 'Denied HTTP ${failure.statusCode}');
     }
     expect(verifyCalls, failures.length);
   });

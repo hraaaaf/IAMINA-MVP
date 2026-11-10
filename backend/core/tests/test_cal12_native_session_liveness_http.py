@@ -7,7 +7,6 @@ from django.test import Client
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, revoke_native_tokens
 
-
 URL = "/api/v1/auth/session/verify"
 
 

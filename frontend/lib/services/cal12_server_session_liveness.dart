@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 import 'app_lock_service.dart';
-import 'auth_epoch.dart';
 import 'auth_service.dart';
 import 'cal12_authenticated_vault_probe.dart';
 import 'patient_vault_session_controller.dart';
