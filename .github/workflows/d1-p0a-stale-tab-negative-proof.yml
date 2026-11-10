@@ -35,6 +35,7 @@ jobs:
         env:
           D18_STALE_BROWSER: ${{ matrix.browser }}
         run: |
+          set -euo pipefail
           node --check tools/d1_p0a_stale_tab_negative_probe.js
           node tools/d1_p0a_stale_tab_negative_probe.js | tee d1-p0a-stale-proof.json
           test -s d1-p0a-stale-proof.json
