@@ -1,0 +1,33 @@
+name: D2 proactive in-app candidate (synthetic only)
+
+on:
+  push:
+    branches:
+      - test/d2-proactive-inapp-gate-20261108
+  pull_request:
+    branches: [main]
+    paths:
+      - backend/core/d2_proactive_gate_candidate.py
+      - backend/core/tests/test_d2_proactive_gate_candidate.py
+      - .github/workflows/d2-proactive-candidate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pure-contract:
+    name: Offline D2 pure policy regression (no clinical data)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run synthetic D2 deny/limit cases without a database
+        env:
+          PYTHONPATH: backend
+        run: python -m unittest discover -s backend/core/tests -p 'test_d2_proactive_gate_candidate.py' -v
+      - name: Check pure policy syntax
+        run: python -m compileall -q backend/core/d2_proactive_gate_candidate.py
