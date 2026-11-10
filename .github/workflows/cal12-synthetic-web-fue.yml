@@ -1,0 +1,118 @@
+name: CAL-12 fictional Web preview consent recipient A-B-A (no deploy)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cal12-synthetic-web-fue.yml'
+      - 'frontend/lib/cal12_synthetic_web_main.dart'
+      - 'frontend/lib/features/journal/synthetic_doctor_export_web_flow.dart'
+      - 'frontend/lib/services/synthetic_doctor_export_gate.dart'
+      - 'frontend/lib/services/synthetic_doctor_report.dart'
+      - 'frontend/test/cal12_synthetic_web_flow_test.dart'
+      - 'tools/cal12_synthetic_web_fue.js'
+      - 'tools/cal12_blob_url_staging_fixture.js'
+      - 'tools/cal12_blob_url_web_fue.js'
+      - 'docs/assessments/2026-11-10-cal12-patient-export-readiness.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cal12-synthetic-web-fue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  local-chrome-cal12:
+    name: Fictional Flutter Web FR AR 390 768 1280 A-B-A
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve and validate isolated Flutter Web proof
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos \
+            lib/cal12_synthetic_web_main.dart \
+            lib/features/journal/synthetic_doctor_export_web_flow.dart \
+            test/cal12_synthetic_web_flow_test.dart
+          flutter test --no-pub test/cal12_synthetic_web_flow_test.dart
+      - name: Build synthetic-only real Flutter Web
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter build web --release --no-web-resources-cdn \
+            --target lib/cal12_synthetic_web_main.dart \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false
+          test -s build/web/main.dart.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for local FUE
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Real Chrome FR AR 390 768 1280 and A-B-A, no egress
+        env:
+          CAL12_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7394 --bind 127.0.0.1 \
+            --directory frontend/build/web >/tmp/cal12-synthetic-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:7394/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7394/ >/dev/null
+          NODE_PATH="$PWD/node_modules" node tools/cal12_synthetic_web_fue.js
+          node - <<'NODE'
+          const assert=require('assert/strict'),fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('cal12-web-fue-proof/proof.json','utf8'));
+          assert.equal(p.status,'PASS_BOUNDED_REAL_CHROME_SYNTHETIC');
+          assert.equal(p.cases.length,6);
+          assert.equal(p.captures.length,24);
+          assert.equal(p.realPatientExport,false);
+          assert.equal(p.networkEgressAllowed,false);
+          assert.ok(p.cases.every(x=>x.result==='PASS'));
+          NODE
+          node --check tools/cal12_blob_url_staging_fixture.js
+          node --check tools/cal12_blob_url_web_fue.js
+          NODE_PATH="$PWD/node_modules" node tools/cal12_blob_url_web_fue.js
+          node - <<'NODE'
+          const assert=require('node:assert/strict'), fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('cal12-blob-url-proof/proof.json','utf8'));
+          assert.equal(p.status,'PASS_SYNTHETIC_BLOB_URL_LIFECYCLE_ONLY');
+          assert.equal(p.cases.length,6);
+          assert.equal(p.exportEnabled,false);
+          assert.equal(p.actualFileDeletionProven,false);
+          for (const c of p.cases) {
+            assert.equal(c.status,'PASS');
+            assert.ok(c.checks.length>=19);
+            assert.equal(c.metrics.active,false);
+            assert.equal(c.metrics.created,c.metrics.revoked);
+          }
+          NODE
+      - name: Retain same-viewport before-after and A-B-A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cal12-fictional-real-chrome-fr-ar-390-768-1280
+          path: |
+            cal12-web-fue-proof/
+            cal12-blob-url-proof/
+          retention-days: 14
+          if-no-files-found: warn
