@@ -1,28 +1,34 @@
-# IAMINA D1 P0-A — SAFE-HOLD (10 novembre 2026)
+# IAMINA D1 P0-A — SAFE-HOLD / no-cutover (10 novembre 2026)
 
-**Décision active :** [roadmap canonique D1–D12](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b), D1 validée sur conservation historique + chiffrement avant activation patient + migration volontaire.
+**Décision active :** [roadmap canonique D1–D12](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b). Conserver l'historique, prouver chiffrement/recovery avant activation patient et n'autoriser qu'une migration volontaire, jamais implicite. **CUTOVER : NO-GO.**
 
 ## Goal
-Empêcher qu'une future PR connecte accidentellement un migrateur/chiffreur expérimental à l'application clinique ou change les noms des coffres et adopte automatiquement des données legacy.
+Empêcher qu'un changement accidentel de code active un migrateur/chiffreur expérimental ou attribue l'ancien coffre `amina` à un compte authentifié. Préserver ce blocage pendant la recherche de preuves réelles sur des bases jetables.
 
-## Already implemented on main
-- `AppDatabase.defaults()` utilise `amina` (legacy) ; `forPatientVault` est limité à `scope.databaseName`.
-- `PatientVaultScope` isole les noms d'utilisateurs Django, appareils locaux et audit ; `main.dart` inspecte/ferme le coffre legacy sans le rendre visible dans le shell patient.
-- Le worker PWA peut garder du JS ancien hors ligne. **Les nouveaux Web Locks ne contraignent pas les anciens onglets qui ne les sollicitent pas** ; un ancien écrivain peut écrire après copie du coffre.
+## État sur main / frontière clinique
+- `AppDatabase.defaults()` utilise la base historique `amina`, sans identité patient.
+- `AppDatabase.forPatientVault(scope)` utilise une autre base physique nommée par `scope.databaseName` ; les noms patient Django, appareil local et audit restent distincts.
+- Un ancien JS/PWA hors ligne peut encore accéder au coffre historique sans prendre les Web Locks ajoutés plus tard.
+- Aucun code Flutter de production, de base, de SW, de migrateur, de chiffreur ni de Vercel n'est changé dans cette PR.
 
-## Implémentation de ce lot limité
-- `tools/d1_legacy_cutover_guard.py` parcourt le graphe d'imports/exports Dart depuis quatre points d'entrée de l'application et **échoue fermement** si un fichier expérimental `d18_*.dart` devient accessible.
-- Refuse toute modification des identifiants de bases ou une opération destructive/directe évidente dans les points d'entrée. Tests synthétiques positifs/négatifs.
-- CI sur PR changeant `frontend/lib/**`, sans modification de la base ni du service worker en production.
+## Protection test-only ajoutée
+- `tools/d1_legacy_cutover_guard.py` part de quatre points d'entrée Dart, parcourt imports/exports, imports conditionnels et `part` atteignables. Il refuse un `d18_*.dart` expérimental, les appels destructifs explicitement connus dans tout le graphe atteignable, ainsi que des modifications évidentes des constructeurs et espaces de noms de coffres.
+- Revue adversariale : un helper transitif contenant `deleteDatabase('amina')` échappait au premier garde ; contournement reproduit sur fixture jetable, puis corrigé. Deux faux positifs liés au parsing ont imposé de passer à des directives Dart complètes, pas à une recherche globale de morceaux de texte.
+- `tools/tests/test_d1_legacy_cutover_guard.py` : **11/11** tests unitaires PASS sur code source de la branche ; garde sur graphe du dépôt PASS. La vérification reste une heuristique de défense en profondeur, pas une analyse sémantique ni un verrou runtime.
+- `tools/d1_p0a_stale_tab_negative_probe.js` : 24 assertions Chromium et 24 WebKit, **48/48 PASS** en CI sur le dernier HEAD contrôlé. Ce PASS signale que l'ancien écrivain peut rester actif : il confirme un **risque**, pas une migration sûre.
+- `frontend/lib/ui_d1_p0a_real_drift_legacy_probe_main.dart` + `tools/d1_p0a_real_drift_browser_probe.js` + workflow `d1-p0a-real-drift-vfs-proof.yml` : compilation Flutter Web distincte et non déployée ; profil Chrome/Playwright jetable, SQLite WASM via les vrais constructeurs `AppDatabase`.
 
-## Limitations et risque résiduel
-La vérification est **statique**, basée sur les imports explicites. Elle ne couvre ni le comportement dynamique de Drift/VFS, ni les transformations indirectes, ni les anciennes transactions IndexedDB, ni le chiffrement. Elle ne prétend pas rendre une migration possible. **D1 P0-A reste NO-GO pour une bascule de coffre clinique.**
+## Preuve physique v12 (synthetique uniquement)
+- [Workflow #42905600841](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/42905600841), HEAD de code évalué `7b17cfed3b1ed8e0e6ac73b14166b8d73859bb0f` : **completed/success** ; rapport JSON téléchargable depuis l'artefact du run.
+- **9 phases / 9 PASS :** `seed_legacy` → `seed_a` → `late_legacy_write` → `seed_b` → `verify_a` → `verify_b` → `verify_legacy` → `verify_a` → hard reload `verify_a`.
+- Chaque phase utilise la vraie connexion Drift/SQLite WASM, vérifie les lignes synthétiques attendues / l'absence des lignes d'autres coffres, puis exécute `PRAGMA integrity_check = ok`. Conservation après fermeture, navigation et recharge complète démontrée.
+- `late_legacy_write` emploie le **constructeur legacy du bundle v12 actuel** après création de A ; ce n'est **pas** un ancien bundle JS d'une vraie version précédente ni une course de deux onglets réellement concurrents.
+- Le mécanisme VFS exact sélectionné en interne (OPFS ou fallback IndexedDB) n'a pas été identifié indépendamment ; ne pas surévaluer cette preuve.
 
-## Succès observable / preuves à recueillir
-1. Tests synthétiques du garde : PASS au HEAD exact.
-2. Garde sur le vrai graphe du dépôt : PASS au HEAD exact.
-3. **Test navigateur négatif physique Chromium/WebKit sur IndexedDB synthétique** : portage du probe de PR #1265, 24 assertions par moteur à vérifier en CI ; teste le fait qu'un ancien onglet continue d'écrire malgré Web Locks et une reprise offline. **Ce n'est PAS une preuve de VFS Drift réelle, ni de compatibilité OPFS, ni de réconciliation ou de migration sûre.** Le test vrai ancien bundle Drift/OPFS, l'intégrité byte-level, les crashes et le multi-profil restent NOT_RUN.
-4. D1 chiffrement/recovery crypto et revue indépendante : **NOT_RUN**.
-5. Aucune donnée patient réelle ; aucun déploiement Vercel, aucune modification des anciennes bases.
+## Preuves NON obtenues / gates bloquants
+1. **Véritable ancien bundle** offline (historique), plusieurs onglets simultanés, verrou physique à coupure sécurisée, vieux handles en versionchange, A→B→A avec collisions réelles.
+2. **Migration depuis anciens schémas**, surtout v1→v12 et v5→v12 ; première version visible du code `database.dart` dans l'historique Git consulté : `a1d46f9b`, `schemaVersion=5`. Une source v1 authentifiée n'a pas été retrouvée ici.
+3. Crash pendant transactions, journaux SQLite, intégrité byte-level, sauvegarde/restauration vérifiée, replay/sync `client_uuid`, chiffrement, récupération/perte de clé, exactitude des mappings patient.
+4. **Revue indépendante** sécurité/données et convergence sur exact HEAD final ; contrôles CI finaux après tout changement documentaire ou applicatif.
 
-**Next :** comparer les probes navigateur P0-A de la PR #1265 au runtime Drift 2.31.0 et reproduire sur des coffres jetables, sans activer de migration.
+**Verdict :** garde et preuve de persistance v12 utiles, mais **migration clinique D1 P0-A toujours NO-GO**, aucune approbation de release. **Next exact :** contrôler les CI exact-HEAD après la documentation, faire réviser le garde par une personne/agent indépendant (builder ≠ reviewer), puis élaborer un banc de vrais bundles historiques sur une origine isolée avec scénarios versionchange/crash/restore. Aucun merge, aucun déploiement Vercel ni donnée patient réelle sans leurs gates explicites.
