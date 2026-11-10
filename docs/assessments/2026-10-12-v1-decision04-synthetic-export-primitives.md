@@ -33,3 +33,10 @@ To connect this primitive to actual Reports, resolve **CAL-12**: typed clinical 
 ## 09/11/2026 — Locale warning parity amendment (synthetic-only)
 
 The CI HTML report disclaimer is localized in French and Arabic (alongside the existing English wording). The focused Flutter contract tests assert each locale warning. CI Poppler validates both French and English extraction and numerical content in all three PDFs; Arabic screenshot/glyph extraction still requires the MENA native-human CAL-12 gate before any patient-facing use. This text-only safety clarification does not connect reports to patient data or grant merge/deploy approval.
+
+
+## 10/11/2026 — Adversarial synthetic export technical review
+
+Corrected cases: (1) CSV/JSON reject C1 controls, Unicode line separators, invisible bidi/zero-width markers and small-width formula prefixes; (2) generation UTC cannot predate the period end; (3) Chromium/Poppler proof now covers three-row and maximal twelve-row reports in FR/EN/AR, checking six A4 one-page PDFs, extractable last value, font names and six raster PNGs; table headers carry explicit `scope="col"`.
+
+Important: the formatter's public string API cannot verify the absence of real patient information in a future caller: `fixture_scope=synthetic_only` is only a contractual label and the current call-site isolation is the security boundary. This technical review does not count as independent human, native Arabic/RTL, clinical/DPO approval or CAL-12 certification.

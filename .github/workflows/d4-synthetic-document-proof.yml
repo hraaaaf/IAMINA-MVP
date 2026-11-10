@@ -46,16 +46,25 @@ jobs:
           set -euo pipefail
           command -v pdftoppm >/dev/null || { echo "poppler pdftoppm required"; exit 1; }
           command -v pdftotext >/dev/null || { echo "poppler pdftotext required"; exit 1; }
-          for locale in fr en ar; do
-            path="build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.pdf"
-            test -s "$path"
-            pdfinfo "$path" | grep -q 'Pages:'
-            pdftotext "$path" "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"
-            grep -q '142' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"
-            if [ "$locale" = fr ]; then grep -q 'NON CLINIQUE' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"; fi
-            if [ "$locale" = en ]; then grep -q 'NOT FOR CLINICAL USE' "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.txt"; fi
-            pdftoppm -f 1 -l 1 -singlefile -scale-to 1400 -png "$path" "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}"
-            test -s "build/d4-synthetic-proof/D4-SYNTHETIC-${locale}.png"
+          command -v pdffonts >/dev/null || { echo "poppler pdffonts required"; exit 1; }
+          for variant in "" "-MAX"; do
+            for locale in fr en ar; do
+              name="D4-SYNTHETIC${variant}-${locale}"
+              path="build/d4-synthetic-proof/${name}.pdf"
+              txt="build/d4-synthetic-proof/${name}.txt"
+              test -s "$path"
+              test "$(pdfinfo "$path" | awk '/^Pages:/ {print $2}')" = "1"
+              pdfinfo "$path" | grep -Fq '(A4)'
+              pdffonts "$path" | grep -q 'Inter'
+              if [ "$locale" = ar ]; then pdffonts "$path" | grep -q 'NotoSansArabic'; fi
+              pdftotext "$path" "$txt"
+              if [ "$variant" = "-MAX" ]; then grep -q '121' "$txt"; else grep -q '142' "$txt"; fi
+              if [ "$locale" = fr ]; then grep -q 'NON CLINIQUE' "$txt"; fi
+              if [ "$locale" = en ]; then grep -q 'NOT FOR CLINICAL USE' "$txt"; fi
+              if [ "$locale" = ar ]; then grep -q 'بيانات' "$txt"; fi
+              pdftoppm -f 1 -l 1 -singlefile -scale-to 1400 -png "$path" "build/d4-synthetic-proof/${name}"
+              test -s "build/d4-synthetic-proof/${name}.png"
+            done
           done
           python3 - <<'PY'
           import glob
@@ -70,7 +79,7 @@ jobs:
               assert width >= 850 and height >= 1100, (filename,width,height)
               assert len(data) > 10000, (filename,len(data))
               print('PDF_RENDER_OK', filename, width, height, len(data))
-          assert len(glob.glob('build/d4-synthetic-proof/*.png')) == 3
+          assert len(glob.glob('build/d4-synthetic-proof/*.png')) == 6
           PY
       - name: Upload synthetic-only PDF and visual artifacts
         if: always()

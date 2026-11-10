@@ -61,6 +61,10 @@ void main() {
     '+SUM(1,2)', '-1+2', '@EVAL()', '  =1+2',
     '＝1+2', '＋1+2', '－1+2', '＠EVAL()',
     '\t=1+2', 'part\n=1+2', 'abc\u202edef',
+    '\u2066=1+2\u2069', '\u200b=1+2', 'x\u2028=1+2',
+    'x\u2029=1+2', 'x\u0085=1+2', 'x\u061cy',
+    'x\u200fy', 'x\u2060y', '\ufeff=1+2',
+    '﹦1+2', '﹢1+2', '﹣1+2',
   ]) {
     test('rejects unsafe spreadsheet text $dangerous in both formats', () {
       for (final format in SyntheticReportFormat.values) {

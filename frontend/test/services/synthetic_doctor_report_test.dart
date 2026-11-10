@@ -66,6 +66,14 @@ void main() {
       ),
       throwsArgumentError,
     );
+    expect(
+      () => SyntheticDoctorReport(
+        generatedAtUtc: DateTime.utc(2026, 11, 8, 20),
+        periodStartUtc: start, periodEndUtc: end,
+        observations: fixture().observations,
+      ),
+      throwsArgumentError,
+    );
     for (final invalid in [0, -1, 1001]) {
       expect(
         () => SyntheticDoctorReport(
@@ -121,6 +129,33 @@ void main() {
     );
   });
 
+  test('D4 max rows accepted; overflow and duplicate instants rejected', () {
+    final rows = List.generate(
+      SyntheticDoctorReport.maxObservations,
+      (i) => SyntheticGlucoseObservation(
+        recordedAtUtc: DateTime.utc(2026, 11, 2 + i ~/ 2, i.isEven ? 8 : 20),
+        mgDl: i == 5 ? null : 110 + i,
+      ),
+    );
+    final maxReport = SyntheticDoctorReport(
+      generatedAtUtc: generated, periodStartUtc: start,
+      periodEndUtc: end, observations: rows,
+    );
+    expect(maxReport.observations.length, SyntheticDoctorReport.maxObservations);
+    expect(maxReport.observations.last.mgDl, 121);
+    expect(() => SyntheticDoctorReport(
+      generatedAtUtc: generated, periodStartUtc: start,
+      periodEndUtc: end,
+      observations: [...rows, SyntheticGlucoseObservation(
+        recordedAtUtc: DateTime.utc(2026, 11, 8, 9), mgDl: 130,
+      )],
+    ), throwsArgumentError);
+    expect(() => SyntheticDoctorReport(
+      generatedAtUtc: generated, periodStartUtc: start,
+      periodEndUtc: end, observations: [rows.first, rows.first],
+    ), throwsArgumentError);
+  });
+
   test('D4 Web printable HTML is stable Unicode RTL with isolated numerals', () {
     final report = fixture();
     for (final locale in const ['fr', 'en', 'ar']) {
@@ -138,6 +173,7 @@ void main() {
       expect(html, contains('142 mg/dL'));
       expect(html, contains('>N/A</td>'));
       expect(html, contains('unicode-bidi:isolate'));
+      expect(html, contains('<th scope="col">'));
       expect(html, contains('assets/fonts/NotoSansArabic.ttf'));
       expect(html, isNot(contains('<script')));
       expect(html, isNot(contains('https://')));

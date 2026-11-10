@@ -26,14 +26,31 @@ Future<void> main() async {
       ),
     ],
   );
+  // Render the three-row fixture and the strict 12-row maximum in all locales.
+  final fixtures = <String, SyntheticDoctorReport>{
+    '': fixture,
+    '-MAX': SyntheticDoctorReport(
+      generatedAtUtc: fixture.generatedAtUtc,
+      periodStartUtc: fixture.periodStartUtc,
+      periodEndUtc: fixture.periodEndUtc,
+      observations: List.generate(
+        SyntheticDoctorReport.maxObservations,
+        (i) => SyntheticGlucoseObservation(
+          recordedAtUtc: DateTime.utc(2026, 11, 2 + i ~/ 2, i.isEven ? 8 : 20),
+          mgDl: i == 5 ? null : 110 + i,
+        ),
+      ),
+    ),
+  };
   final chrome = Platform.environment['CHROME_BIN'] ?? 'google-chrome';
-  for (final languageCode in const ['fr', 'en', 'ar']) {
-    final name = 'D4-SYNTHETIC-$languageCode';
+  for (final entry in fixtures.entries) {
+    for (final languageCode in const ['fr', 'en', 'ar']) {
+    final name = 'D4-SYNTHETIC${entry.key}-$languageCode';
     final htmlFile = File('${output.path}/$name.html');
     final pdfFile = File('${output.path}/$name.pdf');
     await htmlFile.writeAsString(
       SyntheticDoctorHtml.build(
-        report: fixture,
+        report: entry.value,
         languageCode: languageCode,
       ),
       flush: true,
@@ -59,5 +76,6 @@ Future<void> main() async {
     stdout.writeln(
       'D4_SYNTHETIC_ONLY ${pdfFile.path} ${pdfFile.lengthSync()} bytes',
     );
+    }
   }
 }

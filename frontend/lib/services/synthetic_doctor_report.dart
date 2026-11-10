@@ -45,6 +45,9 @@ final class SyntheticDoctorReport {
     if (periodStartUtc.isAfter(periodEndUtc)) {
       throw ArgumentError('Report period must not be inverted.');
     }
+    if (generatedAtUtc.isBefore(periodEndUtc)) {
+      throw ArgumentError('Generation cannot predate the report period end.');
+    }
     if (observations.isEmpty || observations.length > maxObservations) {
       throw ArgumentError('Requires 1 to $maxObservations synthetic observations.');
     }
@@ -160,9 +163,9 @@ final class SyntheticDoctorHtml {
       ..writeln('</section>')
       ..writeln('<h2>${label('Mesures manuelles synthétiques', 'Synthetic manual readings', 'قياسات يدوية تجريبية')}</h2>')
       ..writeln('<table><thead><tr>')
-      ..writeln('<th>${label('Date UTC', 'UTC date', 'التاريخ UTC')}</th>')
-      ..writeln('<th>${label('Valeur', 'Value', 'القيمة')}</th>')
-      ..writeln('<th>${label('Source', 'Source', 'المصدر')}</th>')
+      ..writeln('<th scope="col">${label('Date UTC', 'UTC date', 'التاريخ UTC')}</th>')
+      ..writeln('<th scope="col">${label('Valeur', 'Value', 'القيمة')}</th>')
+      ..writeln('<th scope="col">${label('Source', 'Source', 'المصدر')}</th>')
       ..writeln('</tr></thead><tbody>');
 
     for (final row in report.observations) {

@@ -111,16 +111,22 @@ final class SyntheticReportFormatter {
     // fullwidth lookalikes). Do not rely on apostrophe/quote/tab escaping:
     // spreadsheet applications differ and may re-enable formula execution.
     final trimmed = value.trimLeft();
-    const formulaStarts = ['=', '+', '-', '@', '＝', '＋', '－', '＠'];
+    const formulaStarts = ['=', '+', '-', '@', '＝', '＋', '－', '＠', '﹦', '﹢', '﹣'];
     if (formulaStarts.any(trimmed.startsWith)) {
       throw FormatException('$name contains a spreadsheet formula prefix.');
     }
-    // This synthetic strict subset excludes controls and bidi overrides,
-    // rather than permitting hidden cell/record or visual reordering attacks.
+    // Reject C0/C1 controls, invisible format markers, bidi isolates and
+    // Unicode line separators before CSV or JSON; strict synthetic subset.
     for (final rune in value.runes) {
-      if (rune < 0x20 || rune == 0x7f ||
-          (rune >= 0x202a && rune <= 0x202e)) {
-        throw FormatException('$name contains a control character.');
+      if (rune < 0x20 || (rune >= 0x7f && rune <= 0x9f) ||
+          rune == 0x061c ||
+          (rune >= 0x200b && rune <= 0x200f) ||
+          (rune >= 0x202a && rune <= 0x202e) ||
+          rune == 0x2028 || rune == 0x2029 ||
+          rune == 0x2060 ||
+          (rune >= 0x2066 && rune <= 0x2069) ||
+          rune == 0xfeff) {
+        throw FormatException('$name contains a control or invisible marker.');
       }
     }
   }
