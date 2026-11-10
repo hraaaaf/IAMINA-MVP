@@ -24,6 +24,15 @@ Future<void> main() async {
           ..where((t) => t.clientUuid.equals(_id)))
         .getSingleOrNull();
     if (existing != null) throw StateError('v5 fixture reused unexpectedly');
+    await vault.into(vault.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const Value(734),
+        updatedAt: DateTime.utc(2026, 11, 10, 12),
+        diabetesType: const Value('type1'),
+        treatment: const Value('insulin'),
+        aiConsentGivenAt: Value(DateTime.utc(2026, 11, 10, 12)),
+      ),
+    );
     await vault.into(vault.logEntries).insert(
       LogEntriesCompanion.insert(
         createdAt: DateTime.utc(2026, 11, 10),
@@ -36,7 +45,14 @@ Future<void> main() async {
           ..where((t) => t.clientUuid.equals(_id)))
         .getSingleOrNull();
     final check = await vault.customSelect('PRAGMA integrity_check').getSingle();
+    final profile = await (vault.select(vault.patientProfiles)
+          ..where((t) => t.userId.equals(734)))
+        .getSingleOrNull();
     if (stored == null || stored.bloodSugar != 105 ||
+        stored.syncStatus != 'pending' || profile == null ||
+        profile.diabetesType != 'type1' ||
+        profile.treatment != 'insulin' ||
+        profile.aiConsentGivenAt?.toUtc() != DateTime.utc(2026, 11, 10, 12) ||
         check.data.values.single != 'ok') {
       throw StateError('historical v5 storage integrity failed');
     }
