@@ -73,6 +73,20 @@ def reachable_sources(lib: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> 
     return seen
 
 
+def _constructor_statement(source: str, signature: str) -> str:
+    """Inspect only one Dart constructor initializer, not decoys elsewhere.
+
+    This remains a focused static heuristic, not a Dart AST security certificate.
+    """
+    start = re.search(r"(?m)^[ \t]*" + re.escape(signature) + r"\s*", source)
+    if start is None:
+        return ""
+    statement = source[start.start():].split(";", 1)[0]
+    statement = re.sub(r"/\*.*?\*/", "", statement, flags=re.S)
+    statement = re.sub(r"//[^\n]*", "", statement)
+    return statement
+
+
 def check(root: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> list[str]:
     lib = root / "frontend" / "lib"
     db = lib / "data" / "drift" / "database.dart"
@@ -88,17 +102,18 @@ def check(root: Path, entrypoints: tuple[str, ...] = ENTRYPOINTS) -> list[str]:
     pinned_scope_sha256 = "f60a4d1ac60f701bc4028fdd6e85ae88cf1c4a383cc14162a379430828624c02"
     if hashlib.sha256(scope_source.encode("utf-8")).hexdigest() != pinned_scope_sha256:
         errors.append("patient vault namespace source changed — independent security review required")
-    # Stable names and distinct constructors are a precondition; no implicit adoption.
-    # Bind invariants to active constructors instead of loose text tokens.
+    # Validate each active initializer alone; comments or later decoy
+    # constructors must not hide renamed or colliding storage.
     constructor_invariants = (
-        (r"AppDatabase\.defaults\(\).*?driftDatabase\(\s*name:\s*'amina'",
+        ("AppDatabase.defaults()", r"driftDatabase\(\s*name:\s*'amina'",
          "legacy default constructor / database name"),
-        (r"AppDatabase\.forPatientVault\(PatientVaultScope scope\)"
-         r".*?driftDatabase\(\s*name:\s*scope\.databaseName",
+        ("AppDatabase.forPatientVault(PatientVaultScope scope)",
+         r"driftDatabase\(\s*name:\s*scope\.databaseName",
          "isolated patient constructor / database name"),
     )
-    for pattern, label in constructor_invariants:
-        if not re.search(pattern, database_source, re.S):
+    for signature, pattern, label in constructor_invariants:
+        statement = _constructor_statement(database_source, signature)
+        if not re.search(pattern, statement, re.S):
             errors.append(f"legacy or patient vault boundary changed: {label}")
     for token in ("amina_vault_v1_native_", "amina_vault_v1_device_",
                   "amina_vault_v1_audit"):
