@@ -369,6 +369,10 @@ void main() {
     expect(consentService.hasConsent, isFalse);
     expect(find.textContaining('Consentement non enregistré'), findsOneWidget);
 
+    // The transient SnackBar occupies the bottom hit area; retry once it
+    // has dismissed, just as an actual user can select the alternate CTA.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     final decline = find.text('Continuer sans IA');
     await tester.ensureVisible(decline);
     await tester.tap(decline);
