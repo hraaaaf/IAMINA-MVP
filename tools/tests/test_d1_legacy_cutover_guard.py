@@ -62,5 +62,32 @@ class AppDatabase {
         self.assertEqual(check(self.root), [])
 
 
+    def test_transitive_destructive_helper_is_rejected(self):
+        self._put("services/patient_vault_app_host.dart",
+                  "import 'unsafe_helper.dart';")
+        self._put("services/unsafe_helper.dart",
+                  "void unsafe() { deleteDatabase('amina'); }")
+        self.assertTrue(any("unsafe_helper" in e for e in check(self.root)))
+
+    def test_conditional_import_unsafe_branch_is_rejected(self):
+        self._put("services/patient_vault_app_host.dart",
+                  "import 'safe.dart' if (dart.library.html) 'unsafe.dart';")
+        self._put("services/safe.dart", "void safe() {}")
+        self._put("services/unsafe.dart", "void unsafe() { migrateLegacyVault(); }")
+        self.assertTrue(any("unsafe.dart" in e for e in check(self.root)))
+
+    def test_dart_part_unsafe_helper_is_rejected(self):
+        self._put("services/patient_vault_app_host.dart",
+                  "part 'unsafe_part.dart';")
+        self._put("services/unsafe_part.dart",
+                  "void unsafe() { clearIndexedDb(); }")
+        self.assertTrue(any("unsafe_part" in e for e in check(self.root)))
+
+    def test_comment_cannot_stand_in_for_legacy_name(self):
+        p = self.lib / "data/drift/database.dart"
+        p.write_text(p.read_text().replace("name: 'amina'",
+                     "name: 'amina_v2' /* name: 'amina' */"))
+        self.assertTrue(any("boundary changed" in e for e in check(self.root)))
+
 if __name__ == "__main__":
     unittest.main()
