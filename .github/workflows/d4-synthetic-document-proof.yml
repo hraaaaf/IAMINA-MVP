@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/d4-synthetic-document-proof.yml'
+      - 'docs/assessments/2026-11-10-cal12-patient-export-readiness.md'
       - 'frontend/lib/services/synthetic_doctor_report.dart'
       - 'frontend/lib/services/synthetic_doctor_export_gate.dart'
       - 'frontend/lib/services/synthetic_report_formatter.dart'
