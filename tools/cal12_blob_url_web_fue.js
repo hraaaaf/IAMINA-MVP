@@ -106,8 +106,20 @@ async function runCase(browser, locale, viewport) {
       const alpha = new Uint8Array(a), beta = new Uint8Array(b);
       const audit = [];
       const ensure = (condition, why) => { if (!condition) throw Error(why); };
+      let currentSession = {
+        id:'fixture:session:alpha:1', generation:0,
+      };
+      const activate = (owner, id) => {
+        currentSession = {
+          id, generation:stage.beginSession('fixture:vault:' + owner, id),
+        };
+      };
       const make = (owner, bytes) => ({
         owner:'fixture:vault:' + owner,
+        sessionId:currentSession.id,
+        sessionGeneration:currentSession.generation,
+        consentGeneration:currentSession.generation,
+        recipientGeneration:currentSession.generation,
         reportOwner:'fixture:vault:' + owner,
         recipient:'fixture:doctor:one',
         confirmedRecipient:'fixture:doctor:one',
@@ -139,6 +151,8 @@ async function runCase(browser, locale, viewport) {
           'Wrong owner PDF read');
       }
 
+      denied(make('alpha', alpha), 'NO_ACTIVE_SESSION');
+      activate('alpha', 'fixture:session:alpha:1');
       let url = stage.open(make('alpha', alpha));
       ensure(url.startsWith('blob:'), 'Not Blob URL');
       await readPdf(url, 'fixture:vault:alpha');
@@ -147,17 +161,39 @@ async function runCase(browser, locale, viewport) {
       ensure(!await canFetch(url), 'Cancelled URL still works');
       audit.push('CANCEL_REVOKES_URL');
 
-      url = stage.open(make('alpha', alpha));
-      stage.switchOwner('fixture:vault:beta');
+      const oldAConsent = make('alpha', alpha);
+      url = stage.open(oldAConsent);
+      activate('beta', 'fixture:session:beta:1');
       ensure(!await canFetch(url), 'A URL available after switching to B');
       ensure(!stage.active, 'A stage still active under B');
-      const bUrl = stage.open(make('beta', beta));
+      denied(oldAConsent, 'STALE_A_CONSENT_IN_B');
+      const oldBConsent = make('beta', beta);
+      const bUrl = stage.open(oldBConsent);
       await readPdf(bUrl, 'fixture:vault:beta');
       ensure(!await canFetch(url), 'A URL resurrected under B');
-      stage.switchOwner('fixture:vault:alpha');
+      activate('alpha', 'fixture:session:alpha:2');
       ensure(!await canFetch(bUrl), 'B URL available under A');
-      audit.push('OWNER_A_B_A_REVOKES_BOTH');
+      denied(oldAConsent, 'STALE_A_CONSENT_ON_RELOGIN');
+      denied(oldBConsent, 'STALE_B_CONSENT_IN_A');
+      audit.push('SESSION_A_B_A_REVOKES_OLD_GRANTS');
 
+      // Rotating a session for the same fictional owner is not a consent.
+      const sameOwnerConsent = make('alpha', alpha);
+      const sameOwnerUrl = stage.open(sameOwnerConsent);
+      activate('alpha', 'fixture:session:alpha:2');
+      ensure(!await canFetch(sameOwnerUrl), 'Same-owner rotation kept PDF URL');
+      denied(sameOwnerConsent, 'SAME_OWNER_OLD_SESSION');
+      audit.push('SAME_OWNER_ROTATION_REVOKES');
+
+      denied(Object.assign(make('alpha', alpha), {
+        sessionId:'fixture:session:alpha:1',
+      }), 'WRONG_SESSION_ID');
+      denied(Object.assign(make('alpha', alpha), {
+        consentGeneration:currentSession.generation - 1,
+      }), 'STALE_CONSENT_GENERATION');
+      denied(Object.assign(make('alpha', alpha), {
+        recipientGeneration:currentSession.generation - 1,
+      }), 'STALE_RECIPIENT_CONFIRMATION');
       denied(Object.assign(make('alpha', alpha), {
         owner:'real-patient-23',
       }), 'REAL_PATIENT_ID');
@@ -189,6 +225,15 @@ async function runCase(browser, locale, viewport) {
         'WRONG_PDF_PROVENANCE');
       denied(Object.assign(make('alpha', new Uint8Array(262145)), {}),
         'OVERSIZED_PDF');
+
+      const loggedOutConsent = make('alpha', alpha);
+      const loggedOutUrl = stage.open(loggedOutConsent);
+      stage.endSession('logout');
+      ensure(!await canFetch(loggedOutUrl), 'Logout retained Blob URL');
+      denied(loggedOutConsent, 'CONSENT_AFTER_LOGOUT');
+      activate('alpha', 'fixture:session:alpha:2');
+      denied(loggedOutConsent, 'CONSENT_AFTER_LOGIN');
+      audit.push('LOGOUT_RELOGIN_FAIL_CLOSED');
 
       let inSuccess = null;
       await stage.useOnce(make('alpha', alpha), async localUrl => {
@@ -241,13 +286,28 @@ async function runCase(browser, locale, viewport) {
       audit.push('PAGEHIDE_REVOKES');
 
       const m = stage.metrics;
+      ensure(!m.sessionActive, 'pagehide left synthetic session active');
       ensure(!m.active && m.created === m.revoked,
         'Object URLs leaked; created=' + m.created + ' revoked=' + m.revoked);
       ensure(m.created >= 7, 'Insufficient positive fixture operations');
       ensure(alpha.length > 100 && beta.length > 100, 'Fixture bytes invalid');
       return {checks:audit,metrics:m};
     }, {a:[...fixtureA],b:[...fixtureB]});
-    assert.ok(result.checks.length >= 19);
+    assert.ok(result.checks.length >= 26);
+    for (const mandatory of [
+      'DENY_NO_ACTIVE_SESSION',
+      'DENY_STALE_A_CONSENT_ON_RELOGIN',
+      'DENY_SAME_OWNER_OLD_SESSION',
+      'DENY_CONSENT_AFTER_LOGOUT',
+      'DENY_STALE_CONSENT_GENERATION',
+      'DENY_STALE_RECIPIENT_CONFIRMATION',
+      'SESSION_A_B_A_REVOKES_OLD_GRANTS',
+      'SAME_OWNER_ROTATION_REVOKES',
+      'LOGOUT_RELOGIN_FAIL_CLOSED',
+    ]) {
+      assert.ok(result.checks.includes(mandatory),
+        'Missing synthetic session proof: ' + mandatory);
+    }
     assert.equal(result.metrics.active,false);
     assert.equal(result.metrics.created,result.metrics.revoked);
     assert.deepEqual(external,[]);
