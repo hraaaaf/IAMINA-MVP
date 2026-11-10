@@ -1,3 +1,19 @@
+## 10/11/2026 — D10 Web sécurité fail-closed / candidat réintégré depuis main
+
+**Décision :** option B app-lock facultatif retenue pour la cible produit, mais **l'opt-out Web reste interdit tant que D18 n'a pas certifié le chiffrement du stockage médical et les garanties identité/propriétaire**. Ce correctif conserve l'option native sous ses contrôles d'identité actuels et empêche l'activation silencieuse de la préférence « sans verrouillage » dans le navigateur. Aucun nouveau chiffrement n'est annoncé ni implémenté.
+
+**Goal :** fail-closed de `continueWithoutAppLock` et `disableForCurrentVault` sur Web, refus de lecture de `skip` historique en Web, absence de CTA Web trompeur dans le setup et Profil, revalidation `authEpoch`/owner lors des assertions et écritures asynchrones (A→logout→B→A), sans egress ajouté.
+
+**BEFORE :** `main@61f51ee7bbbfec829acfd1160761b99e36a1c48c` : app lock service blob `3534aab11b46589f740cb56bfde12cf181879cc8`; `continueWithoutAppLock` et `disableForCurrentVault` sans refus spécifique Web, bouton `d30-skip-app-lock` visible. Il s'agit d'un risque source identifié, pas d'une fuite patient constatée.
+
+**Candidat :** branche neuve `fix/d10-web-failclosed-20261110` dérivée du main précédent. Reprise ciblée des assertions de [PR ancienne #1246](https://github.com/hraaaaf/IAMINA-MVP/pull/1246), sans fusion de ses 143 commits de retard ; quatre fichiers UI/tests divergents ont été réintégrés par merge 3 voies (ancienne base vs main vs correctif) sans conflits. Tests de non-contournement Web, évolution native, course d'identité et widget de désactivation, plus [CI TD-014](../../.github/workflows/td014-app-lock-cert.yml) avec test Flutter Chromium. Cette branche ne touche ni au backend, proxy, schéma, valeurs de glycémie, secret, ni aux données patient.
+
+**Statut évolutif :** `D10_WEB_QA_CANDIDATE` tant que les tests GitHub exact-HEAD et revues ne sont pas terminés ; `D10_OPTION_B_PRODUCTION=NO_GO`, D18 et avis indépendant confidentialité/sécurité toujours nécessaires. Ce GO propriétaire permet le travail technique **pas le merge ou un déploiement Vercel**, même preview. Vérifier PR, SHA, test Flutter (y compris vrais Chromium, non seulement mock), absence de régression native, puis notifier Notion canonique Chantier B.
+
+**Suivi canonique :** [Notion Chantier B](https://app.notion.com/p/40777c66336281729c03c9bb294e71b7). **Next :** preuves CI/Chrome exactes puis revue sécurité & dépendance D18 ; seulement après décision humaine distincte, envisager fusion.
+
+---
+
 ## HANDOVER DE REPRISE — IAMINA D10 ↔ D11 — 15 octobre 2026, 11 h 26 UTC
 
 > **Lire CE BLOC d'abord**, puis reprendre au « Next exact ». Chiffres, runs et SHA ci-dessous relus dans GitHub/Vercel à cette reprise. Les sections plus anciennes conservent l'historique et ne remplacent pas cet état.

@@ -102,6 +102,8 @@ void main() {
     when(() => lock.capability())
         .thenAnswer((_) async => AppLockCapability.supported);
     when(() => lock.continueWithoutAppLock()).thenAnswer((_) async {});
+    // This existing D30 flow represents an eligible native platform, not Web.
+    when(() => lock.canOptOutOfAppLock).thenReturn(true);
 
     final router = GoRouter(initialLocation: '/app-lock/setup', routes: [
       GoRoute(
@@ -146,5 +148,37 @@ void main() {
     await tester.pumpAndSettle();
     verify(() => lock.continueWithoutAppLock()).called(1);
     expect(find.text('D30_ONBOARDING_AFTER_OPT_OUT'), findsOneWidget);
+  });
+
+  testWidgets('D10 blocked Web opt-out has no button and explains restriction',
+      (tester) async {
+    final lock = _MockAppLockService();
+    when(() => lock.capability())
+        .thenAnswer((_) async => AppLockCapability.supported);
+    // The production Web service returns false until the D18 vault is secure.
+    when(() => lock.canOptOutOfAppLock).thenReturn(false);
+
+    await tester.pumpWidget(ChangeNotifierProvider<AppLockService>.value(
+      value: lock,
+      child: MaterialApp(
+        locale: const Locale('fr'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AppLockSetupScreen(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('d30-skip-app-lock')), findsNothing);
+    expect(find.textContaining('après certification du stockage médical chiffré'),
+        findsOneWidget);
+    expect(find.textContaining('Pour protéger vos données de santé locales'),
+        findsOneWidget);
+    expect(find.textContaining('ou de continuer sans'), findsNothing);
+    verifyNever(() => lock.continueWithoutAppLock());
   });
 }

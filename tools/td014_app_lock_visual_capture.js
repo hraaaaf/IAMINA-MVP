@@ -29,7 +29,10 @@ const withAuditRoute = (base, route, extra = '') => {
     for (const viewport of viewports) {
       report[viewport.name] = {};
       const targets = [
-        { name: 'before', url: beforeBase },
+        {
+          name: 'before',
+          url: withAuditRoute(beforeBase, '/app-lock/setup', '&appLockPreview=supported'),
+        },
         {
           name: 'setup',
           url: withAuditRoute(
@@ -96,10 +99,10 @@ const withAuditRoute = (base, route, extra = '') => {
           ...metrics,
         };
 
-        if (horizontalOverflow && target.name !== 'before') {
+        if (horizontalOverflow) {
           throw new Error(`${target.name} has horizontal overflow at ${viewport.name}`);
         }
-        if (pageErrors.length > 0 && target.name !== 'before') {
+        if (pageErrors.length > 0) {
           throw new Error(`${target.name} emitted page errors at ${viewport.name}: ${pageErrors.join('; ')}`);
         }
         await context.close();
