@@ -232,8 +232,14 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        l10n.appLockSetupSubtitle,
-                                        style: TextStyle(
+                                         context.read<AppLockService>().canOptOutOfAppLock
+                                             ? l10n.appLockSetupSubtitle
+                                             : switch (Localizations.localeOf(context).languageCode) {
+                                                 'fr' => 'Pour protéger vos données de santé locales, activez le verrou sécurisé de cet appareil.',
+                                                 'ar' => 'لحماية بياناتك الصحية المخزنة على هذا الجهاز، فعّل القفل الآمن.',
+                                                 _ => 'To protect locally stored health data, enable this device’s secure app lock.',
+                                               },
+                                         style: TextStyle(
                                           fontSize: 13.5,
                                           height: 1.45,
                                           color: dark ? AminaTheme.dark300 : AminaTheme.ink500,

@@ -176,6 +176,9 @@ void main() {
     expect(find.byKey(const Key('d30-skip-app-lock')), findsNothing);
     expect(find.textContaining('après certification du stockage médical chiffré'),
         findsOneWidget);
+    expect(find.textContaining('Pour protéger vos données de santé locales'),
+        findsOneWidget);
+    expect(find.textContaining('ou de continuer sans'), findsNothing);
     verifyNever(() => lock.continueWithoutAppLock());
   });
 }
