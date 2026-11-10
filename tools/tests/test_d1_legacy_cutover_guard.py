@@ -89,5 +89,11 @@ class AppDatabase {
                      "name: 'amina_v2' /* name: 'amina' */"))
         self.assertTrue(any("boundary changed" in e for e in check(self.root)))
 
+
+    def test_non_dart_part_literal_does_not_trigger_import(self):
+        self._put("services/patient_vault_app_host.dart",
+                  "const sql = \"\"\"\\npart 'id'\\n\"\"\";")
+        self.assertEqual(check(self.root), [])
+
 if __name__ == "__main__":
     unittest.main()
