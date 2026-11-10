@@ -114,5 +114,24 @@ class AppDatabase {
                      encoding="utf-8")
         self.assertTrue(any("namespace source changed" in e for e in check(self.root)))
 
+
+    def test_decoy_constructor_cannot_hide_legacy_rename(self):
+        p = self.lib / "data/drift/database.dart"
+        p.write_text(p.read_text().replace(
+            "AppDatabase.defaults() : super(driftDatabase(name: 'amina'));",
+            "AppDatabase.defaults() : super(driftDatabase(name: 'amina_v2'));"
+            "\n  AppDatabase.decoy() : super(driftDatabase(name: 'amina'));"
+        ), encoding="utf-8")
+        self.assertTrue(any("legacy default constructor" in e for e in check(self.root)))
+
+    def test_comment_cannot_hide_bad_patient_constructor(self):
+        p = self.lib / "data/drift/database.dart"
+        p.write_text(p.read_text().replace(
+            "name: scope.databaseName",
+            "name: 'amina' /* name: scope.databaseName */"
+        ), encoding="utf-8")
+        self.assertTrue(any("isolated patient constructor" in e for e in check(self.root)))
+
+
 if __name__ == "__main__":
     unittest.main()
