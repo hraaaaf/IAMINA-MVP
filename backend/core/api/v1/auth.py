@@ -13,6 +13,7 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
+from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
@@ -193,6 +194,29 @@ def login_native(request, data: NativeLoginRequest):
 
     _open_session(request, user, method="django_password")
     return _auth_response(user, "Authenticated")
+
+
+
+@router.get("/auth/session/verify")
+def verify_current_native_session(request):
+    """CAL-12 bearer-only *read-only liveness*, never export authorization.
+
+    A Django browser cookie alone is intentionally insufficient. Verify the
+    signed native bearer against the CURRENT database revocation version.
+    Never issue a reusable proof or authorize clinical export here. A future
+    export endpoint must revalidate its own identity and consent atomically.
+    """
+    if "HTTP_AUTHORIZATION" not in request.META:
+        raise HttpError(401, "Authentication required")
+    user = _logout_principal(request)
+    if user is None:
+        raise HttpError(401, "Authentication required")
+    # Do not emit name, email, profile fields, medical data, or bearer.
+    response = JsonResponse({"active": True, "account_id": user.pk})
+    response["Cache-Control"] = "no-store, private, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Vary"] = "Authorization, Cookie"
+    return response
 
 
 @router.get("/auth/me", response=UserResponse)

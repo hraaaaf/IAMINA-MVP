@@ -72,6 +72,22 @@
         }
       }
     },
+    "/api/v1/auth/session/verify": {
+      "get": {
+        "operationId": "core_api_v1_auth_verify_current_native_session",
+        "summary": "Verify Current Native Session",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "CAL-12 bearer-only *read-only liveness*, never export authorization.\n\nA Django browser cookie alone is intentionally insufficient. Verify the\nsigned native bearer against the CURRENT database revocation version.\nNever issue a reusable proof or authorize clinical export here. A future\nexport endpoint must revalidate its own identity and consent atomically.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "operationId": "core_api_v1_auth_current_identity",
