@@ -292,6 +292,14 @@ class DiabetesProfile(models.Model):
         self.base_profile.date_of_birth = value
 
     @property
+    def birth_year(self):
+        return self.base_profile.birth_year
+
+    @property
+    def gender_identity(self):
+        return self.base_profile.gender_identity
+
+    @property
     def weight(self):
         return self.base_profile.weight
 
