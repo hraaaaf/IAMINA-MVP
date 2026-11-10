@@ -1,79 +1,129 @@
-# IAMINA — ROADMAP CANONIQUE UNIQUE · Décisions RESTANTES · Web/PWA
+# IAMINA — ROADMAP UNIQUE · DÉCISIONS RESTANTES · WEB/PWA
 
-**Édition : 10/11/2026. Statut : CANDIDAT DOCUMENTAIRE / NON FUSIONNÉ / NON DÉPLOYÉ.** Un seul chantier, une décision d'exécution à la fois. Cette page est la **seule roadmap prospective** IAMINA. Conserver le registre historique D1–D38 mais ne pas réinsérer dans l'ordre actif les fonctionnalités déjà entièrement fusionnées et acceptées sur leur périmètre.
+**Date de consolidation : 10 novembre 2026.** **Statut : candidat documentaire, non fusionné, non déployé.** Cette page constitue l'unique plan d'exécution. Les numéros D1–D12 ci-dessous sont **renumérotés par importance et dépendances**, et remplacent la numérotation prospective historique. Un seul focus actif à la fois. Ne pas compter un travail simplement préparé, ni refaire une fonctionnalité déjà livrée et acceptée.
 
-**Traçabilité :** [Notion canonique](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b) · [ancienne roadmap Web W00–W14 archivée intégralement](archive/roadmap-pre-single-active-2026-11-10.md) · [arbitrages D1–D38 adoptés le 04/11](https://github.com/hraaaaf/IAMINA-MVP/pull/1270). Les notes d'implémentation et les preuves fusionnées sont historiques, **pas un second plan**. Baseline de départ : `main@61f51ee7bbbfec829acfd1160761b99e36a1c48c` (10/11/2026). Les PR et le runtime doivent être revérifiés à chaque nouvelle décision.
+**Règles non négociables :** sécurité → exactitude → preuve → efficacité. Web/PWA uniquement ; FR/AR RTL ; 390, 430, 768 et 1280 px. Aucune donnée patient réelle en QA. Aucun déploiement Vercel, y compris Preview, sans autorisation explicite distincte. Une PR fusionnée ne prouve pas automatiquement la certification médicale, et une CI verte ne prouve pas un fonctionnement patient réel.
 
-**Garde permanente :** priorité Web/PWA Flutter (FR/AR, RTL, 390/430/768/1280 et accessibilité), aucune donnée de patient réelle dans les essais, autorité clinique déterministe, consentement et séparation par patient, anciens coffres préservés. GOAL / SUCCESS / PROOF vérifiables par lot. **Aucun merge, migration patient ou déploiement Vercel Preview/Production n'est autorisé par l'adoption de cette roadmap ; Vercel exige le GO explicite du propriétaire pour chaque déploiement.**
+## ROADMAP ACTIVE — 12 DÉCISIONS, PAR PRIORITÉ
 
-## 2. ROADMAP ACTIVE CONSOLIDÉE — 10/11/2026 — UNIQUEMENT LE RESTE À FAIRE
+### D1 — Sécuriser le coffre Web, l'identité et les données historiques
+**Importance : P0 / BLOQUANT.** *Anciens identifiants : D18, D9, D10, D26, résidus D7, W01/W02.*
 
-**Un chantier, une décision d'exécution à la fois.** Cette section remplace les ordres L00–L09, W00–W14, A/B et les numéros D1–D38 comme files d'attente concurrentes. Les numéros D conservent leur sens historique mais n'imposent aucun ordre. L00 a achevé la réconciliation documentaire initiale le 04/11 ; il n'est plus un lot prospectif. Les travaux déjà fusionnés et acceptés sur leur périmètre sont **exclus de la file active**, même lorsqu'un autre lot porte encore une obligation transverse. Une fonctionnalité livrée n'est réouverte que sur défaut nouveau, preuve manquante d'une exigence distincte ou contradiction vérifiée.
+**GOAL :** conserver sans perte les coffres legacy (y compris vieux clients PWA/offline), interdire l'attribution à un mauvais compte et établir une récupération volontaire après preuve de possession. Séparer connexion distante et déverrouillage local ; app-lock, révocation et effacement selon une politique validée.
 
-**Base de comparaison :** main@61f51ee7bbbfec829acfd1160761b99e36a1c48c observé le 10/11/2026 ; [D7 QA #1334](https://github.com/hraaaaf/IAMINA-MVP/pull/1334) fusionnée mais D7 hébergé non certifié ; [W03 #1302](https://github.com/hraaaaf/IAMINA-MVP/pull/1302) fusionnée mais non déployée. La présente consolidation est préparée dans [PR documentaire #1270](https://github.com/hraaaaf/IAMINA-MVP/pull/1270), **DRAFT/NON FUSIONNÉE**. Aucun changement de code, DB ou Vercel par cette opération.
+**SUCCESS :** aucune écriture concurrente par ancien onglet ; aucun transfert implicite du coffre A vers B ; A→B→A, logout, backup/restore, coffre chiffré et migration éventuelle sans perte démontrés ; aucune activation clinique prématurée.
 
-### DÉJÀ LIVRÉ / HORS FILE ACTIVE — ne pas réimplémenter
+**PROOF :** tests Drift/IndexedDB/VFS, Chrome/Safari, PG16 isolé, API réelle sur comptes fictifs, cas négatifs + captures, approbations privacy/sécurité. [D18 #1265](https://github.com/hraaaaf/IAMINA-MVP/pull/1265), [D9 #1159](https://github.com/hraaaaf/IAMINA-MVP/pull/1159), [D10 #1246](https://github.com/hraaaaf/IAMINA-MVP/pull/1246) Draft. **D18 SAFE-HOLD / PATIENT NO-GO ; D7 hosted C01–C05 et approbations clinique/privacy encore ouverts.**
 
-- **D3** rappels Accueil ([#1230](https://github.com/hraaaaf/IAMINA-MVP/pull/1230) merged), **D5** pays explicite ([#1205](https://github.com/hraaaaf/IAMINA-MVP/pull/1205) merged), **D8** unité choisie sans suggestion par IP ([#1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269) merged), **D22** unité avant objectifs et affichage fail-closed ([#1249](https://github.com/hraaaaf/IAMINA-MVP/pull/1249) closeout merged), **D30** accès local livré à son périmètre ancien ([#1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169) merged).
-- **D6, D11, D17, D21, D27** : décisions livrées bornées d'après la réconciliation Notion du 04/11 ; conserver leurs preuves, ne pas créer de lots correctifs sans régression reproductible. **D16** : copie sélective Companion fusionnée, ne pas refaire cette livraison ; extension non exigée explicitement exclue à ce stade.
-- **D7** : livraison médicale limitée et tests GitHub #986, #1334 fusionnés ; **les preuves D7 hébergées et les gates clinique/privacy non couverts ne sont pas clôturés** et sont regroupés avec la frontière de compte/consentement ci-dessous, sans rouvrir les composants déjà livrés.
-- **D12** : PR [#1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) merged **dans la branche D13, pas attestée sur main** au registre. Réconcilier le delta seulement au lot D13 ; ne pas recommencer la saisie fonctionnelle déjà acceptée.
+### D2 — Visiteur sans compte, authentification avant action métier
+**Importance : P0.** *Anciens D37, D30 (compatibilité seulement). Dépend de D1 pour toute persistance.*
 
-### File de décisions restantes, dans cet ordre de dépendances
+**GOAL :** permettre de parcourir tout le shell Web/PWA à vide ou avec exemples explicitement fictifs ; demander une connexion/inscription dès qu'une action requiert lecture/écriture santé, coffre, API métier ou service externe. **Pas de limite arbitraire de cinq minutes.**
 
-#### R01 — D37 · Frontière VISITEUR → COMPTE (D30 seulement en compatibilité)
-**GOAL :** shell Web/PWA accessible sans compte, uniquement écrans vides/fictifs ; login avant accès à DB santé, coffre, fetch métier, photo ou service externe. Aucune durée arbitraire. **SUCCESS :** 0 lecture/écriture clinique et 0 coffre invité ; retour utile à l'action après authentification. **PROOF :** Chrome/Safari FR/AR RTL 390/430/768/1280, route directe, offline, auto-fetch, API 401/403, A→B→A ; captures BEFORE/AFTER. **GATE :** anciennes PWA et D18 non neutralisés par simple changement de route.
+**SUCCESS :** aucun coffre ni données de santé persistantes pour invité, aucune lecture/API métier automatique, connexion au point d'usage puis retour à la tâche ; les coffres anciens restent hors accès invité.
 
-#### R02 — D18 · Coffre, reprise legacy et sécurité (résidu D9/D10/D26/D7, W01/W02)
-**GOAL :** préserver sans perte les anciens coffres device-only, vérifier séparation des comptes, sessions Django, app-lock et récupération volontaire sûre ; aucune réattribution automatique, aucune suppression/synchronisation implicite. **SUCCESS :** vieux onglets/offline bloqués à l'écriture incohérente, récupération après preuve de possession, isolation A→B→A, purge/révocation gouvernées, aucune donnée clinique d'un autre propriétaire. **PROOF :** tests réels Drift/IndexedDB/VFS, Chrome/Safari, PostgreSQL16 éphémère, auth+API et backup/restore indépendants ; pré/post-migration sans perte. **BLOCKER :** D18 SAFE-HOLD/NO-GO clinique ; PR D9 [#1159](https://github.com/hraaaaf/IAMINA-MVP/pull/1159), D10 [#1246](https://github.com/hraaaaf/IAMINA-MVP/pull/1246), D18 [#1265](https://github.com/hraaaaf/IAMINA-MVP/pull/1265) encore Draft ; D7 hosted C01–C05 et revues clinique/privacy non signés. Travaux préflight fictifs seulement jusqu'aux gates.
+**PROOF :** matrice routeur + DB + API, absence d'auto-fetch, tests direct URL/offline/anciens onglets, FR/AR 390/430/768/1280, A→B→A, captures BEFORE/AFTER. Gardes fail-closed.
 
-#### R03 — D24 · Consentements granulaires IA et révocation serveur (D26)
-**GOAL :** consentements photo, habitudes et compagnon indépendants, OFF par défaut, révocables ; pas de sortie santé sans finalité, identité et payload minimal. **SUCCESS :** un retrait coupe immédiatement serveur et UI, même avec requête concurrente ouverte ; saisie manuelle fonctionne IA OFF ; aucune donnée inter-patients. **PROOF :** tests API négatifs, sécurité/egress, Web FR/AR et revues privacy ; [#1244](https://github.com/hraaaaf/IAMINA-MVP/pull/1244) Draft. **GATE :** consentement réel non déduit de la seule UI.
+### D3 — Consentements IA séparés et révocation immédiate
+**Importance : P0.** *Anciens D24 et D26.*
 
-#### R04 — D13 · Sauvegarde et reprise de brouillon (D15 manuel, résidu D12)
-**GOAL :** sauvegarder une seule fois après validation, prévenir sortie accidentelle/perte/duplication, récupérer uniquement le brouillon d'un compte authentifié ; aucune persistance de santé invitée. **SUCCESS :** après offline, refresh, mauvais appui ou deux Save, aucune perte ni double insertion ; champs glycémie/unités/nutrition inconnue explicites. **PROOF :** vrai Save Drift, tests de retry + navigation + multi-onglet, FR/AR ; [#1250](https://github.com/hraaaaf/IAMINA-MVP/pull/1250) Draft ; réconcilier [#1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) uniquement si delta absent de main. **GATE :** R01/R02 pour stockage clinique.
+**GOAL :** consentements indépendants OFF par défaut pour photo, habitudes et compagnon ; choix réversible et vérifié serveur, finalité explicitée, minimisation des données, contrôle des requêtes concurrentes.
 
-#### R05 — D36 · Page unique Paramètres (D38, D23, D25 inventaire, D26)
-**GOAL :** remplacer Profil par Paramètres, organiser compte/données/unités/consentements/notifications/sécurité ; D38 « Paramètres de l'application » replié par défaut ; appareils/CGM affichés uniquement comme inventaire, pas comme connectés. **SUCCESS :** une seule entrée de navigation, état accessible, A/B isolés, contrôle explicite des fonctions réellement implémentées. **PROOF :** BEFORE → cible → AFTER aux mêmes viewports 390/430/768/1280, FR/AR RTL, clavier, zoom 200 %, tests UX. **GATE :** ne pas exposer une action de suppression/consentement non certifiée.
+**SUCCESS :** un retrait bloque immédiatement toute nouvelle sortie IA, sans réactivation d'un accord ancien ; aucune fuite A/B ; saisie manuelle utilisable avec IA OFF.
 
-#### R06 — D34 · Photo alimentaire et repas multimodal (D14 PAUSED, D15)
-**GOAL :** avant activation, lever explicitement le PAUSED D14 ; benchmarker modèle vision/VLM léger sur plats MENA et incertitude ; photo/voix/texte dans un seul brouillon à confirmation humaine, aliments inconnus ajoutables et favoris. **SUCCESS :** aucune proposition transformée en vérité clinique ou ajoutée sans Save, aucun egress sans D24, IA OFF laisse la saisie manuelle. **PROOF :** corpus synthétique, tests négatifs, précision par aliment/portion, coût et rétention, FUE FR/AR ; [#1245](https://github.com/hraaaaf/IAMINA-MVP/pull/1245) et [#1257](https://github.com/hraaaaf/IAMINA-MVP/pull/1257) Draft. **GATE :** R03/R04 + revue clinique/privacy.
+**PROOF :** tests négatifs Web/API, egress, révocation durant une requête, revue privacy ; [#1244](https://github.com/hraaaaf/IAMINA-MVP/pull/1244) Draft. Dépend de D1 pour la session fiable.
 
-#### R07 — D35 · Habitudes utiles consenties (résidu D28 non clinique)
-**GOAL :** horaires de repas/saisie, favoris et sommeil uniquement déclaré/autorisés, opt-in OFF par défaut, correction/effacement ; moteur déterministe en premier. **SUCCESS :** aucun profilage invité, pas d'inférence de maladie ou de traitement, retrait effectif et patient A/B isolé. **PROOF :** tests provenance, suppression/retenue, offline/sync et audit privacy. **GATE :** R03/R02 et règle de rétention approuvée.
+### D4 — Saisie fiable, brouillon récupérable et sauvegarde unique
+**Importance : P1.** *Anciens D13, D15 manuel, résidu D12.*
 
-#### R08 — D32 · Validation clinique indépendante (résidu D19/D28/D20)
-**GOAL :** certifier l'autorité déterministe, formules, unités, calculs CGM vs mesures ponctuelles, dates, manque de données, tendances descriptives et absence de conseil thérapeutique. **SUCCESS :** aucune règle clinique patient visible sans source applicable, validation humaine qualifiée et oracles indépendants ; pas de dose ni diagnostic. **PROOF :** matrice D32 G1–G7, comparaisons backend/Flutter, cas limites FR/AR, revue endocrinologique ; [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) Draft. **GATE :** scientifique/clinique humain ; D22 technique déjà fusionnée ne doit pas être refaite.
+**GOAL :** une écriture clinique seulement après Save explicite ; protéger contre retour, retry, double clic, perte réseau et navigation ; brouillon récupérable uniquement avec compte protégé.
 
-#### R09 — D4 · Rapports et exports médicaux (CAL-12)
-**GOAL :** exports PDF/CSV/XLSX fidèles aux données, consentement d'export distinct, destinataire professionnel, révocation, conservation/purge, FUE Flutter Web authentifiée. **SUCCESS :** fichier exact, lisible FR/AR, A→B→A refusé, aucun export d'un autre patient, identité et consentement revalidés au moment de la livraison. **PROOF :** vrai Flutter Web+coffre+API/PG16 et revues R1 médical/R3 privacy/R4 arabe-assistive/R6 produit, non remplacées par un PDF fictif. **GATE :** CAL12_REAL_PATIENT_EXPORT=NO_GO ; [#1332](https://github.com/hraaaaf/IAMINA-MVP/pull/1332), [#1333](https://github.com/hraaaaf/IAMINA-MVP/pull/1333), [#1335](https://github.com/hraaaaf/IAMINA-MVP/pull/1335), [#1336](https://github.com/hraaaaf/IAMINA-MVP/pull/1336) Draft et empilées ; #1336 ne prouve qu'une UI HTML synthétique/CI, non la vraie app. R02 et R08 prérequis.
+**SUCCESS :** 1 Save = 1 entrée ; invalides refusées ; aucune donnée clinique invitée ; anti-doublon et restauration cohérents.
 
-#### R10 — D2 · Notifications consenties, poids et feedback (D20/D29)
-**GOAL :** préférences de notification réelles, cadence maîtrisée, historique/aperçu, purge J+7 et revocation, tendance de poids purement descriptive, feedback libre non intrusif. **SUCCESS :** aucun envoi sans opt-in ; scheduler vérifié sans fuite/retard non signalé ; suppression vérifiable ; aucun conseil thérapeutique. **PROOF :** tests web/API multi-comptes, sécurité du scheduler, rollback/PITR et preuves hosted sur source autorisée ; [#1153](https://github.com/hraaaaf/IAMINA-MVP/pull/1153) Draft très large, ne pas fusionner en bloc sans réconciliation. **GATE :** R02/R03/R08 selon notification et politique légale.
+**PROOF :** vrai Save Drift, tests FR/AR, offline, multi-onglets, A/B ; [D13 #1250](https://github.com/hraaaaf/IAMINA-MVP/pull/1250) Draft. [D12 #1251](https://github.com/hraaaaf/IAMINA-MVP/pull/1251) fusionnée vers branche D13 : **ne rapatrier que le delta absent de main**, pas refaire le travail livré. Dépend de D1–D2.
 
-#### R11 — D1 · CGM officiels — DERNIÈRE fonctionnalité (D25 connexion)
-**GOAL :** intégrer **une seule source fabricant/API officiellement autorisée à la fois**, Nightscout facultatif, lecture seule, preuve d'unité, horodatage, trous, révocation et confidentialité. **SUCCESS :** provenance des capteurs, absence de TIR artificiel si données insuffisantes, aucun pouvoir de traitement, déconnexion fail-closed. **PROOF :** tests API, device simulé/autorisé, métriques D32 et sécurité/privacy. **GATE :** R08 et précédents, autorisation de source/pays. Aucune connexion fabricant supposée active.
+### D5 — Validation scientifique et autorité clinique
+**Importance : P1 / GATE TRANSVERSAL.** *Anciens D32, résidus D19, D28 et D20.*
 
-#### R12 — W14 · Certification Web/PWA et lancement contrôlé — DERNIER
-**GOAL :** préproduction sans patient, sessions et coffres, sécurité/consentements, clinique, accessibilité, conformité, CI exact SHA, review indépendante, pilote borné. **SUCCESS :** contrôles GO/NO-GO vérifiés par domaine ; aucun BLOCKER/MAJOR ouvert ; PR merge/postmerge vérifiés. **PROOF :** matrice de tests, captures FR/AR 390/430/768/1280 + Safari/Chromium et 200 % zoom, rétablissement DB, audits et validation humaine. **GATE :** aucune publication Vercel Preview ou Production sans **autorisation explicite distincte**. D31 essais natifs physiques sont différés **hors chantier Web**, sauf test d'un navigateur sur téléphone réel.
+**GOAL :** vérifier règles déterministes, unités, périodes, arrondis, données manquantes, mesures capillaires/CGM, tendances et qualité des preuves ; aucune recommandation thérapeutique non autorisée.
 
-### Arbitrages remplacés, simplifiés ou mis en archive
+**SUCCESS :** calculs vérifiables par oracles indépendants et validation clinique qualifiée ; aucun diagnostic, dose ni adaptation de traitement inventés.
 
-- D8 « suggestion automatique selon pays » **REMPLACÉE** par choix manuel explicite de l'unité, déjà fusionné (#1269).
-- D30 ancien mode « sans compte avec coffre local » **NON APPLICABLE au nouveau visiteur D37** ; préserver les données legacy sans les ouvrir au visiteur, traiter R02.
-- D24 éventuel consentement IA unique **REMPLACÉ** par trois finalités granulaires indépendantes, OFF par défaut.
-- Ancienne consigne « login après cinq minutes » **ABANDONNÉE** ; authentification au besoin, avant action métier.
-- D14 **PAUSED malgré** décision D34-A sur la direction produit ; aucun fournisseur photo autorisé implicitement.
-- W00–W14, A/B, P5 et L00–L09 : **archives de preuve et de provenance, pas autre file de travail**.
-- D31 : essais physiques natifs **DIFFÉRÉS** (Web first). D33 : doctrine transversale, **pas lot d'implémentation**. D32 : revue clinique encore ouverte, non confondue avec D22 technique.
-- Les statuts de décisions complètes déjà fusionnées sont gardés dans l'index §3 **à titre historique seulement**. Aucun pourcentage d'avancement global calculé sans oracle.
+**PROOF :** matrice G1–G7, tests Flutter/backend, dossiers de source, avis médical ; [#920](https://github.com/hraaaaf/IAMINA-MVP/pull/920) Draft. **La livraison technique de l'ancien D22 est fusionnée : ne pas la refaire.**
 
-**NEXT unique : R01/D37** — inspecter le routeur Web, les accès aux coffres Drift/IndexedDB et les fetchs métier avec une matrice invité/compte vérifié/legacy, puis produire le test de refus avant toute modification. Conserver R02/D18 en garde de sécurité non contournable. Aucun nouveau merge ni déploiement autorisé par cette consolidation.
+### D6 — Exports PDF/CSV/XLSX avec consentement médical réel
+**Importance : P1 / GATE CLINIQUE.** *Ancien D4 ; CAL-12.*
 
-## 3. Provenance et gouvernance
+**GOAL :** exports exacts et accessibles FR/AR ; consentement distinct du consentement IA, destinataire professionnel confirmé, identité et droit d'export revalidés au moment du partage, politique de conservation/purge et A→B→A.
 
-Les identifiants D1–D38 demeurent des **références historiques de décision**, sans obligation de recréer les livraisons fusionnées. Le registre Notion du [04/11 (D1–D30)](https://app.notion.com/p/40777c6633628177b325d3cb5412fc18), la [roadmap D1–D38 de travail](https://github.com/hraaaaf/IAMINA-MVP/pull/1270) et l'[ancienne roadmap main archivée](archive/roadmap-pre-single-active-2026-11-10.md) restent consultables. Toute preuve ancienne est limitée à son exact SHA, périmètre, environnement et revue.
+**SUCCESS :** vrais flux Flutter Web/DRIFT/API refusent données d'autrui, droits périmés et destinataires non confirmés ; aucune copie patient réelle sans sign-offs.
 
-**Critère de clôture :** preuve technique réelle, vérification de sécurité et clinique adaptée, CI sur HEAD exact, validation UX BEFORE/AFTER pour changements significatifs, revue, merge/postmerge si applicable et actualisation de ce fichier et de Notion. Une PR mergée partiellement ne prouve pas un objectif clinique complet. Un GO produit n'est pas un GO de déploiement.
+**PROOF :** FUE Flutter Web authentifiée, écran Reports, tests Chrome/Safari, assistive AR et validations R1 médical/R3 privacy/R4 accessibilité AR/R6 produit. [#1332](https://github.com/hraaaaf/IAMINA-MVP/pull/1332), [#1333](https://github.com/hraaaaf/IAMINA-MVP/pull/1333), [#1335](https://github.com/hraaaaf/IAMINA-MVP/pull/1335), [#1336](https://github.com/hraaaaf/IAMINA-MVP/pull/1336) Draft : les FUE HTML fictives **ne valent pas** livraison clinique. **REAL PATIENT EXPORT NO-GO.** Dépend de D1 et D5.
 
-**Next unique : R01 / D37, puis R02 / D18**, sans contournement du SAFE-HOLD ni des gates de consentement et de confidentialité.
+### D7 — Une page Paramètres cohérente
+**Importance : P1.** *Anciens D36, D38, D23, inventaire D25 et partie D26.*
+
+**GOAL :** remplacer Profil par Paramètres, regrouper profil/compte, unités, données, IA/consentements, notifications, sécurité, suppression et inventaire CGM sans prétendre que les appareils sont déjà connectés. Section « Paramètres de l'application » **fermée par défaut**.
+
+**SUCCESS :** une seule entrée de navigation, contrôles réellement opérationnels ou clairement indisponibles, aucune préférence A affichée chez B.
+
+**PROOF :** BEFORE → cible → AFTER mêmes viewports 390/430/768/1280 FR/AR RTL, clavier, zoom 200 %, tests a11y. D1/D3 bloquent les réglages sensibles non vérifiés.
+
+### D8 — Notifications consenties, tendances de poids et feedback
+**Importance : P2.** *Anciens D2, résidus D20 et D29.*
+
+**GOAL :** rappels volontaires et révocables, cadence maîtrisée, historique/aperçu et purge J+7 seulement après sécurité du scheduler ; tendance poids descriptive, feedback libre non intrusif.
+
+**SUCCESS :** aucun envoi ni profilage sans accord ; aucun scheduler annoncé actif sans preuve ; suppression et surveillance vérifiées.
+
+**PROOF :** tests Web/API hébergés A/B, scheduler authentifié, alerte, PITR/backup, revue privacy ; [#1153](https://github.com/hraaaaf/IAMINA-MVP/pull/1153) Draft **trop large à ne pas fusionner en bloc**. Dépend D1/D3 et D5 pour tout message clinique. Les rappels Accueil déjà livrés ne sont pas à refaire.
+
+### D9 — Photo alimentaire et saisie multimodale
+**Importance : P2.** *Anciens D34, D14, D15.*
+
+**GOAL :** benchmark d'un modèle vision/VLM léger adapté aux repas marocains/MENA ; propositions incertaines d'aliments et portions, correction et confirmation humaines, ajout d'aliment inconnu, favoris ; un seul brouillon photo/texte/voix.
+
+**SUCCESS :** aucune sauvegarde sans confirmation explicite, aucun envoi sans accord D3, saisie manuelle toujours disponible, aucun dosage conseillé.
+
+**PROOF :** benchmark qualité/latence/coûts sur photos fictives, détections erronées, Web FR/AR, egress et rétention ; [#1245](https://github.com/hraaaaf/IAMINA-MVP/pull/1245), [#1257](https://github.com/hraaaaf/IAMINA-MVP/pull/1257) Draft. **Ancien D14 PAUSED : sa réactivation nécessite un arbitrage distinct**. Dépend D3/D4.
+
+### D10 — Habitudes et personnalisation opt-in
+**Importance : P2.** *Anciens D35 et résidu D28 non clinique.*
+
+**GOAL :** proposer favoris et tendances descriptives d'horaires de repas/mesures, sommeil uniquement déclaré ou source autorisée ; apprentissage désactivé par défaut, transparent, corrigible et effaçable.
+
+**SUCCESS :** aucun apprentissage invité ou non consenti ; révocation coupe collecte et sorties ; A/B cloisonnés, pas d'inférence thérapeutique.
+
+**PROOF :** tests de provenance et d'effacement, consentement, rétention et offline/sync. Dépend D1/D3, revue privacy.
+
+### D11 — Connexion CGM officielle : DERNIÈRE FONCTIONNALITÉ
+**Importance : P3 / APRÈS LES AUTRES FONCTIONS.** *Anciens D1 et D25 connexion.*
+
+**GOAL :** intégrer **une source fabricant/API légalement et techniquement autorisée à la fois**, Nightscout facultatif, lecture seule et révocation garantie.
+
+**SUCCESS :** provenance, fraîcheur, trous de données, métriques et erreurs correctement signalés ; aucune valeur artificielle ni promesse de compatibilité non vérifiée.
+
+**PROOF :** droit API/pays, contrat fabricant, tests dispositifs/autorisations, métriques D5 et privacy. Aucun connecteur supposé actif.
+
+### D12 — Certification Web/PWA et lancement maîtrisé
+**Importance : GATE FINAL.** *Ancien W14.*
+
+**GOAL :** certifications produit/UX/sécurité/clinique/privacy/réglementaires, restauration, accessibilité, CI exact SHA et pilote contrôlé après clôture des lots requis.
+
+**SUCCESS :** aucun blocker ouvert, revues indépendantes adaptées, merge/postmerge documentés ; séparation explicite code merged ≠ site déployé.
+
+**PROOF :** audits, tests Chrome/Safari + iPhone web et desktop, 390/430/768/1280 FR/AR RTL/zoom, tests A→B→A et backups, CI sur HEAD exact, dossier GO/NO-GO. **Chaque déploiement Vercel Preview ou Production demande une autorisation explicite distincte.**
+
+## HORS ROADMAP — NE PAS REPROGRAMMER
+
+**Déjà fusionnés et acceptés sur leur périmètre :** anciens D3 (rappels Accueil [#1230](https://github.com/hraaaaf/IAMINA-MVP/pull/1230)), D5 (choix pays [#1205](https://github.com/hraaaaf/IAMINA-MVP/pull/1205)), D8 (unité choisie manuellement [#1269](https://github.com/hraaaaf/IAMINA-MVP/pull/1269)), D22 (affichage/unité techniquement clos [#1249](https://github.com/hraaaaf/IAMINA-MVP/pull/1249)), D30 (ancien mode local sur son périmètre [#1169](https://github.com/hraaaaf/IAMINA-MVP/pull/1169)), W03 (bouton compagnon [#1302](https://github.com/hraaaaf/IAMINA-MVP/pull/1302)). Selon l'audit Notion du 04/11, anciens D6, D11, D17, D21, D27 également livrés bornés ; ancien D16 copie sélective seulement. Ne les rouvrir qu'en présence d'une régression prouvée. Les tests D7 [#1334](https://github.com/hraaaaf/IAMINA-MVP/pull/1334) sont fusionnés mais la certification hébergée D7 reste ouverte sous la nouvelle D1.
+
+**Contradictions tranchées :** unité auto-proposée selon IP remplacée par choix manuel ; consentement IA global remplacé par trois autorisations indépendantes ; connexion « après 5 minutes » abandonnée pour login au besoin ; ancien mode local D30 ne permet pas au nouvel invité d'ouvrir un coffre santé ; D14 PAUSED n'est pas levé par la décision photo ; D22 technique n'autorise pas la politique clinique ; tests PDF synthétiques CAL-12 ne sont pas un export patient.
+
+**Différé hors Web :** anciens tests natifs physiques D31 ; doctrine Web-first D33 n'est pas une décision de développement. **Archives consultables, jamais une deuxième roadmap :** [Notion D1–D30](https://app.notion.com/p/40777c6633628177b325d3cb5412fc18), [ancienne roadmap GitHub](archive/roadmap-pre-single-active-2026-11-10.md), [anciens choix D1–D38](https://github.com/hraaaaf/IAMINA-MVP/pull/1270).
+
+## NEXT EXACT — D1
+
+**Audit en lecture seule d'abord** : cartographier Web routeur → AuthService → coffre Drift/IndexedDB/VFS → API Django → sessions/révocation avec vrai parcours A→B→A fictif et vieux client offline ; relever preuves d'isolation, risques de récupération et absence de migration silencieuse. Puis choisir le plus petit correctif sûr, tests ciblés, revue, et mise à jour de ce fichier. **Ne pas toucher à Neon patient, ne pas fusionner, ne pas déployer sans gates.**
+
+**Canonicité :** `docs/ROADMAP.md` sur la branche de consolidation, puis `main` après CI, revue et fusion autorisée. Notion « 01 — ROADMAP CANONIQUE » est le miroir du même document, **pas une seconde feuille de route**.
