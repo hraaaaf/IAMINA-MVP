@@ -1,0 +1,30 @@
+name: D1 P0-A legacy cutover static NO-GO gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/**'
+      - 'tools/d1_legacy_cutover_guard.py'
+      - 'tools/tests/test_d1_legacy_cutover_guard.py'
+      - '.github/workflows/d1-legacy-no-cutover-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove guard rejects artificial unsafe changes (synthetic)
+        run: python3 -m unittest discover -s tools/tests -p 'test_d1_legacy_cutover_guard.py' -v
+      - name: Reject experimental or destructive cutover in production app
+        run: python3 tools/d1_legacy_cutover_guard.py
