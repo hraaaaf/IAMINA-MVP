@@ -1,0 +1,34 @@
+name: D1 Preview exact-origin consent and login gate (no deploy)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/vercel_build.sh'
+      - 'frontend/test/qa/d1_preview_consent_origin_contract.test.mjs'
+      - 'frontend/test/qa/d7_preview_route_contract.test.mjs'
+      - '.github/workflows/d1-preview-consent-origin-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-origin:
+    name: D1 protected Preview login/consent same-origin safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refuse invalid shell and wrong Preview API origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n frontend/vercel_build.sh
+          node --test frontend/test/qa/d1_preview_consent_origin_contract.test.mjs frontend/test/qa/d7_preview_route_contract.test.mjs
