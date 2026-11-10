@@ -12,6 +12,7 @@ const _deviceA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const _deviceB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const _legacyFirst = 'd1-p0a-legacy-synthetic-first';
 const _legacyLate = 'd1-p0a-legacy-synthetic-late';
+const _historicalV5 = 'd1-p0a-historical-v5-seed';
 const _aLog = 'd1-p0a-scope-a-synthetic';
 const _bLog = 'd1-p0a-scope-b-synthetic';
 
@@ -23,11 +24,13 @@ Future<void> main() async {
     const supported = {
       'seed_legacy', 'seed_a', 'late_legacy_write',
       'seed_b', 'verify_a', 'verify_b', 'verify_legacy',
+      'verify_historical_v5_upgrade',
     };
     if (!supported.contains(phase)) {
       throw StateError('unsupported synthetic D1 P0-A phase');
     }
-    final legacy = {'seed_legacy', 'late_legacy_write', 'verify_legacy'}
+    final legacy = {'seed_legacy', 'late_legacy_write', 'verify_legacy',
+      'verify_historical_v5_upgrade'}
         .contains(phase);
     final a = {'seed_a', 'verify_a'}.contains(phase);
     db = legacy
@@ -67,7 +70,19 @@ Future<void> main() async {
       await present(uuid, glucose);
     }
 
-    if (phase == 'seed_legacy') {
+    if (phase == 'verify_historical_v5_upgrade') {
+      // This path is only used after an independent build from the real
+      // Git revision where AppDatabase.schemaVersion was 5 seeded the DB.
+      await present(_historicalV5, 105);
+      await absent(_legacyFirst);
+      await absent(_legacyLate);
+      await absent(_aLog);
+      await absent(_bLog);
+      final currentVersion = await vault.customSelect('PRAGMA user_version').getSingle();
+      if (currentVersion.data['user_version'] != 12) {
+        throw StateError('historical v5-to-v12 upgrade did not commit');
+      }
+    } else if (phase == 'seed_legacy') {
       await absent(_legacyFirst);
       await absent(_aLog);
       await absent(_bLog);
