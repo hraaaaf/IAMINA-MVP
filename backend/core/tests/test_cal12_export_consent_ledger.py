@@ -165,6 +165,12 @@ def test_cal12_bearer_revocation_denies_before_and_after_grant(users):
     fresh = issue_native_token(a)
     assert fictional_preview_ready(**ready_args(
         receipt, grant, bearer=fresh,
+    )) is False
+    # Reauthentication must never resurrect consent from the old bearer epoch.
+    newer = grant_fixture_consent(**grant_args(a, bearer=fresh))
+    assert newer.revision == 2
+    assert fictional_preview_ready(**ready_args(
+        newer, grant, bearer=fresh,
     )) is True
 
 

@@ -14,6 +14,7 @@ class Cal12ExportConsentFixtureReceipt(models.Model):
         related_name="cal12_fixture_export_receipts",
     )
     revision = models.PositiveIntegerField()
+    native_auth_version = models.PositiveIntegerField(default=0)
     notice_version = models.CharField(max_length=48)
     notice_sha256 = models.CharField(max_length=64)
     notice_locale = models.CharField(max_length=8)

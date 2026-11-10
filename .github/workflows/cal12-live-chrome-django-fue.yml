@@ -1,0 +1,167 @@
+name: CAL-12 Chrome real Django session + PostgreSQL fictional consent FUE (no deploy)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cal12-live-chrome-django-fue.yml'
+      - 'backend/core/cal12_export_consent_ledger.py'
+      - 'backend/core/models/cal12_export_consent.py'
+      - 'backend/core/migrations/0022_cal12_fixture_auth_epoch.py'
+      - 'backend/core/tests/test_cal12_export_consent_ledger.py'
+      - 'backend/core/tests/test_cal12_fue_url_isolation.py'
+      - 'backend/core/tests/cal12_fue_urls.py'
+      - 'backend/core/tests/cal12_fue_runserver.py'
+      - 'backend/core/tests/cal12_fue_seed.py'
+      - 'tools/cal12_live_fue_fixture.html'
+      - 'tools/cal12_live_django_chrome_fue.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-negative:
+    name: Fail-closed contract SQLite + migration + source guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-cal12-disposable-not-prod
+      DEBUG: 'True'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:8000
+      DATABASE_URL: sqlite:///ci-test.db
+      FIREBASE_CREDENTIALS_PATH: ''
+      GEMINI_API_KEY: ''
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt ruff==0.15.17
+      - name: Synthetic FUE isolated, real export OFF and no patient UI wiring
+        run: |
+          set -euo pipefail
+          grep -Fq 'REAL_PATIENT_EXPORT_ENABLED = False' core/cal12_export_consent_ledger.py
+          grep -Fq 'CAL12_SYNTHETIC_EXPORT_LEDGER_ENABLED' core/cal12_export_consent_ledger.py
+          grep -Fq 'ROOT_URLCONF = '"'"'amina.urls'"'"'' amina/settings.py
+          if grep -R -E 'cal12_fue_urls|cal12_fue_runserver|cal12_live_fue' amina core/api diabetes/api ../frontend/lib; then
+            echo 'CAL12 FAIL: fixture route wired to production'
+            exit 1
+          fi
+          if grep -R -E 'Cal12ExportConsentFixtureReceipt|cal12_export_consent_ledger' core/api diabetes/api; then
+            echo 'CAL12 FAIL: fixture ledger accessible in live API'
+            exit 1
+          fi
+      - name: Ruff + DB migrations are exact
+        run: |
+          ruff check core/cal12_export_consent_ledger.py core/models/cal12_export_consent.py core/tests/cal12_fue_urls.py core/tests/cal12_fue_seed.py core/tests/cal12_fue_runserver.py core/tests/test_cal12_fue_url_isolation.py core/tests/test_cal12_export_consent_ledger.py core/migrations/0022_cal12_fixture_auth_epoch.py
+          python manage.py makemigrations --check --dry-run
+      - name: Real Django bearer and fixture isolation regressions
+        run: |
+          pytest -q -v core/tests/test_cal12_export_consent_ledger.py core/tests/test_cal12_fue_url_isolation.py core/tests/test_cal12_native_session_liveness_http.py core/tests/test_native_bearer.py
+
+  real-chrome-postgres:
+    name: Real Chrome FR AR x 390 768 1280 to native Django/PostgreSQL 16
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_cal12_fue
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_cal12_fue"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-cal12-disposable-not-prod
+      DEBUG: 'True'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:8000
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_cal12_fue
+      FIREBASE_CREDENTIALS_PATH: ''
+      GEMINI_API_KEY: ''
+      CAL12_FUE_TEST_ONLY: '1'
+      CAL12_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Django and Chromium
+        run: |
+          set -euo pipefail
+          pip install -r backend/requirements.txt
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Disposable password in job memory (never commit credential)
+        run: |
+          python3 - <<'PY'
+          import os, secrets
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as target:
+              target.write('CAL12_FUE_PASSWORD='+secrets.token_urlsafe(40)+'\n')
+          PY
+      - name: Create and migrate *local* PG16 database, seed fictional users
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python manage.py migrate --noinput
+          python manage.py makemigrations --check --dry-run
+          python manage.py shell -c "from core.tests.cal12_fue_seed import seed; seed()"
+      - name: Chrome user clicks -> native login/logout/liveness -> fixture ledger (real PG16)
+        run: |
+          set -euo pipefail
+          (cd backend && exec python core/tests/cal12_fue_runserver.py > /tmp/cal12-live-api.log 2>&1) &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 25 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:8000/api/v1/health >/dev/null
+          curl -fsS http://127.0.0.1:8000/_cal12_fixture/ >/dev/null
+          NODE_PATH="$PWD/node_modules" node tools/cal12_live_django_chrome_fue.js
+          node - <<'JS'
+          const fs=require('fs'),assert=require('node:assert/strict');
+          const p=JSON.parse(fs.readFileSync('cal12-live-web-fue-proof/proof.json','utf8'));
+          assert.equal(p.status,'PASS_REAL_CHROME_DJANGO_FIXTURE_ONLY');
+          assert.equal(p.cases.length,6);
+          assert.equal(p.captures.length,36);
+          assert(p.cases.every(c=>c.result==='PASS'));
+          assert.equal(p.realPatientExportEnabled,false);
+          assert.equal(p.actualFileDelivery,false);
+          assert.equal(p.actualRecipientVerification,false);
+          JS
+      - name: Verify no clinical tables or consent from real patients were touched
+        if: success()
+        working-directory: backend
+        run: |
+          python manage.py shell -c "from django.contrib.auth.models import User; from core.models import Cal12ExportConsentFixtureReceipt as R,Cal12ExportConsentFixtureEvent as E,BasePatientProfile as P; from diabetes.models import DiabetesProfile,LogEntry; assert User.objects.count()==12; assert R.objects.count()==18; assert E.objects.count()==30; assert P.objects.count()==12; assert all(x.ai_consent_given_at is None for x in P.objects.all()); assert DiabetesProfile.objects.count()==0; assert LogEntry.objects.count()==0; print('CAL12_PG16_FIXTURE_COUNTS: 12 synthetic users, 18 fictional receipts, 30 events, 0 clinical rows')"
+      - name: Preserve real Chrome same-viewport evidence and no-PII proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cal12-chrome-django-pg16-fr-ar-390-768-1280
+          path: cal12-live-web-fue-proof/
+          if-no-files-found: warn
+          retention-days: 14
