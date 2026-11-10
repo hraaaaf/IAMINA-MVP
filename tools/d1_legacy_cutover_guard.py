@@ -18,7 +18,7 @@ ENTRYPOINTS = (
     "services/patient_vault_app_host.dart",
     "services/patient_vault_session_controller.dart",
 )
-DIRECTIVE = re.compile(r"""^\s*(?:import|export|part)\s+['"]([^'"]+)['"]""", re.M)
+DIRECTIVE = re.compile(r"""^[ \t]*(?:import|export|part)[ \t]+['"]([^'"]+\.dart)['"]""", re.M)
 CONDITIONAL = re.compile(r"""\bif\s*\([^)]*\)\s*['"]([^'"]+)['"]""")
 D18_CUTOVER = re.compile(r"(?:^|/)d18_[^/]*\.dart$")
 DESTRUCTIVE = re.compile(
