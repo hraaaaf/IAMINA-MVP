@@ -114,3 +114,24 @@ Le workflow `.github/workflows/d7-fue-returning-patient-web.yml` est **sans secr
 **Unresolved formal gates retained unmodified:** hosted negative/retry/withdrawal with server-scoped A/B evidence; FR/AR RTL real Web across viewports, a11y; risk qualified clinical and data/privacy review, execution/adversarial scores and final Perfection Pass. `D7_GLOBAL_CERTIFIED=NO`, and `B_FORMAL_CERTIFIED=0/17` until those gates pass. Owner priority directs advancing to D22 **safe preflight** while formal certification remains a separate open obligation; no production target/unit change is authorized.
 
 **Next exact:** track formal D7 clinical/privacy review as separate closeout, do not block safe technical planning for D22; [D22 canonical preflight](2026-10-29-d22-web-unit-target-preflight.md) updated with test/document-only merges #1211/#1210, and [D19 G1–G7 decision gate](2026-10-29-d19-d22-web-clinical-decision-gate.md) still requires qualified approval before D22 data/UI mutation.
+
+
+## 10/11/2026 — Reprise C01–C05 sur main actuel
+
+**Base :** `main@0db9557219b84f5aff18b050a2025859c5012667`, branche `qa/d7-hosted-reconcile-20261110`. **But borné :** conserver le proxy serveur `frontend/api/index.js` (OIDC Preview, validation de l'origine API immuable, filtrage des en-têtes), le verrou de consentement actuel et la validation iPhone du 01/11, tout en complétant l'évidence autonome **C01–C05**. Aucun changement produit, proxy, schéma, secrets, Production ou Vercel.
+
+**Preuve historique immuable :** [commit c46891ce](https://github.com/hraaaaf/IAMINA-MVP/commit/c46891ce63a9e22414b21124b89fe26d48a45fc2) : `PASS_MANUAL_OWNER_ATTESTED 5/5` sur l'app Preview au SHA `55fa500f56d86d7fa014b5b1849d7e7cdad3ea59`. Elle n'est **pas** une preuve automatisée API, un test négatif C04, ni une validation clinique/privacy indépendante. **Ne pas redemander ces 5 parcours.**
+
+### Matrice ciblée C01–C05 (preuve synthétique ≠ preuve hébergée)
+
+| Cas | Résultat attendu | Préflight sans réseau | Test hébergé à exécuter |
+| --- | --- | --- | --- |
+| **C01** Refus libre | `Continuer sans IA` ouvre Dashboard, zéro appel consentement, zéro preuve de consentement | Widget Flutter de refus : assertions explicites de non-appel, non-evidence et `hasConsent=false` | Sur vrai navigateur QA autorisé, vérifier aucun POST /account/consent, aucune autorisation IA et navigation |
+| **C02** Verrou ignoré | `Accepter` refusé, aucune preuve; CTA d'activation visible | Widget existant `no-lock choice cannot consent` et garde `lock == null || !lock.isUnlocked` | Rejouer en profil synthétique sans verrou, contrôler réseau et navigation explicite |
+| **C03** Consentement explicite | Verrou déverrouillé, notice version/hash/locale exacts, ACK serveur puis evidence durable | Widget `accept posts exact claim and persists verified evidence` avec réponse simulée | Sur backend **synthétique** et Preview au SHA identique, vérifier exact HTTP ACK+owner, absence egress tiers, persistance/reload |
+| **C04** Refus API/récupération | Erreur visible, état non consenti, possibilité de poursuivre sans IA | Nouveau test widget de refus et CTA alternatif après échec API | Injecter sur QA un échec borné de consentement; vérifier absence de faux succès, aucune fuite, reprise après échec |
+| **C05** Retrait/reconsentement | Retrait bloque immédiatement IA; échec de renouvellement préserve le marqueur d'arrêt; pas de réactivation silencieuse | Nouveau test widget : pending withdrawal + ACK refusé conserve `withdrawalPending` | Retrait serveur et local dans coffre **synthétique**, navigation/reload, statut distant exact, non-réactivation et scope A/B |
+
+**Prérequis du vrai hosted :** (1) nouvelle Preview Vercel explicitement autorisée, source Git exacte, API immuable `iamina-certified-…vercel.app` **synthétique**, identity DB/role/branche et Trusted OIDC prouvés ; (2) accès SSO par mécanisme approuvé (aucun jeton en source, CI, logs ni Notion), environnement `d7-qa` protégé ; (3) vrai runner navigateur Web qui exécute C01–C05 sur le code et environnement réellement déployés ; (4) navigateur FR/AR RTL et viewports restants dans FUE distincte, et revues clinique/confidentialité qualifiées. L'ancien `d7_qa_hosted_auth_gate.mjs` est **AUTH_ONLY** et épinglé à une Preview obsolète : ne pas le relancer comme certification C01–C05.
+
+**Statut :** `C01–C05_SYNTHETIC_PRECHECK=CI_PENDING` au moment de cette note, `C01–C05_HOSTED=NOT_RUN`, `D7_GLOBAL=NOT_CERTIFIED`. Aucun déploiement Vercel, merge, modification de DB, identité réelle, ni relance manuelle de la validation iPhone. Vérifier CI au SHA exact du candidat, puis seulement demander le gate humain pour une nouvelle Preview si le périmètre et l'accès sont prouvés.

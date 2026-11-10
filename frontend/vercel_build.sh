@@ -51,6 +51,13 @@ if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
       if [ "${VERCEL_GIT_COMMIT_REF:-}" = "fix/d2-main-integrated-20261109" ]; then
         IAMINA_D2_PREVIEW_SAME_ORIGIN=true
       fi
+      # D7 hosted verification must use the *current immutable page origin*
+      # for both login and account consent. Do not leak requests to the stale
+      # W01 branch alias if some legacy consumer uses API_BASE_URL directly.
+      if [ "${VERCEL_GIT_COMMIT_REF:-}" = "qa/d7-hosted-reconcile-20261110" ]; then
+        IAMINA_D2_PREVIEW_SAME_ORIGIN=true
+        API_BASE_URL="https://d7-qa-unrouted.invalid"
+      fi
       IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
       IAMINA_REMOTE_ACCOUNT_SIGN_IN=true
       if [ "${VERCEL_GIT_COMMIT_REF:-}" = "preview/w01-current-main-synthetic-20261104" ]; then

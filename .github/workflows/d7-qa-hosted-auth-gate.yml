@@ -7,6 +7,11 @@ on:
       - '.github/workflows/d7-qa-hosted-auth-gate.yml'
       - 'scripts/d7_qa_hosted_auth_gate.mjs'
       - 'frontend/test/qa/d7_hosted_auth_gate.test.mjs'
+      - 'frontend/test/qa/d7_preview_route_contract.test.mjs'
+      - 'frontend/vercel_build.sh'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/lib/services/api_client.dart'
+      - 'frontend/api/index.js'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +32,7 @@ jobs:
           set -euo pipefail
           node --check scripts/d7_qa_hosted_auth_gate.mjs
           node --test frontend/test/qa/d7_hosted_auth_gate.test.mjs
+          node --test frontend/test/qa/d7_preview_route_contract.test.mjs
 
   qa-hosted-identity:
     # Cannot run on a PR event, from Production/main, or without explicit

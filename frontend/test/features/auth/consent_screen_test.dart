@@ -240,6 +240,10 @@ void main() {
     await tester.pump();
 
     expect(consentService.hasDeclinedLocally, isTrue);
+    // C01: declining must not call the server or synthesize grant evidence.
+    expect(capturedRequest, isNull);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
   });
 
   testWidgets('accept posts exact claim and persists verified evidence', (tester) async {
@@ -348,5 +352,55 @@ void main() {
     expect(find.byType(ConsentScreen), findsOneWidget);
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.textContaining('Consentement non enregistré'), findsOneWidget);
+  });
+
+  testWidgets('C04 API refusal retains the non-AI escape route', (tester) async {
+    responseSuccess = false;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final accept = find.text('Accepter et continuer');
+    await tester.ensureVisible(accept);
+    await tester.tap(accept);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ConsentScreen), findsOneWidget);
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.textContaining('Consentement non enregistré'), findsOneWidget);
+
+    // The transient SnackBar occupies the bottom hit area; retry once it
+    // has dismissed, just as an actual user can select the alternate CTA.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    final decline = find.text('Continuer sans IA');
+    await tester.ensureVisible(decline);
+    await tester.tap(decline);
+    await tester.pumpAndSettle();
+
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+  testWidgets('C05 pending withdrawal survives failed reconsent', (tester) async {
+    responseSuccess = false;
+    evidenceStore.withdrawalPending = true;
+    consentService.markWithdrawalPending();
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(consentService.hasWithdrawalPending, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    final accept = find.text('Accepter et continuer');
+    await tester.ensureVisible(accept);
+    await tester.tap(accept);
+    await tester.pumpAndSettle();
+
+    // A failed remote acknowledgment cannot clear the persisted stop marker.
+    expect(evidenceStore.withdrawalPending, isTrue);
+    expect(consentService.hasWithdrawalPending, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(evidenceStore.written, isNull);
   });
 }
