@@ -59,7 +59,16 @@ def run_browser() -> dict:
                 stdout=logfile, stderr=subprocess.STDOUT, start_new_session=True,
             )
             try:
-                page = _get_page(time.monotonic() + 30)
+                try:
+                    page = _get_page(time.monotonic() + 30)
+                except Exception as exc:
+                    logfile.flush()
+                    diagnostic = Path(directory, "chrome.log").read_text(
+                        encoding="utf-8", errors="replace"
+                    )[-1800:]
+                    raise RuntimeError(
+                        f"Chrome CDP startup failed: {exc}; chrome_tail={diagnostic!r}"
+                    ) from exc
                 websocket = create_connection(page["webSocketDebuggerUrl"], timeout=20)
                 try:
                     command_id = 0
@@ -123,5 +132,5 @@ if __name__ == "__main__":
     try:
         print(json.dumps(run_browser(), indent=2))
     except Exception as exc:
-        print(f"D1P0A physical-vault probe failed: {type(exc).__name__}", file=sys.stderr)
+        print(f"D1P0A physical-vault probe failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
