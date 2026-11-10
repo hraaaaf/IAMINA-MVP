@@ -228,7 +228,6 @@ def test_cal12_changed_notice_locale_windows_and_expiry_deny(users):
 @pytest.mark.django_db
 def test_cal12_reject_invalid_grants_no_partial_record_or_audit(users):
     a, _, _ = users
-    valid = grant_args(a)
     for changed in (
         {"explicitly_agreed": False},
         {"notice_version": "unapproved"},
