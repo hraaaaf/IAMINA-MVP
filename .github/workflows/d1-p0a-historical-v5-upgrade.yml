@@ -22,14 +22,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Check out authentic historical v5 source into isolated directory
-        uses: actions/checkout@v4
-        with:
-          repository: hraaaaf/IAMINA-MVP
-          ref: a1d46f9be5f2190a1e8380f28fe4679954f9863f
-          persist-credentials: false
-          path: historical
+      - name: Isolate actual historical commit in local git worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e a1d46f9be5f2190a1e8380f28fe4679954f9863f^{commit}
+          git worktree add --detach historical a1d46f9be5f2190a1e8380f28fe4679954f9863f
+          test "$(git -C historical rev-parse HEAD)" = a1d46f9be5f2190a1e8380f28fe4679954f9863f
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
