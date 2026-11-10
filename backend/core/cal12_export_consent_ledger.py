@@ -175,6 +175,7 @@ def grant_fixture_consent(
         receipt = Cal12ExportConsentFixtureReceipt.objects.create(
             owner=user,
             revision=highest + 1,
+            native_auth_version=user.base_profile.auth_token_version,
             notice_version=notice_version,
             notice_sha256=notice_sha256,
             notice_locale=locale,
@@ -253,7 +254,8 @@ def fictional_preview_ready(
         if receipt is None or receipt.revoked_at is not None:
             return False
         if (
-            receipt.revision != revision
+            receipt.native_auth_version != user.base_profile.auth_token_version
+            or receipt.revision != revision
             or receipt.revision != (
                 Cal12ExportConsentFixtureReceipt.objects.filter(owner=user).aggregate(
                     max_revision=Max("revision")

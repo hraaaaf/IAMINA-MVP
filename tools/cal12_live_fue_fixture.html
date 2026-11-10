@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAL-12 · FUE Web fictive · sans export</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#122b30;background:#f0f7f6}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh}
+main{max-width:940px;margin:0 auto;padding:22px 18px 54px}
+header{border-radius:20px;background:#12494a;color:white;padding:22px}
+h1{font-size:clamp(21px,3vw,30px);margin:4px 0}
+p{margin:7px 0;line-height:1.5}
+small,.muted{opacity:.82}
+section{background:white;border:1px solid #d4e5e3;border-radius:18px;margin-top:16px;padding:20px;box-shadow:0 3px 14px #16494a0a}
+h2{font-size:17px;margin:0 0 12px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-weight:600;font-size:13px}
+input:not([type=checkbox]),select{display:block;width:100%;border:1px solid #9ebbb8;border-radius:9px;background:#fff;padding:13px;font:inherit;margin-top:6px}
+button{border:0;border-radius:11px;background:#176564;color:white;padding:12px 15px;font:inherit;font-weight:650;cursor:pointer;min-height:44px}
+button.secondary{background:#e7f1f0;color:#174846}
+button.danger{background:#822f36;color:white}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f49b3c;outline-offset:2px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+.checkrow{display:flex;align-items:center;gap:9px;margin:14px 0;font-size:14px}
+output{display:block;font-weight:750;color:#174747;background:#e9f3ef;border-radius:11px;padding:16px;margin-top:9px;min-height:52px;overflow-wrap:anywhere}
+.warn{background:#fff0e7;color:#753a22;border-radius:10px;padding:10px}
+#session{font-weight:650;overflow-wrap:anywhere}
+html[dir=rtl] .controls{text-align:right}
+@media(max-width:570px){main{padding:12px 10px 42px}section{padding:15px}.controls{grid-template-columns:1fr}.actions button{flex:1 1 130px}header{padding:17px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<p>IAMINA / CAL-12 / FICTIONAL-ONLY</p>
+<h1 data-testid="title">Parcours de test Web sécurisé</h1>
+<p data-testid="banner">SIMULATION UNIQUEMENT · Aucun patient, document, médecin ou envoi réel.</p>
+</header>
+<section aria-label="Connexion fictive">
+<h2 data-testid="login-title">1. Authentification Django native</h2>
+<div class="controls">
+<label for="email"><span data-testid="email-label">Compte de test</span><input id="email" data-testid="email" autocomplete="off" spellcheck="false"></label>
+<label for="password"><span data-testid="password-label">Mot de passe fictif</span><input id="password" data-testid="password" type="password" autocomplete="off"></label>
+</div>
+<div class="actions">
+<button type="button" data-testid="login" id="login">Connexion</button>
+<button type="button" data-testid="logout" id="logout" class="secondary">Déconnexion</button>
+<button type="button" data-testid="old-token" id="old-token" class="secondary">Jeton révoqué</button>
+<button type="button" data-testid="no-bearer" id="no-bearer" class="secondary">Sans jeton</button>
+</div>
+<p id="session" data-testid="session">Aucun compte</p>
+</section>
+<section aria-label="Consentement fictif">
+<h2 data-testid="consent-title">2. Consentement de prévisualisation fictive</h2>
+<div class="controls">
+<label for="recipient"><span data-testid="recipient-label">Destinataire fictif</span>
+<select id="recipient" data-testid="recipient">
+<option value="fixture:doctor:one">Médecin fictif 1</option>
+<option value="fixture:doctor:two">Médecin fictif 2</option>
+</select></label>
+<label for="proof"><span data-testid="proof-label">Confirmation de destination fictive</span>
+<select id="proof" data-testid="proof">
+<option value="fixture:preview:doctor-one">Confirmation 1</option>
+<option value="fixture:preview:doctor-two">Confirmation 2</option>
+</select></label>
+<label for="notice"><span data-testid="notice-label">Version de notice (démonstration)</span>
+<input id="notice" data-testid="notice" value="CAL12-DRAFT-2026-11-10.1" autocomplete="off"></label>
+<label for="offset"><span data-testid="offset-label">Horloge de test</span>
+<select id="offset" data-testid="offset">
+<option value="0">Instant simulé</option>
+<option value="20">+20 minutes (expiration simulée)</option>
+</select></label>
+</div>
+<label class="checkrow"><input id="agree" data-testid="agree" type="checkbox"><span data-testid="agree-label">J'accepte uniquement le test de consentement fictif.</span></label>
+<div class="actions">
+<button type="button" data-testid="grant" id="grant">Enregistrer la preuve fictive</button>
+<button type="button" data-testid="check" id="check" class="secondary">Vérifier</button>
+<button type="button" data-testid="stale" id="stale" class="secondary">Tester l'ancienne preuve côté serveur</button>
+<button type="button" data-testid="revoke" id="revoke" class="danger">Révoquer</button>
+</div>
+</section>
+<section>
+<h2 data-testid="result-title">3. Décision technique (aucun export)</h2>
+<output role="status" data-testid="status" id="status">READY</output>
+<p class="warn" data-testid="no-export">AUCUN PDF / CSV / PARTAGE / DESTINATAIRE RÉEL · Le résultat n'est jamais une permission d'export clinique.</p>
+</section>
+</main>
+<script>
+(function(){
+'use strict';
+const locale=new URLSearchParams(location.search).get('locale')==='ar'?'ar':'fr';
+document.documentElement.lang=locale;document.documentElement.dir=locale==='ar'?'rtl':'ltr';
+const text={
+fr:['Parcours de test Web sécurisé','SIMULATION UNIQUEMENT · Aucun patient, document, médecin ou envoi réel.','1. Authentification Django native','2. Consentement de prévisualisation fictive','3. Décision technique (aucun export)','Compte de test','Mot de passe fictif','Connexion','Déconnexion','Jeton révoqué','Sans jeton','Destinataire fictif','Confirmation de destination fictive','Version de notice (démonstration)','Horloge de test',"J'accepte uniquement le test de consentement fictif.",'Enregistrer la preuve fictive','Vérifier',"Tester l'ancienne preuve côté serveur",'Révoquer','Aucun compte'],
+ar:['اختبار الويب الآمن','محاكاة فقط · لا مريض أو مستند أو طبيب أو إرسال حقيقي','١. الدخول الحقيقي إلى Django','٢. موافقة معاينة تجريبية','٣. النتيجة التقنية (لا تصدير)','حساب تجريبي','كلمة مرور تجريبية','تسجيل الدخول','تسجيل الخروج','رمز ملغى','بدون رمز','مستلم تجريبي','تأكيد المستلم التجريبي','نسخة إشعار تجريبية','ساعة اختبار','أوافق على اختبار الموافقة التجريبية فقط','تسجيل موافقة تجريبية','تحقق','فحص الموافقة القديمة على الخادم','إلغاء الموافقة','لا حساب']
+};
+const ids=['title','banner','login-title','consent-title','result-title','email-label','password-label','login','logout','old-token','no-bearer','recipient-label','proof-label','notice-label','offset-label','agree-label','grant','check','stale','revoke'];
+ids.forEach((name,i)=>document.querySelector('[data-testid="'+name+'"]').textContent=text[locale][i]);
+document.getElementById('session').textContent=text[locale][20];
+const sha={
+fr:'69857b01762f0bedb3b6bced0d256af2817f519e2f987f5991c346ef955c16f2',
+ar:'c6fa87b20eaf9cae42625008e6a539add92a3b923b2dbe871933ae833dc62a9f'
+};
+const state={token:null,oldToken:null,owner:null,epoch:0,receipt:null};
+const el=id=>document.getElementById(id);
+function status(value){el('status').textContent=value;}
+function accountScope(email){return 'fixture:vault:'+email.split('@')[0].replace(/^cal12-fixture-/,'');}
+function requestHeaders(withToken){
+const h={'Content-Type':'application/json','Accept':'application/json','Cache-Control':'no-store'};
+if(withToken&&state.token)h.Authorization='Bearer '+state.token;
+return h;
+}
+async function post(path,body,token){
+const h=requestHeaders(false);
+if(token)h.Authorization='Bearer '+token;
+const response=await fetch(path,{method:'POST',headers:h,body:JSON.stringify(body),credentials:'omit',redirect:'manual',cache:'no-store'});
+let data={};try{data=await response.json();}catch(e){}
+return {code:response.status,data};
+}
+async function checkAuth(token){
+const h={'Cache-Control':'no-store'};if(token)h.Authorization='Bearer '+token;
+const r=await fetch('/api/v1/auth/session/verify',{headers:h,credentials:'omit',redirect:'manual',cache:'no-store'});
+let body={};try{body=await r.json();}catch(e){}
+return {code:r.status,data:body};
+}
+function common(){
+return {
+owner_scope:state.owner,recipient_ref:el('recipient').value,
+channel:'localPreview',destination_fixture_proof:el('proof').value,
+notice_version:el('notice').value,notice_sha256:sha[locale],locale:locale,
+purpose:'followUpWithClinician',data_category:'syntheticManualReadings'
+};
+}
+async function checkReceipt(useStale){
+if(!state.token||!state.receipt){status('NO_CONSENT');return;}
+if(!useStale&&state.receipt.epoch!==state.epoch){status('CLIENT_STALE_DENIED');return;}
+const payload=Object.assign({},common(),{
+record:state.receipt.id,revision:state.receipt.revision,
+offset_minutes:Number(el('offset').value)
+});
+const res=await post('/_cal12_fixture/check',payload,state.token);
+if(useStale)status(res.code===200&&res.data.allowed===false?'SERVER_STALE_DENIED':'SERVER_STALE_ALLOWED');
+else status(res.code===200&&res.data.allowed===true?'READY_YES':'READY_NO');
+}
+async function login(){
+const email=el('email').value.trim();
+const pass=el('password').value;
+const r=await post('/api/v1/auth/login',{email:email,password:pass},null);
+if(r.code!==200||!r.data.access_token||!r.data.user){status('LOGIN_DENIED');return;}
+const token=r.data.access_token,auth=await checkAuth(token);
+if(auth.code!==200||auth.data.account_id!==r.data.user.id){status('LIVENESS_DENIED');return;}
+state.token=token;state.owner=accountScope(email);state.epoch++;
+el('session').textContent=email;
+status('LOGIN_OK');
+}
+async function logout(){
+if(!state.token){status('NO_SESSION');return;}
+const token=state.token;
+const response=await post('/api/v1/auth/logout',{},token);
+if(response.code!==200){status('LOGOUT_DENIED');return;}
+state.oldToken=token;state.token=null;state.owner=null;state.epoch++;
+el('session').textContent=text[locale][20];
+status('LOGOUT_OK');
+}
+async function grant(){
+if(!state.token){status('NO_SESSION');return;}
+const res=await post('/_cal12_fixture/grant',Object.assign({},common(),{explicitly_agreed:el('agree').checked}),state.token);
+if(res.code!==200||!res.data.record){status('GRANT_DENIED');return;}
+state.receipt={id:res.data.record,revision:res.data.revision,epoch:state.epoch};
+status('CONSENT_SAVED');
+}
+async function revoke(){
+if(!state.token||!state.receipt){status('NO_CONSENT');return;}
+const r=await post('/_cal12_fixture/revoke',{record:state.receipt.id,owner_scope:state.owner},state.token);
+status(r.code===200&&r.data.revoked===true?'REVOKED':'REVOKE_DENIED');
+}
+function bind(id,action){el(id).addEventListener('click',async()=>{try{await action();}catch(e){status('NETWORK_DENIED');}});}
+bind('login',login);
+bind('logout',logout);
+bind('grant',grant);
+bind('check',()=>checkReceipt(false));
+bind('stale',()=>checkReceipt(true));
+bind('revoke',revoke);
+bind('old-token',async()=>{
+const r=await checkAuth(state.oldToken);status(r.code===401?'OLD_TOKEN_DENIED':'OLD_TOKEN_BAD');
+});
+bind('no-bearer',async()=>{
+const r=await checkAuth(null);status(r.code===401?'NO_BEARER_DENIED':'NO_BEARER_BAD');
+});
+})();
+</script>
+</body>
+</html>
