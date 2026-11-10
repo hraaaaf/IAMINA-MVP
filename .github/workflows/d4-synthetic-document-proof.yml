@@ -9,6 +9,7 @@ on:
       - 'frontend/test/services/synthetic_doctor_report_test.dart'
       - 'frontend/test/services/synthetic_report_formatter_test.dart'
       - 'frontend/tool/d4_generate_synthetic_pdf.dart'
+      - 'frontend/tool/d4_reprint_arabic_pdf_ua.py'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +49,15 @@ jobs:
       - name: Print offline synthetic HTML to FR EN AR PDFs with Chromium
         working-directory: frontend
         run: dart run tool/d4_generate_synthetic_pdf.dart
+      - name: Print tagged text-faithful Arabic PDF in a CI-only sandbox
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-core libpango-1.0-0
+          python3 -m venv /tmp/d4-arabic-pdf-venv
+          /tmp/d4-arabic-pdf-venv/bin/python -m pip install --disable-pip-version-check 'weasyprint==68.0'
+          /tmp/d4-arabic-pdf-venv/bin/python tool/d4_reprint_arabic_pdf_ua.py
       - name: Install Poppler PDF verification tools on the runner
         run: |
           sudo apt-get update -qq
@@ -68,12 +78,26 @@ jobs:
               test "$(pdfinfo "$path" | awk '/^Pages:/ {print $2}')" = "1"
               pdfinfo "$path" | grep -Fq '(A4)'
               pdffonts "$path" | grep -q 'Inter'
-              if [ "$locale" = ar ]; then pdffonts "$path" | grep -q 'NotoSansArabic'; fi
+              if [ "$locale" = ar ]; then
+                pdffonts "$path" | grep -q 'D4Naskh'
+                pdfinfo "$path" | grep -Eq '^Tagged:[[:space:]]+yes$'
+              fi
               pdftotext "$path" "$txt"
               if [ "$variant" = "-MAX" ]; then grep -q '121' "$txt"; else grep -q '142' "$txt"; fi
               if [ "$locale" = fr ]; then grep -q 'NON CLINIQUE' "$txt"; fi
               if [ "$locale" = en ]; then grep -q 'NOT FOR CLINICAL USE' "$txt"; fi
-              if [ "$locale" = ar ]; then grep -q 'بيانات' "$txt"; fi
+              if [ "$locale" = ar ]; then
+                grep -Fq 'تقرير متابعة' "$txt"
+                grep -Fq 'بيانات تجريبية فقط' "$txt"
+                grep -Fq 'غير صالحة للاستخدام الطبي' "$txt"
+                grep -Fq 'تاريخ الإنشاء' "$txt"
+                grep -Fq 'قياسات يدوية تجريبية' "$txt"
+                grep -Fq 'لا توجد حسابات أو أهداف أو تشخيصات طبية' "$txt"
+                if grep -Fq 'تقرير مت ابعة' "$txt"; then
+                  echo "CAL-12: Arabic PDF text split is not acceptable"
+                  exit 1
+                fi
+              fi
               pdftoppm -f 1 -l 1 -singlefile -scale-to 1400 -png "$path" "build/d4-synthetic-proof/${name}"
               test -s "build/d4-synthetic-proof/${name}.png"
             done
