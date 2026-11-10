@@ -140,9 +140,9 @@ Ces identifiants correspondent **aux numéros 33 à 38 donnés par le propriéta
 | D37 — Entrée sans compte, login au besoin DB/fetch | **D37-A PRODUIT ACCEPTÉ**, shell complet fictif, gates L01 ouverts | L01 |
 | D38 — « Application setting » fermé par défaut | **D38-A PRODUIT ACCEPTÉ**, fermé par défaut, QA non réalisée | L03 |
 
-## 4. Handover — décisions d'onboarding validées le 04/11/2026
+## 4. ARCHIVE — décisions d'onboarding validées le 04/11/2026 (ne crée pas de seconde roadmap)
 
-**État exact : 10 thèmes O1–O10 arbitrés, soit 11 choix produit ACCEPTÉS** (O4 a deux décisions distinctes D36/D38). Chaque approbation est **un choix produit seulement**, pas une preuve d'implémentation, de sécurité, de certification, de merge ou de disponibilité. L'ordre unique prospectif reste L00→L01→…→L09.
+**État exact : 10 thèmes O1–O10 arbitrés, soit 11 choix produit ACCEPTÉS** (O4 a deux décisions distinctes D36/D38). Chaque approbation est **un choix produit seulement**, pas une preuve d'implémentation, de sécurité, de certification, de merge ou de disponibilité. L'ancien ordre L00→L09 est archivé ; seule la section 2 (R01→R12) fixe l'ordre prospectif depuis le 10/11/2026.
 
 1. **O1 / D37-A — visiteur : ACCEPTÉ.** Shell Web/PWA entièrement navigable en statique/fictif ; login avant DB/stockage patient/fetch métier ; aucune création de coffre invité, aucun chrono. [Décision](https://github.com/hraaaaf/IAMINA-MVP/pull/1270#issuecomment-6632954086). **Gate** : L01 audit auto-fetch, routeur+API+stockage, W01/D18.
 2. **O2 / D30-D9-D18-A — anciennes données : ACCEPTÉ.** Récupération volontaire après login, seulement après preuve de possession et sécurité certifiée ; original conservé, zéro rattachement/suppression/conversion automatique ; état ambigu = aucune mutation. [Décision](https://github.com/hraaaaf/IAMINA-MVP/pull/1270#issuecomment-6633315382). **Gate** : D18 P0-A SAFE-HOLD/NO-GO clinique ; W01 et vieux clients PWA.
@@ -157,7 +157,7 @@ Ces identifiants correspondent **aux numéros 33 à 38 donnés par le propriéta
 
 **Règle de statut :** ACCEPTÉ=arbitrage produit décidé ; LIVRÉ exige preuve de code+tests+comportement+release autorisée ; CERTIFIÉ exige contrôles indépendants et traces. **Ni le nombre de choix ni la CI documentaire ne constituent un pourcentage de chantier certifié.**
 
-**Clôture documentaire L00 :** index D1–D38 unique, lots L00–L09, 11 liens d'arbitrage, diff Markdown seul, CI SHA exact et miroir Notion ont été vérifiés lors de la réconciliation du 04/11/2026. **Adoption du plan par le propriétaire : OUI (réponse explicite « Go », 04/11/2026).** Cela **n'autorise pas** la fusion de la PR #1270, le déploiement Vercel Preview/Production ou la manipulation de données de patients ; les blocages D18, W01 et D32 persistent. **Next L01 (préparation autorisée sans patient) :** établir la baseline réelle router/mount/DB/fetch de la Web/PWA et des anciennes VFS ; matrice invité/compte vérifié/legacy ; tests négatifs à écrire sur fixtures synthétiques, y compris vieux onglet/offline et isolation A→B→A. **Aucune migration, suppression, nouvelle ouverture patient ni activation sans preuve et revue dédiée.**
+**Clôture documentaire L00 :** index D1–D38 unique, lots L00–L09, 11 liens d'arbitrage, diff Markdown seul, CI SHA exact et miroir Notion ont été vérifiés lors de la réconciliation du 04/11/2026. **Adoption du plan par le propriétaire : OUI (réponse explicite « Go », 04/11/2026).** Cela **n'autorise pas** la fusion de la PR #1270, le déploiement Vercel Preview/Production ou la manipulation de données de patients ; les blocages D18, W01 et D32 persistent. **Ancien Next L01 (archivé) :** établir la baseline router/mount/DB/fetch et la matrice invité/compte/legacy. **Next actif au 10/11/2026 : R01/D37 (section 2), avec D18/R02 en garde de sécurité.** Aucune migration, suppression, nouvelle ouverture patient ni activation sans preuve et revue dédiée.
 
 ## 5. Preuves de départ, liens et limites
 
