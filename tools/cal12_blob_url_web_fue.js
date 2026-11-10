@@ -226,6 +226,22 @@ async function runCase(browser, locale, viewport) {
       denied(Object.assign(make('alpha', new Uint8Array(262145)), {}),
         'OVERSIZED_PDF');
 
+      // Reject a forged owner/session pair before any new PDF can be read.
+      const invalidSessionUrl = stage.open(make('alpha', alpha));
+      let invalidPairRejected = false;
+      try {
+        stage.beginSession('fixture:vault:alpha', 'fixture:session:beta:1');
+      } catch (e) {
+        invalidPairRejected =
+          String(e.message).includes('CAL12_FIXTURE_SESSION_SCOPE');
+      }
+      ensure(invalidPairRejected, 'Invalid owner/session pair accepted');
+      ensure(!await canFetch(invalidSessionUrl),
+        'Invalid session pair retained an old PDF URL');
+      denied(make('alpha', alpha), 'INVALID_SESSION_PAIR_CLEARS_SESSION');
+      activate('alpha', 'fixture:session:alpha:2');
+      audit.push('INVALID_SESSION_PAIR_FAILS_CLOSED');
+
       const loggedOutConsent = make('alpha', alpha);
       const loggedOutUrl = stage.open(loggedOutConsent);
       stage.endSession('logout');
