@@ -16,31 +16,66 @@
 
   const allowedOwners = new Set(['fixture:vault:alpha', 'fixture:vault:beta']);
   const allowedDoctors = new Set(['fixture:doctor:one', 'fixture:doctor:two']);
+  // Deliberately enumerable synthetic identities, NOT authentication credentials.
+  const allowedSessions = new Map([
+    ['fixture:session:alpha:1', 'fixture:vault:alpha'],
+    ['fixture:session:beta:1', 'fixture:vault:beta'],
+    ['fixture:session:alpha:2', 'fixture:vault:alpha'],
+  ]);
   const prefix = 'CAL12-SYNTHETIC-FIXTURE:';
   const maxBytes = 262144;
 
   class FixtureBlobStage {
     constructor() {
       this._active = null;
+      this._session = null;
+      this._sessionGeneration = 0;
       this._timer = null;
       this._events = [];
       this._created = 0;
       this._revoked = 0;
       // A browser exit also revokes every handle held by this stage.
-      window.addEventListener('pagehide', () => this.close('pagehide'));
+      window.addEventListener('pagehide', () => this.endSession('pagehide'));
     }
 
     get active() { return this._active !== null; }
     get metrics() {
       return Object.freeze({
         active: this.active,
+        sessionActive: this._session !== null,
         created: this._created,
         revoked: this._revoked,
         eventReasons: this._events.map(e => e.reason),
       });
     }
 
+    // A new instance invalidates every old grant, even for the SAME owner.
+    // This is an in-memory test state machine; never substitute for IAMINA auth.
+    beginSession(owner, sessionId) {
+      this.endSession('session-rotation');
+      if (allowedSessions.get(sessionId) !== owner) {
+        throw new Error('CAL12_FIXTURE_SESSION_SCOPE');
+      }
+      const generation = ++this._sessionGeneration;
+      this._session = {owner, sessionId, generation};
+      return generation;
+    }
+
+    endSession(reason) {
+      this.close(reason || 'logout');
+      this._session = null;
+    }
+
     _check(options) {
+      const session = this._session;
+      if (!session || !options ||
+          options.owner !== session.owner ||
+          options.sessionId !== session.sessionId ||
+          options.sessionGeneration !== session.generation ||
+          options.consentGeneration !== session.generation ||
+          options.recipientGeneration !== session.generation) {
+        throw new Error('CAL12_FIXTURE_SESSION');
+      }
       if (!options || !(options.bytes instanceof Uint8Array)) {
         throw new Error('CAL12_FIXTURE_TYPE');
       }
@@ -89,6 +124,7 @@
         url = URL.createObjectURL(blob);
         this._active = {
           url, owner: options.owner, expiresAtMs: options.expiresAtMs,
+          sessionGeneration: this._session.generation,
         };
         this._created += 1;
         this._timer = setTimeout(() => this.close('expiry'),
@@ -118,16 +154,6 @@
       this._events.push({reason: String(reason || 'manual')});
     }
 
-    switchOwner(nextOwner) {
-      if (!allowedOwners.has(nextOwner)) {
-        this.close('invalid-owner-switch');
-        throw new Error('CAL12_FIXTURE_SCOPE');
-      }
-      if (this._active && this._active.owner !== nextOwner) {
-        this.close('owner-switch');
-      }
-    }
-
     revoke() { this.close('revoked'); }
     cancel() { this.close('cancelled'); }
 
@@ -139,7 +165,9 @@
       try {
         url = this.open(options);
         await inspect(url);
-        if (!this._active || this._active.url !== url) {
+        if (!this._active || this._active.url !== url ||
+            !this._session ||
+            this._session.generation !== this._active.sessionGeneration) {
           throw new Error('CAL12_FIXTURE_REVOKED_DURING_USE');
         }
         if (Date.now() >= this._active.expiresAtMs) {
