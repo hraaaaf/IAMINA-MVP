@@ -74,6 +74,21 @@ Future<void> main() async {
       // This path is only used after an independent build from the real
       // Git revision where AppDatabase.schemaVersion was 5 seeded the DB.
       await present(_historicalV5, 105);
+      final historicalRow = await (vault.select(vault.logEntries)
+            ..where((t) => t.clientUuid.equals(_historicalV5)))
+          .getSingle();
+      final historicalProfile = await vault.getProfileForLocalUserId(734);
+      if (historicalRow.syncStatus != 'pending' ||
+          historicalProfile == null ||
+          historicalProfile.diabetesType != 'type1' ||
+          historicalProfile.treatment != 'insulin' ||
+          historicalProfile.aiConsentGivenAt?.toUtc() !=
+              DateTime.utc(2026, 11, 10, 12)) {
+        throw StateError('historic v5 clinical fixture changed during upgrade');
+      }
+      if (await vault.countLogs() != 1) {
+        throw StateError('historical log count not preserved');
+      }
       await absent(_legacyFirst);
       await absent(_legacyLate);
       await absent(_aLog);
