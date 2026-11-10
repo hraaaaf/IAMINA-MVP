@@ -1,7 +1,7 @@
 """CAL-12 test-only medical export consent rehearsal. No production export."""
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
