@@ -68,6 +68,9 @@ function probes(page, label) {
     page.getByRole('checkbox', {name: label, exact:true}),
     page.getByRole('radio', {name: label, exact:true}),
     page.getByLabel(label, {exact:true}),
+    // Flutter may intentionally merge a non-interactive sentence group into
+    // one accessible label. Verify the real semantic label, not CSS pixels.
+    page.getByLabel(label, {exact:false}),
     page.getByText(label, {exact:true}),
   ];
 }

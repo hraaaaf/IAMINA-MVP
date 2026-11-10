@@ -87,6 +87,9 @@ class _SyntheticFlowState extends State<SyntheticDoctorExportWebFlow> {
   }
 
   Widget _card(List<Widget> children) => Card(
+    // Prevent a single aria-label from swallowing title, reading and CTA.
+    // Expose each meaningful child as an individual accessibility node.
+    semanticContainer: false,
     color: Colors.white,
     elevation: 0,
     shape: RoundedRectangleBorder(
