@@ -1,0 +1,94 @@
+name: D1 P0-E fresh Web vault Chromium WebKit (NO DEPLOY)
+
+on:
+  push:
+    branches: [integration/d1-p0e-drift-2354-clean-web-20261111]
+    paths:
+      - 'docs/assessments/2026-11-11-d1-p0e-fresh-web-vault.md'
+      - 'frontend/pubspec.lock'
+      - 'frontend/web/drift_worker.js'
+      - 'frontend/web/sqlite3.wasm'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-vault:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Verify binaries and dependency lock without changing them
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/verify_drift_web_assets.sh verify
+          flutter pub get
+          git diff --exit-code -- pubspec.lock
+          test -s lib/data/drift/database.g.dart
+          grep -A 6 '^  drift:' pubspec.lock
+          grep -A 6 '^  drift_flutter:' pubspec.lock
+      - name: Test synthetic vault and recovery boundaries
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter analyze --no-fatal-infos lib/ui_w02_synthetic_vault_scope_probe_main.dart
+          flutter test --no-pub test/data/drift/patient_vault_backup_boundary_test.dart
+          flutter test --no-pub test/services/app_lock_service_test.dart
+          flutter test --no-pub test/data/drift/local_backup_restore_test.dart
+          flutter test --no-pub test/data/drift/patient_treatment_backup_v11_test.dart
+      - name: Compile full IAMINA Web UI without publishing it
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_OFFLINE_DEMO=true
+          test -s build/web/main.dart.js
+      - name: Compile isolated physical SQLite browser fixture
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser engine
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Fresh cold persist and fail-closed exclusive tab (no COOP/COEP)
+        shell: bash
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          node --check tools/d1_p0e_cold_persistence_browser.js
+          node --check tools/d1_p0e_single_tab_lock_browser.js
+          python3 -m http.server 7398 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d1-p0e-fresh.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7398/ >/dev/null
+          node tools/d1_p0e_cold_persistence_browser.js
+          node tools/d1_p0e_single_tab_lock_browser.js
+      - name: Save independent synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0e-integration-${{ matrix.browser }}
+          path: |
+            d1-p0e-*-cold-persistence-proof.json
+            d1-p0e-*-single-runtime-proof.json
+          retention-days: 14
+          if-no-files-found: warn

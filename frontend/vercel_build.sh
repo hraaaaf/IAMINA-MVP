@@ -12,6 +12,9 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --enable-web
 flutter pub get
 
+# Fail-closed on incorrect/mismatched Drift worker and sqlite3 WASM.
+bash scripts/verify_drift_web_assets.sh verify
+
 # The public review frontend is a separate Vercel project from the certified
 # Django backend. Bind only that frontend project to the live backend so the
 # backend project itself and local/demo builds keep their existing behavior.

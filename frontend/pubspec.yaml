@@ -25,8 +25,10 @@ dependencies:
   flutter_secure_storage: ^10.3.1
 
   # Offline-first database
-  drift: ^2.20.0
-  sqlite3_flutter_libs: ^0.5.25
+  # Pinned, proven on NEW Web vaults; no historical patient migration
+  drift: 2.35.4
+  drift_flutter: 0.3.1
+  sqlite3_flutter_libs: 0.6.0+eol
   path_provider: ^2.1.2
 
   # Networking
@@ -57,7 +59,6 @@ dependencies:
   chopper: ^8.0.0
   fl_chart: ^0.70.2
   json_annotation: ^4.11.0
-  drift_flutter: ^0.2.0
 
 dev_dependencies:
   flutter_test:
@@ -66,8 +67,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
 
-  # Code generation
-  drift_dev: ^2.20.0
+  # D1.8 BLOCKER: drift_dev 2.35 requires analyzer/meta incompatible with
+  # Flutter 3.41 (meta 1.17). Pre-generated v12 database.g.dart retained.
+  # No database schema change until a compatible codegen toolchain is proven.
+  # Other code generators:
   build_runner: ^2.4.0
   swagger_dart_code_generator: ^4.1.1
   json_serializable: ^6.8.0
