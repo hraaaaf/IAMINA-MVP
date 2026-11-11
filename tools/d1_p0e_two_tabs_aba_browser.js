@@ -38,7 +38,11 @@ async function phase(page, phaseName, id) {
       const tabB=await context.newPage();
       await phase(tabA,'seed_a','tab-A');
       await phase(tabB,'seed_b','tab-B');
-      // Both pages stay open while the physical opposite namespace is read.
+      // Control arm: both tabs remain live, but verification requests are
+      // serialized to distinguish same-origin persistence from DB contention.
+      await phase(tabA,'verify_a','tab-A-sequential-control');
+      await phase(tabB,'verify_b','tab-B-sequential-control');
+      // Stress arm: prove reads at the same time, never silently serialize.
       await Promise.all([
         phase(tabA,'verify_a','tab-A'),
         phase(tabB,'verify_b','tab-B'),
