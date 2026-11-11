@@ -101,6 +101,9 @@ void main() {
     final lock = _MockAppLockService();
     when(() => lock.capability())
         .thenAnswer((_) async => AppLockCapability.supported);
+    // This widget case exercises the legacy/native opt-out path. The Web
+    // runtime separately tests that this gate cannot be enabled by preference.
+    when(() => lock.canOptOutOfAppLock).thenReturn(true);
     when(() => lock.continueWithoutAppLock()).thenAnswer((_) async {});
 
     final router = GoRouter(initialLocation: '/app-lock/setup', routes: [
