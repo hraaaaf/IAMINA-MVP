@@ -30,10 +30,10 @@ function install(bundle) {
  // scripts and workers from /old/ and /new/, invalidating this experiment.
  const index=path.join(live,'index.html');
  const html=fs.readFileSync(index,'utf8');
- if(!/<base\\s+href=["']\\/(?:old|new)\\/["']\\s*\\/?\s*>/.test(html))
+ const basePattern=/<base\s+href=["']\/(?:old|new)\/["']\s*\/?>/;
+ if(!basePattern.test(html))
    throw Error('Unexpected Flutter HTML base href; same-path evidence INVALID');
- const fixed=html.replace(/<base\\s+href=["']\\/(?:old|new)\\/["']\\s*\\/?\s*>/,
-   '<base href="/app/">');
+ const fixed=html.replace(basePattern,'<base href="/app/">');
  fs.writeFileSync(index,fixed,'utf8');
  if (!fs.existsSync(path.join(live,'drift_worker.js')) ||
      !fs.existsSync(path.join(live,'sqlite3.wasm'))) {
