@@ -22,23 +22,30 @@ Future<void> main() async {
     return;
   }
   IndexedDbFileSystem? storage;
+  var stage = 'IDB_OPEN';
   try {
     storage = await IndexedDbFileSystem.open(
       dbName: isPlain ? plaintextName : encryptedName,
       writeAutomatically: false,
     );
+    stage = 'WASM_LOAD';
     final sqlite = await WasmSqlite3.loadFromUrlString('sqlite3mc.wasm');
+    stage = 'VFS_REGISTER';
     sqlite.registerVirtualFileSystem(storage, makeDefault: true);
+    stage = 'SQLITE_OPEN';
     final db = sqlite.open('/database');
     try {
       // SQLite silently ignores unknown PRAGMAs; check cipher first.
+      stage = 'PRAGMA_CIPHER';
       if (db.select('PRAGMA cipher').isEmpty) {
         throw StateError('FAIL_CLOSED_NO_CIPHER');
       }
       if (isCipher) {
+        stage = 'PRAGMA_KEY';
         db.execute("PRAGMA key = '" +
             (phase == 'wrong_key' ? badKey : fakeKey) + "'");
       }
+      stage = 'SQLITE_TEST';
       if (phase == 'wrong_key') {
         var rejected = false;
         try {
@@ -71,13 +78,15 @@ Future<void> main() async {
     } finally {
       db.close();
     }
+    stage = 'IDB_FLUSH';
     await storage.flush();
+    stage = 'IDB_CLOSE';
     await storage.close();
     storage = null;
     html.document.title = 'IAMINA_D1P0C_PASS_' + phase!.toUpperCase();
   } catch (error) {
-    html.document.title = 'IAMINA_D1P0C_FAIL_' +
-        (error is StateError ? 'STATE' : 'SQLITE');
+    // Stage only: never print potentially sensitive SQL/error/key text.
+    html.document.title = 'IAMINA_D1P0C_FAIL_' + stage;
     try {
       await storage?.close();
     } catch (_) {}
