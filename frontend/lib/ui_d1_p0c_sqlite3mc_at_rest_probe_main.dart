@@ -35,15 +35,17 @@ Future<void> main() async {
     stage = 'SQLITE_OPEN';
     final db = sqlite.open('/database');
     try {
-      // SQLite silently ignores unknown PRAGMAs; check cipher first.
-      stage = 'PRAGMA_CIPHER';
-      if (db.select('PRAGMA cipher').isEmpty) {
-        throw StateError('FAIL_CLOSED_NO_CIPHER');
-      }
+      // The key must precede ALL schema reads and write statements.
+      // The fake credentials exist only in this synthetic research fixture.
       if (isCipher) {
         stage = 'PRAGMA_KEY';
         db.execute("PRAGMA key = '" +
             (phase == 'wrong_key' ? badKey : fakeKey) + "'");
+      }
+      // SQLite ignores unknown PRAGMAs, so confirm cipher support.
+      stage = 'PRAGMA_CIPHER';
+      if (db.select('PRAGMA cipher').isEmpty) {
+        throw StateError('FAIL_CLOSED_NO_CIPHER');
       }
       stage = 'SQLITE_TEST';
       if (phase == 'wrong_key') {

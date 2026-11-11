@@ -38,10 +38,10 @@ jobs:
           printf '<!doctype html><html><head><title>bare dart runner</title></head><body><script defer src="/main.dart.js"></script></body></html>\n' \
             >/tmp/d1-p0c-bare-dart/index.html
           curl --fail --location --retry 3 --silent --show-error \
-            https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3mc.wasm \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm \
             --output /tmp/d1-p0c-bare-dart/sqlite3mc.wasm
           printf '%s  %s\n' \
-            '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
             /tmp/d1-p0c-bare-dart/sqlite3mc.wasm | sha256sum --check
       - uses: actions/setup-node@v4
         with:

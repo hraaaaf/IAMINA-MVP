@@ -35,28 +35,18 @@ jobs:
         run: |
           set -euo pipefail
           flutter pub get
-          # CI-only: the official sqlite3mc.wasm requires newer Web VFS
-          # bindings (dart:xFileSize64) absent in the committed sqlite3 3.5.2.
-          # NEVER commit this resolved lockfile to the patient runtime.
-          # A plain "pub upgrade sqlite3" leaves 3.5.2 because of the current
-          # transitive solver graph. Force the exact target only in this
-          # disposable runner to test compatibility; neither pubspec nor lock
-          # is committed to IAMINA runtime by this experiment.
-          flutter pub add sqlite3:3.9.1
-          grep -A 8 '^  sqlite3:' pubspec.lock | grep -F 'version: "3.9.1"'
+          # Keep the runtime-locked sqlite3 3.5.2 untouched. Use the
+          # official matching sqlite3mc.wasm release, never upgrade the
+          # clinical dependency graph as an unreviewed CI side effect.
+          grep -A 8 '^  sqlite3:' pubspec.lock | grep -F 'version: "3.5.2"'
           curl --fail --location --retry 3 --silent --show-error \
-            https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3mc.wasm \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm \
             --output web/sqlite3mc.wasm
           printf '%s  %s\n' \
-            '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
             web/sqlite3mc.wasm | sha256sum --check
           bash scripts/verify_drift_web_assets.sh verify
-          git diff --exit-code -- web/sqlite3.wasm web/drift_worker.js
-          # Both manifest and lockfile changes must be runner-only.
-          if git diff --quiet -- pubspec.yaml || git diff --quiet -- pubspec.lock; then
-            echo 'Missing expected ephemeral sqlite3 resolver changes'
-            exit 1
-          fi
+          git diff --exit-code -- pubspec.yaml pubspec.lock web/sqlite3.wasm web/drift_worker.js
       - name: Static analysis and compile isolated fake-data probe
         working-directory: frontend
         shell: bash
@@ -67,7 +57,7 @@ jobs:
             -t lib/ui_d1_p0c_sqlite3mc_at_rest_probe_main.dart
           test -s build/web/sqlite3mc.wasm
           printf '%s  %s\n' \
-            '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
             build/web/sqlite3mc.wasm | sha256sum --check
       - uses: actions/setup-node@v4
         with:
