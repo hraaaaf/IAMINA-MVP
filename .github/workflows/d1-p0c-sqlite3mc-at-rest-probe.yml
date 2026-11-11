@@ -2,9 +2,11 @@ name: D1 P0-C SQLite3MC physical at-rest probe (NO DEPLOY)
 
 on:
   push:
-    branches: [research/d1-p0c-sqlite3mc-at-rest-web-20261111]
+    branches: [research/d1-p0c-sqlite3mc-at-rest-web-20261111, integration/d1-p0c-appdatabase-encrypted-fixture-20261111]
     paths:
       - 'frontend/lib/ui_d1_p0c_sqlite3mc_at_rest_probe_main.dart'
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/data/drift/patient_vault_scope.dart'
       - 'tools/d1_p0c_sqlite3mc_at_rest_browser.js'
       - '.github/workflows/d1-p0c-sqlite3mc-at-rest-probe.yml'
   workflow_dispatch:
@@ -62,10 +64,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Playwright browser
+      - name: Install pinned Playwright package and Chromium browser
         run: |
+          set -euo pipefail
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps ${{ matrix.browser }}
+          # WebKit needs native libs missing from ubuntu-latest. Run it in
+          # the matching official Playwright image instead of using apt.
+          # Chromium remains on the known-good hosted runner.
+          if [ "${{ matrix.browser }}" = chromium ]; then
+            npx playwright install chromium
+          fi
       - name: Assert ciphertext vs raw plaintext control in physical IndexedDB
         env:
           D1_BROWSER: ${{ matrix.browser }}
@@ -79,7 +87,19 @@ jobs:
           trap 'kill "$PID" 2>/dev/null || true' EXIT
           curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
             http://127.0.0.1:7398/ >/dev/null
-          node tools/d1_p0c_sqlite3mc_at_rest_browser.js
+          if [ "$D1_BROWSER" = webkit ]; then
+            # Official Microsoft Playwright image includes WebKit and its
+            # Ubuntu native dependencies. Share only the test workspace;
+            # host networking preserves the existing localhost fixture.
+            docker run --rm --network host \
+              --env D1_BROWSER=webkit \
+              --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+              --volume "$PWD:/work" --workdir /work \
+              mcr.microsoft.com/playwright:v1.55.0-noble \
+              node tools/d1_p0c_sqlite3mc_at_rest_browser.js
+          else
+            node tools/d1_p0c_sqlite3mc_at_rest_browser.js
+          fi
       - name: Preserve synthetic proof
         if: always()
         uses: actions/upload-artifact@v4
