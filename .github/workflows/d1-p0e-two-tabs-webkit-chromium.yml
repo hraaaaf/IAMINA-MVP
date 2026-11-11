@@ -63,6 +63,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d1-p0e-${{ matrix.browser }}-two-tab-evidence
-          path: d1-p0e-*-browser-proof.json
+          path: d1-p0e-*-single-runtime-proof.json
           retention-days: 14
           if-no-files-found: warn
