@@ -43,10 +43,29 @@ async function phase(page, phaseName, id) {
       await phase(tabA,'verify_a','tab-A-sequential-control');
       await phase(tabB,'verify_b','tab-B-sequential-control');
       // Stress arm: prove reads at the same time, never silently serialize.
-      await Promise.all([
+      const concurrent = await Promise.allSettled([
         phase(tabA,'verify_a','tab-A'),
         phase(tabB,'verify_b','tab-B'),
       ]);
+      if (concurrent.some(p=>p.status==='rejected')) {
+        outcome.concurrentErrors=concurrent.map((p,i)=>({
+          tab:i?'B':'A',status:p.status,
+          error:p.status==='rejected'?String(p.reason).slice(0,260):null,
+        }));
+        // Negative diagnostic: distinguish a transient two-writer conflict
+        // from persistent loss. Still FAIL the gate even if recovery succeeds.
+        outcome.afterConflict={};
+        for (const [tab,phaseName] of [
+          [tabA,'verify_a'],[tabB,'verify_b']]) {
+          try {
+            await phase(tab,phaseName,'recovery-check');
+            outcome.afterConflict[phaseName]='PRESENT';
+          } catch(e) {
+            outcome.afterConflict[phaseName]=String(e).slice(0,220);
+          }
+        }
+        throw Error('simultaneous Web vault reads failed; see afterConflict');
+      }
       await phase(tabB,'verify_a','tab-B-switch-to-A');
       await phase(tabA,'verify_b','tab-A-switch-to-B');
       await Promise.all([
