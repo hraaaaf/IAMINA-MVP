@@ -33,3 +33,9 @@ jobs:
       - name: Verify original tests + A/B recovery negative and positive cases
         working-directory: frontend
         run: flutter test --no-pub --reporter expanded test/services/app_lock_service_test.dart
+      - name: Cross-check scoped backups, rollback and forged owner rejection
+        working-directory: frontend
+        run: |
+          flutter test --no-pub --reporter expanded test/data/drift/patient_vault_backup_boundary_test.dart
+          flutter test --no-pub --reporter expanded test/data/drift/local_backup_restore_test.dart
+          flutter test --no-pub --reporter expanded test/data/drift/patient_treatment_backup_v11_test.dart
