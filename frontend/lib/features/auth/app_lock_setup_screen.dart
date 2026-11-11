@@ -127,6 +127,8 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
     final dark = AminaTheme.isDark(context);
     final capability = _capability;
     final supported = capability == AppLockCapability.supported;
+    final webLockRequired =
+        !context.read<AppLockService>().canOptOutOfAppLock;
 
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
@@ -232,7 +234,9 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        l10n.appLockSetupSubtitle,
+                                        webLockRequired
+                                            ? l10n.appLockWebRequiredSubtitle
+                                            : l10n.appLockSetupSubtitle,
                                         style: TextStyle(
                                           fontSize: 13.5,
                                           height: 1.45,
@@ -266,7 +270,9 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                               _WarningBox(
                                 text: capability == AppLockCapability.insecureContext
                                     ? l10n.appLockInsecureContext
-                                    : l10n.appLockUnavailable,
+                                    : webLockRequired
+                                        ? l10n.appLockWebUnavailable
+                                        : l10n.appLockUnavailable,
                               ),
                             ],
                             if (_error != null) ...[
@@ -293,8 +299,9 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            OutlinedButton.icon(
+                            if (context.read<AppLockService>().canOptOutOfAppLock) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
                               key: const Key('d30-skip-app-lock'),
                               onPressed: _busy ? null : _continueWithoutLock,
                               icon: const Icon(Icons.lock_open_outlined),
@@ -309,7 +316,8 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                               ),
-                            ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

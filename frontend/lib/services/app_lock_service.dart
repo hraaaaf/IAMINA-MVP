@@ -61,6 +61,10 @@ class AppLockService extends ChangeNotifier {
   bool get isRequired => _required;
   bool get isExplicitlySkipped => _explicitlySkipped;
   bool get isUnlocked => _unlocked;
+  // D1 P0: Web patient SQLite is not yet certified as encrypted at rest.
+  // This is a compile-time platform refusal, NOT a browser preference,
+  // feature flag, or remotely asserted claim of encryption readiness.
+  bool get canOptOutOfAppLock => !kIsWeb;
   bool get recoveryRequired => _recoveryRequired;
   bool get needsSetup => _initialized && !_configured && !_explicitlySkipped && !_recoveryRequired;
 
@@ -80,8 +84,11 @@ class AppLockService extends ChangeNotifier {
       final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
       final ownerChoice = owner == null ? null
           : await _storage.read(key: _ownerChoiceKey(owner));
-      final chosenNoLock = ownerChoice == _skippedChoice ||
-          (choiceValue == _skippedChoice && owner == choiceOwner);
+      // Old Web skip markers are untrusted and must never override the
+      // hard crypto prerequisite. Preserve their bytes for verified recovery.
+      final chosenNoLock = canOptOutOfAppLock &&
+          (ownerChoice == _skippedChoice ||
+              (choiceValue == _skippedChoice && owner == choiceOwner));
       _required = requiredValue == _requiredValue;
 
       if (rawCredential != null && rawCredential.isNotEmpty) {
@@ -143,6 +150,26 @@ class AppLockService extends ChangeNotifier {
 
   Future<AppLockCapability> capability() => _authenticator.capability();
 
+  // D1 P0: a platform/WebAuthn assertion can complete after logout or
+  // an A→B account switch. Neither an in-flight assertion nor a completed
+  // secure-storage write is authorization to publish an unlocked B vault.
+  Future<void> _requireSameAuthenticatedVault(
+    int expectedEpoch,
+    String? expectedOwner,
+  ) async {
+    final auth = _authService;
+    // Unit tests without AuthService never publish a patient runtime vault.
+    if (auth == null) return;
+    if (expectedEpoch != AuthService.authEpoch ||
+        !auth.isAuthenticated ||
+        expectedOwner == null ||
+        (await auth.resolvePatientVaultScope())?.databaseName !=
+            expectedOwner ||
+        expectedEpoch != AuthService.authEpoch) {
+      throw const AppLockException('patient_changed_during_lock_verification');
+    }
+  }
+
   Future<void> recoverWithVerifiedRemoteAccount() async {
     if (!_initialized) {
       throw StateError('App lock requires initialized state');
@@ -173,6 +200,9 @@ class AppLockService extends ChangeNotifier {
   /// an ambiguous/recovery vault. A compromised browser profile is out of
   /// scope for device-local data when the user deliberately declines a lock.
   Future<void> continueWithoutAppLock() async {
+    if (!canOptOutOfAppLock) {
+      throw const AppLockException('web_encrypted_vault_required');
+    }
     if (!_initialized || _configured || _required || _recoveryRequired) {
       throw const AppLockException('protected_vault_cannot_skip_lock');
     }
@@ -194,6 +224,9 @@ class AppLockService extends ChangeNotifier {
   /// verification. Keep the credential for other locally saved owners.
   /// Nothing here grants backend auth or enables clinical data sync.
   Future<void> disableForCurrentVault() async {
+    if (!canOptOutOfAppLock) {
+      throw const AppLockException('web_encrypted_vault_required');
+    }
     final auth = _authService;
     final credential = _credential;
     if (!_initialized || !_configured || !_required || _recoveryRequired ||
@@ -269,7 +302,8 @@ class AppLockService extends ChangeNotifier {
     } catch (_) {
       // Enrollment failure restores the previous user choice; it cannot
       // weaken any existing lock because there was no credential.
-      if (!_configured && !_required && !_recoveryRequired &&
+      if (canOptOutOfAppLock &&
+          !_configured && !_required && !_recoveryRequired &&
           epoch == AuthService.authEpoch) {
         await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
         _explicitlySkipped = true;
@@ -286,7 +320,11 @@ class AppLockService extends ChangeNotifier {
     if (_recoveryRequired) {
       throw const AppLockException('recovery_required');
     }
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final capability = await _authenticator.capability();
+    await _requireSameAuthenticatedVault(epoch, owner);
     if (capability == AppLockCapability.insecureContext) {
       throw const AppLockException('insecure_context');
     }
@@ -295,8 +333,10 @@ class AppLockService extends ChangeNotifier {
     }
 
     final credential = await _authenticator.enroll();
+    await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _credentialKey, value: credential.encode());
     await _storage.write(key: _requiredKey, value: _requiredValue);
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = credential;
     _explicitlySkipped = false;
@@ -319,9 +359,14 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('app_lock_not_configured');
     }
 
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final assertion = await _authenticator.unlock(credential);
+    await _requireSameAuthenticatedVault(epoch, owner);
     final updated = credential.copyWith(signCount: assertion.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = updated;
     _unlocked = true;
@@ -367,6 +412,9 @@ class AppLockService extends ChangeNotifier {
   }
 
   Future<void> _restoreChoiceForCurrentOwner(int generation) async {
+    // Never resurrect an old Web opt-out after switching A→B→A or login.
+    // The historical preference is not proof of encrypted vault protection.
+    if (!canOptOutOfAppLock) return;
     if (!_initialized || _recoveryRequired) return;
     try {
       final choice = await _storage.read(key: _choiceKey);

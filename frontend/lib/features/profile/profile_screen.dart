@@ -236,7 +236,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_savingLockPreference) return;
     final lock = context.read<AppLockService>();
     final disabling = lock.isConfigured && !lock.isExplicitlySkipped;
-    if (lock.recoveryRequired) return;
+    // Web plaintext medical vaults cannot have their last application lock
+    // disabled until an independently certified encrypted-vault cutover.
+    if (lock.recoveryRequired ||
+        (disabling && !lock.canOptOutOfAppLock)) return;
     final question = disabling
         ? _profileUiText(context,
             fr: 'Désactiver le verrouillage pour ce profil ? Une nouvelle vérification sera exigée. Toute personne ayant accès à ce navigateur pourra consulter vos données de santé locales. La synchronisation clinique demeure suspendue sans verrouillage actif.',

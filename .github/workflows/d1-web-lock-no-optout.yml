@@ -1,0 +1,106 @@
+name: D1 P0 Web app-lock opt-out denial (no deploy)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/test/features/d30_local_enrollment_cta_test.dart'
+      - 'frontend/test/services/d1_web_lock_no_optout_browser_test.dart'
+      - 'tools/d1_web_lock_before_after_probe.js'
+      - '.github/workflows/d1-web-lock-no-optout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-lock-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout baseline main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          path: before
+          persist-credentials: false
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: after
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Resolve Flutter packages and analyze candidate
+        working-directory: after/frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos
+      - name: D1 P0 native and legacy regression
+        working-directory: after/frontend
+        run: |
+          flutter test --no-pub test/services/app_lock_service_test.dart
+          flutter test --no-pub test/features/d30_local_enrollment_cta_test.dart
+          flutter test --no-pub test/app_lock_ui_contract_test.dart
+      - name: Install Chromium
+        working-directory: after
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Real Flutter Web browser enforces no-opt-out and no-CTA
+        working-directory: after/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CHROME_EXECUTABLE="$(node -p "require('../node_modules/playwright').chromium.executablePath()")"
+          flutter test --no-pub --platform chrome --reporter expanded test/services/d1_web_lock_no_optout_browser_test.dart
+      - name: Build BEFORE Web audit shell
+        working-directory: before/frontend
+        run: |
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Build AFTER Web audit shell
+        working-directory: after/frontend
+        run: |
+          flutter build web --release --no-web-resources-cdn --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: BEFORE/AFTER FR/AR pixel evidence (390/430/768/1280px)
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd before/frontend/build/web && python3 -m http.server 7381 --bind 127.0.0.1 >/tmp/iamina-d1-before.log 2>&1) &
+          BEFORE_PID=$!
+          (cd after/frontend/build/web && python3 -m http.server 7382 --bind 127.0.0.1 >/tmp/iamina-d1-after.log 2>&1) &
+          AFTER_PID=$!
+          trap 'kill $BEFORE_PID $AFTER_PID 2>/dev/null || true' EXIT
+          for port in 7381 7382; do
+            for i in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:${port}/" >/dev/null; then break; fi
+              sleep 1
+            done
+            curl -fsS "http://127.0.0.1:${port}/" >/dev/null
+          done
+          cd after
+          D1_BEFORE_URL=http://127.0.0.1:7381/ D1_AFTER_URL=http://127.0.0.1:7382/ \
+          D1_VISUAL_DIR=d1-web-lock-visual node tools/d1_web_lock_before_after_probe.js
+      - name: Preserve visual proofs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-web-lock-before-after
+          path: |
+            after/d1-web-lock-visual/*
+            /tmp/iamina-d1-before.log
+            /tmp/iamina-d1-after.log
+          if-no-files-found: ignore
+          retention-days: 7

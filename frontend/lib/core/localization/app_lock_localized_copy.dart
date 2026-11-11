@@ -33,6 +33,20 @@ extension AppLockLocalizedCopy on AppLocalizations {
         ar: 'اختر حماية مساحتك الصحية بقفل الجهاز الآمن أو المتابعة بدونه بعد مراجعة المخاطر.',
       );
 
+  // Web D1 P0 deliberately forbids a no-lock option until clinical
+  // SQLite storage has an independently certified encryption-at-rest gate.
+  String get appLockWebRequiredSubtitle => _appLockPick(
+        en: 'Protect your health space with this device’s secure unlock. On the Web, app locking is required before accessing a patient vault.',
+        fr: 'Protégez votre espace santé avec le déverrouillage sécurisé de cet appareil. Sur le Web, le verrouillage est obligatoire avant d’accéder au coffre patient.',
+        ar: 'احمِ مساحتك الصحية باستخدام القفل الآمن لهذا الجهاز. على الويب، يجب تفعيل القفل قبل الوصول إلى خزنة المريض.',
+      );
+
+  String get appLockWebUnavailable => _appLockPick(
+        en: 'Secure device unlock is unavailable in this browser. Access to the local patient vault remains blocked. Use a compatible secure browser or device.',
+        fr: 'Le verrou sécurisé n’est pas disponible sur ce navigateur. L’accès au coffre patient local reste bloqué. Utilisez un navigateur ou un appareil sécurisé compatible.',
+        ar: 'القفل الآمن غير متاح في هذا المتصفح. سيظل الوصول إلى خزنة المريض المحلية محظورًا. استخدم متصفحًا أو جهازًا آمنًا متوافقًا.',
+      );
+
   String get appLockOffline => _appLockPick(
         en: 'Unlock works locally, including when IAmina is offline.',
         fr: 'Le déverrouillage fonctionne localement, même lorsque IAmina est hors connexion.',
