@@ -300,6 +300,10 @@ void main() {
     );
     await auth.initialize();
     expect(auth.isAuthenticated, isTrue);
+    // A persisted legacy local-session marker without a bound device UUID
+    // is NOT a verified patient vault. Enroll the scoped test device first.
+    await auth.enrollLocalDevice();
+    expect(await auth.resolvePatientVaultScope(), isNotNull);
 
     final lock = AppLockService(
       authenticator: _FakeAuthenticator(),
