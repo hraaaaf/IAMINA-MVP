@@ -293,8 +293,9 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            OutlinedButton.icon(
+                            if (context.read<AppLockService>().canOptOutOfAppLock) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
                               key: const Key('d30-skip-app-lock'),
                               onPressed: _busy ? null : _continueWithoutLock,
                               icon: const Icon(Icons.lock_open_outlined),
@@ -309,7 +310,8 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                               ),
-                            ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
