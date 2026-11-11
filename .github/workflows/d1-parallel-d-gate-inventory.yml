@@ -1,0 +1,31 @@
+name: D1 D known clinical NO-GO gate inventory (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-parallel-d-gate-inventory-20261111]
+    paths:
+      - 'tools/d1_parallel/gate_inventory.mjs'
+      - 'tools/d1_parallel/gate_inventory.test.mjs'
+      - '.github/workflows/d1-parallel-d-gate-inventory.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  known-no-go-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tools/d1_parallel/gate_inventory.test.mjs
+      - run: node tools/d1_parallel/gate_inventory.mjs
+      - name: Save red-gate evidence (NOT a clinical release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-parallel-d-red-gates
+          path: d1-parallel-d-inventory.json
+          retention-days: 14
