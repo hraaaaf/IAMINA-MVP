@@ -56,6 +56,8 @@ void main() {
     expect(gate.ready,isFalse);
     expect(gate.assertQueryAllowed,throwsStateError);
     gate.retire();
+    await Future<void>.delayed(Duration.zero);
+    expect(worker.closed,isTrue,reason:'retiring owner must close the worker port');
     expect(gate.assertQueryAllowed,throwsStateError);
   });
   test('D1-A: auth epoch switch DURING open denies publication, closes worker',() async{
