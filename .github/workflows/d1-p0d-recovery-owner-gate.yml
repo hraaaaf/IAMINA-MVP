@@ -1,0 +1,35 @@
+name: D1 P0-D recovery owner binding (synthetic, no deploy)
+
+on:
+  push:
+    branches: [d1-p0d-recovery-owner-20261111]
+    paths:
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/test/services/app_lock_service_test.dart'
+      - '.github/workflows/d1-p0d-recovery-owner-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Dependency resolution and source analysis
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/services/app_lock_service.dart test/services/app_lock_service_test.dart
+      - name: Verify original tests + A/B recovery negative and positive cases
+        working-directory: frontend
+        run: flutter test --no-pub --reporter expanded test/services/app_lock_service_test.dart
