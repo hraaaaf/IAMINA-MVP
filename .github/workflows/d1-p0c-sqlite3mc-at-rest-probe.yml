@@ -38,7 +38,11 @@ jobs:
           # CI-only: the official sqlite3mc.wasm requires newer Web VFS
           # bindings (dart:xFileSize64) absent in the committed sqlite3 3.5.2.
           # NEVER commit this resolved lockfile to the patient runtime.
-          flutter pub upgrade sqlite3
+          # A plain "pub upgrade sqlite3" leaves 3.5.2 because of the current
+          # transitive solver graph. Force the exact target only in this
+          # disposable runner to test compatibility; neither pubspec nor lock
+          # is committed to IAMINA runtime by this experiment.
+          flutter pub add sqlite3:3.9.1
           grep -A 8 '^  sqlite3:' pubspec.lock | grep -F 'version: "3.9.1"'
           curl --fail --location --retry 3 --silent --show-error \
             https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3mc.wasm \
@@ -47,9 +51,12 @@ jobs:
             '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
             web/sqlite3mc.wasm | sha256sum --check
           bash scripts/verify_drift_web_assets.sh verify
-          git diff --exit-code -- pubspec.yaml web/sqlite3.wasm web/drift_worker.js
-          # pubspec.lock must be changed ONLY inside disposable CI staging.
-          git diff --quiet -- pubspec.lock && { echo 'expected ephemeral sqlite3 binding upgrade'; exit 1; } || true
+          git diff --exit-code -- web/sqlite3.wasm web/drift_worker.js
+          # Both manifest and lockfile changes must be runner-only.
+          if git diff --quiet -- pubspec.yaml || git diff --quiet -- pubspec.lock; then
+            echo 'Missing expected ephemeral sqlite3 resolver changes'
+            exit 1
+          fi
       - name: Static analysis and compile isolated fake-data probe
         working-directory: frontend
         shell: bash
