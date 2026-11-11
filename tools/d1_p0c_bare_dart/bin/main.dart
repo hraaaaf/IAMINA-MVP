@@ -10,9 +10,13 @@ Future<void> main() async {
   try {
     final sqlite = await WasmSqlite3.loadFromUrlString('/sqlite3mc.wasm');
     step = 'INMEMORY_VFS';
-    sqlite.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
+    // SQLite3MultipleCiphers wraps a named VFS. Register the underlying
+    // Dart VFS without making it default; select its encrypted wrapper.
+    final vfs = InMemoryFileSystem();
+    sqlite.registerVirtualFileSystem(vfs);
     step = 'OPEN_DB';
-    final db = sqlite.open('/test_database');
+    final db = sqlite.open('/test_database',
+        vfs: 'multipleciphers-${vfs.name}');
     try {
       // Match sqlite3's documented SQLite3MC example: set key immediately
       // after opening. No SELECT or cipher introspection before key admission.

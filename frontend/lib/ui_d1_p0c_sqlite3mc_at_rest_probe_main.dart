@@ -31,9 +31,12 @@ Future<void> main() async {
     stage = 'WASM_LOAD';
     final sqlite = await WasmSqlite3.loadFromUrlString('sqlite3mc.wasm');
     stage = 'VFS_REGISTER';
-    sqlite.registerVirtualFileSystem(storage, makeDefault: true);
+    // Do not make the underlying VFS the default. SQLite3MultipleCiphers
+    // requires its named encrypted VFS wrapper for PRAGMA key to work.
+    sqlite.registerVirtualFileSystem(storage);
     stage = 'SQLITE_OPEN';
-    final db = sqlite.open('/database');
+    final db = sqlite.open('/database',
+        vfs: 'multipleciphers-${storage.name}');
     try {
       // The key must precede ALL schema reads and write statements.
       // The fake credentials exist only in this synthetic research fixture.
