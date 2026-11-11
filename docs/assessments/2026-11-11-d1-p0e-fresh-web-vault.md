@@ -13,3 +13,6 @@ Required before release: full Web build, Chrome and WebKit cold persistence, sin
 ## Evidence pinning / verification gate (11 November 2026)
 
 Materialization commit **598b9d6359cbd7815ad5d40fa0984bf3722b01b0**, GitHub Actions #42998292839 completed/success. Actual committed lockfile: drift 2.35.4, drift_flutter 0.3.1, sqlite3 3.5.2, sqlite3_flutter_libs 0.6.0+eol; drift_dev absent. GitHub commit contains exactly frontend/pubspec.lock, frontend/web/drift_worker.js, frontend/web/sqlite3.wasm. Pinned SHA256 installer gate passed. Full browser/UI CI on the final branch SHA remains **to be proven**. This documentation commit triggers that independent gate; do not interpret earlier synthetic experiments as a final integrated certification.
+
+## CI test-path correction (11 November 2026)
+Initial integrated workflow #42998589299 discovered test path `frontend/test/data/drift/local_backup_restore_test.dart` (not `test/services/`). Workflow corrected in commit 7018b235b4538a0fdbb3c279944ad3842fd1e0a5. Re-run real integrated checks on new exact head; prior run red is not a product verdict.
