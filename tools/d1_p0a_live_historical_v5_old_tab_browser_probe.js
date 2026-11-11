@@ -65,6 +65,16 @@ async function phase(page, path, title, name) {
     expected('REAL_OLD_V5_LATE_WRITE_STILL_POSSIBLE',
       await oldTab.title(),'IAMINA_V5_LATE_WRITE_AFTER_V12_A_PASS');
 
+    // Keep the REAL historic v5 code alive while the isolated v12 account B
+    // opens and A/B are both read back. This proves containment, NOT a
+    // capability to stop an old offline writer.
+    await phase(current,'/current/?phase=seed_b',
+      'IAMINA_D1P0A_SEED_B_PASS','v12_opens_isolated_patient_vault_B');
+    await phase(current,'/current/?phase=verify_a',
+      'IAMINA_D1P0A_VERIFY_A_PASS','A_unchanged_while_v5_tab_writes');
+    await phase(current,'/current/?phase=verify_b',
+      'IAMINA_D1P0A_VERIFY_B_PASS','B_unchanged_while_v5_tab_writes');
+
     // Close stale writer before upgrading legacy SQLite v5 to v12. This is
     // only a diagnostic verification, NOT a credential/possession cutover.
     await oldTab.close();
@@ -74,6 +84,8 @@ async function phase(page, path, title, name) {
       'v12_drift_readback_preserves_both_old_rows');
     await phase(current,'/current/?phase=verify_a',
       'IAMINA_D1P0A_VERIFY_A_PASS','A_vault_remains_isolated_and_integral');
+    await phase(current,'/current/?phase=verify_b',
+      'IAMINA_D1P0A_VERIFY_B_PASS','B_preserved_after_legacy_readback');
     proof.result='PASS_NEGATIVE_PROOF';
     proof.conclusion='UNFENCED_REAL_V5_WRITER_CONFIRMED';
     proof.patientCutover='FORBIDDEN';
