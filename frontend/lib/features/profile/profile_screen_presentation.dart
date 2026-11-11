@@ -594,7 +594,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                       _savingLockPreference ||
                       (enabled && !lock.canOptOutOfAppLock))
                   ? null
-                  : _changeAppLockPreference,
+                  : () { _changeAppLockPreference(); },
             );
           },
         ),
