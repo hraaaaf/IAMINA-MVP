@@ -23,7 +23,12 @@ async function phase(ctx,name) {
    {wanted},{timeout:90000});
   const got=await p.title();
   report.phases.push({phase:name,title:got});
-  if(got!==wanted)throw Error('SQLite probe stage '+name+' failed with '+got);
+  if(got!==wanted){
+   const preKeyTransport=await p.evaluate(()=>
+    document.documentElement.dataset.d1WasmError||'');
+   throw Error('SQLite probe stage '+name+' failed with '+got+
+    (preKeyTransport ? ' (pre-key wasm transport: '+preKeyTransport+')' : ''));
+  }
   return p;
  }catch(e){await p.close();throw e;}
 }
