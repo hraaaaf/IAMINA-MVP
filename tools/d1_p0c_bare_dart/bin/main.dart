@@ -43,6 +43,15 @@ Future<void> main() async {
           error.resultCode.toString();
       html.document.documentElement?.dataset['d1SqliteExtendedCode'] =
           error.extendedResultCode.toString();
+      // This runner has fake-only SQL and keys. Keep even its error text
+      // redacted and bounded; no SQL statement or parameters are exported.
+      final safeMessage = error.message
+          .replaceAll('FAKE_CI_ONLY_NO_USER_DATA', 'REDACTED')
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_ -]'), '_');
+      html.document.title +=
+          '_MSG_' + (safeMessage.length > 90
+              ? safeMessage.substring(0, 90)
+              : safeMessage).replaceAll(' ', '_');
     }
     final stackText = stack.toString();
     html.document.documentElement?.dataset['d1Stack'] =
