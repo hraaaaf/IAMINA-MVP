@@ -46,6 +46,7 @@ async function phase(page, phaseName, id) {
     try {
       const tabA=await context.newPage();
       const tabB=await context.newPage();
+      await phase(tabA,'seed_a','tab-A');
       outcome.browserFeatures=await tabA.evaluate(()=>({
         crossOriginIsolated:globalThis.crossOriginIsolated===true,
         sharedArrayBuffer:typeof SharedArrayBuffer==='function',
@@ -56,7 +57,6 @@ async function phase(page, phaseName, id) {
       if (!outcome.browserFeatures.crossOriginIsolated) {
         throw Error('Synthetic COOP/COEP test origin not cross-origin isolated');
       }
-      await phase(tabA,'seed_a','tab-A');
       await phase(tabB,'seed_b','tab-B');
       // Control arm: both tabs remain live, but verification requests are
       // serialized to distinguish same-origin persistence from DB contention.
