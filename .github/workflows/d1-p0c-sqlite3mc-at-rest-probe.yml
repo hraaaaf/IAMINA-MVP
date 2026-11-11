@@ -67,7 +67,10 @@ jobs:
       - name: Install Playwright browser
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps ${{ matrix.browser }}
+          # The GitHub-hosted runner already includes browser system libraries.
+          # Avoid apt font downloads while Ubuntu mirror DNS is unavailable;
+          # keep browser launch + all ciphertext assertions fully enforced.
+          npx playwright install ${{ matrix.browser }}
       - name: Assert ciphertext vs raw plaintext control in physical IndexedDB
         env:
           D1_BROWSER: ${{ matrix.browser }}
