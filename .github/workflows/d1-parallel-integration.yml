@@ -1,0 +1,55 @@
+name: D1 A+B+C+D research integration tests (NO DEPLOY)
+
+on:
+  push:
+    branches: [integration/d1-parallel-qa-20261111]
+    paths:
+      - 'frontend/lib/data/drift/d1_worker_admission_protocol.dart'
+      - 'frontend/lib/services/d1_session_fence.dart'
+      - 'frontend/test/d1_parallel/**'
+      - 'tools/d1_parallel/**'
+      - '.github/workflows/d1-parallel-integration.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  flutter-worker-and-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Analyze and test A+C on same commit
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/data/drift/d1_worker_admission_protocol.dart lib/services/d1_session_fence.dart
+          flutter test test/d1_parallel/
+  node-backup-and-red-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test B+D at same commit (synthetic)
+        run: |
+          set -euo pipefail
+          node --test tools/d1_parallel/backup_codec.test.mjs tools/d1_parallel/gate_inventory.test.mjs
+          node tools/d1_parallel/gate_inventory.mjs
+      - name: Preserve clinical NO-GO inventory only
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-combined-known-no-go-gates
+          path: d1-parallel-d-inventory.json
+          retention-days: 14
