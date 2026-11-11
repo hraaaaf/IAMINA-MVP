@@ -133,17 +133,25 @@ class AppDatabase extends _$AppDatabase {
   // This constructor intentionally does NOT migrate or read the legacy DB.
   // Integrating the runtime vault switch requires an independent full-flow
   // A→logout→B certification before any real patient use.
-  AppDatabase.forPatientVault(PatientVaultScope scope)
-    : patientVaultScope = scope,
-      super(
-        driftDatabase(
-          name: scope.databaseName,
-          web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
+  AppDatabase.forPatientVault(
+    PatientVaultScope scope, {
+    // Optional CI-only observability. Does not select or alter the storage VFS.
+    void Function(String implementation)? onWebStorageResult,
+  })  : patientVaultScope = scope,
+        super(
+          driftDatabase(
+            name: scope.databaseName,
+            web: DriftWebOptions(
+              sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+              driftWorker: Uri.parse('drift_worker.js'),
+              onResult: onWebStorageResult == null
+                  ? null
+                  : (result) => onWebStorageResult(
+                      result.chosenImplementation.toString(),
+                    ),
+            ),
           ),
-        ),
-      );
+        );
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django
