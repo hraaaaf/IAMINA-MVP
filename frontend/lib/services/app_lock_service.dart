@@ -282,7 +282,8 @@ class AppLockService extends ChangeNotifier {
     } catch (_) {
       // Enrollment failure restores the previous user choice; it cannot
       // weaken any existing lock because there was no credential.
-      if (!_configured && !_required && !_recoveryRequired &&
+      if (canOptOutOfAppLock &&
+          !_configured && !_required && !_recoveryRequired &&
           epoch == AuthService.authEpoch) {
         await _storage.write(key: _ownerChoiceKey(owner), value: _skippedChoice);
         _explicitlySkipped = true;
