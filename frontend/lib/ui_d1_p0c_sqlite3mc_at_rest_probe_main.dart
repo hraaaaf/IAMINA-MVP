@@ -87,8 +87,9 @@ Future<void> main() async {
   } catch (error) {
     // WASM_LOAD is before any PRAGMA/key: safe to report transport error only.
     if (stage == 'WASM_LOAD') {
+      final message = error.toString();
       html.document.documentElement?.dataset['d1WasmError'] =
-          error.toString().substring(0, 350);
+          message.length > 350 ? message.substring(0, 350) : message;
     }
     // After loading, never print potentially sensitive SQL/error/key text.
     html.document.title = 'IAMINA_D1P0C_FAIL_' + stage;

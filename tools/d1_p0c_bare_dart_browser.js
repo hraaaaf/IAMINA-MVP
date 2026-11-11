@@ -32,6 +32,7 @@ const report={test:'D1_BARE_DART_SQLITE3MC',browser:browserName,
    }catch(err){report.errors.push({name:'timeout',message:String(err).slice(0,200)});}
    report.title=await p.title();
    report.stack=await p.evaluate(()=>document.documentElement.dataset.d1Stack||null);
+   report.preKeyError=await p.evaluate(()=>document.documentElement.dataset.d1WasmError||null);
    if(report.title!=='D1_BARE_DART_PASS')throw Error('Bare Dart probe did not succeed: '+report.title);
    report.result='PASS_BARE_DART_SQLITE3MC_ONLY';
    console.log(JSON.stringify(report,null,2));

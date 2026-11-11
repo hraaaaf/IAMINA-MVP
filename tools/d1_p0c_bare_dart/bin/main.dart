@@ -36,7 +36,13 @@ Future<void> main() async {
     // full query. Expose only a step / exception runtime type.
     html.document.title = 'D1_BARE_DART_FAIL_' +
         step + '_' + error.runtimeType.toString().replaceAll(' ', '_');
+    final stackText = stack.toString();
     html.document.documentElement?.dataset['d1Stack'] =
-        stack.toString().substring(0, 450);
+        stackText.length > 450 ? stackText.substring(0, 450) : stackText;
+    if (step == 'WASM_LOAD') {
+      final message = error.toString();
+      html.document.documentElement?.dataset['d1WasmError'] =
+          message.length > 300 ? message.substring(0, 300) : message;
+    }
   }
 }
