@@ -13,6 +13,7 @@ const _deviceB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const _legacyFirst = 'd1-p0a-legacy-synthetic-first';
 const _legacyLate = 'd1-p0a-legacy-synthetic-late';
 const _historicalV5 = 'd1-p0a-historical-v5-seed';
+const _oldTabLate = 'd1-p0a-real-old-v5-tab-late-write';
 const _aLog = 'd1-p0a-scope-a-synthetic';
 const _bLog = 'd1-p0a-scope-b-synthetic';
 
@@ -25,12 +26,14 @@ Future<void> main() async {
       'seed_legacy', 'seed_a', 'late_legacy_write',
       'seed_b', 'verify_a', 'verify_b', 'verify_legacy',
       'verify_historical_v5_upgrade',
+      'verify_historical_v5_late_write',
     };
     if (!supported.contains(phase)) {
       throw StateError('unsupported synthetic D1 P0-A phase');
     }
     final legacy = {'seed_legacy', 'late_legacy_write', 'verify_legacy',
-      'verify_historical_v5_upgrade'}
+      'verify_historical_v5_upgrade',
+      'verify_historical_v5_late_write'}
         .contains(phase);
     final a = {'seed_a', 'verify_a'}.contains(phase);
     db = legacy
@@ -70,7 +73,8 @@ Future<void> main() async {
       await present(uuid, glucose);
     }
 
-    if (phase == 'verify_historical_v5_upgrade') {
+    if (phase == 'verify_historical_v5_upgrade' ||
+        phase == 'verify_historical_v5_late_write') {
       // This path is only used after an independent build from the real
       // Git revision where AppDatabase.schemaVersion was 5 seeded the DB.
       await present(_historicalV5, 105);
@@ -86,7 +90,17 @@ Future<void> main() async {
               DateTime.utc(2026, 11, 10, 12)) {
         throw StateError('historic v5 clinical fixture changed during upgrade');
       }
-      if (await vault.countLogs() != 1) {
+      if (phase == 'verify_historical_v5_late_write') {
+        // Negative proof: a REAL still-open historical v5 tab inserted this
+        // fixture after a separate current-v12 patient vault A was live.
+        // No claim of legacy-writer fencing or clinical cutover is permitted.
+        await present(_oldTabLate, 106);
+      } else {
+        await absent(_oldTabLate);
+      }
+      final expectedCount =
+          phase == 'verify_historical_v5_late_write' ? 2 : 1;
+      if (await vault.countLogs() != expectedCount) {
         throw StateError('historical log count not preserved');
       }
       await absent(_legacyFirst);
