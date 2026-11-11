@@ -76,6 +76,10 @@ Future<void> main() async {
         // Original probe failure takes precedence.
       }
     }
-    html.document.title = 'IAMINA_W02_FAIL:${error.runtimeType}';
+    // CI-only synthetic failure: surface the actual storage exception, not
+    // only a minified runtime class, to distinguish WebKit SQLite conflicts.
+    final detail = error.toString();
+    html.document.title = 'IAMINA_W02_FAIL:' +
+        (detail.length > 180 ? detail.substring(0, 180) : detail);
   }
 }
