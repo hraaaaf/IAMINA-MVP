@@ -1,0 +1,32 @@
+name: D1 A encrypted worker admission protocol (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-parallel-a-worker-20261111]
+    paths:
+      - 'frontend/lib/data/drift/d1_worker_admission_protocol.dart'
+      - 'frontend/test/d1_parallel/d1_worker_admission_protocol_test.dart'
+      - '.github/workflows/d1-parallel-a-worker.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  worker-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Test fail-closed admissions and owner epoch (synthetic)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/data/drift/d1_worker_admission_protocol.dart
+          flutter test test/d1_parallel/d1_worker_admission_protocol_test.dart
