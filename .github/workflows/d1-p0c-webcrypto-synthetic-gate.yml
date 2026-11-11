@@ -1,0 +1,31 @@
+name: D1 P0-C synthetic WebCrypto AEAD research (no deploy)
+
+on:
+  push:
+    branches: [d1-p0c-web-encryption-probe-20261111]
+    paths:
+      - 'tools/d1_p0c_webcrypto_envelope.mjs'
+      - 'tools/tests/d1_p0c_webcrypto_envelope.test.mjs'
+      - '.github/workflows/d1-p0c-webcrypto-synthetic-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-aead:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source syntax
+        run: |
+          node --check tools/d1_p0c_webcrypto_envelope.mjs
+          node --check tools/tests/d1_p0c_webcrypto_envelope.test.mjs
+      - name: All synthetic AEAD security cases
+        run: node --test tools/tests/d1_p0c_webcrypto_envelope.test.mjs
