@@ -1,0 +1,25 @@
+name: D1 B synthetic encrypted backup codec (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-parallel-b-backup-20261111]
+    paths:
+      - 'tools/d1_parallel/backup_codec.mjs'
+      - 'tools/d1_parallel/backup_codec.test.mjs'
+      - '.github/workflows/d1-parallel-b-backup.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node-crypto:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/d1_parallel/backup_codec.mjs
+      - run: node --test tools/d1_parallel/backup_codec.test.mjs
