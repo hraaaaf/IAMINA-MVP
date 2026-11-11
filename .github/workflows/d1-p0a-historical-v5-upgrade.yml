@@ -7,6 +7,7 @@ on:
       - 'frontend/lib/ui_d1_p0a_real_drift_legacy_probe_main.dart'
       - 'tools/fixtures/d1_p0a_historical_v5_seed_main.dart'
       - 'tools/d1_p0a_historical_v5_upgrade_browser_probe.js'
+      - 'tools/d1_p0a_live_historical_v5_old_tab_browser_probe.js'
       - '.github/workflows/d1-p0a-historical-v5-upgrade.yml'
   workflow_dispatch:
 
@@ -73,6 +74,11 @@ jobs:
           node --check tools/d1_p0a_historical_v5_upgrade_browser_probe.js
           node tools/d1_p0a_historical_v5_upgrade_browser_probe.js | tee d1-p0a-history-v5-proof.json
           test -s d1-p0a-history-v5-proof.json
+          # Distinct new disposable browser profile. Old HISTORIC v5 stays
+          # open while v12 creates vault A; late v5 write proves NO CUTOVER.
+          node --check tools/d1_p0a_live_historical_v5_old_tab_browser_probe.js
+          node tools/d1_p0a_live_historical_v5_old_tab_browser_probe.js
+          test -s d1-p0a-real-v5-old-tab-negative-proof.json
       - name: Retain historical SQLite browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,6 +86,8 @@ jobs:
           name: d1-p0a-v5-to-v12-synthetic-history
           path: |
             d1-p0a-history-v5-proof.json
+            d1-p0a-real-v5-old-tab-negative-proof.json
+            d1-p0a-real-v5-old-tab-failure.png
             d1-p0a-historical-v5-failure.png
           if-no-files-found: warn
           retention-days: 14
