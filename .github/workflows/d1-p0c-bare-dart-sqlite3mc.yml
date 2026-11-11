@@ -1,0 +1,74 @@
+name: D1 P0-C bare Dart SQLite3MC key probe (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-p0c-sqlite3mc-at-rest-web-20261111]
+    paths:
+      - 'tools/d1_p0c_bare_dart/**'
+      - 'tools/d1_p0c_bare_dart_browser.js'
+      - '.github/workflows/d1-p0c-bare-dart-sqlite3mc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bare-dart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.11.0'
+      - name: Compile stand-alone Dart test without Flutter or Drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d1-p0c-bare-dart
+          cd tools/d1_p0c_bare_dart
+          dart pub get
+          dart compile js -O1 bin/main.dart -o /tmp/d1-p0c-bare-dart/main.dart.js
+          printf '<!doctype html><html><head><title>bare dart runner</title></head><body><script defer src="/main.dart.js"></script></body></html>\n' \
+            >/tmp/d1-p0c-bare-dart/index.html
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3mc.wasm \
+            --output /tmp/d1-p0c-bare-dart/sqlite3mc.wasm
+          printf '%s  %s\n' \
+            '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
+            /tmp/d1-p0c-bare-dart/sqlite3mc.wasm | sha256sum --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Browser fixture in-memory key admission, NO clinical data
+        shell: bash
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          node --check tools/d1_p0c_bare_dart_browser.js
+          python3 -m http.server 7398 --bind 127.0.0.1 \
+            --directory /tmp/d1-p0c-bare-dart >/tmp/d1-p0c-bare.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7398/index.html >/dev/null
+          node tools/d1_p0c_bare_dart_browser.js
+      - name: Preserve full standalone diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0c-bare-dart-${{ matrix.browser }}
+          path: d1-p0c-bare-dart-*.json
+          retention-days: 14
+          if-no-files-found: warn
