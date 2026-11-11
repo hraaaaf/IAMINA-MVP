@@ -150,6 +150,26 @@ class AppLockService extends ChangeNotifier {
 
   Future<AppLockCapability> capability() => _authenticator.capability();
 
+  // D1 P0: a platform/WebAuthn assertion can complete after logout or
+  // an A→B account switch. Neither an in-flight assertion nor a completed
+  // secure-storage write is authorization to publish an unlocked B vault.
+  Future<void> _requireSameAuthenticatedVault(
+    int expectedEpoch,
+    String? expectedOwner,
+  ) async {
+    final auth = _authService;
+    // Unit tests without AuthService never publish a patient runtime vault.
+    if (auth == null) return;
+    if (expectedEpoch != AuthService.authEpoch ||
+        !auth.isAuthenticated ||
+        expectedOwner == null ||
+        (await auth.resolvePatientVaultScope())?.databaseName !=
+            expectedOwner ||
+        expectedEpoch != AuthService.authEpoch) {
+      throw const AppLockException('patient_changed_during_lock_verification');
+    }
+  }
+
   Future<void> recoverWithVerifiedRemoteAccount() async {
     if (!_initialized) {
       throw StateError('App lock requires initialized state');
@@ -300,7 +320,11 @@ class AppLockService extends ChangeNotifier {
     if (_recoveryRequired) {
       throw const AppLockException('recovery_required');
     }
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final capability = await _authenticator.capability();
+    await _requireSameAuthenticatedVault(epoch, owner);
     if (capability == AppLockCapability.insecureContext) {
       throw const AppLockException('insecure_context');
     }
@@ -309,8 +333,10 @@ class AppLockService extends ChangeNotifier {
     }
 
     final credential = await _authenticator.enroll();
+    await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _credentialKey, value: credential.encode());
     await _storage.write(key: _requiredKey, value: _requiredValue);
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = credential;
     _explicitlySkipped = false;
@@ -333,9 +359,14 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('app_lock_not_configured');
     }
 
+    final epoch = AuthService.authEpoch;
+    final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
+    await _requireSameAuthenticatedVault(epoch, owner);
     final assertion = await _authenticator.unlock(credential);
+    await _requireSameAuthenticatedVault(epoch, owner);
     final updated = credential.copyWith(signCount: assertion.signCount);
     await _storage.write(key: _credentialKey, value: updated.encode());
+    await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = updated;
     _unlocked = true;
