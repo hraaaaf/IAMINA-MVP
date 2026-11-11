@@ -682,6 +682,46 @@ void main() {
     auth.dispose();
   });
 
+  test('D1 remote B cannot replace A existing device lock by re-enrollment',
+      () async {
+    seedStorage({});
+    final auth = AuthService(httpClient: MockClient((request) async {
+      if (request.url.path == '/api/v1/auth/logout') {
+        return http.Response('', 204);
+      }
+      if (request.url.path == '/api/v1/auth/login') {
+        return http.Response(
+          '{"access_token":"iamina.eyJ1aWQiOjEsInYiOjB9:1abcdf:signature_456","user":{"id":12}}',
+          200,
+        );
+      }
+      fail('Unexpected request: ${request.url.path}');
+    }));
+    await auth.initialize();
+    await auth.enrollLocalDevice();
+    final ownerA = (await auth.resolvePatientVaultScope())!.databaseName;
+    const storage = FlutterSecureStorage();
+    final lock = AppLockService(authService: auth,
+        authenticator: _FakeAuthenticator());
+    await lock.initialize();
+    await lock.configure();
+    final credentialA = await storage.read(key: _credentialKey);
+    expect(await storage.read(key: 'iamina_app_lock_credential_owner_v1'),
+        ownerA);
+    await auth.signOut();
+    await auth.signInWithEmail('b@example.com', 'synthetic-test-only');
+    await expectLater(lock.configure(),
+        throwsA(isA<AppLockException>().having(
+            (e) => e.code, 'code', 'existing_lock_owner_must_be_preserved')));
+    expect(await storage.read(key: _credentialKey), credentialA);
+    expect(await storage.read(key: _requiredKey), 'required');
+    expect(await storage.read(key: 'iamina_app_lock_credential_owner_v1'),
+        ownerA);
+    expect(lock.isUnlocked, isFalse);
+    lock.dispose();
+    auth.dispose();
+  });
+
   test('D1 recovery B cannot erase corrupt device lock belonging to A', () async {
     seedStorage({_credentialKey: 'corrupt-A-credential', _requiredKey: 'required'});
     final auth = AuthService(httpClient: MockClient((request) async {
