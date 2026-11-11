@@ -4,4 +4,4 @@ publish_to: none
 environment:
   sdk: '>=3.8.0 <4.0.0'
 dependencies:
-  sqlite3: 3.5.2
+  sqlite3: 3.9.1
