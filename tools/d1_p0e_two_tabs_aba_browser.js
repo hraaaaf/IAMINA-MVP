@@ -20,8 +20,18 @@ async function phase(page, phaseName, id) {
     document.title===expected || document.title.startsWith('IAMINA_W02_FAIL:'),
     {expected}, {timeout:90000});
   const title=await page.title();
-  if(title!==expected)throw Error(id+' '+phaseName+' failed with '+title);
-  outcome.phases.push({id,phase:phaseName,pass:true});
+  const storage=await page.evaluate(
+    ()=>document.documentElement.getAttribute('data-d1-drift-storage'));
+  if (title!==expected) {
+    outcome.phases.push({id,phase:phaseName,pass:false,storage,
+      message:title.slice(0,220)});
+    throw Error(id+' '+phaseName+' failed with '+title+
+      ' [Drift VFS='+storage+']');
+  }
+  if (!storage) {
+    throw Error(id+' '+phaseName+' missing actual Drift storage VFS proof');
+  }
+  outcome.phases.push({id,phase:phaseName,pass:true,storage});
 }
 (async()=>{
   const browser=await type.launch({
