@@ -1,0 +1,102 @@
+name: D1 P0-E Drift 2.35.4 WebKit persistence WITHOUT COOP/COEP
+
+on:
+  push:
+    branches: [experiment/d1-p0e-drift-2354-webkit-20261111]
+    paths:
+      - '.github/workflows/d1-p0e-drift-2354-webkit-experiment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  experiment:
+    name: Disposable package+WASM build / ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve consistent current Drift dependencies IN CI WORKSPACE ONLY
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Flutter 3.41 (Dart 3.11/meta 1.17) cannot resolve drift_dev
+          # 2.35 (analyzer requires meta >=1.18). Do NOT alter main;
+          # this spike uses the already committed v12 generated bindings.
+          flutter pub remove drift_dev
+          flutter pub add drift:2.35.4 drift_flutter:0.3.1 'sqlite3_flutter_libs:0.6.0+eol'
+          flutter pub get
+          grep -A 6 '^  drift:' pubspec.lock
+          grep -A 6 '^  drift_flutter:' pubspec.lock
+          grep -A 6 '^  sqlite3:' pubspec.lock
+      - name: Install matching official Web WASM+worker assets (pinned SHA256)
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --output frontend/web/drift_worker.js \
+            'https://github.com/simolus3/drift/releases/download/drift-2.35.4/drift_worker.js'
+          curl -fL --retry 3 --output frontend/web/sqlite3.wasm \
+            'https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3.wasm'
+          printf '%s  %s\n' \
+            '48c950cd8e3bc3cddb34816c860e228be8832bef07a297c27e9907c057ff8162' frontend/web/drift_worker.js \
+            'e7451780e78c56ff864fe9317a0fbcd6aeb2e8de3beba7f5efd963202f7ec3d9' frontend/web/sqlite3.wasm | sha256sum --check
+      - name: Check pre-generated v12 Dart bindings against newer runtime
+        working-directory: frontend
+        run: |
+          test -s lib/data/drift/database.g.dart
+          echo "Using pre-generated v12 bindings: code-generation toolchain incompatible with Flutter 3.41"
+      - name: Compile and validate actual synthetic Web database
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/ui_w02_synthetic_vault_scope_probe_main.dart
+          flutter test --no-pub test/data/drift/patient_vault_backup_boundary_test.dart
+          flutter test --no-pub test/services/app_lock_service_test.dart
+          flutter build web --release --no-web-resources-cdn -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify cold reopen + exclusive Web Lock on the upgraded engine
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Match current IAMINA hosted frontend: NO COOP/COEP. Avoid an
+          # unreviewed sharedIndexedDb -> OPFS mode change for existing vaults.
+          python3 -m http.server 7398 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d1-p0e-2354.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7398/ >/dev/null
+          COLD=0
+          SINGLE=0
+          node tools/d1_p0e_cold_persistence_browser.js || COLD=1
+          node tools/d1_p0e_single_tab_lock_browser.js || SINGLE=1
+          echo "EXPERIMENT_D1P0E_RESULT browser=${D1_BROWSER} cold=${COLD} single=${SINGLE}"
+          test "$COLD" -eq 0 && test "$SINGLE" -eq 0
+      - name: Preserve all synthetic proof files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0e-2354-${{ matrix.browser }}
+          path: |
+            d1-p0e-*-single-runtime-proof.json
+            d1-p0e-*-cold-persistence-proof.json
+          if-no-files-found: warn
+          retention-days: 14

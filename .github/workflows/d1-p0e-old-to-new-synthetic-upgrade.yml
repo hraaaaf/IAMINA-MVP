@@ -1,0 +1,122 @@
+name: D1 P0-E old Drift 2.31 to new 2.35.4 same-origin A/B synthetic
+
+on:
+  push:
+    branches: [experiment/d1-p0e-drift-2354-webkit-20261111]
+    paths:
+      - 'tools/d1_p0e_old_to_new_browser.js'
+      - 'tools/d1_p0e_same_path_upgrade_browser.js'
+      - '.github/workflows/d1-p0e-old-to-new-synthetic-upgrade.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cold-upgrade:
+    name: Real ${{ matrix.browser }} old 2.31 → new 2.35.4 same origin
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build current committed old engine (2.31, unmodified code + assets)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          grep -A 6 '^  drift:' pubspec.lock
+          flutter build web --release --no-web-resources-cdn \
+            --base-href /old/ -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
+      - name: Preserve old bundle and old worker untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d1-upgrade-web/old" "$RUNNER_TEMP/d1-upgrade-web/new"
+          cp -a frontend/build/web/. "$RUNNER_TEMP/d1-upgrade-web/old/"
+          test -s "$RUNNER_TEMP/d1-upgrade-web/old/drift_worker.js"
+          test -s "$RUNNER_TEMP/d1-upgrade-web/old/sqlite3.wasm"
+      - name: Upgrade new engine in runner only; preserve committed repo
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub remove drift_dev
+          flutter pub add drift:2.35.4 drift_flutter:0.3.1 'sqlite3_flutter_libs:0.6.0+eol'
+          flutter pub get
+          grep -A 6 '^  drift:' pubspec.lock
+          test -s lib/data/drift/database.g.dart
+      - name: Use matching official Drift 2.35.4 worker + WASM, SHA256 checked
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --output frontend/web/drift_worker.js \
+            'https://github.com/simolus3/drift/releases/download/drift-2.35.4/drift_worker.js'
+          curl -fL --retry 3 --output frontend/web/sqlite3.wasm \
+            'https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3.wasm'
+          printf '%s  %s\n' \
+            '48c950cd8e3bc3cddb34816c860e228be8832bef07a297c27e9907c057ff8162' frontend/web/drift_worker.js \
+            'e7451780e78c56ff864fe9317a0fbcd6aeb2e8de3beba7f5efd963202f7ec3d9' frontend/web/sqlite3.wasm | sha256sum --check
+      - name: Build new bundle on same origin but separate base path
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter analyze --no-fatal-infos lib/ui_w02_synthetic_vault_scope_probe_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            --base-href /new/ -t lib/ui_w02_synthetic_vault_scope_probe_main.dart
+      - name: Preserve new independently built bundle
+        run: |
+          set -euo pipefail
+          cp -a frontend/build/web/. "$RUNNER_TEMP/d1-upgrade-web/new/"
+          test -s "$RUNNER_TEMP/d1-upgrade-web/new/drift_worker.js"
+          test -s "$RUNNER_TEMP/d1-upgrade-web/new/sqlite3.wasm"
+          cmp -s "$RUNNER_TEMP/d1-upgrade-web/old/drift_worker.js" \
+            "$RUNNER_TEMP/d1-upgrade-web/new/drift_worker.js" && \
+            { echo "Unexpected identical worker: not an upgrade proof"; exit 1; } || :
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Old-to-old baseline and old-to-new scoped vault proof
+        shell: bash
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          node --check tools/d1_p0e_old_to_new_browser.js
+          node --check tools/d1_p0e_same_path_upgrade_browser.js
+          python3 -m http.server 7398 --bind 127.0.0.1 \
+            --directory "$RUNNER_TEMP/d1-upgrade-web" >/tmp/d1-p0e-upgrade.log 2>&1 &
+          HTTP_PID=$!
+          trap 'kill "$HTTP_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7398/old/ >/dev/null
+          curl -fsS http://127.0.0.1:7398/new/ >/dev/null
+          SIBLING=0
+          SAMEPATH=0
+          node tools/d1_p0e_old_to_new_browser.js || SIBLING=1
+          D1_UPGRADE_WEB_ROOT="$RUNNER_TEMP/d1-upgrade-web"             node tools/d1_p0e_same_path_upgrade_browser.js || SAMEPATH=1
+          echo "D1_OLD_TO_NEW same_origin_sibling_path=${SIBLING} same_origin_same_path=${SAMEPATH}"
+          test "$SIBLING" -eq 0 && test "$SAMEPATH" -eq 0
+      - name: Retain old-to-new proof, including negative
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0e-old-to-new-${{ matrix.browser }}
+          path: |
+            d1-p0e-*-old-to-new-proof.json
+            d1-p0e-*-same-path-upgrade-proof.json
+          retention-days: 14
+          if-no-files-found: warn
