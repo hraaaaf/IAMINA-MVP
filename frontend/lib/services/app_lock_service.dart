@@ -338,6 +338,14 @@ class AppLockService extends ChangeNotifier {
     final epoch = AuthService.authEpoch;
     final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
     await _requireSameAuthenticatedVault(epoch, owner);
+    // A newly signed-in B must not replace A's live global credential, even
+    // when B has valid server credentials. Only an owner-verified recovery
+    // transition can enroll again once the existing credential is gone.
+    final storedOwner = await _storage.read(key: _credentialOwnerKey);
+    await _requireSameAuthenticatedVault(epoch, owner);
+    if (_configured || (storedOwner != null && storedOwner != owner)) {
+      throw const AppLockException('existing_lock_owner_must_be_preserved');
+    }
     final capability = await _authenticator.capability();
     await _requireSameAuthenticatedVault(epoch, owner);
     if (capability == AppLockCapability.insecureContext) {
