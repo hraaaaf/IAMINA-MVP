@@ -5,6 +5,7 @@ on:
     branches: [experiment/d1-p0e-drift-2354-webkit-20261111]
     paths:
       - 'tools/d1_p0e_old_to_new_browser.js'
+      - 'tools/d1_p0e_same_path_upgrade_browser.js'
       - '.github/workflows/d1-p0e-old-to-new-synthetic-upgrade.yml'
   workflow_dispatch:
 
@@ -95,6 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check tools/d1_p0e_old_to_new_browser.js
+          node --check tools/d1_p0e_same_path_upgrade_browser.js
           python3 -m http.server 7398 --bind 127.0.0.1 \
             --directory "$RUNNER_TEMP/d1-upgrade-web" >/tmp/d1-p0e-upgrade.log 2>&1 &
           HTTP_PID=$!
@@ -102,12 +104,19 @@ jobs:
           curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
             http://127.0.0.1:7398/old/ >/dev/null
           curl -fsS http://127.0.0.1:7398/new/ >/dev/null
-          node tools/d1_p0e_old_to_new_browser.js
+          SIBLING=0
+          SAMEPATH=0
+          node tools/d1_p0e_old_to_new_browser.js || SIBLING=1
+          D1_UPGRADE_WEB_ROOT="$RUNNER_TEMP/d1-upgrade-web"             node tools/d1_p0e_same_path_upgrade_browser.js || SAMEPATH=1
+          echo "D1_OLD_TO_NEW same_origin_sibling_path=${SIBLING} same_origin_same_path=${SAMEPATH}"
+          test "$SIBLING" -eq 0 && test "$SAMEPATH" -eq 0
       - name: Retain old-to-new proof, including negative
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: d1-p0e-old-to-new-${{ matrix.browser }}
-          path: d1-p0e-*-old-to-new-proof.json
+          path: |
+            d1-p0e-*-old-to-new-proof.json
+            d1-p0e-*-same-path-upgrade-proof.json
           retention-days: 14
           if-no-files-found: warn
