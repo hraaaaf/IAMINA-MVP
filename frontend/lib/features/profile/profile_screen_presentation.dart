@@ -412,7 +412,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required Key key,
     required String label,
     required DateTime? value,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return OutlinedButton(
       key: key,
@@ -581,12 +581,19 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                       fr: 'Verrouillage à récupérer',
                       en: 'Lock recovery required',
                       ar: 'يجب استعادة القفل')
+                  : (enabled && !lock.canOptOutOfAppLock)
+                  ? _profileUiText(context,
+                      fr: 'Verrouillage obligatoire sur le Web',
+                      en: 'App lock required on Web',
+                      ar: 'قفل التطبيق إلزامي على الويب')
                   : _profileUiText(context,
                       fr: enabled ? 'Désactiver le verrouillage' : 'Activer le verrouillage',
                       en: enabled ? 'Disable app lock' : 'Enable app lock',
                       ar: enabled ? 'إيقاف قفل التطبيق' : 'تفعيل قفل التطبيق'),
-              onTap: (lock.recoveryRequired || _savingLockPreference)
-                  ? () {}
+              onTap: (lock.recoveryRequired ||
+                      _savingLockPreference ||
+                      (enabled && !lock.canOptOutOfAppLock))
+                  ? null
                   : _changeAppLockPreference,
             );
           },
