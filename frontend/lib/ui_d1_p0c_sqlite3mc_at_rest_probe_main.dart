@@ -85,7 +85,12 @@ Future<void> main() async {
     storage = null;
     html.document.title = 'IAMINA_D1P0C_PASS_' + phase!.toUpperCase();
   } catch (error) {
-    // Stage only: never print potentially sensitive SQL/error/key text.
+    // WASM_LOAD is before any PRAGMA/key: safe to report transport error only.
+    if (stage == 'WASM_LOAD') {
+      html.document.documentElement?.dataset['d1WasmError'] =
+          error.toString().substring(0, 350);
+    }
+    // After loading, never print potentially sensitive SQL/error/key text.
     html.document.title = 'IAMINA_D1P0C_FAIL_' + stage;
     try {
       await storage?.close();
