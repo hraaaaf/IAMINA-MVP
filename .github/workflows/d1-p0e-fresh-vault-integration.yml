@@ -49,7 +49,7 @@ jobs:
           flutter analyze --no-fatal-infos lib/ui_w02_synthetic_vault_scope_probe_main.dart
           flutter test --no-pub test/data/drift/patient_vault_backup_boundary_test.dart
           flutter test --no-pub test/services/app_lock_service_test.dart
-          flutter test --no-pub test/services/local_backup_restore_test.dart
+          flutter test --no-pub test/data/drift/local_backup_restore_test.dart
           flutter test --no-pub test/data/drift/patient_treatment_backup_v11_test.dart
       - name: Compile full IAMINA Web UI without publishing it
         working-directory: frontend
