@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'patient_vault_scope.dart';
@@ -24,6 +25,7 @@ final class D1WorkerAdmissionProtocol {
   bool _retired = false;
   bool _ready = false;
   int _generation = 0;
+  D1EncryptedWorkerPort? _activePort;
 
   D1WorkerAdmissionProtocol({
     required PatientVaultScope scope,
@@ -61,6 +63,7 @@ final class D1WorkerAdmissionProtocol {
       throw StateError('D1_WORKER_INVALID_KEY_MATERIAL');
     }
     final generation = ++_generation;
+    _activePort = port;
     final transient = Uint8List.fromList(keyMaterial);
     try {
       await port.openWithKey(_owner, transient);
@@ -72,6 +75,7 @@ final class D1WorkerAdmissionProtocol {
       _ready = true;
     } catch (_) {
       _ready = false;
+      if (identical(_activePort, port)) _activePort = null;
       await port.close();
       rethrow;
     } finally {
@@ -88,5 +92,10 @@ final class D1WorkerAdmissionProtocol {
     _retired = true;
     _ready = false;
     ++_generation;
+    final port = _activePort;
+    _activePort = null;
+    // Revoke synchronously; release the physical worker asynchronously.
+    // The implementation of close() must be idempotent.
+    if (port != null) unawaited(port.close());
   }
 }
