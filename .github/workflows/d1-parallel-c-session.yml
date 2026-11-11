@@ -1,0 +1,32 @@
+name: D1 C session fence tests (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-parallel-c-session-20261111]
+    paths:
+      - 'frontend/lib/services/d1_session_fence.dart'
+      - 'frontend/test/d1_parallel/d1_session_fence_test.dart'
+      - '.github/workflows/d1-parallel-c-session.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  session-fence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Test owner and stale-epoch fencing (synthetic)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/services/d1_session_fence.dart
+          flutter test test/d1_parallel/d1_session_fence_test.dart
