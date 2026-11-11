@@ -1,0 +1,49 @@
+name: D1 P0-A stale offline tab negative browser proof
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/d1_p0a_stale_tab_negative_probe.js'
+      - '.github/workflows/d1-p0a-stale-tab-negative-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  negative-proof:
+    name: Old writer remains unfenced (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser-only Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Assert stale offline client can bypass cooperative locks (NO-CUTOVER)
+        env:
+          D18_STALE_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          node --check tools/d1_p0a_stale_tab_negative_probe.js
+          node tools/d1_p0a_stale_tab_negative_probe.js | tee d1-p0a-stale-proof.json
+          test -s d1-p0a-stale-proof.json
+      - name: Retain synthetic negative proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0a-stale-${{ matrix.browser }}
+          path: d1-p0a-stale-proof.json
+          if-no-files-found: warn
+          retention-days: 14
