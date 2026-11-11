@@ -1,0 +1,7 @@
+name: d1_p0c_bare_dart_wasm_probe
+description: CI-only no-Flutter SQLite3MC loader diagnostic with fake values
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  sqlite3: 3.5.2
