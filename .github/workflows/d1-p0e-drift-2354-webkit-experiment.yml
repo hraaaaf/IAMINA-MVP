@@ -33,8 +33,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Flutter 3.41 (Dart 3.11/meta 1.17) cannot resolve drift_dev
+          # 2.35 (analyzer requires meta >=1.18). Do NOT alter main;
+          # this spike uses the already committed v12 generated bindings.
+          flutter pub remove drift_dev
           flutter pub add drift:2.35.4 drift_flutter:0.3.1 'sqlite3_flutter_libs:0.6.0+eol'
-          flutter pub add --dev drift_dev:2.35.3
           flutter pub get
           grep -A 6 '^  drift:' pubspec.lock
           grep -A 6 '^  drift_flutter:' pubspec.lock
@@ -50,9 +53,11 @@ jobs:
           printf '%s  %s\n' \
             '48c950cd8e3bc3cddb34816c860e228be8832bef07a297c27e9907c057ff8162' frontend/web/drift_worker.js \
             'e7451780e78c56ff864fe9317a0fbcd6aeb2e8de3beba7f5efd963202f7ec3d9' frontend/web/sqlite3.wasm | sha256sum --check
-      - name: Rebuild derived Dart database in isolated CI only
+      - name: Check pre-generated v12 Dart bindings against newer runtime
         working-directory: frontend
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: |
+          test -s lib/data/drift/database.g.dart
+          echo "Using pre-generated v12 bindings: code-generation toolchain incompatible with Flutter 3.41"
       - name: Compile and validate actual synthetic Web database
         working-directory: frontend
         run: |
