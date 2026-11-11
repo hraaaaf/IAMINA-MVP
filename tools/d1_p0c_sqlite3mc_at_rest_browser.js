@@ -8,6 +8,7 @@ const engine={chromium,webkit}[name];
 if(!engine)throw Error('Unsupported Playwright engine');
 const origin='http://127.0.0.1:7398/';
 const fixture='D1_SQLITE3MC_FAKE_PATIENT_CANARY_8f4d7e23';
+const driftMarker='d1-fake-drift-owner-731';
 const cipher='iamina_d1p0c_sqlite3mc_synthetic_v1';
 const plain='iamina_d1p0c_sqlite3mc_plain_control_v1';
 const report={test:'D1_6_SQLITE3MC_REAL_INDEXEDDB_CIPHER',
@@ -56,7 +57,7 @@ async function phase(ctx,name) {
  }catch(e){await p.close();throw e;}
 }
 async function auditIdb(page,dbname) {
- return page.evaluate(async ({dbname,fixture})=>{
+ return page.evaluate(async ({dbname,fixture,driftMarker})=>{
   const exists=await indexedDB.databases();
   if(!exists.some(x=>x.name===dbname))throw Error('IDB missing: '+dbname);
   const database=await new Promise((resolve,reject)=>{
@@ -94,18 +95,22 @@ async function auditIdb(page,dbname) {
    }
   }finally{database.close();}
   if(!packets.length)throw Error('no actual IDB blocks inspected');
-  const canary=encode.encode(fixture);
-  const visible=packets.some(block=>{
-   position:for(let i=0;i<=block.byteLength-canary.byteLength;i++){
-    for(let k=0;k<canary.byteLength;k++)
-     if(block[i+k]!==canary[k])continue position;
-    return true;
-   }
-   return false;
-  });
+  function contains(needleText){
+   const needle=encode.encode(needleText);
+   return packets.some(block=>{
+    position:for(let i=0;i<=block.byteLength-needle.byteLength;i++){
+     for(let k=0;k<needle.byteLength;k++)
+      if(block[i+k]!==needle[k])continue position;
+     return true;
+    }
+    return false;
+   });
+  }
   return {idbName:dbname,rawBytes:packets.reduce((s,v)=>s+v.byteLength,0),
-   blockCount:packets.length,objectCount:count,canaryInPhysicalBytes:visible};
- },{dbname,fixture});
+   blockCount:packets.length,objectCount:count,
+   canaryInPhysicalBytes:contains(fixture),
+   driftRowInPhysicalBytes:contains(driftMarker)};
+ },{dbname,fixture,driftMarker});
 }
 (async()=>{
  const browser=await engine.launch({headless:true,
@@ -117,12 +122,12 @@ async function auditIdb(page,dbname) {
    const ctrl=await auditIdb(page,plain);
    await page.close();
    report.phases.push({phase:'raw_control',proof:ctrl});
-   if(!ctrl.canaryInPhysicalBytes)throw Error('plain control NOT readable: experiment inconclusive');
+   if(!ctrl.canaryInPhysicalBytes||!ctrl.driftRowInPhysicalBytes)throw Error('plain control/Drift row NOT readable: experiment inconclusive');
    page=await phase(ctx,'seed_cipher');
    const encrypted=await auditIdb(page,cipher);
    await page.close();
    report.phases.push({phase:'raw_cipher',proof:encrypted});
-   if(encrypted.canaryInPhysicalBytes)throw Error('CRITICAL cleartext in encrypted storage');
+   if(encrypted.canaryInPhysicalBytes||encrypted.driftRowInPhysicalBytes)throw Error('CRITICAL cleartext fixture/Drift row in encrypted storage');
    if(encrypted.rawBytes<100)throw Error('Insufficient physical ciphertext');
    page=await phase(ctx,'verify_cipher');await page.close();
    page=await phase(ctx,'wrong_key');await page.close();
