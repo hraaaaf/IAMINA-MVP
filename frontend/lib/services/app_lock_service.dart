@@ -12,6 +12,9 @@ typedef ProtectedLocalStateProbe = Future<bool> Function();
 class AppLockService extends ChangeNotifier {
   static const _credentialKey = 'iamina_app_lock_credential_v1';
   static const _requiredKey = 'iamina_app_lock_required_v1';
+  // D1 P0-D: a recovered global lock must be bound to a proven patient vault.
+  // Missing legacy ownership metadata deliberately cannot authorize recovery.
+  static const _credentialOwnerKey = 'iamina_app_lock_credential_owner_v1';
   // New explicit choice, separate from the deprecated untrusted opt-out marker.
   static const _choiceKey = 'iamina_app_lock_initial_choice_v2';
   static const _choiceOwnerKey = 'iamina_app_lock_initial_choice_owner_v2';
@@ -182,14 +185,26 @@ class AppLockService extends ChangeNotifier {
       throw const AppLockException('verified_remote_recovery_required');
     }
 
-    // A fresh, server-verified account login is the recovery authority. Remove
-    // only the unverifiable app-lock material; patient-local clinical state is
-    // retained and remains inaccessible until a new strong device lock enrolls.
+    // Remote login alone proves only the current account, not ownership of
+    // the previous on-device ciphertext / legacy lock. Reject ambiguous
+    // legacy locks instead of deleting another person's device credential.
+    final epoch = AuthService.authEpoch;
+    final scope = await auth.resolvePatientVaultScope();
+    final expectedOwner = await _storage.read(key: _credentialOwnerKey);
+    if (scope == null || expectedOwner == null ||
+        scope.databaseName != expectedOwner) {
+      throw const AppLockException('recovery_vault_owner_unverified');
+    }
+    await _requireSameAuthenticatedVault(epoch, expectedOwner);
+    // Keep the anti-rollback required marker even if a tab closes between
+    // removing a corrupt credential and subsequent re-enrollment.
+    await _storage.write(key: _requiredKey, value: _requiredValue);
+    await _requireSameAuthenticatedVault(epoch, expectedOwner);
     await _storage.delete(key: _credentialKey);
-    await _storage.delete(key: _requiredKey);
+    await _requireSameAuthenticatedVault(epoch, expectedOwner);
     _credential = null;
     _configured = false;
-    _required = false;
+    _required = true;
     _recoveryRequired = false;
     _unlocked = false;
     notifyListeners();
@@ -323,6 +338,14 @@ class AppLockService extends ChangeNotifier {
     final epoch = AuthService.authEpoch;
     final owner = (await _authService?.resolvePatientVaultScope())?.databaseName;
     await _requireSameAuthenticatedVault(epoch, owner);
+    // A newly signed-in B must not replace A's live global credential, even
+    // when B has valid server credentials. Only an owner-verified recovery
+    // transition can enroll again once the existing credential is gone.
+    final storedOwner = await _storage.read(key: _credentialOwnerKey);
+    await _requireSameAuthenticatedVault(epoch, owner);
+    if (_configured || (storedOwner != null && storedOwner != owner)) {
+      throw const AppLockException('existing_lock_owner_must_be_preserved');
+    }
     final capability = await _authenticator.capability();
     await _requireSameAuthenticatedVault(epoch, owner);
     if (capability == AppLockCapability.insecureContext) {
@@ -336,6 +359,9 @@ class AppLockService extends ChangeNotifier {
     await _requireSameAuthenticatedVault(epoch, owner);
     await _storage.write(key: _credentialKey, value: credential.encode());
     await _storage.write(key: _requiredKey, value: _requiredValue);
+    if (owner != null) {
+      await _storage.write(key: _credentialOwnerKey, value: owner);
+    }
     await _requireSameAuthenticatedVault(epoch, owner);
 
     _credential = credential;
