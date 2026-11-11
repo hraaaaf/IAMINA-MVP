@@ -51,6 +51,10 @@ jobs:
           flutter analyze --no-fatal-infos lib/ui_d1_p0c_sqlite3mc_at_rest_probe_main.dart
           flutter build web --release --no-web-resources-cdn \
             -t lib/ui_d1_p0c_sqlite3mc_at_rest_probe_main.dart
+          test -s build/web/sqlite3mc.wasm
+          printf '%s  %s\n' \
+            '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
+            build/web/sqlite3mc.wasm | sha256sum --check
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
