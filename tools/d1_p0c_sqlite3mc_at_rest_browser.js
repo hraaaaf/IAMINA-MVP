@@ -15,12 +15,35 @@ const report={test:'D1_6_SQLITE3MC_REAL_INDEXEDDB_CIPHER',
  scope:'isolated SQLite3MC engine only; NOT patient runtime'};
 async function phase(ctx,name) {
  const p=await ctx.newPage();
+ const errors=[];
+ p.on('pageerror',e=>errors.push('pageerror:'+String(e).slice(0,280)));
+ p.on('requestfailed',req=>{
+  if(req.url().includes('sqlite3mc.wasm'))
+   errors.push('wasm-request-failed:'+String(req.failure()).slice(0,240));
+ });
+ p.on('response',resp=>{
+  if(resp.url().includes('sqlite3mc.wasm'))
+   errors.push('wasm-http-status:'+resp.status());
+ });
  try{
   await p.goto(origin+'?phase='+name,{waitUntil:'domcontentloaded'});
   const wanted='IAMINA_D1P0C_PASS_'+name.toUpperCase();
-  await p.waitForFunction(({wanted})=>
-   document.title===wanted||document.title.startsWith('IAMINA_D1P0C_FAIL_'),
-   {wanted},{timeout:90000});
+  try{
+   await p.waitForFunction(({wanted})=>
+    document.title===wanted||document.title.startsWith('IAMINA_D1P0C_FAIL_'),
+    {wanted},{timeout:25000});
+  }catch(e){
+   const diag=await p.evaluate(()=>({
+    title:document.title,
+    state:document.readyState,
+    lease:document.documentElement.dataset.iaminaTabLease||null,
+    wasmError:document.documentElement.dataset.d1WasmError||null,
+    jsFiles:performance.getEntriesByType('resource')
+     .filter(r=>r.name.includes('sqlite3mc')||r.name.includes('main.dart.js'))
+     .map(r=>({name:r.name.split('/').pop(),responseEnd:r.responseEnd})),
+   }));
+   throw Error('timed out in '+name+': '+JSON.stringify({diag,errors}).slice(0,1300));
+  }
   const got=await p.title();
   report.phases.push({phase:name,title:got});
   if(got!==wanted){
