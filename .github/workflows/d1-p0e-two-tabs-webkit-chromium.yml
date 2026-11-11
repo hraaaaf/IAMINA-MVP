@@ -1,10 +1,12 @@
-name: D1 P0-E two live Web tabs A-B-A (no deploy)
+name: D1 P0-E exclusive web patient runtime admission (no deploy)
 
 on:
   push:
     branches: [d1-p0e-browser-aba-20261111]
     paths:
       - 'tools/d1_p0e_two_tabs_aba_browser.js'
+      - 'tools/d1_p0e_single_tab_lock_browser.js'
+      - 'frontend/web/flutter_bootstrap.js'
       - 'tools/d1_p0e_coop_coep_server.py'
       - '.github/workflows/d1-p0e-two-tabs-webkit-chromium.yml'
   workflow_dispatch:
@@ -42,20 +44,20 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Check live multi-tab A/B/A and browser reload
+      - name: Reject concurrent second runtime and retain A/B vaults
         shell: bash
         env:
           D1_BROWSER: ${{ matrix.browser }}
         run: |
           set -euo pipefail
-          node --check tools/d1_p0e_two_tabs_aba_browser.js
+          node --check tools/d1_p0e_single_tab_lock_browser.js
           python3 tools/d1_p0e_coop_coep_server.py --port 7398 --directory frontend/build/web >/tmp/d1-p0e-http.log 2>&1 &
           WEB_PID=$!
           trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
           curl --fail --silent --show-error --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7398/ >/dev/null
           curl -fsSI http://127.0.0.1:7398/ | grep -qi 'Cross-Origin-Opener-Policy: same-origin'
           curl -fsSI http://127.0.0.1:7398/ | grep -qi 'Cross-Origin-Embedder-Policy: require-corp'
-          node tools/d1_p0e_two_tabs_aba_browser.js
+          node tools/d1_p0e_single_tab_lock_browser.js
       - name: Preserve synthetic browser evidence
         if: always()
         uses: actions/upload-artifact@v4
