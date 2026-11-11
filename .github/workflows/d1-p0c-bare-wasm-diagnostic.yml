@@ -1,0 +1,70 @@
+name: D1 P0-C bare WebAssembly diagnostic (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-p0c-sqlite3mc-at-rest-web-20261111]
+    paths:
+      - 'tools/d1_p0c_wasm_only_browser.js'
+      - '.github/workflows/d1-p0c-bare-wasm-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bare-wasm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare minimal static page and pin official binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d1-p0c-wasm
+          printf '<!doctype html><html><head><title>D1 P0C WASM only</title></head><body>synthetic wasm probe</body></html>\n' \
+            >/tmp/d1-p0c-wasm/index.html
+          cp frontend/web/sqlite3.wasm /tmp/d1-p0c-wasm/sqlite3.wasm
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/simolus3/drift/releases/download/drift-2.35.4/sqlite3mc.wasm \
+            --output /tmp/d1-p0c-wasm/sqlite3mc.wasm
+          printf '%s  %s\n' \
+            'e7451780e78c56ff864fe9317a0fbcd6aeb2e8de3beba7f5efd963202f7ec3d9' \
+            /tmp/d1-p0c-wasm/sqlite3.wasm \
+            '408a1d9bf8071bfb6e91aba005e6c8e2072c240784e1d199bbd7eb441dd5ea94' \
+            /tmp/d1-p0c-wasm/sqlite3mc.wasm | sha256sum --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Compile both standalone WASM modules in browser
+        shell: bash
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          node --check tools/d1_p0c_wasm_only_browser.js
+          python3 -m http.server 7398 --bind 127.0.0.1 \
+            --directory /tmp/d1-p0c-wasm >/tmp/d1-p0c-wasm-server.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7398/index.html >/dev/null
+          node tools/d1_p0c_wasm_only_browser.js
+      - name: Preserve independent diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-p0c-wasm-only-${{ matrix.browser }}
+          path: d1-p0c-wasm-compat-*.json
+          if-no-files-found: warn
+          retention-days: 14
