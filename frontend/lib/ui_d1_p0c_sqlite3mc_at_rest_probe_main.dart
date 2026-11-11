@@ -3,6 +3,10 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'package:sqlite3/wasm.dart';
+import 'package:drift/wasm.dart';
+
+import 'data/drift/database.dart';
+import 'data/drift/patient_vault_scope.dart';
 
 const fixture = 'D1_SQLITE3MC_FAKE_PATIENT_CANARY_8f4d7e23';
 const fakeKey = 'D1_CI_ONLY_FAKE_KEY_NEVER_FOR_PATIENTS_3176';
@@ -78,6 +82,43 @@ Future<void> main() async {
         final rows = db.select('SELECT content FROM d1_cipher_canary');
         if (rows.length != 1 || rows.single['content'] != fixture) {
           throw StateError('DECRYPT_READ_FAILED');
+        }
+      }
+      // D1.6 integration checkpoint: exercise the REAL Drift AppDatabase
+      // schema/executor over the same SQLite3MC connection and physical VFS.
+      // This is a synthetic fixture only, not the production login/runtime.
+      if (phase != 'wrong_key') {
+        stage = 'APP_DATABASE';
+        final driftDb = AppDatabase.testPatientVault(
+          WasmDatabase.opened(db, closeUnderlyingOnClose: false),
+          PatientVaultScope.nativeDjango(731),
+        );
+        try {
+          final rowsBefore = await driftDb.countLogs();
+          if (phase == 'seed_plain' || phase == 'seed_cipher') {
+            if (rowsBefore != 0) {
+              throw StateError('UNEXPECTED_DRIFT_ROWS_BEFORE_SEED');
+            }
+            await driftDb.into(driftDb.logEntries).insert(
+              LogEntriesCompanion.insert(
+                createdAt: DateTime.utc(2026, 11, 11),
+                bloodSugar: 117,
+                clientUuid: 'd1-fake-drift-owner-731',
+              ),
+            );
+          }
+          final rowsAfter = await driftDb.getRecentLogs();
+          if (rowsAfter.length != 1 ||
+              rowsAfter.single.bloodSugar != 117 ||
+              rowsAfter.single.clientUuid != 'd1-fake-drift-owner-731') {
+            throw StateError('APP_DATABASE_CIPHER_ROUNDTRIP_FAILED');
+          }
+          if (driftDb.patientVaultScope?.databaseName !=
+              'amina_vault_v1_native_731') {
+            throw StateError('APP_DATABASE_SCOPE_MISMATCH');
+          }
+        } finally {
+          await driftDb.close();
         }
       }
     } finally {

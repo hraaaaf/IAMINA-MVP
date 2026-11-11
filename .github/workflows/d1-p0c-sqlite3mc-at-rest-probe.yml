@@ -2,9 +2,11 @@ name: D1 P0-C SQLite3MC physical at-rest probe (NO DEPLOY)
 
 on:
   push:
-    branches: [research/d1-p0c-sqlite3mc-at-rest-web-20261111]
+    branches: [research/d1-p0c-sqlite3mc-at-rest-web-20261111, integration/d1-p0c-appdatabase-encrypted-fixture-20261111]
     paths:
       - 'frontend/lib/ui_d1_p0c_sqlite3mc_at_rest_probe_main.dart'
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/data/drift/patient_vault_scope.dart'
       - 'tools/d1_p0c_sqlite3mc_at_rest_browser.js'
       - '.github/workflows/d1-p0c-sqlite3mc-at-rest-probe.yml'
   workflow_dispatch:
