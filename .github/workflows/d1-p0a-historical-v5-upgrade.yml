@@ -9,6 +9,11 @@ on:
       - 'tools/d1_p0a_historical_v5_upgrade_browser_probe.js'
       - 'tools/d1_p0a_live_historical_v5_old_tab_browser_probe.js'
       - '.github/workflows/d1-p0a-historical-v5-upgrade.yml'
+  push:
+    branches: [d1-p0b-legacy-coexistence-20261111]
+    paths:
+      - 'tools/d1_p0a_live_historical_v5_old_tab_browser_probe.js'
+      - '.github/workflows/d1-p0a-historical-v5-upgrade.yml'
   workflow_dispatch:
 
 permissions:
