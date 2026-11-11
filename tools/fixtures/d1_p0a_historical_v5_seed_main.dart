@@ -8,6 +8,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:drift/drift.dart';
 
 const _id = 'd1-p0a-historical-v5-seed';
+const _oldTabLateId = 'd1-p0a-real-old-v5-tab-late-write';
 
 Future<void> main() async {
   html.document.title = 'IAMINA_V5_PENDING';
@@ -16,6 +17,44 @@ Future<void> main() async {
     db = AppDatabase.defaults();
     final vault = db;
     await vault.customSelect('SELECT 1').getSingle();
+    // A real historical Flutter/Drift v5 tab stays alive while a separate
+    // *current* v12 browser tab opens a new isolated vault A. Message-based
+    // test control only, no storage/crypto shims and no clinical data.
+    if (Uri.base.queryParameters['phase'] == 'hold_old_tab') {
+      final first = await (vault.select(vault.logEntries)
+            ..where((row) => row.clientUuid.equals(_id))).getSingleOrNull();
+      if (first == null || first.bloodSugar != 105) {
+        throw StateError('historical seed missing before old-tab hold');
+      }
+      html.window.onMessage.listen((event) async {
+        if (event.data != 'IAMINA_D1_V5_LATE_WRITE') return;
+        try {
+          final existing = await (vault.select(vault.logEntries)
+                ..where((row) => row.clientUuid.equals(_oldTabLateId)))
+              .getSingleOrNull();
+          if (existing != null) throw StateError('old-tab fixture reused');
+          await vault.into(vault.logEntries).insert(
+            LogEntriesCompanion.insert(
+              createdAt: DateTime.utc(2026, 11, 10, 12, 1),
+              bloodSugar: 106,
+              clientUuid: _oldTabLateId,
+              syncStatus: const Value('pending'),
+            ),
+          );
+          final late = await (vault.select(vault.logEntries)
+                ..where((row) => row.clientUuid.equals(_oldTabLateId)))
+              .getSingleOrNull();
+          if (late?.bloodSugar != 106) {
+            throw StateError('old-tab late write not durable');
+          }
+          html.document.title = 'IAMINA_V5_LATE_WRITE_AFTER_V12_A_PASS';
+        } catch (error) {
+          html.document.title = 'IAMINA_V5_LATE_WRITE_FAIL:${error.runtimeType}';
+        }
+      });
+      html.document.title = 'IAMINA_V5_LIVE_OLD_TAB_READY';
+      return; // Keep the real v5 SQLite connection alive in this tab.
+    }
     final initialVersion = await vault.customSelect('PRAGMA user_version').getSingle();
     if (initialVersion.data['user_version'] != 5) {
       throw StateError('historical database must be at schemaVersion=5');
