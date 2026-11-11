@@ -1,0 +1,37 @@
+name: D1 parallel security contract guard (NO DEPLOY)
+
+on:
+  push:
+    branches:
+      - integration/d1-shared-security-contract-20261111
+      - research/d1-parallel-a-worker-20261111
+      - research/d1-parallel-b-backup-20261111
+      - research/d1-parallel-c-session-20261111
+    paths:
+      - 'docs/d1/security-contract-v1.md'
+      - 'frontend/test/d1_parallel/**'
+      - 'frontend/lib/data/drift/d1_*.dart'
+      - 'frontend/lib/services/d1_*.dart'
+      - '.github/workflows/d1-parallel-security-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify contract and isolation boundaries (NO patient runtime)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/d1/security-contract-v1.md
+          grep -F 'PATIENT NO-GO' docs/d1/security-contract-v1.md
+          grep -F 'aucun merge' docs/d1/security-contract-v1.md
+          git diff --exit-code -- frontend/lib/data/drift/database.dart frontend/lib/data/drift/local_backup.dart frontend/lib/services/auth_service.dart
+          echo 'CONTRACT_GUARD_PASS_NO_DEPLOY'
