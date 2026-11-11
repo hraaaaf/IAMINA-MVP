@@ -412,7 +412,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required Key key,
     required String label,
     required DateTime? value,
-    required VoidCallback? onTap,
+    required VoidCallback onTap,
   }) {
     return OutlinedButton(
       key: key,
@@ -498,7 +498,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required Key key,
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return Material(
       color: AminaVisualLanguage.controlSurface(context),
