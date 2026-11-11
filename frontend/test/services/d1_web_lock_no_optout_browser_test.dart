@@ -76,6 +76,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('d30-skip-app-lock')), findsNothing);
     expect(find.text('Continuer sans verrouillage'), findsNothing);
+    expect(find.textContaining('verrouillage est obligatoire'), findsOneWidget);
+    expect(find.textContaining('ou de continuer sans'), findsNothing);
     verifyNever(() => lock.continueWithoutAppLock());
   });
 
