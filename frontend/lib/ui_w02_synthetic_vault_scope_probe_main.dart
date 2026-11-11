@@ -23,7 +23,15 @@ Future<void> main() async {
       throw StateError('invalid synthetic W02 phase');
     }
     final scope = PatientVaultScope.deviceLocal(isA ? _scopeA : _scopeB);
-    final vault = AppDatabase.forPatientVault(scope);
+    final vault = AppDatabase.forPatientVault(
+      scope,
+      onWebStorageResult: (implementation) {
+        // Synthetic CI only: expose the VFS class, never database contents.
+        html.document.documentElement?.setAttribute(
+          'data-d1-drift-storage', implementation,
+        );
+      },
+    );
     db = vault;
     await vault.customSelect('SELECT 1').getSingle();
 
@@ -76,6 +84,10 @@ Future<void> main() async {
         // Original probe failure takes precedence.
       }
     }
-    html.document.title = 'IAMINA_W02_FAIL:${error.runtimeType}';
+    // CI-only synthetic failure: surface the actual storage exception, not
+    // only a minified runtime class, to distinguish WebKit SQLite conflicts.
+    final detail = error.toString();
+    html.document.title = 'IAMINA_W02_FAIL:' +
+        (detail.length > 180 ? detail.substring(0, 180) : detail);
   }
 }
