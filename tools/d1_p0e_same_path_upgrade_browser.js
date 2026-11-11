@@ -23,6 +23,18 @@ function install(bundle) {
   throw Error('invalid CI staging bundle');
  fs.rmSync(live,{recursive:true,force:true});
  fs.cpSync(source,live,{recursive:true,force:true});
+ // Both binaries MUST load from the same /app/ path. Flutter's bundled
+ // index.html was built with /old/ or /new/ base-href for the separate
+ // control arm. Rewrite only this disposable HTML base tag, never patient
+ // files or the source bundles. Otherwise the browser would still load
+ // scripts and workers from /old/ and /new/, invalidating this experiment.
+ const index=path.join(live,'index.html');
+ const html=fs.readFileSync(index,'utf8');
+ if(!/<base\\s+href=["']\\/(?:old|new)\\/["']\\s*\\/?\s*>/.test(html))
+   throw Error('Unexpected Flutter HTML base href; same-path evidence INVALID');
+ const fixed=html.replace(/<base\\s+href=["']\\/(?:old|new)\\/["']\\s*\\/?\s*>/,
+   '<base href="/app/">');
+ fs.writeFileSync(index,fixed,'utf8');
  if (!fs.existsSync(path.join(live,'drift_worker.js')) ||
      !fs.existsSync(path.join(live,'sqlite3.wasm'))) {
   throw Error('missing SQLite runtime assets at canonical served URL');
@@ -40,6 +52,7 @@ async function phase(page,phaseName,label) {
  },{expected},{timeout:90000});
  const info=await page.evaluate(async()=>({
   title:document.title,
+  basePath:new URL(document.baseURI).pathname,
   lease:document.documentElement.dataset.iaminaTabLease||null,
   backend:document.documentElement.getAttribute('data-d1-drift-storage'),
   // Read-only database-name inventory, never row values.
@@ -47,7 +60,7 @@ async function phase(page,phaseName,label) {
     ?(await indexedDB.databases()).map(x=>x.name):null,
   crossOriginIsolated:globalThis.crossOriginIsolated===true,
  }));
- const pass=info.title===expected&&info.lease==='holding'&&
+ const pass=info.title===expected&&info.basePath==='/app/'&&info.lease==='holding'&&
    !!info.backend&&!info.crossOriginIsolated;
  result.phases.push({label,phase:phaseName,info,pass});
  if(!pass)throw Error(label+': '+JSON.stringify(info).slice(0,500));
