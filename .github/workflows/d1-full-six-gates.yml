@@ -1,0 +1,118 @@
+name: D1 six workstreams same SHA research CI (NO DEPLOY)
+
+on:
+  push:
+    branches: [integration/d1-full-six-gates-20261112]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-controller-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Run real session controller, crypto boundary and legacy regression tests
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/services/patient_vault_session_controller.dart lib/data/drift/d1_authenticated_backup_boundary.dart
+          flutter test test/d1_parallel/
+          flutter test test/d1_full/
+          flutter test test/services/patient_vault_session_controller_test.dart
+          flutter test test/data/drift/patient_vault_backup_boundary_test.dart
+          flutter test test/data/drift/local_backup_restore_test.dart
+  node-crypto-internal-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test owner envelopes, sealed backup codec and factual critical blockers
+        run: |
+          set -euo pipefail
+          node --test tools/d1_parallel/backup_codec.test.mjs tools/d1_full/key_envelope.test.mjs tools/d1_full/security_review_gate.test.mjs tools/d1_parallel/gate_inventory.test.mjs
+          node tools/d1_full/security_review_gate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d1-six-patient-release-no-go
+          path: d1-security-no-go.json
+          retention-days: 30
+  chromium-webkit-real-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Pin wasm SHA and compile isolated Dart worker
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          grep -A 8 '^  sqlite3:' pubspec.lock | grep -F 'version: "3.5.2"'
+          curl --fail --location --retry 3 --silent --show-error https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm --output web/sqlite3mc.wasm
+          printf '%s  %s\n' '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' web/sqlite3mc.wasm | sha256sum --check
+          dart analyze lib/d1_synthetic_real_worker.dart
+          dart compile js -O2 lib/d1_synthetic_real_worker.dart -o web/d1_synthetic_real_worker.js
+          git diff --exit-code -- pubspec.yaml pubspec.lock web/sqlite3.wasm web/drift_worker.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then
+            npx playwright install chromium
+          fi
+      - name: Test raw physical IDB and two tabs with real workers
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7399 --bind 127.0.0.1 --directory frontend/web >/tmp/d1-six-7399.log 2>&1 &
+          PID1=$!
+          python3 -m http.server 7402 --bind 127.0.0.1 --directory frontend/web >/tmp/d1-six-7402.log 2>&1 &
+          PID2=$!
+          trap 'kill "$PID1" "$PID2" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7399/d1_synthetic_worker_harness.html >/dev/null
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7402/d1_synthetic_worker_harness.html >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host --env D1_BROWSER=webkit --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright --volume "$PWD:/work" --workdir /work mcr.microsoft.com/playwright:v1.55.0-noble bash -c 'node tools/d1_full/real_worker_browser.cjs && node tools/d1_full/multitab_worker_browser.cjs'
+          else
+            node tools/d1_full/real_worker_browser.cjs
+            node tools/d1_full/multitab_worker_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-six-browser-${{ matrix.browser }}-synthetic
+          path: |
+            d1-real-worker-*-proof.json
+            d1-two-tabs-*.json
+          retention-days: 30
+          if-no-files-found: warn
