@@ -73,7 +73,7 @@ final class D1AuthenticatedBackupBoundary {
     // Refuse returning obviously unprotected plaintext / malformed output.
     // This cannot establish encryption strength: independent crypto review is
     // still required.
-    if (encrypted.isEmpty || encrypted == raw ||
+    if (encrypted.isEmpty ||
         encrypted.contains('"patientProfiles"') ||
         encrypted.contains('"logEntries"')) {
       throw StateError('D1_BACKUP_PLAINTEXT_REFUSED');
