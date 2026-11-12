@@ -12,6 +12,8 @@ firebase-admin>=6.0.0
 redis>=5.0
 django-redis>=4.0
 cryptography>=43.0
+# D1 isolated passkey server signature verification (no patient routes mounted)
+webauthn==3.0.1
 pytest>=8.0
 pytest-django>=4.0
 # Phase 12 — Document Pulper
