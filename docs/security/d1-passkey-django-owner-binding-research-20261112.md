@@ -57,3 +57,33 @@ Les `BinaryField` sont exclus du modèle patient par contrat repository, mais le
 4. Conserver D1 PATIENT NO-GO, PR Draft et zéro Vercel tant que les gates n'ont pas de preuves.
 
 **Notion canonique :** [01 — ROADMAP CANONIQUE](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b). Aucun document de roadmap concurrent n'est créé.
+
+## D1-6 HIGH / adversarial correction candidate — 2026-11-12
+
+**State: CODE CANDIDATE / NO-GO, tests and independent review pending.** This section does not certify deployment or patient access.
+
+### BEFORE / AFTER (candidate, not certification)
+
+| Issue | Before on `cc9936c` | Candidate correction | Required regression |
+|---|---|---|---|
+| HIGH — stolen cookie enrolling credential | Valid Django session alone started enrollment | Fresh Django password verified against current user + persistent account-scoped attempt limiter (10 per 10 minutes); passwordless identity fails closed | HTTP absent/wrong password, rate limit, A→B→A |
+| HIGH — logout in-flight | Old request could use prior `user` and session key without reloading server session | Session engine backend re-read, current Django auth-hash checked at start and commit; stateless cookie sessions denied; account epoch locked during writes | Real Django logout during mock signature, expired/rotated session |
+| HIGH — credential mutation | No research revoke method with fresh proof | Owner-only credential revoke, Django password step-up, revocation epoch and credential row locks, `revoked_at` persistence | Foreign/revoked credential, bad password, replay |
+| HIGH — account recovery/device compromise | No cryptographic binding to real vault | **NOT FIXED** — PRF, DEK and encrypted local vault still separate from this service | Safari/iPhone physical E2E, XSS, old PWA, multi-tab, account recovery |
+
+### Web/PWA integration protocol to implement (no patient route activated)
+
+1. Resolve the current user exclusively from the authenticated server-side Django session and current revocation epoch, with cookie + CSRF and an explicit deny of conflicting Authorization. Never trust a client-provided `owner`, email, session ID or RP/origin.
+2. Before every enrollment or credential mutation require recent account reauthentication through the password-verified research step-up or a separately audited equivalent (for passwordless accounts, fail closed until an independently validated mechanism exists). Limit attempts in persistent storage.
+3. WebAuthn options are server-generated: origin and RP ID fixed by server configuration, random challenge 32 bytes, short TTL, atomic one-time consumption, UV required, globally unique credential ID. Verify assertion signature and authenticator data server-side against the stored account credential; reject foreign/revoked credentials.
+4. The future client Web PRF flow computes KEK and unwraps synthetic DEK **only on the client** after actual UV. Neither PRF results nor KEK/DEK shall be included in requests/responses, logs, telemetry or crash traces. A PRF browser extension claim is not a server-side hardware attestation.
+5. The browser owns a session generation/token scoped to the account, credential, origin and active tab. Every logout, Django identity change, revocation, BFCache restore, cross-tab signal or late asynchronous result invalidates the local generation, drops unwrapped keys and forces new Django + WebAuthn gates; re-entering A after B never reuses A's previously unwrapped DEK.
+6. Future local encrypted vault envelopes must use authenticated encryption and bind account/credential identifiers as authenticated associated data; no silent legacy reattribution, no cleartext DEK persistence, no automatic migration. Recovery and backup require an explicit separately reviewed key-rotation policy.
+
+### Proof boundary
+
+- Current service and HTTP test suite may demonstrate Django/SQLite and PG16 isolation, revocation and fail-closed control flow; mocked `verify_*` returns cannot prove WebAuthn signature math or physical Face ID.
+- A real iPhone passkey/PRF fixture from a **different** PR/SHA is not a Django↔PRF↔vault end-to-end test. Chromium virtual authenticators and WebKit stubs are likewise not physical-device certification.
+- `D1_PASSKEY_RESEARCH_ENABLED` remains absent/OFF; all added endpoints are mounted only by the test URLconf. No patient data, clinical API mutation, physical migration, Vercel Preview or merge authorized.
+- Required before VERIFIED: independent cryptography/security review at exact final SHA, real browser/device evidence, account A→B→A with encrypted vault, logout and in-flight plus multi-tab, persisted key recovery without Face ID bypass, no HIGH/CRITICAL open, and all exact-SHA CI gates green.
+- Developer portability and Pulper Golden Corpus remain distinct potentially-red gates. Do not infer their status from the backend CI result.
