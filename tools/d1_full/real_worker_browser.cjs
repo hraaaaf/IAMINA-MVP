@@ -7,6 +7,7 @@ const browserName=process.env.D1_BROWSER||'chromium';
 const engine={chromium,webkit}[browserName];
 const prefix='http://127.0.0.1:7399/';
 const canary='D1_WORKER_SYNTHETIC_CANARY_20261112';
+const driftMarker='D1_WORKER_DRIFT_MARKER_731';
 const plain='d1_synthetic_real_worker_plain_20261112';
 const cipher='d1_synthetic_real_worker_cipher_20261112';
 const report={lot:'D1_REAL_DEDICATED_WORKER_SYNTHETIC',browser:browserName,
@@ -54,16 +55,19 @@ async function audit(page,dbname){
    }
   }finally{db.close()}
   if(!chunks.length)throw Error('EMPTY_PHYSICAL_STORAGE');
-  const needle=encoder.encode(canary);
-  const contains=chunks.some(chunk=>{
-   outer:for(let i=0;i<=chunk.length-needle.length;i++){
-    for(let j=0;j<needle.length;j++)if(chunk[i+j]!==needle[j])continue outer;
-    return true;
-   }
-   return false;
-  });
-  return {dbname,blocks:chunks.length,bytes:chunks.reduce((n,x)=>n+x.length,0),containsCanary:contains};
- },{dbname,canary});
+  function containsMarker(text){
+   const needle=encoder.encode(text);
+   return chunks.some(chunk=>{
+    outer:for(let i=0;i<=chunk.length-needle.length;i++){
+     for(let j=0;j<needle.length;j++)if(chunk[i+j]!==needle[j])continue outer;
+     return true;
+    }
+    return false;
+   });
+  }
+  return {dbname,blocks:chunks.length,bytes:chunks.reduce((n,x)=>n+x.length,0),
+   containsCanary:containsMarker(canary),containsDriftRow:containsMarker(driftMarker)};
+ },{dbname,canary,driftMarker});
 }
 (async()=>{
  if(!engine)throw Error('UNSUPPORTED_BROWSER');
@@ -74,11 +78,11 @@ async function audit(page,dbname){
   await phase(page,'seed_plain');
   const control=await audit(page,plain);
   report.control=control;
-  if(!control.containsCanary)throw Error('CONTROL_CLEAR_MARKER_ABSENT');
+  if(!control.containsCanary||!control.containsDriftRow)throw Error('CONTROL_CLEAR_MARKER_ABSENT');
   await phase(page,'seed_cipher');
   const encrypted=await audit(page,cipher);
   report.encrypted=encrypted;
-  if(encrypted.containsCanary||encrypted.bytes<256)throw Error('CIPHERTEXT_NOT_PROVEN');
+  if(encrypted.containsCanary||encrypted.containsDriftRow||encrypted.bytes<256)throw Error('CIPHERTEXT_NOT_PROVEN');
   await phase(page,'verify_cipher');
   await phase(page,'wrong_key');
   await phase(page,'no_key');
