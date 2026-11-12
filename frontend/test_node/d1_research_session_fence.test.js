@@ -296,3 +296,29 @@ test('destroy unregisters lifecycle callbacks and never allows resurrection', as
   await assert.rejects(b.withUnlockedKey(async()=>{}),
     /D1_RESEARCH_FENCE_UNAVAILABLE/);
 });
+
+test('Face ID cancellation rejects the research operation without a callback', async () => {
+  let called=false;
+  const f=setup({prfUnlock:async()=>{
+    const e=new Error('Face ID cancellation: NotAllowedError');
+    e.name='NotAllowedError';
+    throw e;
+  }});
+  await assert.rejects(f.withUnlockedKey(async()=>{called=true}),/NotAllowedError/);
+  assert.equal(called,false);
+  f.destroy();
+});
+
+test('account revocation epoch changed during callback rejects late result', async () => {
+  let snapshot=CONTEXT_A,held;
+  const f=setup({
+    readServerSession:async()=>snapshot,
+    prfUnlock:async()=>{held=key();return held}
+  });
+  await assert.rejects(f.withUnlockedKey(async()=>{
+    snapshot={...CONTEXT_A,epoch:CONTEXT_A.epoch+1};
+    return 'MUST_NOT_PASS';
+  }),/D1_RESEARCH_ACCOUNT_OR_SESSION_CHANGED/);
+  assert.ok(held.every(x=>x===0));
+  f.destroy();
+});
