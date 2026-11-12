@@ -54,12 +54,17 @@ async function settled(page,label){
   if(cap.patientReady!==false||cap.provenPrfCredential!==false)
    throw Error('CAPABILITY_HINT_MISTAKEN_FOR_VALIDATED_PASSKEY');
   report.checks.push({label:'capability hints not permission to open',outcome:'PASS_NO_GO'});
-  const noGesture=await page.evaluate(async owner=>{
-   try{await window.iaminaD1PrfGate.unlock(owner);return false}
-   catch(e){return String(e).includes('D1_PRF_USER_GESTURE_REQUIRED')}
+  // Before registration, no caller can obtain DEK. Automation may mark a
+  // script evaluation as user-activated, so never assert a specific UX error.
+  const preEnrollment=await page.evaluate(async owner=>{
+   try{
+    const key=await window.iaminaD1PrfGate.unlock(owner);
+    key?.fill(0);return 'UNEXPECTED_DEK';
+   }catch(e){return String(e)}
   },ownerA);
-  if(!noGesture)throw Error('NO_GESTURE_REFUSAL_MISSING');
-  report.checks.push({label:'explicit user gesture prerequisite',outcome:'PASS'});
+  if(preEnrollment==='UNEXPECTED_DEK')throw Error('UNENROLLED_KEY_LEAK');
+  report.checks.push({label:'no credential or wrapped DEK means fail-closed',
+    outcome:'PASS_REFUSED'});
   await page.click('#enroll');
   const reg=await settled(page,'register platform PRF');
   if(name==='webkit'){

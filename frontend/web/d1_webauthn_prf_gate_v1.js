@@ -21,6 +21,13 @@ const raw=(s,len)=>{
  if(len!==undefined&&a.length!==len)throw Error('D1_PRF_INVALID_LENGTH');
  return a;
 };
+// WebAuthn clientDataJSON encodes the challenge in base64url, not base64.
+const rawUrl=s=>{
+ if(typeof s!=='string'||!/^[A-Za-z0-9_-]+$/.test(s))
+  throw Error('D1_PRF_BAD_URL_CHALLENGE');
+ const padded=s.replace(/-/g,'+').replace(/_/g,'/');
+ return raw(padded+'='.repeat((4-padded.length%4)%4));
+};
 const equal=(a,b)=>{
  if(a.length!==b.length)return false;
  let diff=0;for(let i=0;i<a.length;i++)diff|=a[i]^b[i];
@@ -87,7 +94,7 @@ function assertUV(credential,expectedId,expectedChallenge){
  try{cd=JSON.parse(new TextDecoder().decode(credential.response.clientDataJSON))}
  catch{throw Error('D1_PRF_BAD_CLIENTDATA')}
  if(cd.type!=='webauthn.get'||cd.origin!==location.origin||
-   cd.crossOrigin===true||!equal(raw(cd.challenge),expectedChallenge))
+   cd.crossOrigin===true||!equal(rawUrl(cd.challenge),expectedChallenge))
   throw Error('D1_PRF_ORIGIN_CHALLENGE_MISMATCH');
  const out=credential.getClientExtensionResults()?.prf?.results?.first;
  if(!(out instanceof ArrayBuffer)||out.byteLength!==32)
