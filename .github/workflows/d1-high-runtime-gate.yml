@@ -1,0 +1,86 @@
+name: D1 High fail-closed patient Web admission candidate (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-high-encrypted-runtime-gate-20261112]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  encrypted-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build real candidate encrypted worker and synthetic Flutter entry
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
+          grep -A 8 '^  sqlite3:' pubspec.lock | grep -F 'version: "3.5.2"'
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm \
+            --output web/sqlite3mc.wasm
+          printf '%s  %s\n' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
+            web/sqlite3mc.wasm | sha256sum --check
+          dart analyze --no-fatal-warnings lib/data/drift/d1_patient_encrypted_worker.dart
+          dart compile js -O2 lib/data/drift/d1_patient_encrypted_worker.dart -o web/d1_patient_encrypted_worker.js
+          flutter analyze --no-fatal-warnings --no-fatal-infos \
+            lib/data/drift/d1_web_encrypted_vault.dart \
+            lib/d1_high_encrypted_patient_probe_main.dart \
+            lib/data/drift/database.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/d1_high_encrypted_patient_probe_main.dart
+          test -s build/web/d1_patient_encrypted_worker.js
+          printf '%s  %s\n' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
+            build/web/sqlite3mc.wasm | sha256sum --check
+          git diff --exit-code -- pubspec.yaml pubspec.lock web/sqlite3.wasm web/drift_worker.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then npx playwright install chromium; fi
+      - name: Cold reopen, owner/epoch/lock/key denials and physical IDB
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7409 --bind 127.0.0.1 \
+            --directory frontend/build/web >/tmp/d1-high.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7409/ >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host --env D1_BROWSER=webkit \
+              --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+              --volume "$PWD:/work" --workdir /work \
+              mcr.microsoft.com/playwright:v1.55.0-noble \
+              node tools/d1_full/high_runtime_admission_browser.cjs
+          else
+            node tools/d1_full/high_runtime_admission_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-high-runtime-${{ matrix.browser }}-synthetic
+          path: d1-high-runtime-*.json
+          retention-days: 30
+          if-no-files-found: warn
