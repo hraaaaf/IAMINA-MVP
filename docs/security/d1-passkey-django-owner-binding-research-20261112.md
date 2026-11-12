@@ -14,8 +14,9 @@
 
 - Base : `hraaaaf/IAMINA-MVP main@d742f93e9b8678d7324d5adbfaa0ad2aced8777c`.
 - PRF iPhone Preview (séparé) : `f02402ac0653933db76cc26a737717cc920aa476`; deux PASS exacts sur capture, refus Face ID et reprise observés, retour positif après réouverture.
-- Prototype Django ajouté **dans des fichiers distincts** `core/d1_passkey_binding_research.py`, `core/models/d1_research_passkey.py`, migration `0021_d1_research_passkey`, tests dédiés.
-- Service **jamais monté** dans `diabetes/api/main.py` ou `amina/urls.py`. Réglage `D1_PASSKEY_RESEARCH_ENABLED` absent de la configuration publiée, **false par défaut**. Aucun effet sur PWA/Flutter, App Lock, routeur clinique, sauvegarde, migration des données patients ou secrets.
+- Prototype Django ajouté **dans des fichiers distincts** `core/d1_passkey_binding_research.py`, `passkey_research/models.py`, migration isolée `passkey_research/0001_initial`, tests dédiés, et routeur HTTP monté **seulement** sous `core/tests/d1_passkey_test_urls.py`.
+- Service **jamais monté** dans `diabetes/api/main.py` ou `amina/urls.py`. Un adaptateur Django-Ninja **de test** exige session cookie + CSRF et rejette l'en-tête Authorization ; le routeur demeure non exposé sur l'application réelle.
+- **Correction architecture :** la première tentative stockait des `BinaryField` dans `core`, ce qui a fait échouer le contrat relationnel (`2966 pass, 1 fail`) ; la correction préserve ce contrat sans l'assouplir : les seuls octets d'authentification (clé publique, challenge, handle) sont dans une application de stockage **strictement dédiée aux credentials**, `passkey_research`, sans données cliniques, avec FK aux utilisateurs. La migration initiale dans `core` a été retirée de la branche avant toute fusion ou migration réelle. La nouvelle app exige une revue de cycle de vie, purge, protection et stockage avant mise en service. Réglage `D1_PASSKEY_RESEARCH_ENABLED` absent de la configuration publiée, **false par défaut**. Aucun effet sur PWA/Flutter, App Lock, routeur clinique, sauvegarde, migration des données patients ou secrets.
 - `git.deploymentEnabled: false` existant sur les trois configs Vercel ; **aucun déploiement automatique ou manuel autorisé**.
 
 ## Chaîne d'autorité visée (pas encore intégrée)
@@ -33,7 +34,7 @@ Les tests Django utilisent des comptes `User` fictifs, `BasePatientProfile` de t
 - la résistance XSS ou au compromis d'un script de même origine ;
 - l'invalidation de toutes les opérations JS in-flight après logout ;
 - la conformité d'une ouverture de coffre SQLite3MC/Drift ni le retrait des vieux coffres en clair ;
-- l'attachement réel `request.user`↔`session_key` dans une route Django-Ninja intégrée ;
+- le branchement de l'adaptateur HTTP de test sur l'API de production (interdit dans cette tranche) ; les scénarios Django Client de session réelle/CSRF/A→B→A peuvent vérifier le routage dans l'URLconf isolée, sans démontrer un parcours physique iPhone signé ;
 - un fonctionnement authentifié sur iPhone avec le backend.
 
 ## Risques et critères d'arrêt
@@ -42,12 +43,16 @@ Les tests Django utilisent des comptes `User` fictifs, `BasePatientProfile` de t
 
 **BLOCKER :** un login Django seul ne doit jamais fournir la DEK ; la preuve WebAuthn ne doit jamais suffire pour se connecter à une identité Django étrangère ; aucune réutilisation de challenge ou de credential révoqué.
 
-**BLOCKER :** le modèle n'a pas d'API publique, pas de token de session émis et n'autorise pas le coffre patient. Toute intégration doit être d'abord vérifiée en Preview **uniquement après une autorisation Vercel distincte**.
+**BLOCKER :** le modèle n'a **aucune API patient montée** (l'URLconf de test est privée à `pytest`), pas de token de session émis et n'autorise pas le coffre patient. Toute intégration doit être d'abord vérifiée en Preview **uniquement après une autorisation Vercel distincte**.
+
+## Propriété du stockage et limites restantes
+
+Les `BinaryField` sont exclus du modèle patient par contrat repository, mais le stockage WebAuthn a besoin d'octets de clé publique, challenge et handle. La séparation `passkey_research` est une frontière de données **non cliniques**, non une exemption de sécurité. Les tables restent sujettes à politique de rétention, contrôle d'accès, suppression sur effacement compte, limitation de taille et migration auditée. Le credential seul n'authentifie personne à la clinique.
 
 ## Next exact
 
 1. Résoudre CI / migrations / Bandit / Ruff / PostgreSQL et revue adversariale sur le SHA final du candidat.
-2. Préparer l'adaptateur HTTP Django-Ninja **dans une prochaine tranche distincte** avec CSRF, cookie/bearer anti-collision, sessions A→B→A, tests réels HTTP et révocation in-flight.
+2. Vérifier la suite de tests Django Client/CSRF/A→B→A du **routeur isolé**, puis, dans une tranche distincte et après revue, définir un protocole intégré de sessions réelles, auth epoch et révocation in-flight (l'API patient demeure non montée).
 3. Ajouter test réel de signature `webauthn` + certificat d'absence de fuite PRF sur navigateur, puis revue cryptographique indépendante.
 4. Conserver D1 PATIENT NO-GO, PR Draft et zéro Vercel tant que les gates n'ont pas de preuves.
 
