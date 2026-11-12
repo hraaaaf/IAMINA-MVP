@@ -15,6 +15,7 @@ from core.d1_passkey_binding_research import (
     begin_verification,
     finish_enrollment,
     finish_verification,
+    research_session_context,
     revoke_credential,
 )
 
@@ -99,3 +100,9 @@ def credential_revoke(request, data: CredentialRevoke):
         revoke_credential, request, data.credential_id,
         data.password.get_secret_value(),
     )
+
+
+@router.post("/d1-research/passkey/session-context")
+def session_context(request, data: CredentialStart):
+    # Nonclinical, read-only context. Test URLconf ONLY; not mounted in main API.
+    return _run(research_session_context, request, data.credential_id)
