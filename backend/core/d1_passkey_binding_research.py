@@ -34,7 +34,7 @@ from webauthn.helpers.structs import (
 )
 
 from core.models import BasePatientProfile
-from core.models.d1_research_passkey import (
+from passkey_research.models import (
     D1ResearchPasskeyChallenge,
     D1ResearchPasskeyCredential,
 )
