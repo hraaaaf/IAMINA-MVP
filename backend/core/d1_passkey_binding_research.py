@@ -263,11 +263,12 @@ def finish_enrollment(user, session_key: str, ceremony_id: str, credential: dict
             or credential_id != _canonical_id(payload["id"])
         ):
             _deny()
-        if _principal(user, session_key) != version:
-            _deny()
-        # Credential ID uniqueness is global: neither another account nor
-        # a revoked binding can be silently claimed by this account.
+        # Serialize epoch changes with the credential binding write.
         with transaction.atomic():
+            profile = BasePatientProfile.objects.select_for_update().get(patient_id=user.pk)
+            if profile.auth_token_version != version or _principal(user, session_key) != version:
+                _deny()
+            # Keep unique IDs assigned even after revocation.
             D1ResearchPasskeyCredential.objects.create(
                 patient=user,
                 credential_id=payload["id"],
@@ -345,8 +346,11 @@ def finish_verification(user, session_key: str, ceremony_id: str, credential: di
             _deny()
         if _principal(user, session_key) != version:
             _deny()
-        # Nonzero authenticators must advance; zero-only passkeys are allowed.
+        # Lock the epoch and credential against concurrent logout/revocation.
         with transaction.atomic():
+            profile = BasePatientProfile.objects.select_for_update().get(patient_id=user.pk)
+            if profile.auth_token_version != version or _principal(user, session_key) != version:
+                _deny()
             active = D1ResearchPasskeyCredential.objects.select_for_update().get(
                 pk=binding.pk, patient=user, revoked_at__isnull=True,
             )
