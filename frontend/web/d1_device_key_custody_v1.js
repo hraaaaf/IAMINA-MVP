@@ -63,10 +63,11 @@ function replace(db,expected,newRecord){
   getReq.onsuccess=()=>{
    const current=getReq.result;
    if(!current||current.id!==expected.id||current.version!==VERSION||
-      current.status!==expected.status)return;
+      current.status!==expected.status||
+      current.revision!==expected.revision)return;
    // Optimistic version condition; two tabs cannot overwrite an account
    // with a different record id or change the state unexpectedly.
-   store.put(newRecord);changed=true;
+   store.put({...newRecord,revision:expected.revision+1});changed=true;
   };
   tx.oncomplete=()=>changed?resolve():reject(Error('D1_CUSTODY_CONCURRENT_CHANGE'));
   tx.onerror=()=>reject(Error('D1_CUSTODY_WRITE_FAIL'));
@@ -126,7 +127,7 @@ async function create(owner){
    const recoveryKek=await deriveRecovery(recovery,recoverySalt,owner);
    const rec={
     owner,format:FORMAT,version:VERSION,id,
-    status:'pending_confirmation',
+    status:'pending_confirmation',revision:1,
     // JS CryptoKey is structured-cloned by IndexedDB, extractable:false.
     deviceKek:key,
     device:{nonce:encode(deviceNonce),

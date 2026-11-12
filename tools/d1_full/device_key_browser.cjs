@@ -28,6 +28,7 @@ async function check(page,name,fn){
   if(init.a.status!=='pending_confirmation'||init.b.status!=='pending_confirmation')
    throw Error('PENDING_CONFIRMATION_REQUIRED');
   report.checks.push('per-owner random recovery keys, initial pending');
+  report.knownCriticalRisk='SAME_ORIGIN_JS_CAN_USE_LOCAL_CRYPTO_KEY_WITHOUT_APP_LOCK';
   await check(page,'cannot unlock before confirmed',async()=>{
    try{await window.iaminaD1DeviceKeyCustody.unlockDevice('amina_vault_v1_native_731');return false}
    catch(e){return String(e).includes('RECOVERY_NOT_CONFIRMED')}
@@ -43,6 +44,22 @@ async function check(page,name,fn){
    await api.confirm('amina_vault_v1_native_812',window.__d1Fixture.recoveryB);
    const a=await api.inspect('amina_vault_v1_native_731');
    return a.status==='ready'&&a.deviceKeyExtractable===false&&a.hasRecoveryEnvelope===true;
+  });
+  await check(page,'same-origin JS bypasses app-lock (deliberate threat NO-GO)',async()=>{
+   const key=await window.iaminaD1DeviceKeyCustody.unlockDevice('amina_vault_v1_native_731');
+   const observed=key instanceof Uint8Array&&key.length===32;
+   key.fill(0);return observed;
+  });
+  await check(page,'atomic confirmation race rejects second writer',async()=>{
+   const api=window.iaminaD1DeviceKeyCustody,owner='amina_vault_v1_native_921';
+   const created=await api.create(owner);
+   const r=await Promise.allSettled([
+    api.confirm(owner,created.recoveryKey),
+    api.confirm(owner,created.recoveryKey),
+   ]);
+   return r.filter(v=>v.status==='fulfilled').length===1 &&
+     r.filter(v=>v.status==='rejected').length===1 &&
+     (await api.inspect(owner)).status==='ready';
   });
   await check(page,'duplicate account creation cannot replace existing DEK',async()=>{
    try{await window.iaminaD1DeviceKeyCustody.create('amina_vault_v1_native_731');return false}
@@ -65,8 +82,9 @@ async function check(page,name,fn){
   });
   await check(page,'no DEK or recovery key in localStorage or sessionStorage',async()=>{
    const fixture=window.__d1Fixture;
-   return !JSON.stringify(localStorage).includes(fixture.recoveryA) &&
-    !JSON.stringify(sessionStorage).includes(fixture.recoveryA);
+   const local=[...Object.entries(localStorage)].flat().join('|');
+   const session=[...Object.entries(sessionStorage)].flat().join('|');
+   return !local.includes(fixture.recoveryA)&&!session.includes(fixture.recoveryA);
   });
   await check(page,'stored CryptoKey cannot be exported',async()=>{
    const db=await new Promise((resolve,reject)=>{
