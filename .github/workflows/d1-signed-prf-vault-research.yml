@@ -1,0 +1,34 @@
+name: D1-6 signed WebAuthn PRF synthetic vault (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-signed-prf-synthetic-vault-20261112]
+  pull_request:
+    branches: [research/d1-client-session-fence-20261112]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-crypto-synthetic:
+    name: Node WebCrypto signed assertion + local PRF vault (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax validation
+        run: |
+          node --check frontend/web/d1_signed_prf_synthetic_research.js
+          node --check frontend/test_node/d1_signed_prf_synthetic_research.test.js
+      - name: ECDSA WebCrypto + AES-GCM encrypted vault test (no network)
+        run: node --test frontend/test_node/d1_signed_prf_synthetic_research.test.js
+      - name: Assert production PWA does not mount research bridge
+        run: |
+          set -euo pipefail
+          if grep -r 'd1_signed_prf_synthetic_research'             frontend/web/index.html frontend/web/flutter_bootstrap.js frontend/api/index.js; then
+            echo "::error::Research bridge must not be mounted in production"
+            exit 1
+          fi
