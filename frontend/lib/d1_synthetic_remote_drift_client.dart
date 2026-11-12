@@ -59,17 +59,22 @@ Future<void> main() async{
     try{
       stage='SQL';
       if(phase=='seed'){
+        stage='CREATE';
         await database.runCustom('CREATE TABLE IF NOT EXISTS d1_remote_records (marker TEXT NOT NULL)');
+        stage='DELETE';
         await database.runCustom('DELETE FROM d1_remote_records');
+        stage='INSERT';
         await database.runInsert('INSERT INTO d1_remote_records(marker) VALUES (?)',
           ['D1_DRIFT_REMOTE_SYNTHETIC_731']);
       }
+      stage='SELECT';
       final rows=await database.runSelect(
         'SELECT marker FROM d1_remote_records', [],
       );
       if(rows.length!=1||rows.single['marker']!='D1_DRIFT_REMOTE_SYNTHETIC_731')
         throw StateError('INVALID_DRIFT_REMOTE_ROW');
     }finally{
+      stage='CLOSE';
       await database.close();
     }
     html.document.title='D1_REMOTE_PASS_${phase.toUpperCase()}';
