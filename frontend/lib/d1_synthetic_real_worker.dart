@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:html' as html;
 
 import 'package:sqlite3/wasm.dart';
+import 'package:drift/wasm.dart';
 
 const _canary = 'D1_WORKER_SYNTHETIC_CANARY_20261112';
 const _correct = 'D1_FAKE_ONLY_NOT_PATIENT_KEY_20261112';
@@ -71,6 +72,33 @@ Future<String> _phase(String raw) async {
         final rows = db.select('SELECT canary FROM d1_worker_canaries');
         if (rows.length != 1 || rows.single['canary'] != _canary) {
           return 'FAIL_REOPEN_MISMATCH';
+        }
+      }
+      // Also drive this real connection via Drift's QueryExecutor, inside
+      // the dedicated worker. Full AppDatabase schema remains a later gate.
+      if (phase != 'wrong_key' && phase != 'no_key') {
+        final executor = WasmDatabase.opened(
+          db, closeUnderlyingOnClose: false,
+        );
+        try {
+          if (phase == 'seed_plain' || phase == 'seed_cipher') {
+            await executor.runCustom(
+              'CREATE TABLE IF NOT EXISTS d1_drift_rows (owner TEXT NOT NULL, marker TEXT NOT NULL)', [],
+            );
+            await executor.runInsert(
+              'INSERT INTO d1_drift_rows(owner, marker) VALUES (?, ?)',
+              ['fake-owner-731', 'D1_WORKER_DRIFT_MARKER_731'],
+            );
+          }
+          final rows = await executor.runSelect(
+            'SELECT owner, marker FROM d1_drift_rows', [],
+          );
+          if (rows.length != 1 || rows.single['owner'] != 'fake-owner-731' ||
+              rows.single['marker'] != 'D1_WORKER_DRIFT_MARKER_731') {
+            return 'FAIL_DRIFT_WORKER_ROUNDTRIP';
+          }
+        } finally {
+          await executor.close();
         }
       }
     } finally {
