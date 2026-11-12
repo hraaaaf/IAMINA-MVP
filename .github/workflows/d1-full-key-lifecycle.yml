@@ -1,4 +1,4 @@
-name: D1 keys: owner-bound recovery envelopes (NO DEPLOY)
+name: 'D1 keys owner-bound recovery envelopes (NO DEPLOY)'
 on:
   push:
     branches: [research/d1-key-lifecycle-20261112]
