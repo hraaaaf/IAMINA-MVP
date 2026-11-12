@@ -364,3 +364,29 @@ def finish_verification(user, session_key: str, ceremony_id: str, credential: di
         _deny()
     # No bearer, authentication token, signed session or DEK is issued.
     return {"status": "ASSERTION_VERIFIED_RESEARCH_ONLY", "patient_ready": False}
+
+
+def revoke_credential(user, session_key: str, credential_id: str, password: str) -> dict:
+    """Research-only credential mutation gated by server identity and fresh password."""
+    rp_id, origin, version = _scope(user, session_key)
+    _require_password_step_up(user, session_key, password, version)
+    if not isinstance(credential_id, str) or len(credential_id) > 1024:
+        _deny()
+    try:
+        with transaction.atomic():
+            profile = BasePatientProfile.objects.select_for_update().get(patient_id=user.pk)
+            if profile.auth_token_version != version or _principal(user, session_key) != version:
+                _deny()
+            binding = D1ResearchPasskeyCredential.objects.select_for_update().filter(
+                patient=user, credential_id=credential_id, rp_id=rp_id,
+                origin=origin, revoked_at__isnull=True,
+            ).first()
+            if binding is None:
+                _deny()
+            binding.revoked_at = timezone.now()
+            binding.save(update_fields=["revoked_at"])
+    except D1PasskeyResearchDenied:
+        raise
+    except Exception:
+        _deny()
+    return {"status": "REVOKED_RESEARCH_ONLY", "patient_ready": False}
