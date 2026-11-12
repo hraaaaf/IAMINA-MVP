@@ -16,6 +16,9 @@ on:
       - frontend/web/d1_research_session_fence.js
       - frontend/test_node/d1_research_session_fence.test.js
       - .github/workflows/d1-research-session-fence.yml
+      - backend/core/d1_passkey_binding_research.py
+      - backend/core/api/v1/d1_passkey_research.py
+      - backend/core/tests/test_d1_passkey_http_research.py
 
 permissions:
   contents: read
@@ -40,6 +43,13 @@ jobs:
           node --check frontend/test_node/d1_research_session_fence.test.js
       - name: Fail-closed and race tests (no browser, no network, no patient data)
         run: node --test frontend/test_node/d1_research_session_fence.test.js
+      - name: Assert exactly one active D1 client research fence
+        run: |
+          set -euo pipefail
+          test ! -e frontend/web/d1_prf_session_fence_research.js
+          test ! -e frontend/test_node/d1_prf_session_fence_research.test.js
+          test ! -e .github/workflows/d1-client-session-fence-research.yml
+          echo 'One D1 session fence module; all browser and Django identities remain synthetic.'
       - name: Verify no production API routing import
         run: |
           if grep -r 'd1_research_session_fence' frontend/web/index.html frontend/web/flutter_bootstrap.js frontend/api/index.js; then
