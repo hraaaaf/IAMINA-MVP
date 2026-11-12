@@ -1,0 +1,33 @@
+name: D1 experimental backup owner epoch and rollback boundary (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-backup-recovery-20261112]
+    paths:
+      - 'frontend/lib/data/drift/d1_authenticated_backup_boundary.dart'
+      - 'frontend/test/d1_full/d1_authenticated_backup_boundary_test.dart'
+      - '.github/workflows/d1-full-backup-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  encrypted-backup-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter backup adapter ordering and existing restore invariants
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/data/drift/d1_authenticated_backup_boundary.dart
+          flutter test test/d1_full/d1_authenticated_backup_boundary_test.dart
+          flutter test test/data/drift/patient_vault_backup_boundary_test.dart
+          flutter test test/data/drift/local_backup_restore_test.dart
