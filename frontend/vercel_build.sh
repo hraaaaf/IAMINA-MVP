@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# D1 PRF physical-iPhone test: dedicated branch preview, synthetic static files ONLY.
+if [ "${VERCEL_GIT_COMMIT_REF:-}" = "research/d1-prf-iphone-preview-fixture-20261112" ]; then
+  if [ "${VERCEL_ENV:-}" != "preview" ] || [ "${VERCEL_PROJECT_ID:-}" != "prj_AYaUi32KTDHak8I7dmdQpDrqd8SI" ]; then
+    echo "D1 PRF: DENY non-preview or foreign Vercel project" >&2
+    exit 64
+  fi
+  echo "D1 PRF: SYNTHETIC-ONLY STATIC PREVIEW (no Flutter or patient app)"
+  mkdir -p build/web
+  cp web/d1_webauthn_prf_gate_v1.js build/web/
+  cp web/d1_webauthn_prf_harness.html build/web/index.html
+  exit 0
+fi
+
 FLUTTER_VERSION="3.41.0"
 FLUTTER_DIR="/tmp/flutter-$FLUTTER_VERSION"
 
