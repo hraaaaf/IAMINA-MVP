@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 from webauthn import (
     base64url_to_bytes,
     generate_authentication_options,
@@ -95,6 +96,11 @@ def _scope(user, session_key: str):
     return rp_id, origin, version
 
 
+def _session_binding(session_key):
+    # The browser's Django session identifier is NEVER persisted in raw form.
+    return salted_hmac("iamina.d1.passkey.session.v1", session_key).hexdigest()
+
+
 def _new_challenge(user, session_key, version, rp_id, origin, purpose,
                    *, credential=None, handle=None):
     return D1ResearchPasskeyChallenge.objects.create(
@@ -106,7 +112,7 @@ def _new_challenge(user, session_key, version, rp_id, origin, purpose,
         origin=origin,
         rp_id=rp_id,
         auth_token_version=version,
-        session_key=session_key,
+        session_binding=_session_binding(session_key),
         expires_at=timezone.now() + timedelta(seconds=TTL_SECONDS),
     )
 
@@ -123,7 +129,7 @@ def _consume(user, session_key, version, rp_id, origin, ceremony_id, purpose):
     with transaction.atomic():
         updated = D1ResearchPasskeyChallenge.objects.filter(
             pk=ceremony_id, patient=user, purpose=purpose,
-            auth_token_version=version, session_key=session_key,
+            auth_token_version=version, session_binding=_session_binding(session_key),
             rp_id=rp_id, origin=origin, consumed_at__isnull=True,
             expires_at__gt=now,
         ).update(consumed_at=now)
