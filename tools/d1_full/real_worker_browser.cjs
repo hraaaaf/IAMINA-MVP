@@ -26,7 +26,7 @@ async function phase(page,step){
  if(result!=='PASS_'+step.toUpperCase())throw Error(step+': '+result);
 }
 async function audit(page,dbname){
- return page.evaluate(async ({dbname,canary})=>{
+ return page.evaluate(async ({dbname,canary,driftMarker})=>{
   const names=await indexedDB.databases();
   if(!names.some(x=>x.name===dbname))throw Error('IDB_MISSING');
   const db=await new Promise((resolve,reject)=>{
