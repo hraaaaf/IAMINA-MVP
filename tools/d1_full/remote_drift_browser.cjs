@@ -3,14 +3,14 @@
 const fs=require('node:fs');
 const {chromium,webkit}=require('playwright');
 const name=process.env.D1_BROWSER||'chromium';
-const report={test:'D1_SYNTHETIC_REAL_DRIFT_REMOTE',browser:name,
+const report={test:'D1_SYNTHETIC_REAL_APPDATABASE_REMOTE',browser:name,
  patientRuntime:false,synthetic:true,result:'NOT_RUN',steps:[]};
 // Inspect the raw physical IndexedDB blocks after a complete worker flush.
 // No source-level assertions are accepted as a substitute for byte inspection.
 async function rawIdbProof(tab){
  return tab.evaluate(async ()=>{
   const dbName='d1_synthetic_remote_drift_731';
-  const marker='D1_DRIFT_REMOTE_SYNTHETIC_731';
+  const marker='D1_REAL_REMOTE_APPDATABASE_ROW_731';
   const dbs=await indexedDB.databases();
   if(!dbs.some(d=>d.name===dbName))throw Error('IDB_MISSING');
   const db=await new Promise((resolve,reject)=>{
@@ -57,7 +57,7 @@ async function rawIdbProof(tab){
 async function phase(ctx,p){
  const tab=await ctx.newPage();
  try{
-  await tab.goto('http://127.0.0.1:7405/d1_synthetic_remote_harness.html?phase='+p);
+  await tab.goto('http://127.0.0.1:7405/?phase='+p);
   await tab.waitForFunction(()=>
    document.title.startsWith('D1_REMOTE_PASS_')||
    document.title.startsWith('D1_REMOTE_FAIL_'),null,{timeout:35000});

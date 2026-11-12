@@ -9,6 +9,8 @@ import 'dart:typed_data';
 import 'package:drift/remote.dart';
 import 'package:drift/web.dart';
 import 'package:web/web.dart' as web;
+import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
 
 Future<void> main() async{
   final phase=Uri.base.queryParameters['phase']??'';
@@ -61,26 +63,36 @@ Future<void> main() async{
     final database=await connectToRemoteAndInitialize(
       ports.port1.channel(explicitClose:true), singleClientMode:false,
     );
+    // This invokes the REAL generated Drift AppDatabase schema, but through
+    // a CI-only remote executor and a synthetic owner. Never instantiate
+    // AppDatabase.forPatientVault or any patient-facing runtime from here.
+    final appDb=AppDatabase.testPatientVault(
+      database,PatientVaultScope.nativeDjango(731),
+    );
     try{
-      stage='SQL';
+      stage='APP_DATABASE_SCHEMA';
+      await appDb.customSelect('SELECT 1').getSingle();
       if(phase=='seed'){
-        stage='CREATE';
-        await database.runCustom('CREATE TABLE IF NOT EXISTS d1_remote_records (marker TEXT NOT NULL)');
-        stage='DELETE';
-        await database.runCustom('DELETE FROM d1_remote_records');
-        stage='INSERT';
-        await database.runInsert('INSERT INTO d1_remote_records(marker) VALUES (?)',
-          ['D1_DRIFT_REMOTE_SYNTHETIC_731']);
+        stage='APP_DATABASE_INSERT';
+        await appDb.into(appDb.logEntries).insert(
+          LogEntriesCompanion.insert(
+            createdAt:DateTime.utc(2026,11,12),
+            bloodSugar:117.0,
+            clientUuid:'D1_REAL_REMOTE_APPDATABASE_ROW_731',
+          ),
+        );
       }
-      stage='SELECT';
-      final rows=await database.runSelect(
-        'SELECT marker FROM d1_remote_records', [],
-      );
-      if(rows.length!=1||rows.single['marker']!='D1_DRIFT_REMOTE_SYNTHETIC_731')
-        throw StateError('INVALID_DRIFT_REMOTE_ROW');
+      stage='APP_DATABASE_SELECT';
+      final rows=await appDb.getRecentLogs();
+      if(rows.length!=1||
+         rows.single.clientUuid!='D1_REAL_REMOTE_APPDATABASE_ROW_731'||
+         rows.single.bloodSugar!=117.0||
+         appDb.patientVaultScope?.nativeDjangoUserId!=731){
+        throw StateError('D1_SYNTHETIC_APPDATABASE_ROUNDTRIP_FAILED');
+      }
     }finally{
       stage='CLOSE';
-      await database.close();
+      await appDb.close();
     }
     // The client close is not enough: wait until the worker flushes and
     // closes physical IndexedDB before claiming a durable success.
