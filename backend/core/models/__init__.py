@@ -10,6 +10,10 @@ from django.db import models as _models
 from core.models.ai_consent_receipt import AIConsentReceipt  # noqa: F401
 from core.models.ai_media_consent import AIMediaConsentGrant  # noqa: F401
 from core.models.auth_abuse import AuthAbuseBucket  # noqa: F401
+from core.models.d1_research_passkey import (  # noqa: F401
+    D1ResearchPasskeyCredential,
+    D1ResearchPasskeyChallenge,
+)
 from core.models.d2_notification import (  # noqa: F401
     D2Notification,
     D2NotificationPreference,
