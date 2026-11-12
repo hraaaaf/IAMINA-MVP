@@ -9,6 +9,7 @@ on:
       - 'tools/d1_full/device_key_browser.cjs'
       - 'frontend/lib/data/drift/d1_web_vault_key_admission.dart'
       - 'frontend/lib/d1_high_key_custody_probe_main.dart'
+      - 'docs/d1/d1-key-custody-threat-model-20261112.md'
       - '.github/workflows/d1-high-key-custody.yml'
   workflow_dispatch:
 permissions:
@@ -117,6 +118,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Confirm critical same-origin risk is explicitly documented
+        run: |
+          set -euo pipefail
+          grep -F 'risque NO-GO' docs/d1/d1-key-custody-threat-model-20261112.md
+          grep -F 'Aucun fallback silencieux' docs/d1/d1-key-custody-threat-model-20261112.md
       - name: Parse JS without executing patient UI
         shell: bash
         run: |
