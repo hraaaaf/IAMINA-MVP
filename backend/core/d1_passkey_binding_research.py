@@ -9,15 +9,17 @@ from __future__ import annotations
 
 import base64
 import json
+from importlib import import_module
 import secrets
 import uuid
 from datetime import timedelta
 from urllib.parse import urlsplit
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.contrib.auth import BACKEND_SESSION_KEY, HASH_SESSION_KEY, SESSION_KEY, get_user_model
+from django.db import DatabaseError, IntegrityError, transaction
 from django.utils import timezone
-from django.utils.crypto import salted_hmac
+from django.utils.crypto import constant_time_compare, salted_hmac
 from webauthn import (
     base64url_to_bytes,
     generate_authentication_options,
@@ -34,6 +36,7 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
 )
 
+from core.auth_abuse import AuthRateLimitExceeded, enforce_passkey_stepup_limit
 from core.models import BasePatientProfile
 from passkey_research.models import (
     D1ResearchPasskeyChallenge,
@@ -74,6 +77,30 @@ def _config():
     return rp_id, origin
 
 
+def _assert_live_session(user, session_key: str) -> None:
+    """Re-read active Django server session on each sensitive operation."""
+    try:
+        if settings.SESSION_ENGINE == "django.contrib.sessions.backends.signed_cookies":
+            _deny()
+        store = import_module(settings.SESSION_ENGINE).SessionStore
+        payload = store(session_key=session_key).load()
+        active = get_user_model().objects.filter(pk=user.pk, is_active=True).first()
+        if active is None or not isinstance(payload, dict):
+            _deny()
+        if (
+            payload.get(SESSION_KEY) != str(active.pk)
+            or payload.get(BACKEND_SESSION_KEY) not in settings.AUTHENTICATION_BACKENDS
+            or not isinstance(payload.get(HASH_SESSION_KEY), str)
+            or not constant_time_compare(
+                payload[HASH_SESSION_KEY], active.get_session_auth_hash(),
+            )
+        ):
+            _deny()
+    except D1PasskeyResearchDenied:
+        raise
+    except Exception:
+        _deny()
+
 def _principal(user, session_key: str):
     """The future protected session router must provide these server values."""
     if (
@@ -82,6 +109,7 @@ def _principal(user, session_key: str):
         or not isinstance(session_key, str) or not (16 <= len(session_key) <= 80)
     ):
         _deny()
+    _assert_live_session(user, session_key)
     version = BasePatientProfile.objects.filter(
         patient_id=user.pk,
     ).values_list("auth_token_version", flat=True).first()
