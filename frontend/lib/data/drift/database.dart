@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uuid/uuid.dart';
 
 import 'patient_vault_scope.dart';
@@ -135,23 +136,36 @@ class AppDatabase extends _$AppDatabase {
   // A→logout→B certification before any real patient use.
   AppDatabase.forPatientVault(
     PatientVaultScope scope, {
-    // Optional CI-only observability. Does not select or alter the storage VFS.
+    // Web MUST NOT open the ordinary sqlite3.wasm / drift_worker.js path.
+    // This intentionally prevents patient UI activation until admission of
+    // reviewed volatile key material and a fail-closed SQLite3MC worker.
     void Function(String implementation)? onWebStorageResult,
   })  : patientVaultScope = scope,
-        super(
-          driftDatabase(
-            name: scope.databaseName,
-            web: DriftWebOptions(
-              sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-              driftWorker: Uri.parse('drift_worker.js'),
-              onResult: onWebStorageResult == null
-                  ? null
-                  : (result) => onWebStorageResult(
-                      result.chosenImplementation.toString(),
-                    ),
-            ),
-          ),
-        );
+        super(_unkeyedPatientVaultExecutor(scope, onWebStorageResult));
+
+  static QueryExecutor _unkeyedPatientVaultExecutor(
+    PatientVaultScope scope,
+    void Function(String implementation)? onWebStorageResult,
+  ) {
+    if (kIsWeb) {
+      // Do not touch/create, migrate, delete or overwrite old clear vaults.
+      throw StateError('D1_ENCRYPTED_WEB_PATIENT_VAULT_ADMISSION_REQUIRED');
+    }
+    // Native stays unchanged in this isolated Web-only security lot.
+    // Native at-rest encryption requires separate platform-specific review.
+    return driftDatabase(
+      name: scope.databaseName,
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+        onResult: onWebStorageResult == null
+            ? null
+            : (result) => onWebStorageResult(
+                result.chosenImplementation.toString(),
+              ),
+      ),
+    );
+  }
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django
