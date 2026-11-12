@@ -29,6 +29,7 @@ _DEFAULT_RULES = {
     "register_account": RateLimitRule(limit=5, window_seconds=3600),
     "password_reset_ip": RateLimitRule(limit=10, window_seconds=3600),
     "password_reset_account": RateLimitRule(limit=5, window_seconds=3600),
+    "passkey_stepup_account": RateLimitRule(limit=10, window_seconds=600),
 }
 _ACTION_SCOPES = {
     "login": ("login_ip", "login_account"),
@@ -132,3 +133,14 @@ def enforce_auth_abuse_limit(request, action: str, *, identity: str | None = Non
             _hash_identifier("account", normalized_identity),
             now=now,
         )
+
+
+def enforce_passkey_stepup_limit(user_id: int) -> None:
+    """DB-backed account-level rate limit for passkey reauthentication."""
+    if type(user_id) is not int or user_id <= 0:
+        raise ValueError("Invalid step-up principal")
+    _consume(
+        "passkey_stepup_account",
+        _hash_identifier("passkey-stepup-user", str(user_id)),
+        now=timezone.now(),
+    )
