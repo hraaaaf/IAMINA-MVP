@@ -17,7 +17,9 @@ Future<void> main() async{
     html.document.title='D1_REMOTE_FAIL_PHASE';return;
   }
   web.Worker? worker;
+  var stage='INIT';
   try{
+    stage='WORKER_CREATE';
     worker=web.Worker('d1_synthetic_remote_drift_worker.js'.toJS);
     final handshake=Completer<String>();
     web.EventStreamProviders.messageEvent.forTarget(worker).listen((event){
@@ -33,9 +35,11 @@ Future<void> main() async{
     if(phase=='wrong_key')bytes[0]=51;
     final jsKey=bytes.toJS;
     if(phase!='missing_key')message['key']=jsKey;
+    stage='TRANSFER';
     worker.postMessage(message,phase=='missing_key' ?
       [ports.port2].toJS : [ports.port2, (jsKey['buffer'] as JSArrayBuffer)].toJS);
     bytes.fillRange(0,bytes.length,0);
+    stage='HANDSHAKE';
     final result=await handshake.future.timeout(const Duration(seconds:25));
     if(phase=='missing_key'||phase=='wrong_key'){
       html.document.title=(
@@ -44,11 +48,16 @@ Future<void> main() async{
       ) ? 'D1_REMOTE_PASS_${phase.toUpperCase()}' : 'D1_REMOTE_FAIL_NEGATIVE';
       return;
     }
-    if(result!='D1_REMOTE_READY')throw StateError('UNEXPECTED_HANDSHAKE');
+    if(result!='D1_REMOTE_READY'){
+      html.document.title='D1_REMOTE_FAIL_'+result;
+      return;
+    }
+    stage='CONNECT';
     final database=await connectToRemoteAndInitialize(
       ports.port1.channel(), singleClientMode:true,
     );
     try{
+      stage='SQL';
       if(phase=='seed'){
         await database.runCustom('CREATE TABLE IF NOT EXISTS d1_remote_records (marker TEXT NOT NULL)');
         await database.runCustom('DELETE FROM d1_remote_records');
@@ -65,7 +74,8 @@ Future<void> main() async{
     }
     html.document.title='D1_REMOTE_PASS_${phase.toUpperCase()}';
   }catch(_){
-    html.document.title='D1_REMOTE_FAIL_OPERATION';
+    // CI synthetic-only stage diagnostics; never print keys or SQL errors.
+    html.document.title='D1_REMOTE_FAIL_'+stage;
   }finally{
     worker?.terminate();
   }
