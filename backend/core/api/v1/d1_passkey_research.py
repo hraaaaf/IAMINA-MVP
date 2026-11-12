@@ -15,8 +15,8 @@ from core.d1_passkey_binding_research import (
     begin_verification,
     finish_enrollment,
     finish_verification,
-    revoke_credential,
     research_session_context,
+    revoke_credential,
 )
 
 router = Router(tags=["d1-passkey-research"])
