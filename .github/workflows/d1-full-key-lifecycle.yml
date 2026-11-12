@@ -1,0 +1,20 @@
+name: D1 keys: owner-bound recovery envelopes (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-key-lifecycle-20261112]
+    paths: ['tools/d1_full/key_envelope*', '.github/workflows/d1-full-key-lifecycle.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  crypto-envelope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tools/d1_full/key_envelope.test.mjs
