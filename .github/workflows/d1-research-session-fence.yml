@@ -1,0 +1,45 @@
+name: D1-6 synthetic Web session fence (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-client-session-fence-20261112]
+    paths:
+      - frontend/web/d1_research_session_fence.js
+      - frontend/test_node/d1_research_session_fence.test.js
+      - .github/workflows/d1-research-session-fence.yml
+  pull_request:
+    branches: [research/d1-django-passkey-binding-20261112]
+    paths:
+      - frontend/web/d1_research_session_fence.js
+      - frontend/test_node/d1_research_session_fence.test.js
+      - .github/workflows/d1-research-session-fence.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-synthetic-session-fence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-node:
+    name: D1 client identity/epoch race tests — synthetic only
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check frontend/web/d1_research_session_fence.js
+          node --check frontend/test_node/d1_research_session_fence.test.js
+      - name: Fail-closed and race tests (no browser, no network, no patient data)
+        run: node --test frontend/test_node/d1_research_session_fence.test.js
+      - name: Verify no production API routing import
+        run: |
+          if grep -r 'd1_research_session_fence' frontend/web/index.html frontend/web/flutter_bootstrap.js frontend/api/index.js; then
+            echo "::error::Research fence must not be mounted in production web entrypoints"
+            exit 1
+          fi
