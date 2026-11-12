@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from django.test import Client, override_settings
 
 from core.models import BasePatientProfile
-from core.models.d1_research_passkey import D1ResearchPasskeyChallenge
+from passkey_research.models import D1ResearchPasskeyChallenge
 
 RP = "iamina-review-9tskukqul-achraf-benmoussa-s-projects.vercel.app"
 ROOT = "/api/v1/d1-research/passkey"
