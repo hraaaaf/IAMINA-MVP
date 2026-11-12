@@ -52,7 +52,10 @@ Future<void> _open(web.DedicatedWorkerGlobalScope self, JSObject msg) async {
       final executor=WasmDatabase.opened(sql,closeUnderlyingOnClose:false);
       try{
         stage='SERVER';
-        final server=DriftServer(executor);
+        // A dedicated, one-use worker allows its sole owner to terminate the
+        // server. Keep the executor open until the physical VFS is flushed.
+        final server=DriftServer(executor,
+          allowRemoteShutdown:true,closeConnectionAfterShutdown:false);
         self.postMessage('D1_REMOTE_READY'.toJS);
         await server.serve(port.channel());
       }finally{
@@ -65,6 +68,7 @@ Future<void> _open(web.DedicatedWorkerGlobalScope self, JSObject msg) async {
     await storage.flush();
     await storage.close();
     storage=null;
+    self.postMessage('D1_REMOTE_FLUSHED'.toJS);
   }catch(_){
     // Never include key, SQL string or database details in responses.
     self.postMessage('FAIL_$stage'.toJS);

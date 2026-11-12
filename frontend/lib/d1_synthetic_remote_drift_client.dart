@@ -22,9 +22,14 @@ Future<void> main() async{
     stage='WORKER_CREATE';
     worker=web.Worker('d1_synthetic_remote_drift_worker.js'.toJS);
     final handshake=Completer<String>();
+    final flushed=Completer<String>();
     web.EventStreamProviders.messageEvent.forTarget(worker).listen((event){
       final msg=(event.data as JSString).toDart;
-      if(!handshake.isCompleted)handshake.complete(msg);
+      if(!handshake.isCompleted) {
+        handshake.complete(msg);
+      } else if(!flushed.isCompleted) {
+        flushed.complete(msg);
+      }
     });
     final ports=web.MessageChannel();
     final message=JSObject()
@@ -54,7 +59,7 @@ Future<void> main() async{
     }
     stage='CONNECT';
     final database=await connectToRemoteAndInitialize(
-      ports.port1.channel(), singleClientMode:false,
+      ports.port1.channel(), singleClientMode:true,
     );
     try{
       stage='SQL';
@@ -76,6 +81,14 @@ Future<void> main() async{
     }finally{
       stage='CLOSE';
       await database.close();
+    }
+    // The client close is not enough: wait until the worker flushes and
+    // closes physical IndexedDB before claiming a durable success.
+    stage='FLUSH_ACK';
+    final acknowledgement=await flushed.future.timeout(const Duration(seconds:25));
+    if(acknowledgement!='D1_REMOTE_FLUSHED') {
+      html.document.title='D1_REMOTE_FAIL_FLUSH_ACK';
+      return;
     }
     html.document.title='D1_REMOTE_PASS_${phase.toUpperCase()}';
   }catch(error){
