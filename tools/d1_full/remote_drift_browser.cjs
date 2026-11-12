@@ -56,16 +56,32 @@ async function rawIdbProof(tab){
 
 async function phase(ctx,p){
  const tab=await ctx.newPage();
+ const failures=[];
+ tab.on('pageerror',err=>failures.push({kind:'pageerror',type:err.name||'unknown'}));
+ tab.on('requestfailed',req=>failures.push({
+   kind:'requestfailed',asset:new URL(req.url()).pathname.split('/').pop(),
+ }));
  try{
   await tab.goto('http://127.0.0.1:7405/?phase='+p);
   await tab.waitForFunction(()=>
    document.title.startsWith('D1_REMOTE_PASS_')||
-   document.title.startsWith('D1_REMOTE_FAIL_'),null,{timeout:35000});
+   document.title.startsWith('D1_REMOTE_FAIL_'),null,{timeout:55000});
   const title=await tab.title();
   report.steps.push({phase:p,title});
   if(title!=='D1_REMOTE_PASS_'+p.toUpperCase())throw Error(p+' got '+title);
   return tab;
- }catch(err){await tab.close();throw err;}
+ }catch(err){
+  const diag=await tab.evaluate(()=>({
+   title:document.title,ready:document.readyState,
+   scripts:[...document.scripts].map(x=>(x.src||'inline').split('/').pop()),
+   resources:performance.getEntriesByType('resource')
+     .filter(x=>/main.dart.js|flutter_bootstrap.js|sqlite3mc.wasm|d1_synthetic_remote_drift_worker.js/.test(x.name))
+     .map(x=>({asset:x.name.split('/').pop(),loaded:x.responseEnd>0})),
+  })).catch(()=>({unavailable:true}));
+  report.steps.push({phase:p,diagnostic:diag,failures});
+  await tab.close();
+  throw Error(p+' failed: '+String(err.name||'Error')+' '+JSON.stringify({diag,failures}).slice(0,950));
+ }
 }
 (async()=>{
  const browser=await {chromium,webkit}[name].launch({
