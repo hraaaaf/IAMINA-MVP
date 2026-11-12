@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:amina/data/drift/d1_authenticated_backup_boundary.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/local_backup.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/services/d1_session_fence.dart';
 import 'package:drift/drift.dart' as drift;
@@ -75,14 +76,8 @@ void main(){
   await expectLater(result,throwsStateError);
  });
  test('D1 backup: reject plain legacy backup on restore',() async{
-  final raw=await LocalBackupForTest.export(db);
+  final raw=await LocalBackup.exportVaultJson(db);
   await expectLater(boundary.restoreAuthenticatedOnly(raw),throwsFormatException);
   expect((await db.select(db.patientProfiles).getSingle()).userId,734);
  });
-}
-// Placeholder intentionally delegates to scoped JSON for gate-negative test.
-class LocalBackupForTest {
- static Future<String> export(AppDatabase db) async {
-  return jsonEncode({'formatVersion':2,'vaultName':db.patientVaultScope!.databaseName});
- }
 }
