@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'core',
+    # Research-only auth credential store. No routes or clinical data.
+    'passkey_research.apps.PasskeyResearchConfig',
     'ai.apps.AiConfig',
     'diabetes.apps.DiabetesConfig',
 ]
