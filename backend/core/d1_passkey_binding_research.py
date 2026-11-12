@@ -7,8 +7,10 @@ Do not accept a user ID, origin, RP ID, or challenge from a browser as authority
 """
 from __future__ import annotations
 
+import base64
 import json
 import secrets
+import uuid
 from datetime import timedelta
 from urllib.parse import urlsplit
 
@@ -113,6 +115,10 @@ def _consume(user, session_key, version, rp_id, origin, ceremony_id, purpose):
     """Atomic compare-and-consume before verification: even failure burns nonce."""
     if not isinstance(ceremony_id, str) or len(ceremony_id) > 80:
         _deny()
+    try:
+        ceremony_id = uuid.UUID(ceremony_id)
+    except (ValueError, AttributeError):
+        _deny()
     now = timezone.now()
     with transaction.atomic():
         updated = D1ResearchPasskeyChallenge.objects.filter(
@@ -127,12 +133,31 @@ def _consume(user, session_key, version, rp_id, origin, ceremony_id, purpose):
     return record
 
 
+def _canonical_id(value):
+    """Reject alternate encodings of the SAME credential ID (cross-owner uniqueness)."""
+    if not isinstance(value, str) or not value or len(value) > 1024:
+        _deny()
+    try:
+        raw = base64url_to_bytes(value)
+    except Exception:
+        _deny()
+    canonical = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    if not raw or canonical != value:
+        _deny()
+    return raw
+
+
 def _client_payload(credential):
     if not isinstance(credential, dict):
         _deny()
-    if not isinstance(credential.get("id"), str):
-        _deny()
-    if len(json.dumps(credential)) > 16000:
+    _canonical_id(credential.get("id"))
+    try:
+        if (
+            not isinstance(credential.get("response"), dict)
+            or len(json.dumps(credential)) > 16000
+        ):
+            _deny()
+    except (TypeError, ValueError, OverflowError):
         _deny()
     return credential
 
@@ -165,9 +190,11 @@ def finish_enrollment(user, session_key: str, ceremony_id: str, credential: dict
     payload = _client_payload(credential)
     # The extension result is client-supplied and NOT hardware attestation:
     # required for this research protocol, never proof of PRF availability.
+    extensions = payload.get("clientExtensionResults")
+    prf = extensions.get("prf") if isinstance(extensions, dict) else None
     if (
         payload.get("authenticatorAttachment") != "platform"
-        or payload.get("clientExtensionResults", {}).get("prf", {}).get("enabled") is not True
+        or not isinstance(prf, dict) or prf.get("enabled") is not True
     ):
         _deny()
     try:
@@ -182,8 +209,10 @@ def finish_enrollment(user, session_key: str, ceremony_id: str, credential: dict
         if (
             not isinstance(credential_id, bytes)
             or not credential_id
-            or credential_id != base64url_to_bytes(payload["id"])
+            or credential_id != _canonical_id(payload["id"])
         ):
+            _deny()
+        if _principal(user, session_key) != version:
             _deny()
         # Credential ID uniqueness is global: neither another account nor
         # a revoked binding can be silently claimed by this account.
@@ -261,7 +290,9 @@ def finish_verification(user, session_key: str, ceremony_id: str, credential: di
             require_user_verification=True,
         )
         new_count = verified.new_sign_count
-        if not isinstance(new_count, int) or new_count < 0:
+        if type(new_count) is not int or new_count < 0:
+            _deny()
+        if _principal(user, session_key) != version:
             _deny()
         # Nonzero authenticators must advance; zero-only passkeys are allowed.
         with transaction.atomic():
