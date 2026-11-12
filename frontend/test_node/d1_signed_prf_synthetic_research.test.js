@@ -351,3 +351,60 @@ test('fence + signed PRF bridge never reassigns A envelope to B or restores old 
   assert.equal(f.state.prompts,3); // initial sealed + two valid fresh unlocks
   fence.destroy();
 });
+
+test('Safari flow: WebAuthn call happens synchronously on tap, before any post-tap fetch',async()=>{
+  const f=await fixture();
+  const prepared=await f.bridge.prepareVerification({credentialId:CID});
+  const beforeRequests=f.state.requests.length;
+  const beforePrompts=f.state.prompts;
+  const operation=f.bridge.finishPrepared({
+    prepared,prfInput:f.input,salt:f.salt,callback:async()=>{}
+  });
+  // Invoking the async function must start the credentials.get() BEFORE
+  // yielding to the event loop. Network begins again only after the prompt.
+  assert.equal(f.state.prompts,beforePrompts+1);
+  assert.equal(f.state.requests.length,beforeRequests);
+  await operation;
+  assert.equal(f.state.finishCount,1);
+});
+
+test('a prepared assertion is single-use and cannot be replayed on another tap',async()=>{
+  const f=await fixture();
+  const prepared=await f.bridge.prepareVerification({credentialId:CID});
+  await f.bridge.finishPrepared({
+    prepared,prfInput:f.input,salt:f.salt,callback:async()=>{}
+  });
+  const prompts=f.state.prompts;
+  await assert.rejects(f.bridge.finishPrepared({
+    prepared,prfInput:f.input,salt:f.salt,callback:async()=>{throw Error('NO')}
+  }),/D1_SIGNED_PRF_RESEARCH_DENIED/);
+  assert.equal(f.state.prompts,prompts);
+});
+
+test('preparing under account A then switching to B before tap cannot release a KEK',async()=>{
+  const f=await fixture();
+  const prepared=await f.bridge.prepareVerification({credentialId:CID});
+  f.state.account='812';
+  let called=false;
+  await assert.rejects(f.bridge.finishPrepared({
+    prepared,prfInput:f.input,salt:f.salt,
+    callback:async()=>{called=true}
+  }),/D1_SIGNED_PRF_RESEARCH_DENIED/);
+  assert.equal(called,false);
+});
+
+test('Face ID cancellation consumes prepared ceremony without an unlock callback',async()=>{
+  const f=await fixture();
+  const prepared=await f.bridge.prepareVerification({credentialId:CID});
+  f.state.cancel=true;
+  let called=false;
+  await assert.rejects(f.bridge.finishPrepared({
+    prepared,prfInput:f.input,salt:f.salt,callback:async()=>{called=true}
+  }),/NotAllowedError/);
+  assert.equal(called,false);
+  assert.equal(f.state.finishCount,0);
+  f.state.cancel=false;
+  await assert.rejects(f.bridge.finishPrepared({
+    prepared,prfInput:f.input,salt:f.salt,callback:async()=>{}
+  }),/D1_SIGNED_PRF_RESEARCH_DENIED/);
+});
