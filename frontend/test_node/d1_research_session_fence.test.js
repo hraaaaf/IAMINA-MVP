@@ -19,8 +19,39 @@ function deferred() {
   const promise = new Promise((r, j) => { resolve = r; reject = j; });
   return {promise, resolve, reject};
 }
-function setup({ readServerSession = async () => CONTEXT_A, prfUnlock = async () => key() } = {}) {
-  return createSessionFence({readServerSession, prfUnlock, expectedOrigin: ORIGIN});
+function target() {
+  const events = new Map();
+  return {
+    addEventListener(kind, fn) {
+      if (!events.has(kind)) events.set(kind, new Set());
+      events.get(kind).add(fn);
+    },
+    removeEventListener(kind, fn) { events.get(kind)?.delete(fn); },
+    emit(kind, data) {
+      for (const fn of events.get(kind) || []) fn(data);
+    },
+  };
+}
+function bus() {
+  const peers = [];
+  return () => {
+    const peer = target();
+    peer.postMessage = data => {
+      for (const other of peers) if (other !== peer) other.emit('message', {data});
+    };
+    peers.push(peer);
+    return peer;
+  };
+}
+function setup({
+  readServerSession = async () => CONTEXT_A,
+  prfUnlock = async () => key(),
+  channel = bus()(),
+  lifecycle = target()
+} = {}) {
+  return createSessionFence({
+    readServerSession, prfUnlock, expectedOrigin: ORIGIN, channel, lifecycle
+  });
 }
 
 test('synthetic A: only server-supplied owner reaches PRF; key zeroed after use', async () => {
@@ -134,21 +165,22 @@ test('logout event inside async fixture callback wipes DEK immediately', async (
   await assert.rejects(process,/D1_RESEARCH_STALE_OPERATION/);
 });
 
-test('concurrent operations serialize: later ticket invalidates earlier one', async () => {
-  const reached=deferred(),slow=deferred();let count=0,firstKey,firstUsed=false,secondUsed=false;
+test('concurrent Face ID prompts fail closed, first operation cannot share a key', async () => {
+  const reached=deferred(),slow=deferred();
+  let calls=0,firstKey,firstUsed=false,secondUsed=false;
   const bridge=setup({prfUnlock:async()=>{
-    count++;
-    if(count===1){reached.resolve();firstKey=await slow.promise;return firstKey}
-    return key();
+    calls++;reached.resolve();firstKey=await slow.promise;return firstKey;
   }});
   const first=bridge.withUnlockedKey(async()=>{firstUsed=true});
   await reached.promise;
-  const second=bridge.withUnlockedKey(async()=>{secondUsed=true});
+  await assert.rejects(bridge.withUnlockedKey(async()=>{secondUsed=true}),
+    /D1_RESEARCH_FENCE_BUSY/);
   firstKey=key();slow.resolve(firstKey);
-  await assert.rejects(first,/D1_RESEARCH_STALE_OPERATION/);
-  await second;
+  await first;
   assert.ok(firstKey.every(x=>x===0));
-  assert.equal(firstUsed,false);assert.equal(secondUsed,true);
+  assert.equal(calls,1);
+  assert.equal(firstUsed,true);
+  assert.equal(secondUsed,false);
 });
 
 test('invalid 16-byte or all-zero key material denied; bytes never retained', async () => {
@@ -177,4 +209,90 @@ test('fails closed on missing mandatory client boundary implementations', () => 
     readServerSession:async()=>CONTEXT_A,prfUnlock:async()=>key(),
     expectedOrigin:'http://localhost:3000'
   }),/D1_RESEARCH_FENCE_BAD_CONFIG/);
+});
+
+test('cross-tab logout invalidates an active DEK and aborts pending callback', async () => {
+  const peers=bus();
+  const aKey=key(), started=deferred(), release=deferred();
+  const a=setup({channel:peers(),prfUnlock:async()=>aKey});
+  const b=setup({channel:peers()});
+  const operation=a.withUnlockedKey(async (dek, scope)=>{
+    assert.equal(scope.patientReady,false);
+    started.resolve();
+    await release.promise;
+    return dek.slice();
+  });
+  await started.promise;
+  b.sessionChanged(); // explicit logout in separate same-origin tab
+  assert.ok(aKey.every(x=>x===0));
+  release.resolve();
+  await assert.rejects(operation,/D1_RESEARCH_STALE_OPERATION/);
+  a.destroy();b.destroy();
+});
+
+test('pagehide or BFCache restore invalidates delayed Face ID results', async () => {
+  for (const [kind, metadata] of [
+    ['pagehide',{}], ['pageshow',{persisted:true}]
+  ]) {
+    const life=target(), entered=deferred(), release=deferred();
+    const dek=key();let invoked=false;
+    const f=setup({
+      lifecycle:life,
+      prfUnlock:async()=>{entered.resolve();return release.promise}
+    });
+    const inFlight=f.withUnlockedKey(async()=>{invoked=true});
+    await entered.promise;
+    life.emit(kind, metadata);
+    release.resolve(dek);
+    await assert.rejects(inFlight,/D1_RESEARCH_STALE_OPERATION/);
+    assert.equal(invoked,false);
+    assert.ok(dek.every(x=>x===0));
+    f.destroy();
+  }
+});
+
+test('cross-tab foreign origin events cannot impersonate a logout', async () => {
+  const peers=bus(), sender=peers(), recipient=peers();
+  let calls=0;
+  const f=setup({channel:recipient,prfUnlock:async()=>{calls++;return key()}});
+  sender.postMessage({
+    type:'IAMINA_D1_RESEARCH_INVALIDATE_V1',origin:'https://foreign.invalid'
+  });
+  await f.withUnlockedKey(async()=>{});
+  assert.equal(calls,1);
+  f.destroy();
+});
+
+test('offline identity check fails closed without attempting PRF', async () => {
+  let calls=0;
+  const f=setup({
+    readServerSession:async()=>{throw Error('network offline')},
+    prfUnlock:async()=>{calls++;return key()}
+  });
+  await assert.rejects(f.withUnlockedKey(async()=>{}),
+    /D1_RESEARCH_SESSION_UNAVAILABLE/);
+  assert.equal(calls,0);
+  f.destroy();
+});
+
+test('invalid channel or lifecycle fails closed', () => {
+  assert.throws(()=>createSessionFence({
+    readServerSession:async()=>CONTEXT_A,
+    prfUnlock:async()=>key(),expectedOrigin:ORIGIN,
+    channel:null,lifecycle:target()
+  }),/D1_RESEARCH_FENCE_BAD_CONFIG/);
+  assert.throws(()=>createSessionFence({
+    readServerSession:async()=>CONTEXT_A,
+    prfUnlock:async()=>key(),expectedOrigin:ORIGIN,
+    channel:bus()(),lifecycle:null
+  }),/D1_RESEARCH_FENCE_BAD_CONFIG/);
+});
+
+test('destroy unregisters lifecycle callbacks and never allows resurrection', async () => {
+  const life=target(), b=setup({lifecycle:life});
+  b.destroy();
+  life.emit('pagehide',{});
+  life.emit('pageshow',{persisted:true});
+  await assert.rejects(b.withUnlockedKey(async()=>{}),
+    /D1_RESEARCH_FENCE_UNAVAILABLE/);
 });
