@@ -1,10 +1,10 @@
-name: D1 real DriftServer remote over encrypted WebWorker (NO DEPLOY)
+name: D1 real AppDatabase schema through encrypted remote DriftServer (NO DEPLOY)
 on:
   push:
-    branches: [research/d1-remote-drift-key-admission-20261112]
+    branches: [research/d1-remote-appdatabase-schema-20261112]
     paths:
       - 'frontend/lib/d1_synthetic_remote_drift_*'
-      - 'frontend/web/d1_synthetic_remote_harness.html'
+      - 'frontend/web/index.html'
       - 'tools/d1_full/remote_drift_browser.cjs'
       - '.github/workflows/d1-full-remote-drift-worker.yml'
   workflow_dispatch:
@@ -34,10 +34,16 @@ jobs:
           flutter pub get
           curl --fail --location --retry 3 --silent --show-error https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm --output web/sqlite3mc.wasm
           printf '%s  %s\n' '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' web/sqlite3mc.wasm | sha256sum --check
-          # Research API: experimental drift remote/web interop warnings are expected.
-          dart analyze --no-fatal-warnings lib/d1_synthetic_remote_drift_worker.dart lib/d1_synthetic_remote_drift_client.dart
+          # The client now imports actual Flutter Drift AppDatabase schema:
+          # compile with Flutter instead of plain dart compile js.
+          dart analyze --no-fatal-warnings lib/d1_synthetic_remote_drift_worker.dart
           dart compile js -O2 lib/d1_synthetic_remote_drift_worker.dart -o web/d1_synthetic_remote_drift_worker.js
-          dart compile js -O2 lib/d1_synthetic_remote_drift_client.dart -o web/d1_synthetic_remote_drift_client.js
+          flutter analyze --no-fatal-warnings --no-fatal-infos lib/d1_synthetic_remote_drift_client.dart
+          flutter build web --release --no-web-resources-cdn -t lib/d1_synthetic_remote_drift_client.dart
+          test -s build/web/main.dart.js
+          test -s build/web/d1_synthetic_remote_drift_worker.js
+          printf '%s  %s\n' '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' build/web/sqlite3mc.wasm | sha256sum --check
+          git diff --exit-code -- pubspec.yaml pubspec.lock web/sqlite3.wasm web/drift_worker.js
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -51,10 +57,10 @@ jobs:
           D1_BROWSER: ${{ matrix.browser }}
         run: |
           set -euo pipefail
-          python3 -m http.server 7405 --bind 127.0.0.1 --directory frontend/web >/tmp/d1-remote.log 2>&1 &
+          python3 -m http.server 7405 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d1-remote.log 2>&1 &
           PID=$!
           trap 'kill "$PID" 2>/dev/null || true' EXIT
-          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7405/d1_synthetic_remote_harness.html >/dev/null
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7405/ >/dev/null
           if [ "$D1_BROWSER" = webkit ]; then
             docker run --rm --network host --env D1_BROWSER=webkit --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright --volume "$PWD:/work" --workdir /work mcr.microsoft.com/playwright:v1.55.0-noble node tools/d1_full/remote_drift_browser.cjs
           else

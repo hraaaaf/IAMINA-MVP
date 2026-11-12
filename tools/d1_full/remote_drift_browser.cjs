@@ -3,14 +3,14 @@
 const fs=require('node:fs');
 const {chromium,webkit}=require('playwright');
 const name=process.env.D1_BROWSER||'chromium';
-const report={test:'D1_SYNTHETIC_REAL_DRIFT_REMOTE',browser:name,
+const report={test:'D1_SYNTHETIC_REAL_APPDATABASE_REMOTE',browser:name,
  patientRuntime:false,synthetic:true,result:'NOT_RUN',steps:[]};
 // Inspect the raw physical IndexedDB blocks after a complete worker flush.
 // No source-level assertions are accepted as a substitute for byte inspection.
 async function rawIdbProof(tab){
  return tab.evaluate(async ()=>{
   const dbName='d1_synthetic_remote_drift_731';
-  const marker='D1_DRIFT_REMOTE_SYNTHETIC_731';
+  const marker='D1_REAL_REMOTE_APPDATABASE_ROW_731';
   const dbs=await indexedDB.databases();
   if(!dbs.some(d=>d.name===dbName))throw Error('IDB_MISSING');
   const db=await new Promise((resolve,reject)=>{
@@ -56,23 +56,47 @@ async function rawIdbProof(tab){
 
 async function phase(ctx,p){
  const tab=await ctx.newPage();
+ const failures=[];
+ tab.on('pageerror',err=>{
+  // The page hosts only hard-coded synthetic fixtures. Do not log arbitrary
+  // SQL or credentials: only a small, scrubbed startup error category.
+  const message=String(err.message||'')
+    .replace(/D1_[A-Z0-9_]+/g,'[SYNTHETIC_REDACTED]')
+    .replace(/[a-f0-9]{64,}/gi,'[HEX_REDACTED]')
+    .slice(0,400);
+  failures.push({kind:'pageerror',type:err.name||'unknown',message});
+ });
+ tab.on('requestfailed',req=>failures.push({
+   kind:'requestfailed',asset:new URL(req.url()).pathname.split('/').pop(),
+ }));
  try{
-  await tab.goto('http://127.0.0.1:7405/d1_synthetic_remote_harness.html?phase='+p);
+  await tab.goto('http://127.0.0.1:7405/?phase='+p);
   await tab.waitForFunction(()=>
    document.title.startsWith('D1_REMOTE_PASS_')||
-   document.title.startsWith('D1_REMOTE_FAIL_'),null,{timeout:35000});
+   document.title.startsWith('D1_REMOTE_FAIL_'),null,{timeout:55000});
   const title=await tab.title();
   report.steps.push({phase:p,title});
   if(title!=='D1_REMOTE_PASS_'+p.toUpperCase())throw Error(p+' got '+title);
   return tab;
- }catch(err){await tab.close();throw err;}
+ }catch(err){
+  const diag=await tab.evaluate(()=>({
+   title:document.title,ready:document.readyState,
+   scripts:[...document.scripts].map(x=>(x.src||'inline').split('/').pop()),
+   resources:performance.getEntriesByType('resource')
+     .filter(x=>/main.dart.js|flutter_bootstrap.js|sqlite3mc.wasm|d1_synthetic_remote_drift_worker.js/.test(x.name))
+     .map(x=>({asset:x.name.split('/').pop(),loaded:x.responseEnd>0})),
+  })).catch(()=>({unavailable:true}));
+  report.steps.push({phase:p,diagnostic:diag,failures});
+  await tab.close();
+  throw Error(p+' failed: '+String(err.name||'Error')+' '+JSON.stringify({diag,failures}).slice(0,950));
+ }
 }
 (async()=>{
  const browser=await {chromium,webkit}[name].launch({
   headless:true,...(name==='chromium'?{args:['--no-sandbox']}:{})
  });
  try{
-  const ctx=await browser.newContext({serviceWorkers:'block'});
+  const ctx=await browser.newContext({locale:'fr-FR',serviceWorkers:'block'});
   const seeded=await phase(ctx,'seed');
   try{
    report.physicalIndexedDb=await rawIdbProof(seeded);
