@@ -109,12 +109,6 @@ async function settled(page,label){
    if(!foreign.includes('D1_PRF_MISSING_OR_FOREIGN'))
     throw Error('FOREIGN_OWNER_NOT_REFUSED:'+foreign);
    report.checks.push({label:'wrong owner denied before PRF assertion',outcome:'PASS'});
-   await cdp.send('WebAuthn.setUserVerified',{authenticatorId,isUserVerified:false});
-   await page.click('#unlock');
-   const badUV=await settled(page,'unverified user refused');
-   if(!badUV.startsWith('FAIL_UNLOCK_'))throw Error('UV_BYPASS_ALLOWED:'+badUV);
-   report.checks.push({label:'unverified authenticator cannot expose DEK',outcome:'PASS'});
-   await cdp.send('WebAuthn.setUserVerified',{authenticatorId,isUserVerified:true});
    await page.evaluate(async owner=>{
     const db=await new Promise((resolve,reject)=>{
      const q=indexedDB.open('iamina_d1_prf_research_v1');
@@ -155,6 +149,14 @@ async function settled(page,label){
    if(reopen!=='PASS_UNLOCK')throw Error('PRF_REOPEN_FAILED:'+reopen);
    await page.evaluate(()=>{window.d1Research.key?.fill(0);window.d1Research.key=null});
    report.checks.push({label:'PRF passkey unwrap after page reload',outcome:'PASS'});
+   // Keep the negative UV test LAST: CDP virtual-authenticator toggling can
+   // permanently invalidate presence state for subsequent PRF assertions.
+   await cdp.send('WebAuthn.setUserVerified',{authenticatorId,isUserVerified:false});
+   await page.click('#unlock');
+   const badUV=await settled(page,'unverified user refused');
+   if(!badUV.startsWith('FAIL_UNLOCK_'))throw Error('UV_BYPASS_ALLOWED:'+badUV);
+   report.checks.push({label:'unverified authenticator cannot expose DEK',outcome:'PASS'});
+
    report.result='PASS_VIRTUAL_PRF_UV_KEY_WRAP_SYNTHETIC';
   }
   console.log(JSON.stringify(report,null,2));await context.close();
