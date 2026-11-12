@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'database.dart';
 import 'patient_treatment_declaration_store.dart';
@@ -23,6 +24,13 @@ final class LocalBackup {
   }
 
   static Future<String> exportVaultJson(AppDatabase db) async {
+    // A public scoped JSON backup would leak patient clinical data on Web.
+    // Native legacy compatibility remains unchanged in this Draft.
+    if (kIsWeb) throw StateError('D1_WEB_PLAINTEXT_VAULT_EXPORT_DENIED');
+    return _exportVaultJsonPayload(db);
+  }
+
+  static Future<String> _exportVaultJsonPayload(AppDatabase db) async {
     final scope = db.patientVaultScope;
     if (scope == null) {
       throw StateError('Cannot claim legacy mixed data as a patient vault.');
@@ -41,6 +49,60 @@ final class LocalBackup {
       for (final row in declaredRows) Map<String, dynamic>.from(row.data),
     ];
     return jsonEncode(envelope);
+  }
+
+  /// D1 guarded Web export: never return the clear serialized patient rows.
+  /// The clear payload only exists transiently in memory during AEAD sealing.
+  /// The callback is an experimental, separately reviewed crypto boundary;
+  /// callers must NOT pass plaintext or base64-only encoders.
+  static Future<String> exportVaultCiphertextOnly(
+    AppDatabase db, {
+    required Future<String> Function(String scopedJson) seal,
+  }) async {
+    final scope = db.patientVaultScope;
+    if (scope == null) throw StateError('D1_BACKUP_OWNER_REQUIRED');
+    final raw = await _exportVaultJsonPayload(db);
+    final result = await seal(raw);
+    Map<String, dynamic> envelope;
+    try {
+      envelope = _asMap(jsonDecode(result), 'encrypted backup');
+    } catch (_) {
+      throw StateError('D1_BACKUP_ENVELOPE_REQUIRED');
+    }
+    if (envelope['format'] != 'IAMINA_D1_BACKUP' ||
+        envelope['version'] != 1 ||
+        envelope['owner'] != scope.databaseName ||
+        result == raw ||
+        result.contains('"patientProfiles"') ||
+        result.contains('"logEntries"')) {
+      throw StateError('D1_BACKUP_PLAINTEXT_OR_FOREIGN_ENVELOPE');
+    }
+    return result;
+  }
+
+  /// D1 guarded Web restore: verify AEAD before entering the destructive
+  /// (already transactional) row import. Scoped JSON is never a Web API input.
+  static Future<void> restoreVaultCiphertextOnly(
+    AppDatabase db,
+    String sealedEnvelope, {
+    required Future<String> Function(String sealedEnvelope)
+        authenticateAndOpen,
+  }) async {
+    final scope = db.patientVaultScope;
+    if (scope == null) throw StateError('D1_BACKUP_OWNER_REQUIRED');
+    Map<String, dynamic> header;
+    try {
+      header = _asMap(jsonDecode(sealedEnvelope), 'encrypted backup');
+    } catch (_) {
+      throw const FormatException('D1_BACKUP_INVALID_ENVELOPE');
+    }
+    if (header['format'] != 'IAMINA_D1_BACKUP' ||
+        header['version'] != 1 ||
+        header['owner'] != scope.databaseName) {
+      throw const FormatException('D1_BACKUP_WRONG_OWNER_OR_FORMAT');
+    }
+    final authenticatedJson = await authenticateAndOpen(sealedEnvelope);
+    await _restoreVaultPayload(db, authenticatedJson);
   }
 
   static Future<String> _exportRows(AppDatabase db) async {
@@ -83,6 +145,14 @@ final class LocalBackup {
   }
 
   static Future<void> restoreVaultJson(
+    AppDatabase db,
+    String rawBackup,
+  ) async {
+    if (kIsWeb) throw StateError('D1_WEB_PLAINTEXT_VAULT_RESTORE_DENIED');
+    return _restoreVaultPayload(db, rawBackup);
+  }
+
+  static Future<void> _restoreVaultPayload(
     AppDatabase db,
     String rawBackup,
   ) async {
