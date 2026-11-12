@@ -34,7 +34,7 @@ Future<void> main() async{
     final jsKey=bytes.toJS;
     if(phase!='missing_key')message['key']=jsKey;
     worker.postMessage(message,phase=='missing_key' ?
-      [ports.port2].toJS : [ports.port2, jsKey.buffer].toJS);
+      [ports.port2].toJS : [ports.port2, (jsKey['buffer'] as JSArrayBuffer)].toJS);
     bytes.fillRange(0,bytes.length,0);
     final result=await handshake.future.timeout(const Duration(seconds:25));
     if(phase=='missing_key'||phase=='wrong_key'){
