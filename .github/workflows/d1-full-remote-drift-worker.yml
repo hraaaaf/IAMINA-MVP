@@ -1,0 +1,69 @@
+name: D1 real DriftServer remote over encrypted WebWorker (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-remote-drift-key-admission-20261112]
+    paths:
+      - 'frontend/lib/d1_synthetic_remote_drift_*'
+      - 'frontend/web/d1_synthetic_remote_harness.html'
+      - 'tools/d1_full/remote_drift_browser.cjs'
+      - '.github/workflows/d1-full-remote-drift-worker.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  remote-drift-cipher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Compile remote Worker and caller at pinned SQLite3MC SHA
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          curl --fail --location --retry 3 --silent --show-error https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm --output web/sqlite3mc.wasm
+          printf '%s  %s\n' '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' web/sqlite3mc.wasm | sha256sum --check
+          # Research API: experimental drift remote/web interop warnings are expected.
+          dart analyze --no-fatal-warnings lib/d1_synthetic_remote_drift_worker.dart lib/d1_synthetic_remote_drift_client.dart
+          dart compile js -O2 lib/d1_synthetic_remote_drift_worker.dart -o web/d1_synthetic_remote_drift_worker.js
+          dart compile js -O2 lib/d1_synthetic_remote_drift_client.dart -o web/d1_synthetic_remote_drift_client.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser install
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then npx playwright install chromium; fi
+      - name: Prove real DriftServer roundtrip, wrong/missing key
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7405 --bind 127.0.0.1 --directory frontend/web >/tmp/d1-remote.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7405/d1_synthetic_remote_harness.html >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host --env D1_BROWSER=webkit --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright --volume "$PWD:/work" --workdir /work mcr.microsoft.com/playwright:v1.55.0-noble node tools/d1_full/remote_drift_browser.cjs
+          else
+            node tools/d1_full/remote_drift_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-remote-drift-${{ matrix.browser }}-synthetic
+          path: d1-remote-*.json
+          retention-days: 14
+          if-no-files-found: warn
