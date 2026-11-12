@@ -1,0 +1,24 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>D1_PRF_RESEARCH_ONLY</title><script src="d1_webauthn_prf_gate_v1.js"></script></head><body><main><h1>IAMINA D1 PRF — isolated browser test</h1><button type="button" id="enroll">Enroll fixture</button><button type="button" id="unlock">Unlock fixture</button><p id="result" aria-live="polite">Not started</p></main><script>
+const owner='amina_vault_v1_native_731';
+window.d1Research={last:'',key:null,settled:false};
+function show(stage,promise){
+ window.d1Research.settled=false;
+ window.d1Research.last='RUNNING_'+stage;
+ document.getElementById('result').textContent='Running';
+ Promise.resolve(promise).then(value=>{
+  if(value instanceof Uint8Array){window.d1Research.key=value;value='32-byte DEK delivered'}
+  window.d1Research.last='PASS_'+stage;
+  document.getElementById('result').textContent='PASS';
+ },err=>{
+  window.d1Research.last='FAIL_'+stage+'_'+String(err?.message||err).replace(/[^A-Z0-9_]/gi,'_').slice(0,110);
+  document.getElementById('result').textContent='FAIL';
+ }).finally(()=>{window.d1Research.settled=true});
+}
+document.getElementById('enroll').addEventListener('click',()=>{
+ const bytes=new Uint8Array(32);for(let i=0;i<32;i++)bytes[i]=i+1;
+ show('ENROLL',window.iaminaD1PrfGate.enroll(owner,bytes));
+});
+document.getElementById('unlock').addEventListener('click',()=>{
+ show('UNLOCK',window.iaminaD1PrfGate.unlock(owner));
+});
+</script></body></html>
