@@ -198,8 +198,23 @@ def _client_payload(credential):
     return credential
 
 
-def begin_enrollment(user, session_key: str) -> dict:
+def _require_password_step_up(user, session_key: str, password: str, version: int) -> None:
+    """Verify current Django password, never accept just session cookie or local owner."""
+    if not isinstance(password, str) or not (1 <= len(password) <= 256):
+        _deny()
+    try:
+        enforce_passkey_stepup_limit(user.pk)
+    except (AuthRateLimitExceeded, DatabaseError):
+        _deny()
+    current = get_user_model().objects.filter(pk=user.pk, is_active=True).first()
+    if current is None or not current.has_usable_password() or not current.check_password(password):
+        _deny()
+    if _principal(user, session_key) != version:
+        _deny()
+
+def begin_enrollment(user, session_key: str, password: str) -> dict:
     rp_id, origin, version = _scope(user, session_key)
+    _require_password_step_up(user, session_key, password, version)
     ceremony = _new_challenge(
         user, session_key, version, rp_id, origin, "enroll",
     )
