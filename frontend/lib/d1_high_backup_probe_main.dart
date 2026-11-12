@@ -64,6 +64,19 @@ Future<void> main() async {
   if(header['owner']!=scope.databaseName||header['format']!='IAMINA_D1_BACKUP'){
    throw StateError('WRONG_ENVELOPE');
   }
+  stage='RAW_API_REFUSAL';
+  var rawExportRefused=false;
+  try{await LocalBackup.exportVaultJson(db);}
+  on StateError catch(e){
+   rawExportRefused=e.message.toString().contains('D1_WEB_PLAINTEXT');
+  }
+  if(!rawExportRefused)throw StateError('RAW_EXPORT_PUBLIC');
+  var rawRestoreRefused=false;
+  try{await LocalBackup.restoreVaultJson(db,'{}');}
+  on StateError catch(e){
+   rawRestoreRefused=e.message.toString().contains('D1_WEB_PLAINTEXT');
+  }
+  if(!rawRestoreRefused)throw StateError('RAW_RESTORE_PUBLIC');
   stage='TAMPER';
   final badCiphertext=header['ciphertext'] as String;
   final altered={...header,
@@ -102,8 +115,9 @@ Future<void> main() async {
   if(restored.length!=1||restored.single.clientUuid!=marker)
     throw StateError('RESTORE_NOT_ATOMIC');
   stage='MALFORMED';
-  final root=jsonDecode(await LocalBackup.exportVaultJson(db))
-      as Map<String,dynamic>;
+  final root=jsonDecode(await cipher.authenticateAndOpen(
+    expectedOwner:scope.databaseName,sealedEnvelope:blob,
+  )) as Map<String,dynamic>;
   (root['logEntries'] as List<dynamic>)[0]['bloodSugar']='NOT_A_NUMBER';
   final broken=await cipher.seal(
    owner:scope.databaseName,plaintextJson:jsonEncode(root),

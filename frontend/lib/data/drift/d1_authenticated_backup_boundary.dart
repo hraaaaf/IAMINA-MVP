@@ -58,11 +58,16 @@ final class D1AuthenticatedBackupBoundary {
 
   Future<String> exportCiphertextOnly() async {
     final active = _begin();
-    final raw = await LocalBackup.exportVaultJson(_db);
-    _assertCurrent(active.ticket);
-    final encrypted = await _cipher.seal(
-      owner: active.owner.databaseName,
-      plaintextJson: raw,
+    final encrypted = await LocalBackup.exportVaultCiphertextOnly(
+      _db,
+      seal: (raw) async {
+        _assertCurrent(active.ticket);
+        final sealed = await _cipher.seal(
+          owner: active.owner.databaseName, plaintextJson: raw,
+        );
+        _assertCurrent(active.ticket);
+        return sealed;
+      },
     );
     _assertCurrent(active.ticket);
     // Refuse returning obviously unprotected plaintext / malformed output.
@@ -89,13 +94,19 @@ final class D1AuthenticatedBackupBoundary {
         header['owner'] != active.owner.databaseName) {
       throw const FormatException('D1_BACKUP_WRONG_OWNER_OR_FORMAT');
     }
-    // Cryptographic tag must be verified BEFORE touching SQLite.
-    final json = await _cipher.authenticateAndOpen(
-      expectedOwner: active.owner.databaseName,
-      sealedEnvelope: sealedEnvelope,
+    // Only AEAD-authenticated plaintext may reach the transactional importer.
+    await LocalBackup.restoreVaultCiphertextOnly(
+      _db,
+      sealedEnvelope,
+      authenticateAndOpen: (sealed) async {
+        final raw = await _cipher.authenticateAndOpen(
+          expectedOwner: active.owner.databaseName,
+          sealedEnvelope: sealed,
+        );
+        _assertCurrent(active.ticket);
+        return raw;
+      },
     );
-    _assertCurrent(active.ticket);
-    await LocalBackup.restoreVaultJson(_db, json);
     _assertCurrent(active.ticket);
   }
 }
