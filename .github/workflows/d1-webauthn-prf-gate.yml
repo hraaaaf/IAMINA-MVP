@@ -1,0 +1,71 @@
+name: D1 WebAuthn PRF vault-key gate Safari research (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-webauthn-prf-safari-gate-20261112]
+    paths:
+      - 'frontend/web/d1_webauthn_prf_gate_v1.js'
+      - 'frontend/web/d1_webauthn_prf_harness.html'
+      - 'tools/d1_full/webauthn_prf_browser.cjs'
+      - 'docs/d1/d1-webauthn-prf-safari-20261112.md'
+      - '.github/workflows/d1-webauthn-prf-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webauthn-prf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax, threat model, no unsafe IndexedDB fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check frontend/web/d1_webauthn_prf_gate_v1.js
+          node --check tools/d1_full/webauthn_prf_browser.cjs
+          grep -F 'NO FALLBACK' frontend/web/d1_webauthn_prf_gate_v1.js
+          grep -F 'Safari iPhone physique' docs/d1/d1-webauthn-prf-safari-20261112.md
+      - name: Install pinned Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then npx playwright install chromium; fi
+      - name: Virtual PRF+UV if Chromium; fail-closed if WebKit (NOT iPhone)
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7419 --bind 127.0.0.1 \
+            --directory frontend/web >/tmp/d1-prf-web.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://localhost:7419/d1_webauthn_prf_harness.html >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host \
+              --env D1_BROWSER=webkit \
+              --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+              --volume "$PWD:/work" --workdir /work \
+              mcr.microsoft.com/playwright:v1.55.0-noble \
+              node tools/d1_full/webauthn_prf_browser.cjs
+          else
+            node tools/d1_full/webauthn_prf_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-webauthn-prf-${{ matrix.browser }}-synthetic-no-go
+          path: d1-webauthn-prf-*.json
+          retention-days: 30
+          if-no-files-found: warn
