@@ -1,0 +1,165 @@
+name: D1 owner-bound device key custody and 256-bit recovery (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-key-custody-device-recovery-20261112]
+    paths:
+      - 'frontend/web/d1_device_key_custody_v1.js'
+      - 'frontend/web/d1_device_key_harness.html'
+      - 'tools/d1_full/device_key_browser.cjs'
+      - 'frontend/lib/data/drift/d1_web_vault_key_admission.dart'
+      - 'frontend/lib/d1_high_key_custody_probe_main.dart'
+      - 'docs/d1/d1-key-custody-threat-model-20261112.md'
+      - '.github/workflows/d1-high-key-custody.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  keyed-auth-lock-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Compile real keyed worker and session coordinator (research only)
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
+          grep -A 8 '^  sqlite3:' pubspec.lock | grep -F 'version: "3.5.2"'
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm \
+            --output web/sqlite3mc.wasm
+          printf '%s  %s\n' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
+            web/sqlite3mc.wasm | sha256sum --check
+          node --check web/d1_device_key_custody_v1.js
+          dart compile js -O2 lib/data/drift/d1_patient_encrypted_worker.dart \
+            -o web/d1_patient_encrypted_worker.js
+          flutter analyze --no-fatal-infos --no-fatal-warnings \
+            lib/data/drift/d1_web_vault_key_admission.dart \
+            lib/d1_high_key_custody_probe_main.dart
+          flutter build web --release --no-web-resources-cdn \
+            -t lib/d1_high_key_custody_probe_main.dart
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('build/web/index.html')
+          data=p.read_text()
+          assert '</head>' in data
+          data=data.replace('</head>',
+            '<script src="d1_device_key_custody_v1.js"></script></head>')
+          p.write_text(data)
+          PY
+          test -s build/web/d1_patient_encrypted_worker.js
+          test -s build/web/d1_device_key_custody_v1.js
+          printf '%s  %s\n' \
+            '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19' \
+            build/web/sqlite3mc.wasm | sha256sum --check
+          git diff --exit-code -- pubspec.yaml pubspec.lock web/sqlite3.wasm web/drift_worker.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then npx playwright install chromium; fi
+      - name: Auth epoch, lock, A-B-A, restoration on actual keyed SQLite3MC
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7420 --bind 127.0.0.1 \
+            --directory frontend/build/web >/tmp/d1-keyed-auth.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7420/ >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host \
+              --env D1_BROWSER=webkit \
+              --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+              --volume "$PWD:/work" --workdir /work \
+              mcr.microsoft.com/playwright:v1.55.0-noble \
+              node tools/d1_full/key_custody_auth_browser.cjs
+          else
+            node tools/d1_full/key_custody_auth_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-keyed-session-${{ matrix.browser }}-synthetic-no-go
+          path: d1-keyed-session-*.json
+          retention-days: 30
+          if-no-files-found: warn
+  device-key-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm critical same-origin risk is explicitly documented
+        run: |
+          set -euo pipefail
+          grep -F 'risque NO-GO' docs/d1/d1-key-custody-threat-model-20261112.md
+          grep -F 'Aucun fallback silencieux' docs/d1/d1-key-custody-threat-model-20261112.md
+      - name: Parse JS without executing patient UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check frontend/web/d1_device_key_custody_v1.js
+          node --check tools/d1_full/device_key_browser.cjs
+      - name: Install pinned Playwright
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then npx playwright install chromium; fi
+      - name: Real WebCrypto non-exportable CryptoKey and IndexedDB persistence
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7417 --bind 127.0.0.1 \
+            --directory frontend/web >/tmp/d1-key-custody.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7417/d1_device_key_harness.html >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host \
+              --env D1_BROWSER=webkit \
+              --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+              --volume "$PWD:/work" --workdir /work \
+              mcr.microsoft.com/playwright:v1.55.0-noble \
+              node tools/d1_full/device_key_browser.cjs
+          else
+            node tools/d1_full/device_key_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-device-key-${{ matrix.browser }}-synthetic-no-go
+          path: d1-device-key-*.json
+          retention-days: 30
+          if-no-files-found: warn
