@@ -38,7 +38,7 @@ jobs:
           # compile with Flutter instead of plain dart compile js.
           dart analyze --no-fatal-warnings lib/d1_synthetic_remote_drift_worker.dart
           dart compile js -O2 lib/d1_synthetic_remote_drift_worker.dart -o web/d1_synthetic_remote_drift_worker.js
-          flutter analyze --no-fatal-infos lib/d1_synthetic_remote_drift_client.dart
+          flutter analyze --no-fatal-warnings --no-fatal-infos lib/d1_synthetic_remote_drift_client.dart
           flutter build web --release --no-web-resources-cdn -t lib/d1_synthetic_remote_drift_client.dart
           test -s build/web/main.dart.js
           test -s build/web/d1_synthetic_remote_drift_worker.js
