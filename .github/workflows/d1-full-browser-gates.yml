@@ -1,0 +1,69 @@
+name: D1 two-tab real worker browser safety research (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-browser-gates-20261112]
+    paths:
+      - 'frontend/lib/d1_synthetic_real_worker.dart'
+      - 'frontend/web/d1_synthetic_worker_harness.html'
+      - 'tools/d1_full/multitab_worker_browser.cjs'
+      - '.github/workflows/d1-full-browser-gates.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  two-tabs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Compile research-only worker
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          curl --fail --location --retry 3 --silent --show-error             https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3mc.wasm             --output web/sqlite3mc.wasm
+          printf '%s  %s\n'             '62a34ec725631c0438e4255ce0c6059099bf8e7fb331e7d4d91a38e075f43a19'             web/sqlite3mc.wasm | sha256sum --check
+          dart compile js -O2 lib/d1_synthetic_real_worker.dart             -o web/d1_synthetic_real_worker.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright browser
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = chromium ]; then
+            npx playwright install chromium
+          fi
+      - name: Verify two simultaneous tabs
+        env:
+          D1_BROWSER: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7402 --bind 127.0.0.1             --directory frontend/web >/tmp/d1-two-tabs.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1             http://127.0.0.1:7402/d1_synthetic_worker_harness.html >/dev/null
+          if [ "$D1_BROWSER" = webkit ]; then
+            docker run --rm --network host               --env D1_BROWSER=webkit               --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright               --volume "$PWD:/work" --workdir /work               mcr.microsoft.com/playwright:v1.55.0-noble               node tools/d1_full/multitab_worker_browser.cjs
+          else
+            node tools/d1_full/multitab_worker_browser.cjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-two-tabs-${{ matrix.browser }}-no-go
+          path: d1-two-tabs-*.json
+          retention-days: 14
+          if-no-files-found: warn

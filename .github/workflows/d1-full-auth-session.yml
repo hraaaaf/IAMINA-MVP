@@ -1,0 +1,33 @@
+name: D1 patient session fencing integration (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-auth-session-20261112]
+    paths:
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/test/d1_parallel/d1_real_session_controller_test.dart'
+      - '.github/workflows/d1-full-auth-session.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-session-fence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Controller tests and integrated revocation
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/services/patient_vault_session_controller.dart
+          flutter test test/services/patient_vault_session_controller_test.dart
+          flutter test test/d1_parallel/d1_real_session_controller_test.dart
