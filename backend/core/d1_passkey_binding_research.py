@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import base64
 import json
-from importlib import import_module
 import secrets
 import uuid
 from datetime import timedelta
+from importlib import import_module
 from urllib.parse import urlsplit
 
 from django.conf import settings
