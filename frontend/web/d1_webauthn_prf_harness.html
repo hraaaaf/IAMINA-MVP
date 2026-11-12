@@ -1,24 +1,42 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>D1_PRF_RESEARCH_ONLY</title><script src="d1_webauthn_prf_gate_v1.js"></script></head><body><main><h1>IAMINA D1 PRF — isolated browser test</h1><button type="button" id="enroll">Enroll fixture</button><button type="button" id="unlock">Unlock fixture</button><p id="result" aria-live="polite">Not started</p></main><script>
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IAMINA D1 PRF — test synthétique</title><script src="d1_webauthn_prf_gate_v1.js"></script>
+<style>body{font:16px system-ui,sans-serif;max-width:580px;margin:32px auto;padding:0 18px;line-height:1.5}button{padding:12px;margin:5px 6px 5px 0;font:inherit}#result{font-weight:700;overflow-wrap:anywhere}.hint{color:#555;font-size:14px}</style></head>
+<body><main><h1>IAMINA D1 PRF — test iPhone</h1><p class="hint">Recherche uniquement. Clé fictive, aucune donnée patient.</p>
+<button type="button" id="enroll">Enroll fixture</button><button type="button" id="unlock">Unlock fixture</button>
+<p id="result" role="status" aria-live="polite">Not started</p>
+<p class="hint">Après réouverture de Safari : appuyer directement sur Unlock. Un deuxième Enroll est volontairement refusé.</p>
+</main><script>
+'use strict';
 const owner='amina_vault_v1_native_731';
-window.d1Research={last:'',key:null,settled:false};
-function show(stage,promise){
- window.d1Research.settled=false;
- window.d1Research.last='RUNNING_'+stage;
- document.getElementById('result').textContent='Running';
- Promise.resolve(promise).then(value=>{
-  if(value instanceof Uint8Array){window.d1Research.key=value;value='32-byte DEK delivered'}
-  window.d1Research.last='PASS_'+stage;
-  document.getElementById('result').textContent='PASS';
- },err=>{
-  window.d1Research.last='FAIL_'+stage+'_'+String(err?.message||err).replace(/[^A-Z0-9_]/gi,'_').slice(0,110);
-  document.getElementById('result').textContent='FAIL';
- }).finally(()=>{window.d1Research.settled=true});
+const result=document.getElementById('result');
+let busy=false;
+window.d1Research={last:'NOT_STARTED',settled:true};
+function expectedDEK(){const b=new Uint8Array(32);for(let i=0;i<32;i++)b[i]=i+1;return b;}
+function equal32(actual,expected){
+ if(!(actual instanceof Uint8Array)||actual.length!==32)return false;
+ let diff=0;for(let i=0;i<32;i++)diff|=actual[i]^expected[i];
+ return diff===0;
 }
-document.getElementById('enroll').addEventListener('click',()=>{
- const bytes=new Uint8Array(32);for(let i=0;i<32;i++)bytes[i]=i+1;
- show('ENROLL',window.iaminaD1PrfGate.enroll(owner,bytes));
-});
-document.getElementById('unlock').addEventListener('click',()=>{
- show('UNLOCK',window.iaminaD1PrfGate.unlock(owner));
-});
+function run(stage,operation){
+ if(busy)return;
+ busy=true;window.d1Research.settled=false;window.d1Research.last='RUNNING_'+stage;
+ result.textContent='RUNNING_'+stage;
+ Promise.resolve().then(operation).then(value=>{
+  if(stage==='UNLOCK'){
+   const expected=expectedDEK();
+   let match=false;
+   try{match=equal32(value,expected);}
+   finally{expected.fill(0);if(value instanceof Uint8Array)value.fill(0);}
+   if(!match)throw Error('D1_PRF_DEK_MISMATCH');
+  }
+  window.d1Research.last='PASS_'+stage+(stage==='UNLOCK'?'_DEK_EXACT_MATCH':'');
+  result.textContent=window.d1Research.last;
+ }).catch(err=>{
+  const code=String(err?.message||err?.name||'UNKNOWN').replace(/[^A-Za-z0-9_]/g,'_').slice(0,100);
+  window.d1Research.last='FAIL_'+stage+'_'+code;
+  result.textContent=window.d1Research.last;
+ }).finally(()=>{window.d1Research.settled=true;busy=false;});
+}
+document.getElementById('enroll').addEventListener('click',()=>run('ENROLL',()=>window.iaminaD1PrfGate.enroll(owner,expectedDEK())));
+document.getElementById('unlock').addEventListener('click',()=>run('UNLOCK',()=>window.iaminaD1PrfGate.unlock(owner)));
 </script></body></html>
