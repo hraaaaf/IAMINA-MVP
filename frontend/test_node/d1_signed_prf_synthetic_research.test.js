@@ -251,3 +251,103 @@ test('wrong proof status or missing patientReady=false is not authorization',asy
     salt:f.salt,callback:async()=>{throw Error('NEVER')}}),
     /D1_SIGNED_PRF_RESEARCH_DENIED/);
 });
+
+function eventTarget(){
+  const subscriptions=new Map();
+  return {
+    addEventListener(event,handler){
+      if(!subscriptions.has(event))subscriptions.set(event,new Set());
+      subscriptions.get(event).add(handler);
+    },
+    removeEventListener(event,handler){subscriptions.get(event)?.delete(handler)},
+    dispatch(event,data){
+      for(const handler of subscriptions.get(event)||[]) handler(data);
+    }
+  };
+}
+function fakeChannel(){
+  const target=eventTarget();
+  return {...target,postMessage(){ /* Single-tab fixture; no external traffic */ }};
+}
+
+test('single session fence wraps signed Django proof + PRF-encrypted fixture before synthetic operation',async()=>{
+  const {createSessionFence}=require('../web/d1_research_session_fence.js');
+  const f=await fixture();
+  let envelope;
+  await f.bridge.withVerifiedPrf({credentialId:CID,prfInput:f.input,salt:f.salt,
+    callback:async({kek,scope})=>{
+      envelope=await sealSyntheticFixture({cryptoImpl:webcrypto,kek,scope,
+        prfInput:f.input,salt:f.salt});
+    }});
+  let opened=false, grant;
+  const fence=createSessionFence({
+    readServerSession:()=>f.bridge.context(CID),
+    expectedOrigin:ORIGIN,
+    channel:fakeChannel(),lifecycle:eventTarget(),
+    prfUnlock:async(owner,{signal})=>{
+      await f.bridge.withVerifiedPrf({credentialId:CID,
+        prfInput:decode(envelope.prfInput),salt:decode(envelope.salt),signal,
+        callback:async({kek,scope})=>{
+          assert.equal(scope.vaultOwner,owner);
+          const check=await openSyntheticFixture({
+            cryptoImpl:webcrypto,kek,scope,envelope
+          });
+          opened=check.status==='SYNTHETIC_VAULT_OPENED';
+        }});
+      // A random 32-byte TEST GRANT, deliberately not the DEK. The single
+      // fence contract is tested; no patient key is exposed to the callback.
+      if(!opened)throw Error('RESEARCH_FIXTURE_NOT_OPENED');
+      grant=webcrypto.getRandomValues(new Uint8Array(32));
+      return grant;
+    }
+  });
+  let invoked=false;
+  const result=await fence.withUnlockedKey(async(bytes,scope)=>{
+    invoked=true;
+    assert.equal(scope.accountId,'731');
+    assert.equal(bytes,grant);
+  });
+  assert.equal(result.status,'D1_RESEARCH_FIXTURE_COMPLETE');
+  assert.equal(opened,true);
+  assert.equal(invoked,true);
+  assert.equal(f.state.prompts,2); // enrollment + one unlock assertion
+  assert.ok(grant.every(x=>x===0));
+  fence.destroy();
+});
+
+test('fence + signed PRF bridge never reassigns A envelope to B or restores old session',async()=>{
+  const {createSessionFence}=require('../web/d1_research_session_fence.js');
+  const f=await fixture();let envelope;
+  await f.bridge.withVerifiedPrf({credentialId:CID,prfInput:f.input,salt:f.salt,
+    callback:async({kek,scope})=>{
+      envelope=await sealSyntheticFixture({cryptoImpl:webcrypto,kek,scope,
+        prfInput:f.input,salt:f.salt});
+    }});
+  let unlocked=0;
+  const fence=createSessionFence({
+    readServerSession:()=>f.bridge.context(CID),
+    expectedOrigin:ORIGIN,channel:fakeChannel(),lifecycle:eventTarget(),
+    prfUnlock:async(owner,{signal})=>{
+      await f.bridge.withVerifiedPrf({credentialId:CID,
+        prfInput:decode(envelope.prfInput),salt:decode(envelope.salt),signal,
+        callback:async({kek,scope})=>{
+          assert.equal(scope.vaultOwner,owner);
+          const ok=await openSyntheticFixture({cryptoImpl:webcrypto,kek,scope,envelope});
+          assert.equal(ok.status,'SYNTHETIC_VAULT_OPENED');
+        }});
+      return webcrypto.getRandomValues(new Uint8Array(32));
+    }
+  });
+  await fence.withUnlockedKey(async()=>{unlocked++});
+  f.state.account='812';
+  await assert.rejects(fence.withUnlockedKey(async()=>{unlocked++}));
+  fence.sessionChanged();
+  await assert.rejects(fence.withUnlockedKey(async()=>{unlocked++}));
+  f.state.account='731';
+  // An explicit new operation after account restoration requires a fresh,
+  // separately signed challenge; previous grant is zeroized.
+  await fence.withUnlockedKey(async()=>{unlocked++});
+  assert.equal(unlocked,2);
+  assert.equal(f.state.prompts,3); // initial sealed + two valid fresh unlocks
+  fence.destroy();
+});
