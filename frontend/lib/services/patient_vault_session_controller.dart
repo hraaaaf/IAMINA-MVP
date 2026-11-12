@@ -6,6 +6,7 @@ import '../data/drift/database.dart';
 import '../data/drift/patient_vault_scope.dart';
 import 'auth_epoch.dart';
 import 'auth_service.dart';
+import 'd1_session_fence.dart';
 
 typedef PatientScopeResolver = Future<PatientVaultScope?> Function();
 typedef ScopedDbFactory = AppDatabase Function(PatientVaultScope scope);
@@ -23,6 +24,7 @@ class PatientVaultSessionController extends ChangeNotifier {
 
   AppDatabase? _currentDatabase;
   PatientVaultScope? _currentScope;
+  D1SessionFence? _currentFence;
   int _generation = 0;
   bool _disposed = false;
   bool _loading = true;
@@ -48,8 +50,12 @@ class PatientVaultSessionController extends ChangeNotifier {
   bool get hasVault => _currentDatabase != null && !_loading;
   AppDatabase? get activeDatabase => hasVault ? _currentDatabase : null;
   PatientVaultScope? get activeScope => hasVault ? _currentScope : null;
+  // Experimental D1 security fence: does not imply physical DB encryption.
+  D1SessionFence? get activeSessionFence => hasVault ? _currentFence : null;
 
   void _onAuthChanged() {
+    // Revoke any outstanding A ticket before the first asynchronous await.
+    _currentFence?.retire();
     unawaited(reconcile());
   }
 
@@ -58,6 +64,8 @@ class PatientVaultSessionController extends ChangeNotifier {
     final generation = ++_generation;
     final epoch = AuthEpoch.value;
     final retired = _currentDatabase;
+    _currentFence?.retire();
+    _currentFence = null;
     _currentDatabase = null;
     _currentScope = null;
     _loading = true;
@@ -92,6 +100,10 @@ class PatientVaultSessionController extends ChangeNotifier {
         await opened.close();
         return;
       }
+      // The fence is bound to the SAME auth epoch and verified owner.
+      // It must not be published if opening has become stale.
+      final fence = D1SessionFence(scope, epoch);
+      _currentFence = fence;
       _currentDatabase = opened;
       _currentScope = scope;
       _loading = false;
@@ -112,6 +124,8 @@ class PatientVaultSessionController extends ChangeNotifier {
     _generation++;
     _authChanges.removeListener(_onAuthChanged);
     final retired = _currentDatabase;
+    _currentFence?.retire();
+    _currentFence = null;
     _currentDatabase = null;
     _currentScope = null;
     if (retired != null) unawaited(retired.close());
