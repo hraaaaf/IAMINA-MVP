@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>IAMINA D1-6 — Safari ↔ Django PRF synthétique</title><link rel="stylesheet" href="./lab.css"></head>
+<body><main><p class="eyebrow">IAMINA / D1-6 / RECHERCHE</p><h1>Safari + Django + PRF</h1>
+<p>Une passkey réelle, une assertion WebAuthn signée vérifiée par Django et un coffre <strong>fictif</strong> chiffré localement.</p>
+<aside><strong>Laboratoire sans données patients.</strong> Ce parcours nécessite un compte Django <em>de test</em> déjà connecté sur cette même origine HTTPS. Les routes n’existent que dans l’URLconf de test. Aucune clé PRF, KEK ou DEK n’est envoyée à Django.</aside>
+<section><h2>1. Enregistrer une passkey de test</h2>
+<label for="password">Mot de passe Django du compte synthétique</label><input id="password" type="password" autocomplete="off" placeholder="Compte de laboratoire uniquement">
+<button id="prepareEnroll" type="button">Préparer avec Django</button>
+<button id="enroll" type="button" disabled>Créer la passkey avec Face ID</button><p id="enrollStatus" role="status" aria-live="polite">Non préparé</p></section>
+<section><h2>2. Préparer le déverrouillage</h2><label for="credential">Credential ID (créé par l’étape 1)</label><input id="credential" autocomplete="off" spellcheck="false">
+<button id="prepareUnlock" type="button">Préparer le challenge Django</button>
+<button id="unlock" type="button" disabled>Déverrouiller avec Face ID</button>
+<p id="unlockStatus" role="status" aria-live="polite">Non préparé</p></section>
+<p id="result" role="status" aria-live="polite">PRÊT À TESTER</p>
+<p class="hint">Premier déverrouillage : le navigateur chiffre le message de test avec une clé DEK fictive. Préparer et déverrouiller une seconde fois pour vérifier le déchiffrement. Après changement de compte ou expiration du challenge : recommencer la préparation.</p>
+<p class="hint">Ne pas utiliser un vrai compte patient. Aucune sauvegarde permanente de coffre ; les résultats sont propres à cette session navigateur. PATIENT NO-GO.</p></main>
+<script src="./bridge.js" defer></script><script src="./client.js" defer></script></body></html>
