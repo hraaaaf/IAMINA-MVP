@@ -96,7 +96,7 @@ async function phase(ctx,p){
   headless:true,...(name==='chromium'?{args:['--no-sandbox']}:{})
  });
  try{
-  const ctx=await browser.newContext({serviceWorkers:'block'});
+  const ctx=await browser.newContext({locale:'fr-FR',serviceWorkers:'block'});
   const seeded=await phase(ctx,'seed');
   try{
    report.physicalIndexedDb=await rawIdbProof(seeded);
