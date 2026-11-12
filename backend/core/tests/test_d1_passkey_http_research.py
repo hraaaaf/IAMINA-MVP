@@ -13,6 +13,7 @@ from passkey_research.models import D1ResearchPasskeyChallenge
 
 RP = "iamina-review-9tskukqul-achraf-benmoussa-s-projects.vercel.app"
 ROOT = "/api/v1/d1-research/passkey"
+TEST_PASSWORD = "Synthetic-D1-Only-Password-42!"
 HTTP_TEST = {
     "ROOT_URLCONF": "core.tests.d1_passkey_test_urls",
     "D1_PASSKEY_RESEARCH_ENABLED": True,
@@ -42,17 +43,17 @@ def test_anon_and_unmounted_production_remain_denied():
                          content_type="application/json").status_code == 404
     with override_settings(**HTTP_TEST):
         anon = Client(enforce_csrf_checks=True)
-        assert _post(anon, ROOT + "/enroll/start", {}).status_code in (401, 403)
+        assert _post(anon, ROOT + "/enroll/start", {"password": TEST_PASSWORD}).status_code in (401, 403)
 
 
 @pytest.mark.django_db
 def test_research_http_session_requires_csrf_and_denies_bearer_collision():
     with override_settings(**HTTP_TEST):
-        a = User.objects.create_user(username="d1_http_owner_a")
+        a = User.objects.create_user(username="d1_http_owner_a", password=TEST_PASSWORD)
         BasePatientProfile.objects.create(patient=a)
         client = Client(enforce_csrf_checks=True)
         client.force_login(a)
-        missing = _post(client, ROOT + "/enroll/start", {})
+        missing = _post(client, ROOT + "/enroll/start", {"password": TEST_PASSWORD})
         assert missing.status_code == 403
         csrf = _csrf(client)
         mixed = _post(
@@ -60,7 +61,7 @@ def test_research_http_session_requires_csrf_and_denies_bearer_collision():
             csrf=csrf, authorization="Bearer fabricated",
         )
         assert mixed.status_code in (401, 403)
-        response = _post(client, ROOT + "/enroll/start", {}, csrf=csrf)
+        response = _post(client, ROOT + "/enroll/start", {"password": TEST_PASSWORD}, csrf=csrf)
         assert response.status_code == 200, (response.status_code, response.content[:300])
         assert response.json()["options"]["rp"]["id"] == RP
         assert D1ResearchPasskeyChallenge.objects.count() == 1
@@ -69,14 +70,14 @@ def test_research_http_session_requires_csrf_and_denies_bearer_collision():
 @pytest.mark.django_db
 def test_http_cross_account_and_session_rotation_cannot_finish_a_challenge():
     with override_settings(**HTTP_TEST):
-        a = User.objects.create_user(username="d1_http_A")
-        b = User.objects.create_user(username="d1_http_B")
+        a = User.objects.create_user(username="d1_http_A", password=TEST_PASSWORD)
+        b = User.objects.create_user(username="d1_http_B", password=TEST_PASSWORD)
         BasePatientProfile.objects.create(patient=a)
         BasePatientProfile.objects.create(patient=b)
         client = Client(enforce_csrf_checks=True)
         client.force_login(a)
         csrf = _csrf(client)
-        start = _post(client, ROOT + "/enroll/start", {}, csrf=csrf)
+        start = _post(client, ROOT + "/enroll/start", {"password": TEST_PASSWORD}, csrf=csrf)
         assert start.status_code == 200
         challenge_id = start.json()["ceremony_id"]
         invalid_proof = {
@@ -106,19 +107,19 @@ def test_http_cross_account_and_session_rotation_cannot_finish_a_challenge():
 @pytest.mark.django_db
 def test_http_flag_default_off_fails_even_under_test_urlconf():
     with override_settings(**{**HTTP_TEST, "D1_PASSKEY_RESEARCH_ENABLED": False}):
-        a = User.objects.create_user(username="d1_http_flag_off")
+        a = User.objects.create_user(username="d1_http_flag_off", password=TEST_PASSWORD)
         BasePatientProfile.objects.create(patient=a)
         client = Client(enforce_csrf_checks=True)
         client.force_login(a)
         csrf = _csrf(client)
-        assert _post(client, ROOT + "/enroll/start", {}, csrf=csrf).status_code == 404
+        assert _post(client, ROOT + "/enroll/start", {"password": TEST_PASSWORD}, csrf=csrf).status_code == 404
         assert D1ResearchPasskeyChallenge.objects.count() == 0
 
 
 @pytest.mark.django_db
 def test_http_rejects_client_supplied_patient_identifier():
     with override_settings(**HTTP_TEST):
-        a = User.objects.create_user(username="d1_http_id_spoof")
+        a = User.objects.create_user(username="d1_http_id_spoof", password=TEST_PASSWORD)
         BasePatientProfile.objects.create(patient=a)
         client = Client(enforce_csrf_checks=True)
         client.force_login(a)
@@ -129,3 +130,50 @@ def test_http_rejects_client_supplied_patient_identifier():
             csrf=csrf,
         )
         assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_http_step_up_missing_and_wrong_password_does_not_enroll():
+    with override_settings(**HTTP_TEST):
+        a = User.objects.create_user(username="d1_http_stepup", password=TEST_PASSWORD)
+        BasePatientProfile.objects.create(patient=a)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(a)
+        csrf = _csrf(client)
+        assert _post(client, ROOT + "/enroll/start", {}, csrf=csrf).status_code == 422
+        bad = _post(client, ROOT + "/enroll/start", {"password": "incorrect"}, csrf=csrf)
+        assert bad.status_code == 403
+        assert D1ResearchPasskeyChallenge.objects.count() == 0
+        good = _post(client, ROOT + "/enroll/start", {"password": TEST_PASSWORD}, csrf=csrf)
+        assert good.status_code == 200
+
+
+@pytest.mark.django_db
+def test_http_credential_revoke_requires_owner_and_password():
+    import base64
+    from passkey_research.models import D1ResearchPasskeyCredential
+    with override_settings(**HTTP_TEST):
+        a = User.objects.create_user(username="d1_http_revoker_a", password=TEST_PASSWORD)
+        b = User.objects.create_user(username="d1_http_revoker_b", password=TEST_PASSWORD)
+        BasePatientProfile.objects.create(patient=a)
+        BasePatientProfile.objects.create(patient=b)
+        cid = base64.urlsafe_b64encode(b"synthetic-credential").decode().rstrip("=")
+        binding = D1ResearchPasskeyCredential.objects.create(
+            patient=a, credential_id=cid, public_key=b"pk", user_handle=b"handle",
+            rp_id=RP, origin="https://" + RP,
+        )
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(b)
+        csrf = _csrf(client)
+        assert _post(client, ROOT + "/revoke",
+                     {"credential_id": cid, "password": TEST_PASSWORD}, csrf=csrf).status_code == 403
+        client.force_login(a)
+        csrf = _csrf(client)
+        assert _post(client, ROOT + "/revoke",
+                     {"credential_id": cid, "password": "incorrect"}, csrf=csrf).status_code == 403
+        response = _post(client, ROOT + "/revoke",
+                         {"credential_id": cid, "password": TEST_PASSWORD}, csrf=csrf)
+        assert response.status_code == 200
+        assert response.json()["patient_ready"] is False
+        binding.refresh_from_db()
+        assert binding.revoked_at is not None
