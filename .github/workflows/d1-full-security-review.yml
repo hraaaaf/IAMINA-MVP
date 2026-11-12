@@ -1,0 +1,29 @@
+name: D1 internal read-only security NO-GO inventory (NO DEPLOY)
+on:
+  push:
+    branches: [research/d1-security-review-20261112]
+    paths:
+      - 'docs/d1/d1-high-effort-security-review-20261112.md'
+      - 'tools/d1_full/security_review_gate*'
+      - '.github/workflows/d1-full-security-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  internal-review-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tools/d1_full/security_review_gate.test.mjs
+      - run: node tools/d1_full/security_review_gate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d1-internal-review-no-go
+          path: d1-security-no-go.json
+          retention-days: 30
