@@ -78,9 +78,9 @@ Future<void> main() async{
       await database.close();
     }
     html.document.title='D1_REMOTE_PASS_${phase.toUpperCase()}';
-  }catch(_){
-    // CI synthetic-only stage diagnostics; never print keys or SQL errors.
-    html.document.title='D1_REMOTE_FAIL_'+stage;
+  }catch(error){
+    // CI synthetic-only failure category; never print keys or SQL strings.
+    html.document.title='D1_REMOTE_FAIL_'+stage+'_'+error.runtimeType.toString().replaceAll(RegExp('[^a-zA-Z0-9_]'), '_');
   }finally{
     worker?.terminate();
   }
