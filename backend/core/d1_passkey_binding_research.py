@@ -98,7 +98,9 @@ def _scope(user, session_key: str):
 
 def _session_binding(session_key):
     # The browser's Django session identifier is NEVER persisted in raw form.
-    return salted_hmac("iamina.d1.passkey.session.v1", session_key).hexdigest()
+    return salted_hmac(
+        "iamina.d1.passkey.session.v1", session_key, algorithm="sha256",
+    ).hexdigest()
 
 
 def _new_challenge(user, session_key, version, rp_id, origin, purpose,
