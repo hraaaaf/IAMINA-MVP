@@ -57,7 +57,15 @@ async function rawIdbProof(tab){
 async function phase(ctx,p){
  const tab=await ctx.newPage();
  const failures=[];
- tab.on('pageerror',err=>failures.push({kind:'pageerror',type:err.name||'unknown'}));
+ tab.on('pageerror',err=>{
+  // The page hosts only hard-coded synthetic fixtures. Do not log arbitrary
+  // SQL or credentials: only a small, scrubbed startup error category.
+  const message=String(err.message||'')
+    .replace(/D1_[A-Z0-9_]+/g,'[SYNTHETIC_REDACTED]')
+    .replace(/[a-f0-9]{64,}/gi,'[HEX_REDACTED]')
+    .slice(0,400);
+  failures.push({kind:'pageerror',type:err.name||'unknown',message});
+ });
  tab.on('requestfailed',req=>failures.push({
    kind:'requestfailed',asset:new URL(req.url()).pathname.split('/').pop(),
  }));
