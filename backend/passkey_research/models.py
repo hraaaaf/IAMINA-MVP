@@ -49,7 +49,7 @@ class D1ResearchPasskeyChallenge(models.Model):
     origin = models.URLField(max_length=512)
     rp_id = models.CharField(max_length=255)
     auth_token_version = models.PositiveIntegerField()
-    session_key = models.CharField(max_length=80)
+    session_binding = models.CharField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
