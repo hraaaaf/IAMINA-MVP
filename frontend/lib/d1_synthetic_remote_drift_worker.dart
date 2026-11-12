@@ -54,10 +54,9 @@ Future<void> _open(web.DedicatedWorkerGlobalScope self, JSObject msg) async {
         stage='SERVER';
         // A dedicated, one-use worker allows its sole owner to terminate the
         // server. Keep the executor open until the physical VFS is flushed.
-        final server=DriftServer(executor,
-          allowRemoteShutdown:true,closeConnectionAfterShutdown:false);
+        final server=DriftServer(executor);
         self.postMessage('D1_REMOTE_READY'.toJS);
-        await server.serve(port.channel());
+        await server.serve(port.channel(explicitClose:true));
       }finally{
         await executor.close();
       }

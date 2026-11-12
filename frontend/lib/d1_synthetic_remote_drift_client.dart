@@ -59,7 +59,7 @@ Future<void> main() async{
     }
     stage='CONNECT';
     final database=await connectToRemoteAndInitialize(
-      ports.port1.channel(), singleClientMode:true,
+      ports.port1.channel(explicitClose:true), singleClientMode:false,
     );
     try{
       stage='SQL';
