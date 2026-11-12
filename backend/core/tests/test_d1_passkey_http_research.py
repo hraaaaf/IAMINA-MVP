@@ -2,6 +2,7 @@
 
 No hosted patient, real credential, real PRF or production endpoint is tested.
 """
+import base64
 import json
 
 import pytest
@@ -9,7 +10,7 @@ from django.contrib.auth.models import User
 from django.test import Client, override_settings
 
 from core.models import BasePatientProfile
-from passkey_research.models import D1ResearchPasskeyChallenge
+from passkey_research.models import D1ResearchPasskeyChallenge, D1ResearchPasskeyCredential
 
 RP = "iamina-review-9tskukqul-achraf-benmoussa-s-projects.vercel.app"
 ROOT = "/api/v1/d1-research/passkey"
@@ -150,8 +151,6 @@ def test_http_step_up_missing_and_wrong_password_does_not_enroll():
 
 @pytest.mark.django_db
 def test_http_credential_revoke_requires_owner_and_password():
-    import base64
-    from passkey_research.models import D1ResearchPasskeyCredential
     with override_settings(**HTTP_TEST):
         a = User.objects.create_user(username="d1_http_revoker_a", password=TEST_PASSWORD)
         b = User.objects.create_user(username="d1_http_revoker_b", password=TEST_PASSWORD)
