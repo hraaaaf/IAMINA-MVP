@@ -296,3 +296,72 @@ def test_no_d1_passkey_http_route_exposed(users):
         data="{}", content_type="application/json",
     )
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_same_credential_cannot_be_rebound_to_user_b(users, monkeypatch):
+    a, b = users
+    monkeypatch.setattr(
+        "core.d1_passkey_binding_research.verify_registration_response",
+        lambda **kwargs: SimpleNamespace(
+            credential_id=CRED_BYTES,
+            credential_public_key=b"synthetic-public-key",
+            sign_count=0,
+        ),
+    )
+    a_ceremony = begin_enrollment(a, SESSION_A)
+    finish_enrollment(a, SESSION_A, a_ceremony["ceremony_id"], registration_payload())
+    b_ceremony = begin_enrollment(b, SESSION_B)
+    with pytest.raises(D1PasskeyResearchDenied):
+        finish_enrollment(b, SESSION_B, b_ceremony["ceremony_id"], registration_payload())
+    assert D1ResearchPasskeyCredential.objects.count() == 1
+    assert D1ResearchPasskeyCredential.objects.get().patient_id == a.pk
+
+
+@pytest.mark.django_db
+def test_noncanonical_alias_id_and_malformed_challenge_refused(users, monkeypatch):
+    a, _ = users
+    began = begin_enrollment(a, SESSION_A)
+    with pytest.raises(D1PasskeyResearchDenied):
+        finish_enrollment(a, SESSION_A, "not-a-uuid", registration_payload())
+    assert D1ResearchPasskeyChallenge.objects.get(pk=began["ceremony_id"]).consumed_at is None
+    monkeypatch.setattr(
+        "core.d1_passkey_binding_research.verify_registration_response",
+        lambda **kwargs: pytest.fail("noncanonical credential reached verifier"),
+    )
+    payload = registration_payload()
+    payload["id"] = CRED_ID + "="
+    with pytest.raises(D1PasskeyResearchDenied):
+        finish_enrollment(a, SESSION_A, began["ceremony_id"], payload)
+    assert D1ResearchPasskeyChallenge.objects.get(pk=began["ceremony_id"]).consumed_at is not None
+
+
+@pytest.mark.django_db
+def test_logout_during_signature_verification_rejects_late_result(users, monkeypatch):
+    a, _ = users
+    began = begin_enrollment(a, SESSION_A)
+
+    def revoked_during_verification(**kwargs):
+        BasePatientProfile.objects.filter(patient=a).update(auth_token_version=2)
+        return SimpleNamespace(
+            credential_id=CRED_BYTES, credential_public_key=b"synthetic-public-key",
+            sign_count=0,
+        )
+
+    monkeypatch.setattr(
+        "core.d1_passkey_binding_research.verify_registration_response",
+        revoked_during_verification,
+    )
+    with pytest.raises(D1PasskeyResearchDenied):
+        finish_enrollment(a, SESSION_A, began["ceremony_id"], registration_payload())
+    assert D1ResearchPasskeyCredential.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_invalid_extension_shape_is_refused_without_server_error(users):
+    a, _ = users
+    began = begin_enrollment(a, SESSION_A)
+    payload = registration_payload()
+    payload["clientExtensionResults"] = None
+    with pytest.raises(D1PasskeyResearchDenied):
+        finish_enrollment(a, SESSION_A, began["ceremony_id"], payload)
