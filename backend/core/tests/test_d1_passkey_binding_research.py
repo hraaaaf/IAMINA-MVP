@@ -112,6 +112,10 @@ def test_enroll_bound_to_original_user_session_and_revocation(users, monkeypatch
     assert started["options"]["rp"]["id"] == RP
     challenge_id = started["ceremony_id"]
     assert D1ResearchPasskeyChallenge.objects.count() == 1
+    saved = D1ResearchPasskeyChallenge.objects.get(pk=challenge_id)
+    assert not hasattr(saved, "session_key")
+    assert saved.session_binding != SESSION_A
+    assert len(saved.session_binding) == 64
 
     calls = []
     def fake_verify(**kwargs):
