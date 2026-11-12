@@ -6,6 +6,30 @@ on:
 permissions:
   contents: read
 jobs:
+  native-backup-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Verify historical and owner-bound backup invariants
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-warnings --no-fatal-infos \
+            lib/data/drift/local_backup.dart \
+            lib/data/drift/d1_authenticated_backup_boundary.dart
+          flutter test test/d1_full/d1_authenticated_backup_boundary_test.dart
+          flutter test test/data/drift/patient_vault_backup_boundary_test.dart
+          flutter test test/data/drift/local_backup_restore_test.dart
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 45
