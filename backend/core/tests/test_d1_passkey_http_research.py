@@ -8,6 +8,7 @@ import json
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client, override_settings
+from django.utils import timezone
 
 from core.models import BasePatientProfile
 from passkey_research.models import D1ResearchPasskeyChallenge, D1ResearchPasskeyCredential
@@ -176,3 +177,81 @@ def test_http_credential_revoke_requires_owner_and_password():
         assert response.json()["patient_ready"] is False
         binding.refresh_from_db()
         assert binding.revoked_at is not None
+
+
+@pytest.mark.django_db
+def test_d1_session_context_only_returns_server_owned_credential_scope():
+    with override_settings(**HTTP_TEST):
+        a = User.objects.create_user(
+            username="d1_context_A", password=TEST_PASSWORD,
+        )
+        b = User.objects.create_user(
+            username="d1_context_B", password=TEST_PASSWORD,
+        )
+        BasePatientProfile.objects.create(patient=a)
+        BasePatientProfile.objects.create(patient=b)
+        credential = base64.urlsafe_b64encode(b"session-fixture-credential-A").decode().rstrip("=")
+        D1ResearchPasskeyCredential.objects.create(
+            patient=a, credential_id=credential, public_key=b"synthetic-pub-key",
+            user_handle=b"synthetic-user-handle", rp_id=RP,
+            origin="https://" + RP,
+        )
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(a)
+        missing_csrf = _post(client, ROOT + "/session-context", {"credential_id": credential})
+        assert missing_csrf.status_code == 403
+        csrf_a = _csrf(client)
+        a_scope = _post(client, ROOT + "/session-context",
+                        {"credential_id": credential}, csrf=csrf_a)
+        assert a_scope.status_code == 200, a_scope.content[:250]
+        snapshot = a_scope.json()
+        assert snapshot == {
+            "authenticated": True,
+            "patientReady": False,
+            "origin": "https://" + RP,
+            "accountId": str(a.pk),
+            "vaultOwner": f"amina_vault_v1_native_{a.pk}",
+            "credentialId": credential,
+            "epoch": 0,
+            "sessionStamp": snapshot["sessionStamp"],
+        }
+        assert len(snapshot["sessionStamp"]) == 64
+        assert snapshot["sessionStamp"] != client.session.session_key
+        assert "password" not in str(snapshot).lower()
+        assert "dek" not in str(snapshot).lower()
+
+        bearer = _post(client, ROOT + "/session-context",
+                       {"credential_id": credential}, csrf=csrf_a,
+                       authorization="Bearer wrong")
+        assert bearer.status_code in (401, 403)
+
+        client.force_login(b)
+        csrf_b = _csrf(client)
+        foreign = _post(client, ROOT + "/session-context",
+                        {"credential_id": credential}, csrf=csrf_b)
+        assert foreign.status_code == 403
+
+        client.force_login(a)
+        csrf_a_again = _csrf(client)
+        a_again = _post(client, ROOT + "/session-context",
+                        {"credential_id": credential}, csrf=csrf_a_again)
+        assert a_again.status_code == 200
+        assert a_again.json()["sessionStamp"] != snapshot["sessionStamp"]
+
+        binding = D1ResearchPasskeyCredential.objects.get(credential_id=credential)
+        binding.revoked_at = timezone.now()
+        binding.save(update_fields=["revoked_at"])
+        rejected = _post(client, ROOT + "/session-context",
+                         {"credential_id": credential}, csrf=csrf_a_again)
+        assert rejected.status_code == 403
+
+
+@pytest.mark.django_db
+def test_d1_session_context_fails_closed_outside_test_urlconf():
+    client = Client(enforce_csrf_checks=True)
+    response = _post(
+        client,
+        "/api/v1/d1-research/passkey/session-context",
+        {"credential_id": "Y3JlZGVudGlhbC1B"},
+    )
+    assert response.status_code == 404
