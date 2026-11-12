@@ -6,7 +6,7 @@ sessions and CSRF. Production `diabetes.api.main` MUST NOT import it.
 from django.conf import settings
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SecretStr
 
 from amina.vercel_session_auth import check_iamina_csrf
 from core.d1_passkey_binding_research import (
@@ -15,9 +15,21 @@ from core.d1_passkey_binding_research import (
     begin_verification,
     finish_enrollment,
     finish_verification,
+    revoke_credential,
 )
 
 router = Router(tags=["d1-passkey-research"])
+
+
+class StepUpStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    password: SecretStr
+
+
+class CredentialRevoke(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    credential_id: str
+    password: SecretStr
 
 
 class CeremonyFinish(BaseModel):
@@ -62,8 +74,8 @@ def _run(action, request, *args):
 
 
 @router.post("/d1-research/passkey/enroll/start")
-def enroll_start(request):
-    return _run(begin_enrollment, request)
+def enroll_start(request, data: StepUpStart):
+    return _run(begin_enrollment, request, data.password.get_secret_value())
 
 
 @router.post("/d1-research/passkey/enroll/finish")
@@ -79,3 +91,11 @@ def verification_start(request, data: CredentialStart):
 @router.post("/d1-research/passkey/verify/finish")
 def verification_finish(request, data: CeremonyFinish):
     return _run(finish_verification, request, data.ceremony_id, data.credential)
+
+
+@router.post("/d1-research/passkey/revoke")
+def credential_revoke(request, data: CredentialRevoke):
+    return _run(
+        revoke_credential, request, data.credential_id,
+        data.password.get_secret_value(),
+    )
