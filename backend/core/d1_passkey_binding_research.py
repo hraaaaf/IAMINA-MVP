@@ -390,3 +390,33 @@ def revoke_credential(user, session_key: str, credential_id: str, password: str)
     except Exception:
         _deny()
     return {"status": "REVOKED_RESEARCH_ONLY", "patient_ready": False}
+
+
+def research_session_context(user, session_key: str, credential_id: str) -> dict:
+    """Read-only account scope for the future D1 client fence (TEST URLconf ONLY).
+
+    This is NOT WebAuthn step-up, cannot authorize patient data and cannot issue
+    a PRF result/DEK. The client must still complete a SIGNED WebAuthn assertion
+    for the SAME credential before local PRF use. Fail closed on a missing,
+    foreign, revoked or wrong-origin credential. Never accept browser owner ID.
+    """
+    rp_id, origin, version = _scope(user, session_key)
+    _canonical_id(credential_id)
+    binding = D1ResearchPasskeyCredential.objects.filter(
+        patient=user, credential_id=credential_id,
+        rp_id=rp_id, origin=origin, revoked_at__isnull=True,
+    ).first()
+    if binding is None:
+        _deny()
+    return {
+        "authenticated": True,
+        "patientReady": False,
+        "origin": origin,
+        "accountId": str(user.pk),
+        "vaultOwner": f"amina_vault_v1_native_{user.pk}",
+        "credentialId": binding.credential_id,
+        "epoch": version,
+        # An opaque HMAC-based comparison stamp, NOT the Django cookie or an
+        # authorization token. Must never be accepted by the backend as auth.
+        "sessionStamp": _session_binding(session_key),
+    }
