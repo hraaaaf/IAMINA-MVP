@@ -5,6 +5,55 @@ const {chromium,webkit}=require('playwright');
 const name=process.env.D1_BROWSER||'chromium';
 const report={test:'D1_SYNTHETIC_REAL_DRIFT_REMOTE',browser:name,
  patientRuntime:false,synthetic:true,result:'NOT_RUN',steps:[]};
+// Inspect the raw physical IndexedDB blocks after a complete worker flush.
+// No source-level assertions are accepted as a substitute for byte inspection.
+async function rawIdbProof(tab){
+ return tab.evaluate(async ()=>{
+  const dbName='d1_synthetic_remote_drift_731';
+  const marker='D1_DRIFT_REMOTE_SYNTHETIC_731';
+  const dbs=await indexedDB.databases();
+  if(!dbs.some(d=>d.name===dbName))throw Error('IDB_MISSING');
+  const db=await new Promise((resolve,reject)=>{
+   const req=indexedDB.open(dbName);
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>reject(req.error);
+  });
+  const blocks=[];
+  const encoder=new TextEncoder();
+  async function add(value,depth=0){
+   if(depth>10)throw Error('IDB_RECURSION');
+   if(value==null)return;
+   if(typeof value==='string'){blocks.push(encoder.encode(value));return;}
+   if(typeof value==='boolean'||typeof value==='number')return;
+   if(value instanceof ArrayBuffer){blocks.push(new Uint8Array(value));return;}
+   if(ArrayBuffer.isView(value)){blocks.push(new Uint8Array(value.buffer,value.byteOffset,value.byteLength));return;}
+   if(value instanceof Blob){blocks.push(new Uint8Array(await value.arrayBuffer()));return;}
+   if(typeof value==='object')for(const child of Object.values(value))await add(child,depth+1);
+  }
+  try{
+   for(const store of [...db.objectStoreNames]){
+    const req=db.transaction(store,'readonly').objectStore(store).getAll();
+    const values=await new Promise((resolve,reject)=>{
+     req.onsuccess=()=>resolve(req.result);
+     req.onerror=()=>reject(req.error);
+    });
+    for(const v of values)await add(v);
+   }
+  }finally{db.close();}
+  const needle=encoder.encode(marker);
+  const contains=blocks.some(block=>{
+   start:for(let i=0;i<=block.length-needle.length;i++){
+    for(let j=0;j<needle.length;j++)if(block[i+j]!==needle[j])continue start;
+    return true;
+   }
+   return false;
+  });
+  return {storage:'IndexedDB',blockCount:blocks.length,
+    rawBytes:blocks.reduce((sum,v)=>sum+v.byteLength,0),
+    sensitiveSyntheticMarkerInRawStorage:contains};
+ });
+}
+
 async function phase(ctx,p){
  const tab=await ctx.newPage();
  try{
@@ -24,11 +73,20 @@ async function phase(ctx,p){
  });
  try{
   const ctx=await browser.newContext({serviceWorkers:'block'});
-  for(const p of ['seed','reopen','wrong_key','missing_key']){
+  const seeded=await phase(ctx,'seed');
+  try{
+   report.physicalIndexedDb=await rawIdbProof(seeded);
+   if(report.physicalIndexedDb.blockCount<1||
+     report.physicalIndexedDb.rawBytes<256||
+     report.physicalIndexedDb.sensitiveSyntheticMarkerInRawStorage){
+     throw Error('REAL_REMOTE_DRIFT_CIPHERTEXT_NOT_PROVEN');
+   }
+  }finally{await seeded.close();}
+  for(const p of ['reopen','wrong_key','missing_key']){
    const tab=await phase(ctx,p);
    await tab.close();
   }
-  report.result='PASS_REMOTE_DRIFT_CIPHER';
+  report.result='PASS_REMOTE_DRIFT_CIPHER_PHYSICAL_IDB';
   console.log(JSON.stringify(report,null,2));
   await ctx.close();
  }catch(err){report.result='FAIL';report.error=String(err).slice(0,260);
