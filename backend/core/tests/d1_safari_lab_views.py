@@ -12,6 +12,7 @@ _LAB_DIR = Path(settings.BASE_DIR).parent / "frontend" / "web"
 _FILES = {
     "": ("d1_safari_signed_prf_lab.html", "text/html; charset=utf-8"),
     "client.js": ("d1_safari_signed_prf_lab.js", "text/javascript; charset=utf-8"),
+    "lab.css": ("d1_safari_signed_prf_lab.css", "text/css; charset=utf-8"),
     "bridge.js": ("d1_signed_prf_synthetic_research.js", "text/javascript; charset=utf-8"),
 }
 _CSP = (
