@@ -144,26 +144,29 @@
     const prepared=preparedUnlock;preparedUnlock=null;busy=true;controls();
     // Must synchronously enter finishPrepared which starts navigator.credentials.get.
     let promise;
+    let candidateEnvelope=null;
+    let opened=false;
     try {
       promise=bridge.finishPrepared({prepared,prfInput:input,salt,
         callback:async({kek,scope})=>{
           if (!envelope) {
-            envelope=await window.iaminaD1SignedPrfResearch.sealSyntheticFixture({
+            candidateEnvelope=await window.iaminaD1SignedPrfResearch.sealSyntheticFixture({
               cryptoImpl:crypto,kek,scope,prfInput:input,salt
             });
-            status('result','PASS_SEALED_SYNTHETIC');
           } else {
             const opened=await window.iaminaD1SignedPrfResearch.openSyntheticFixture({
               cryptoImpl:crypto,kek,scope,envelope
             });
             if (opened.status!=='SYNTHETIC_VAULT_OPENED')
               throw Error('INVALID_SYNTHETIC_VAULT');
-            status('result','PASS_UNLOCK_SYNTHETIC_VAULT');
+            opened=true;
           }
         }});
     } catch(e) {promise=Promise.reject(e);}
     void Promise.resolve(promise).then(result=>{
       if (result.patientReady!==false) throw Error('CLINICAL_NOT_ALLOWED');
+      if (candidateEnvelope) envelope=candidateEnvelope;
+      status('result',opened?'PASS_UNLOCK_SYNTHETIC_VAULT':'PASS_SEALED_SYNTHETIC');
       status('unlockStatus','PASS_DJANGO_SIGNATURE_VERIFIED');
     }).catch(e=>exposeError('unlockStatus',e)).finally(()=>{
       busy=false;controls();
