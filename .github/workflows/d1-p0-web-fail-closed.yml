@@ -7,6 +7,9 @@ on:
       - 'frontend/lib/data/drift/database.dart'
       - 'frontend/lib/services/app_lock_service.dart'
       - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/lib/services/web_vault_explicit_admission.dart'
+      - 'frontend/lib/services/web_vault_session_admission_candidate.dart'
+      - 'frontend/test/services/web_vault_explicit_admission_test.dart'
       - 'frontend/lib/services/patient_vault_app_host.dart'
       - 'frontend/lib/services/web_patient_vault_safe_hold.dart'
       - 'frontend/lib/routes/app_router.dart'
@@ -52,6 +55,9 @@ jobs:
             lib/data/drift/database.dart \
             lib/services/app_lock_service.dart \
             lib/services/patient_vault_session_controller.dart \
+            lib/services/web_vault_explicit_admission.dart \
+            lib/services/web_vault_session_admission_candidate.dart \
+            test/services/web_vault_explicit_admission_test.dart \
             lib/services/patient_vault_app_host.dart \
             lib/services/web_patient_vault_safe_hold.dart \
             lib/routes/app_router.dart \
@@ -67,7 +73,8 @@ jobs:
             test/services/app_lock_service_test.dart \
             test/data/drift/patient_vault_scope_test.dart \
             test/features/d30_local_enrollment_cta_test.dart \
-            test/services/patient_vault_session_controller_test.dart
+            test/services/patient_vault_session_controller_test.dart \
+            test/services/web_vault_explicit_admission_test.dart
       - name: Verify Chrome is installed
         run: command -v google-chrome
       - name: Real Chrome deny unencrypted patient vault and app-lock opt-out
