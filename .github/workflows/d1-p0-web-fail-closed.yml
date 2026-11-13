@@ -34,6 +34,9 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Do not certify GitHub's synthetic PR merge ref as the exact head.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
@@ -86,8 +89,11 @@ jobs:
           npx playwright install chromium
       - name: Real product bootstrap -> patient safe hold at 390/768/1280
         shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
           python3 -m http.server 7373 --bind 127.0.0.1 \
             --directory frontend/build/web > /tmp/d1-safe-hold-web.log 2>&1 &
           WEB_PID=$!
