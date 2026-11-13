@@ -25,8 +25,11 @@ Future<void> main() async {
   // This is necessary but not sufficient for genuine patient admission;
   // the real application entrypoint never references this source.
   final uri = Uri.base;
-  if (!({'localhost', '127.0.0.1', '::1'}.contains(uri.host)) ||
-      uri.queryParameters['d1_ci_synthetic'] != 'yes') {
+  const fixtureEnabled = bool.fromEnvironment(
+    'IAMINA_D1_SYNTHETIC_FUE', defaultValue: false,
+  );
+  if (!fixtureEnabled ||
+      !({'localhost', '127.0.0.1', '::1'}.contains(uri.host))) {
     runApp(const MaterialApp(home: Scaffold(
       body: Center(child: Text('D1 synthetic FUE fixture disabled')),
     )));
