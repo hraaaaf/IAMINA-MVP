@@ -76,4 +76,33 @@ void main() {
       expect(signOutCalls, 1);
     });
   }
+
+  testWidgets('D1 desktop safe-hold heading and text expose accessibility',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+    await tester.pumpWidget(MaterialApp(
+      home: WebPatientVaultSafeHold(
+        locale: const Locale('en'),
+        onSignOut: () {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('Patient vault unavailable'),
+        findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        RegExp('Encrypted Web patient storage has not yet been verified'),
+      ),
+      findsWidgets,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
 }
