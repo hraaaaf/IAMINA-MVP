@@ -67,7 +67,7 @@ async function persistedBytes(page) {
     proof.engine = Object.fromEntries(Object.entries(app).filter(([k])=>k!=='stack'));
     proof.persisted = await persistedBytes(page);
     if (errors.length || !app.ok || !app.wrongKeyRejected || !app.persistentAfterReopen ||
-        !app.cipherAvailable || proof.persisted.physicalByteCount===0 ||
+        !app.cipherAvailable || !app.driftRead || proof.persisted.physicalByteCount===0 ||
         proof.persisted.sentinelInPhysicalBytes ||
         proof.persisted.sqlitePlainHeaderInPhysicalBytes) {
       throw Error('Encrypted SQLite feasibility gate failed: '+JSON.stringify({app:proof.engine,persisted:proof.persisted,errors}));
