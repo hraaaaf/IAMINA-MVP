@@ -58,14 +58,37 @@ function hasBytes(bytes, text) {
     const ctx=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});
     const page=await ctx.newPage();
     const errors=[];
-    page.on('pageerror',e=>errors.push(String(e)));
+    const consoleLines=[];
+    page.on('pageerror',e=>errors.push(String(e.stack||e).slice(0,1500)));
+    page.on('console',msg=>consoleLines.push(msg.type()+': '+msg.text().slice(0,400)));
     await page.goto('http://127.0.0.1:7474/',{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForFunction(()=>{
-      const s=document.body?.textContent||'';
-      return s.includes('"clinicalGo":false') && (s.includes('"ok":')||s.includes('"error":'));
-    },null,{timeout:120000});
+    try {
+      await page.waitForFunction(()=>{
+        const s=document.body?.textContent||'';
+        return s.includes('"clinicalGo":false') &&
+          (s.includes('"ok":')||s.includes('"error":'));
+      },null,{timeout:30000});
+    }catch(err){
+      proof.diagnostics=await page.evaluate(()=>({
+        title:document.title,readyState:document.readyState,
+        html:document.documentElement.outerHTML.slice(0,3000),
+        bodyText:(document.body?.innerText||'').slice(0,2000),
+        flutterSurfaceCount:document.querySelectorAll('flt-glass-pane').length,
+        flutterSemanticsCount:document.querySelectorAll('flt-semantics').length,
+        scripts:[...document.scripts].map(x=>x.src.slice(-140)),
+        lazyCryptoPresent:!!globalThis.IaminaD1CryptoCandidate,
+        dbNames:typeof indexedDB.databases==='function'?
+           await indexedDB.databases().then(x=>x.map(v=>v.name)):[],
+      })).catch(e=>({diagnosticError:String(e)}));
+      proof.jsErrors=errors;
+      proof.console=consoleLines.slice(-25);
+      await page.screenshot({path:folder+'/failed-browser-state.png'}).catch(()=>{});
+      throw err;
+    }
     const raw=await page.locator('body').innerText();
     const report=JSON.parse(raw.slice(raw.indexOf('{"scope"')));
+    proof.jsErrors=errors;
+    proof.console=consoleLines.slice(-10);
     proof.candidate=Object.fromEntries(Object.entries(report).filter(([k])=>!['stack'].includes(k)));
     proof.persistence=[];
     for(const name of names){
