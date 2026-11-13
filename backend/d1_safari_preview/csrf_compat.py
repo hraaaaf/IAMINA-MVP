@@ -7,7 +7,6 @@ from urllib.parse import urlsplit
 
 from django.conf import settings
 
-
 _LAB_POSTS = frozenset({"/d1-research/lab/start"})
 _PASSKEY_PREFIX = "/api/v1/d1-research/passkey/"
 
