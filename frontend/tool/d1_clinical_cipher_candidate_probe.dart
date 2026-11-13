@@ -230,12 +230,10 @@ Future<void> main() async {
           await guardedA.customSelect(
             'SELECT client_uuid FROM log_entries',
           ).get();
-        } on StateError {
-          proof['explicitAdmissionSqlLockDenied'] = true;
-        } catch (_) {
-          // Drift may wrap the guard's exact StateError at this boundary;
-          // the browser proof still requires that no result is returned.
-          proof['explicitAdmissionSqlLockDenied'] = true;
+        } catch (error) {
+          // A generic SQLite failure is NOT proof of epoch enforcement.
+          proof['explicitAdmissionSqlLockDenied'] =
+              error.toString().contains('web_patient_vault_session_revoked');
         }
       } finally {
         await guardedA.close();
@@ -244,10 +242,9 @@ Future<void> main() async {
       changes.changed();
       try {
         await guardedA.customSelect('SELECT 1').get();
-      } on StateError {
-        proof['explicitAdmissionSqlReopenDenied'] = true;
-      } catch (_) {
-        proof['explicitAdmissionSqlReopenDenied'] = true;
+      } catch (error) {
+        proof['explicitAdmissionSqlReopenDenied'] =
+            error.toString().contains('web_patient_vault_session_revoked');
       }
 
       final started = Completer<void>();
