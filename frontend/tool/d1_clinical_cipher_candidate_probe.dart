@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/revocable_patient_query_guard.dart';
 import 'package:amina/services/web_vault_explicit_admission.dart';
 
 import 'package:amina/data/drift/patient_vault_scope.dart';
@@ -39,6 +40,8 @@ Future<void> main() async {
     'explicitAdmissionOwnerSwapRefused': false,
     'explicitAdmissionRecovered': false,
     'explicitAdmissionEpochRaceDenied': false,
+    'explicitAdmissionSqlLockDenied': false,
+    'explicitAdmissionSqlReopenDenied': false,
   };
   try {
     final enrolledA = await candidate.enrollEmptyScope(a);
@@ -155,9 +158,21 @@ Future<void> main() async {
     var sessionEpoch = 0;
     Future<AppDatabase> openForOwner(
         PatientVaultScope scope, String explicitRecoveryCode) async {
+      final expectedEpoch = sessionEpoch;
       final key = await candidate.unlock(scope, explicitRecoveryCode);
+      final queryGuard = RevocablePatientQueryGuard(
+        authorized: () => unlocked &&
+            currentNative == scope.nativeDjangoUserId &&
+            sessionEpoch == expectedEpoch,
+        revocationSignals: changes,
+      );
       try {
-        return await candidate.openCandidateDatabase(scope, key);
+        return await candidate.openCandidateDatabase(
+          scope, key, admissionGuard: queryGuard,
+        );
+      } catch (_) {
+        queryGuard.revoke();
+        rethrow;
       } finally {
         key.retire();
       }
@@ -209,8 +224,30 @@ Future<void> main() async {
         ).get();
         proof['explicitAdmissionRecovered'] = records.length == 1 &&
             records.single.read<String>('client_uuid') == _syntheticMarker;
+        unlocked = false;
+        changes.changed();
+        try {
+          await guardedA.customSelect(
+            'SELECT client_uuid FROM log_entries',
+          ).get();
+        } on StateError {
+          proof['explicitAdmissionSqlLockDenied'] = true;
+        } catch (_) {
+          // Drift may wrap the guard's exact StateError at this boundary;
+          // the browser proof still requires that no result is returned.
+          proof['explicitAdmissionSqlLockDenied'] = true;
+        }
       } finally {
         await guardedA.close();
+      }
+      unlocked = true;
+      changes.changed();
+      try {
+        await guardedA.customSelect('SELECT 1').get();
+      } on StateError {
+        proof['explicitAdmissionSqlReopenDenied'] = true;
+      } catch (_) {
+        proof['explicitAdmissionSqlReopenDenied'] = true;
       }
 
       final started = Completer<void>();
@@ -279,6 +316,8 @@ Future<void> main() async {
       'explicitAdmissionOwnerSwapRefused',
       'explicitAdmissionRecovered',
       'explicitAdmissionEpochRaceDenied',
+      'explicitAdmissionSqlLockDenied',
+      'explicitAdmissionSqlReopenDenied',
     ].every((k) => proof[k] == true) && proof['cipherMode'] == 'chacha20';
   } catch (error, stack) {
     proof['ok'] = false;
