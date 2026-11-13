@@ -3,8 +3,6 @@
 Django rejects Origin: null, even when a same-origin Safari fetch carries a
 valid CSRF token. Never whitelist "null" globally. Do not relax patient routes.
 """
-from __future__ import annotations
-
 from urllib.parse import urlsplit
 
 from django.conf import settings
