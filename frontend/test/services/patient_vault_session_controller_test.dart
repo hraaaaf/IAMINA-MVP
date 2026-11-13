@@ -214,4 +214,50 @@ void main() {
     expect(recovered.single.syncStatus, 'pending');
   });
 
+  test('D1 async encrypted opener cannot publish stale A after auth switches B',
+      () async {
+    final auth = _AuthTestNotifier();
+    final waitingA = Completer<AppDatabase>();
+    final enteredA = Completer<void>();
+    var selected = 734;
+    final controller = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: () async => PatientVaultScope.nativeDjango(selected),
+      openDatabase: (scope) {
+        if (scope.nativeDjangoUserId == 734) {
+          if (!enteredA.isCompleted) enteredA.complete();
+          return waitingA.future;
+        }
+        return Future<AppDatabase>.value(AppDatabase.testPatientVault(
+          NativeDatabase.memory(), scope,
+        ));
+      },
+    );
+    addTearDown(controller.dispose);
+    addTearDown(auth.dispose);
+
+    // The first authenticated owner's encrypted key unwrap is still pending.
+    await enteredA.future;
+    expect(controller.activeDatabase, isNull);
+    selected = 812;
+    AuthEpoch.advance();
+    auth.changed();
+    await controller.reconcile();
+    final visibleB = controller.activeDatabase;
+    expect(visibleB, isNotNull);
+    expect(controller.activeScope?.nativeDjangoUserId, 812);
+
+    // A's late decrypt/IndexedDB opening is never allowed to publish A
+    // or replace B's provider, even after the future successfully resolves.
+    final staleA = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    waitingA.complete(staleA);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.activeDatabase, same(visibleB));
+    expect(controller.activeScope?.nativeDjangoUserId, 812);
+    expect(controller.hasVault, isTrue);
+  });
+
 }
