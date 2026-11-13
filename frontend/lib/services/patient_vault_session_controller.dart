@@ -8,7 +8,9 @@ import 'auth_epoch.dart';
 import 'auth_service.dart';
 
 typedef PatientScopeResolver = Future<PatientVaultScope?> Function();
-typedef ScopedDbFactory = AppDatabase Function(PatientVaultScope scope);
+// Encrypted Web authorization, key unwrap and IndexedDB admission are async.
+// Native synchronous factories remain source-compatible.
+typedef ScopedDbFactory = FutureOr<AppDatabase> Function(PatientVaultScope scope);
 
 /// D7: authenticated-session boundary for opening a *physical* local vault.
 ///
@@ -89,7 +91,7 @@ class PatientVaultSessionController extends ChangeNotifier {
 
     AppDatabase? opened;
     try {
-      opened = _openDatabase(scope);
+      opened = await _openDatabase(scope);
       // Ensure opening/migrating the named vault completes before publication.
       await opened.customSelect('SELECT 1').getSingle();
       if (_disposed || generation != _generation || epoch != AuthEpoch.value) {
