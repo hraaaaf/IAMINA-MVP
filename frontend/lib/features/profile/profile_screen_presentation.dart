@@ -190,6 +190,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           onChanged: (value) => _setPresentationState(() {
             _declaredTreatments = value;
             _treatmentTouched = true;
+            ++_treatmentEditGeneration;
           }),
         ),
         if (_treatmentConflict && _canResolveRemoteTreatmentConflict)
