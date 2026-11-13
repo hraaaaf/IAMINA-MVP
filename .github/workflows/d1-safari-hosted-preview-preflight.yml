@@ -35,7 +35,7 @@ jobs:
       - run: pip install -r backend/requirements.txt ruff==0.15.17
       - name: Lint and syntax branch-only lab
         run: |
-          ruff check backend/d1_safari_preview backend/core/tests/test_d1_safari_hosted_preview.py backend/api/index.py
+          ruff check backend/d1_safari_preview backend/core/tests/test_d1_safari_hosted_preview.py backend/core/tests/test_d1_safari_null_origin_csrf.py backend/api/index.py
           python -m compileall -q backend/d1_safari_preview backend/api/index.py
           node --check backend/d1_safari_preview/assets/client.js
           node --check backend/d1_safari_preview/assets/bridge.js
@@ -64,7 +64,7 @@ jobs:
       - name: Django isolated UI session and CSRF tests
         run: |
           cd backend
-          pytest -q --tb=short core/tests/test_d1_safari_hosted_preview.py core/tests/test_d1_safari_lab_research.py
+          pytest -q --tb=short core/tests/test_d1_safari_null_origin_csrf.py core/tests/test_d1_safari_hosted_preview.py core/tests/test_d1_safari_lab_research.py
       - name: Prevent production route mounting and real external integrations
         run: |
           set -euo pipefail
