@@ -7,6 +7,7 @@ on:
       - '.github/workflows/d1-web-encrypted-schema-candidate.yml'
       - 'frontend/lib/data/drift/web_patient_vault_cipher_candidate.dart'
       - 'frontend/tool/d1_clinical_cipher_candidate_probe.dart'
+      - 'frontend/web/d1_vault_crypto_candidate.js'
       - 'tools/d1_clinical_cipher_candidate_browser.js'
       - 'frontend/lib/data/drift/database.dart'
   workflow_dispatch:
