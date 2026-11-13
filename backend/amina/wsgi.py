@@ -10,7 +10,7 @@ if os.environ.get("VERCEL") == "1":
         # Branch-only: do not permit this lab on production or another project.
         if not (
             os.environ.get("VERCEL_ENV") == "preview"
-            and os.environ.get("VERCEL_PROJECT_ID") == "prj_tdWQOog3nBiicFGfa1hq2jua2viv"
+            and os.environ.get("VERCEL_PROJECT_ID") == "prj_hnlWE6QdXtWvYVfwe2JVAqIKPUiP"
             and os.environ.get("VERCEL_GIT_COMMIT_REF") == "research/d1-6-safari-preview-20261113"
             and os.environ.get("IAMINA_D1_SAFARI_LAB_ONLY") == "synthetic-preview-v1"
         ):
