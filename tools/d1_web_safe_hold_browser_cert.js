@@ -55,7 +55,13 @@ async function semantics(page) {
       });
       await start.click();
       await semantics(page);
-      const title = page.getByText(hold).first();
+      // Flutter CanvasKit can expose static copy through accessibility
+      // aria-label instead of DOM textContent, especially on desktop.
+      const title = page.getByRole('heading', {name: hold})
+        .or(page.getByText(hold))
+        .or(page.locator(
+          'flt-semantics[aria-label*="Patient vault unavailable"]',
+        )).first();
       try {
         await title.waitFor({state: 'visible', timeout: 25000});
       } catch (error) {
