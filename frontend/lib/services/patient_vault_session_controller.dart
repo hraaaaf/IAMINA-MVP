@@ -11,6 +11,7 @@ typedef PatientScopeResolver = Future<PatientVaultScope?> Function();
 // Encrypted Web authorization, key unwrap and IndexedDB admission are async.
 // Native synchronous factories remain source-compatible.
 typedef ScopedDbFactory = FutureOr<AppDatabase> Function(PatientVaultScope scope);
+typedef VaultAdmissionValidator = bool Function();
 
 /// D7: authenticated-session boundary for opening a *physical* local vault.
 ///
@@ -22,6 +23,9 @@ class PatientVaultSessionController extends ChangeNotifier {
   final Listenable _authChanges;
   final PatientScopeResolver _resolveScope;
   final ScopedDbFactory _openDatabase;
+  // Optional for the gated encrypted Web candidate; existing native and
+  // production fail-closed factories keep their original behavior.
+  final VaultAdmissionValidator? _admissionValid;
 
   AppDatabase? _currentDatabase;
   PatientVaultScope? _currentScope;
@@ -35,9 +39,11 @@ class PatientVaultSessionController extends ChangeNotifier {
     required Listenable authChanges,
     required PatientScopeResolver resolveScope,
     ScopedDbFactory? openDatabase,
+    VaultAdmissionValidator? admissionValid,
   }) : _authChanges = authChanges,
        _resolveScope = resolveScope,
-       _openDatabase = openDatabase ?? AppDatabase.forPatientVault {
+       _openDatabase = openDatabase ?? AppDatabase.forPatientVault,
+       _admissionValid = admissionValid {
     _authChanges.addListener(_onAuthChanged);
     unawaited(reconcile());
   }
@@ -50,7 +56,10 @@ class PatientVaultSessionController extends ChangeNotifier {
 
   bool get isResolving => _loading;
   bool get requiresEncryptedWebVault => _webEncryptionRequired && !_loading;
-  bool get hasVault => _currentDatabase != null && !_loading;
+  bool get _accessAllowed => _admissionValid?.call() ?? true;
+  // A lock event immediately hides any previously published database, even
+  // before the controller receives its asynchronous reconciliation callback.
+  bool get hasVault => _currentDatabase != null && !_loading && _accessAllowed;
   AppDatabase? get activeDatabase => hasVault ? _currentDatabase : null;
   PatientVaultScope? get activeScope => hasVault ? _currentScope : null;
 
@@ -83,7 +92,7 @@ class PatientVaultSessionController extends ChangeNotifier {
     if (_disposed || generation != _generation || epoch != AuthEpoch.value) {
       return;
     }
-    if (scope == null) {
+    if (scope == null || !_accessAllowed) {
       _loading = false;
       notifyListeners();
       return;
@@ -92,6 +101,12 @@ class PatientVaultSessionController extends ChangeNotifier {
     AppDatabase? opened;
     try {
       opened = await _openDatabase(scope);
+      // A session might lock while the WebCrypto/IndexedDB opener is pending.
+      // No query or migration is initiated by this controller after revocation.
+      if (!_accessAllowed) {
+        await opened.close();
+        return;
+      }
       // Key unwrap/IndexedDB admission may outlive an auth epoch. Discard
       // BEFORE even SELECT 1, since the first Drift query can run migrations.
       if (_disposed || generation != _generation || epoch != AuthEpoch.value) {
@@ -100,7 +115,8 @@ class PatientVaultSessionController extends ChangeNotifier {
       }
       // Ensure opening/migrating the named vault completes before publication.
       await opened.customSelect('SELECT 1').getSingle();
-      if (_disposed || generation != _generation || epoch != AuthEpoch.value) {
+      if (!_accessAllowed || _disposed ||
+          generation != _generation || epoch != AuthEpoch.value) {
         await opened.close();
         return;
       }
