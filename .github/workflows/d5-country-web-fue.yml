@@ -42,6 +42,14 @@ jobs:
       - name: Build isolated real Flutter Web FUE
         run: flutter build web --release --no-web-resources-cdn -t lib/d5_web_fue_main.dart
         working-directory: frontend
+      - name: Pin encrypted SQLite3MC runtime in disposable D5 build
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 \
+            'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' \
+            -o frontend/build/web/sqlite3mc.wasm
+          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
