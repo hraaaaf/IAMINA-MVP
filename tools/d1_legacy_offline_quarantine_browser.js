@@ -27,7 +27,18 @@ const uri = 'http://127.0.0.1:7475/';
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
     await page.goto(uri, {waitUntil: 'domcontentloaded', timeout: 60000});
-    await page.waitForSelector('#d1-late-legacy-probe-trigger', {timeout: 60000});
+    // The synthetic Dart entrypoint may publish an early error as JSON.
+    // Observe that explicitly instead of waiting 60 seconds for a hidden UI.
+    await page.waitForFunction(() => {
+      const text = document.body?.textContent || '';
+      return document.querySelector('#d1-late-legacy-probe-trigger') ||
+        (text.includes('"scope":"synthetic late legacy/offline writer quarantine"') &&
+         text.includes('"result":"FAIL"'));
+    }, null, {timeout: 30000});
+    if (!(await page.locator('#d1-late-legacy-probe-trigger').count())) {
+      const body = (await page.locator('body').innerText()).slice(0, 2000);
+      throw Error('D1 probe setup failed before legacy injection: ' + body);
+    }
 
     // The new encrypted vault is already enrolled and closed. Simulate a
     // stale PWA that remains capable of writing an old unencrypted store.
@@ -57,7 +68,9 @@ const uri = 'http://127.0.0.1:7475/';
       }
     }, marker);
 
-    await page.click('#d1-late-legacy-probe-trigger');
+    // Dispatch directly: the Flutter engine may visually cover this fixture
+    // button. This is a synthetic coordination signal, not an end-user UI.
+    await page.locator('#d1-late-legacy-probe-trigger').evaluate(el => el.click());
     await page.waitForFunction(() => {
       const text = document.body?.textContent || '';
       return text.includes('"scope":"synthetic late legacy/offline writer quarantine"') &&
