@@ -56,7 +56,28 @@ async function semantics(page) {
       await start.click();
       await semantics(page);
       const title = page.getByText(hold).first();
-      await title.waitFor({state: 'visible', timeout: 25000});
+      try {
+        await title.waitFor({state: 'visible', timeout: 25000});
+      } catch (error) {
+        await page.screenshot({
+          path: path.join(out, id + '-FAILED-after-click.png'),
+          animations: 'disabled',
+        }).catch(() => {});
+        const snapshot = await page.evaluate(() => ({
+          documentTitle: document.title,
+          bodyText: (document.body?.innerText || '').slice(0, 600),
+          semantics: [...document.querySelectorAll('flt-semantics')]
+            .slice(0, 15)
+            .map(el => (el.getAttribute('aria-label') ||
+              el.textContent || '').slice(0, 150)),
+          rootCount: document.querySelectorAll('flt-glass-pane').length,
+          readyState: document.readyState,
+          url: location.href,
+        })).catch(e => ({snapshotError: String(e)}));
+        throw Error('Safe-hold render absent at ' + id +
+          ' | snapshot=' + JSON.stringify(snapshot).slice(0,1500) +
+          ' | browserErrors=' + JSON.stringify(pageErrors));
+      }
       const prose = await page.locator('flt-semantics').allTextContents();
       const screenshot = path.join(out, id + '-safe-hold.png');
       await page.screenshot({path: screenshot, animations: 'disabled'});
