@@ -6,7 +6,7 @@ No fallback to the clinical URLconf is allowed.
 import os
 
 EXPECTED_BRANCH = "research/d1-6-safari-preview-20261113"
-EXPECTED_PROJECT = "prj_tdWQOog3nBiicFGfa1hq2jua2viv"
+EXPECTED_PROJECT = "prj_hnlWE6QdXtWvYVfwe2JVAqIKPUiP"
 
 if (
     os.environ.get("VERCEL") != "1"
