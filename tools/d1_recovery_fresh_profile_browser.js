@@ -30,15 +30,27 @@ async function expectFixture(page, expected, timeout = 60000) {
     result:'NOT_RUN',clinicalGo:false,backupMadeOfEncryptedStoreOnly:false,
     codeExcludedFromBundle:false,plainMarkerAbsentFromBundle:false,
     freshTargetInitialStorageEmpty:false,wrongRecoveryRejected:false,
-    originalDataRecovered:false,ownerScoped:true,sourceAndTargetIndependent:false};
+    originalDataRecovered:false,ownerScoped:false,sourceAndTargetIndependent:false};
   const browser = await chromium.launch({headless:true});
   try {
-    const source = await browser.newContext({serviceWorkers:'block'});
+    const source = await browser.newContext({locale:'en-US',serviceWorkers:'block'});
     const src = await source.newPage();
     const jsErrors = [];
-    src.on('pageerror', err => jsErrors.push('source:'+String(err).slice(0,600)));
+    src.on('pageerror', err => jsErrors.push('source:'+String(err.stack || err).slice(0,1300)));
     await src.goto(root+'?phase=source',{waitUntil:'domcontentloaded'});
-    await expectFixture(src,'SOURCE_READY');
+    try { await expectFixture(src,'SOURCE_READY',35000); }
+    catch (err) {
+      const diagnostic = await src.evaluate(async () => ({
+        body:(document.body?.innerText||'').slice(0,1600),
+        html:document.documentElement.outerHTML.slice(0,2200),
+        scripts:[...document.scripts].map(s=>s.src.slice(-120)),
+        encryptedDbNames:typeof indexedDB.databases==='function' ?
+          (await indexedDB.databases()).map(d=>d.name) : [],
+        cryptoLoaded:!!globalThis.IaminaD1CryptoCandidate,
+      })).catch(e=>({diagnosticFailure:String(e)}));
+      throw Error('Synthetic source initialization failed: '+
+        JSON.stringify({diagnostic,jsErrors}).slice(0,2500)+'; '+String(err));
+    }
 
     // Browser IndexedDB records are already encrypted by sqlite3mc.
     // Export the EXACT object-store data and structure, not arbitrary stores,
@@ -94,6 +106,7 @@ async function expectFixture(page, expected, timeout = 60000) {
           db:{version:db.version,stores}};
       } finally {db.close();}
     },{storeName,headerName});
+    proof.ownerScoped = bundle.owner===owner && JSON.parse(bundle.header).owner===owner;
     const recovery = await src.evaluate(()=>sessionStorage.getItem('d1_fixture_recovery'));
     if(!recovery || recovery.length<40)throw Error('source recovery fixture not available');
     const backupBytes=JSON.stringify(bundle);
@@ -107,7 +120,7 @@ async function expectFixture(page, expected, timeout = 60000) {
     if(!proof.codeExcludedFromBundle || !proof.plainMarkerAbsentFromBundle ||
       !proof.backupMadeOfEncryptedStoreOnly) throw Error('unsafe synthetic backup payload');
 
-    const target = await browser.newContext({serviceWorkers:'block'});
+    const target = await browser.newContext({locale:'en-US',serviceWorkers:'block'});
     proof.sourceAndTargetIndependent = source!==target;
     const dst = await target.newPage();
     dst.on('pageerror', err=>jsErrors.push('target:'+String(err).slice(0,600)));
