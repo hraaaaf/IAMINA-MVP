@@ -53,7 +53,7 @@ fs.mkdirSync(directory,{recursive:true});
     const file=locale+'-'+viewport.width+'-'+principal+'-'+report.tests.length+'.png';
     await page.screenshot({path:path.join(directory,file)});
     const observation={locale,viewport:viewport.width+'x'+viewport.height,principal,expectedTitle:target,
-      pass:title===target&&requests.length>=4&&errors.length===0&&external.length===0,
+      pass:title===target&&new Set(requests).size===2&&requests.some(u=>u.includes('/api/v1/ai/summary'))&&requests.some(u=>u.includes('/api/v1/kpis/'))&&errors.length===0&&external.length===0,
       backendRequestCount:requests.length,loginStatuses,loginTransportFailures:loginTransportFailures.length,consoleErrors:errors.length,
       blockedExternal:external.length,file};
     report.tests.push(observation);
