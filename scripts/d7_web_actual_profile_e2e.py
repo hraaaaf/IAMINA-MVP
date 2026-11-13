@@ -319,7 +319,10 @@ def main():
                 )
                 extra.click(timeout=18000)
                 click_choice("Insulin")
+                # Distinguish a lost UI click from a lost SQLite write.
+                medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
                 save()
+                medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
 
                 step("physical_reload_type2_and_treatments_preserved")
                 reload_and_unlock()
