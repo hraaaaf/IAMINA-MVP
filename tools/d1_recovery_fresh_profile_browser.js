@@ -99,7 +99,11 @@ async function expectFixture(page, expected, timeout = 60000) {
           });
           const records=[];for(let i=0;i<keys.length;i++)
             records.push({key:await pack(keys[i]),value:await pack(values[i])});
-          stores.push({name:store,keyPath:os.keyPath,autoIncrement:os.autoIncrement,records});
+          const indexes=Array.from(os.indexNames).map(name=>{
+            const ix=os.index(name);
+            return {name,keyPath:ix.keyPath,unique:ix.unique,multiEntry:ix.multiEntry};
+          });
+          stores.push({name:store,keyPath:os.keyPath,autoIncrement:os.autoIncrement,indexes,records});
         }
         return {format:'D1_CI_SYNTHETIC_ENCRYPTED_IDB_V1',
           owner:'amina_vault_v1_native_755',storeName,header,
@@ -156,7 +160,9 @@ async function expectFixture(page, expected, timeout = 60000) {
         for(const s of bundle.db.stores) {
           const options={autoIncrement:s.autoIncrement};
           if(s.keyPath!=null)options.keyPath=s.keyPath;
-          db.createObjectStore(s.name,options);
+          const os=db.createObjectStore(s.name,options);
+          for(const ix of (s.indexes||[]))
+            os.createIndex(ix.name,ix.keyPath,{unique:ix.unique,multiEntry:ix.multiEntry});
         }
       };
       const db=await new Promise((res,rej)=>{
