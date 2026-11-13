@@ -20,6 +20,7 @@ Future<void> main() async {
     'tamperedPendingHeaderRejected': false,
     'lateLegacyRejected': false,
     'legacyStorePreserved': false,
+    'otherOwnerEnrollmentDenied': false,
     'ciphertextPreserved': false,
     'result': 'NOT_RUN',
   };
@@ -79,14 +80,22 @@ Future<void> main() async {
           error.message == 'web_vault_legacy_data_quarantined';
     }
     final after = jsonDecode((await _indexedDbNames().toDart).toDart) as List;
-    proof['legacyStorePreserved'] = after.contains('amina');
+    proof['legacyStorePreserved'] =
+        after.contains('amina_vault_v1_native_999');
+    try {
+      await candidate.enrollEmptyScope(PatientVaultScope.nativeDjango(746));
+    } on StateError catch (error) {
+      proof['otherOwnerEnrollmentDenied'] =
+          error.message == 'web_vault_legacy_data_quarantined';
+    }
     proof['ciphertextPreserved'] = after.contains(
       WebPatientVaultCipherCandidate.diagnosticStoreName(scope),
     );
     proof['result'] = [
       'encryptedBeforeOldWriter', 'tamperedPendingHeaderRejected',
       'lateLegacyRejected',
-      'legacyStorePreserved', 'ciphertextPreserved',
+      'legacyStorePreserved', 'otherOwnerEnrollmentDenied',
+      'ciphertextPreserved',
     ].every((field) => proof[field] == true) ? 'PASS' : 'FAIL';
   } catch (error) {
     proof['result'] = 'FAIL';
