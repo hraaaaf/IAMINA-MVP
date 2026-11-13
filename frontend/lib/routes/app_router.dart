@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -165,7 +166,8 @@ AppRouterHolder createAppRouterHolder({
             isAuditSession: authService.isAuditSession,
             hasLockService: true,
           ) &&
-          !activeLock.isExplicitlySkipped) {
+          // A stale Web skip preference cannot bypass this route gate.
+          !(activeLock.isExplicitlySkipped && !kIsWeb)) {
         if (activeLock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
         } else if (!activeLock.isConfigured) {
