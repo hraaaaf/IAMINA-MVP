@@ -76,6 +76,8 @@ class WebPatientVaultSafeHold extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 500),
                   child: Semantics(
+                    container: true,
+                    explicitChildNodes: true,
                     liveRegion: true,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -152,25 +154,38 @@ class WebPatientVaultSafeHold extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              Text(
-                                title,
-                                key: const Key('d1-web-safe-hold-heading'),
-                                textAlign: TextAlign.start,
-                                style: const TextStyle(
-                                  color: AminaTheme.teal900,
-                                  fontSize: 25,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w800,
+                              Semantics(
+                                container: true,
+                                header: true,
+                                label: title,
+                                child: ExcludeSemantics(
+                                  child: Text(
+                                    title,
+                                    key: const Key('d1-web-safe-hold-heading'),
+                                    textAlign: TextAlign.start,
+                                    style: const TextStyle(
+                                      color: AminaTheme.teal900,
+                                      fontSize: 25,
+                                      height: 1.15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              Text(
-                                explanation,
-                                key: const Key('d1-web-safe-hold-explanation'),
-                                style: const TextStyle(
-                                  color: AminaTheme.ink600,
-                                  fontSize: 14,
-                                  height: 1.5,
+                              Semantics(
+                                container: true,
+                                label: explanation,
+                                child: ExcludeSemantics(
+                                  child: Text(
+                                    explanation,
+                                    key: const Key('d1-web-safe-hold-explanation'),
+                                    style: const TextStyle(
+                                      color: AminaTheme.ink600,
+                                      fontSize: 14,
+                                      height: 1.5,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 20),
