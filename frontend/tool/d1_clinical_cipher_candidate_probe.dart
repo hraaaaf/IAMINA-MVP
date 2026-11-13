@@ -62,6 +62,9 @@ Future<void> main() async {
 
     final dbA = await candidate.openCandidateDatabase(a, keyA);
     try {
+      final selectedCipher = await dbA.customSelect('PRAGMA cipher').get();
+      proof['cipherMode'] = selectedCipher.isNotEmpty
+          ? selectedCipher.first.data.values.first.toString() : 'missing';
       await dbA.customStatement(
         'INSERT INTO log_entries '
         '(created_at, blood_sugar, client_uuid) VALUES (?, ?, ?)',
@@ -112,7 +115,7 @@ Future<void> main() async {
       'wrongRecoveryRejected', 'ciphertextTamperRejected',
       'retiredKeyRejected', 'actualDriftSchemaRoundTrip', 'ownerIsolation',
       'recoveredAfterClose',
-    ].every((k) => proof[k] == true);
+    ].every((k) => proof[k] == true) && proof['cipherMode'] == 'chacha20';
   } catch (error, stack) {
     proof['ok'] = false;
     proof['error'] = error.toString();
