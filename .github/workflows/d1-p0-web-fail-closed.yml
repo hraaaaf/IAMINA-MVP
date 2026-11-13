@@ -6,11 +6,15 @@ on:
     paths:
       - 'frontend/lib/data/drift/database.dart'
       - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/services/web_patient_vault_safe_hold.dart'
       - 'frontend/lib/routes/app_router.dart'
       - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
       - 'frontend/lib/features/profile/profile_screen.dart'
       - 'frontend/lib/features/profile/profile_screen_presentation.dart'
       - 'frontend/test/services/d1_p0_web_fail_closed_browser_test.dart'
+      - 'frontend/test/services/d1_web_safe_hold_browser_test.dart'
       - '.github/workflows/d1-p0-web-fail-closed.yml'
   workflow_dispatch:
 
@@ -42,6 +46,9 @@ jobs:
           flutter analyze --no-fatal-infos \
             lib/data/drift/database.dart \
             lib/services/app_lock_service.dart \
+            lib/services/patient_vault_session_controller.dart \
+            lib/services/patient_vault_app_host.dart \
+            lib/services/web_patient_vault_safe_hold.dart \
             lib/routes/app_router.dart \
             lib/features/auth/app_lock_setup_screen.dart \
             lib/features/profile/profile_screen.dart \
@@ -53,9 +60,13 @@ jobs:
           flutter test --no-pub \
             test/services/app_lock_service_test.dart \
             test/data/drift/patient_vault_scope_test.dart \
-            test/features/d30_local_enrollment_cta_test.dart
+            test/features/d30_local_enrollment_cta_test.dart \
+            test/services/patient_vault_session_controller_test.dart
       - name: Verify Chrome is installed
         run: command -v google-chrome
       - name: Real Chrome deny unencrypted patient vault and app-lock opt-out
         working-directory: frontend
-        run: flutter test --no-pub --platform chrome test/services/d1_p0_web_fail_closed_browser_test.dart
+        run: |
+          flutter test --no-pub --platform chrome \
+            test/services/d1_p0_web_fail_closed_browser_test.dart \
+            test/services/d1_web_safe_hold_browser_test.dart
