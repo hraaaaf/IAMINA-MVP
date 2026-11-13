@@ -19,6 +19,8 @@ Future<void> main() async {
     'ownerABound': false,
     'ownerBBound': false,
     'ownerSwapRejected': false,
+    'envelopeSwapRejected': false,
+    'missingCipherRefused': false,
     'wrongRecoveryRejected': false,
     'ciphertextTamperRejected': false,
     'retiredKeyRejected': false,
@@ -28,6 +30,18 @@ Future<void> main() async {
   try {
     final enrolledA = await candidate.enrollEmptyScope(a);
     final enrolledB = await candidate.enrollEmptyScope(b);
+    final headerAKey = WebPatientVaultCipherCandidate.diagnosticMetadataKey(a);
+    final headerBKey = WebPatientVaultCipherCandidate.diagnosticMetadataKey(b);
+    final originalB = html.window.localStorage[headerBKey]!;
+    html.window.localStorage[headerBKey] =
+        html.window.localStorage[headerAKey]!;
+    try {
+      await candidate.unlock(b, enrolledB.recoveryCode);
+    } on StateError {
+      proof['envelopeSwapRejected'] = true;
+    } finally {
+      html.window.localStorage[headerBKey] = originalB;
+    }
     final keyA = await candidate.unlock(a, enrolledA.recoveryCode);
     final keyB = await candidate.unlock(b, enrolledB.recoveryCode);
     proof['ownerABound'] = keyA.cipherPassphraseFor(a) !=
@@ -101,6 +115,24 @@ Future<void> main() async {
     } finally {
       await reopenedA.close();
     }
+    // A sealed header without persisted ciphertext must never cause a new
+    // empty clinical database to be silently created.
+    final lost = PatientVaultScope.nativeDjango(737);
+    final enrolledLost = await candidate.enrollEmptyScope(lost);
+    final lostHeaderKey =
+        WebPatientVaultCipherCandidate.diagnosticMetadataKey(lost);
+    final lostHeader =
+        jsonDecode(html.window.localStorage[lostHeaderKey]!) as Map<String, dynamic>;
+    lostHeader['state'] = 'sealed';
+    html.window.localStorage[lostHeaderKey] = jsonEncode(lostHeader);
+    final lostKey = await candidate.unlock(lost, enrolledLost.recoveryCode);
+    try {
+      await candidate.openCandidateDatabase(lost, lostKey);
+    } on StateError {
+      proof['missingCipherRefused'] = true;
+    } finally {
+      lostKey.retire();
+    }
     keyA.retire();
     try {
       keyA.cipherPassphraseFor(a);
@@ -112,6 +144,7 @@ Future<void> main() async {
 
     proof['ok'] = [
       'ownerABound', 'ownerBBound', 'ownerSwapRejected',
+      'envelopeSwapRejected', 'missingCipherRefused',
       'wrongRecoveryRejected', 'ciphertextTamperRejected',
       'retiredKeyRejected', 'actualDriftSchemaRoundTrip', 'ownerIsolation',
       'recoveredAfterClose',
