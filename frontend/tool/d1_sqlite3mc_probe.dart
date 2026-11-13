@@ -3,7 +3,20 @@
 // A green result does not authorize Web patient vault admission.
 import 'dart:convert';
 import 'dart:html' as html;
+import 'package:drift/drift.dart';
+import 'package:drift/wasm.dart';
 import 'package:sqlite3/wasm.dart';
+
+// Zero-table synthetic Drift wrapper: tests the actual project's executor API.
+class _SyntheticEncryptedDriftDb extends GeneratedDatabase {
+  _SyntheticEncryptedDriftDb(QueryExecutor executor) : super(executor);
+  @override
+  int get schemaVersion => 1;
+  @override
+  Iterable<TableInfo<Table, dynamic>> get allTables => const [];
+  @override
+  Iterable<DatabaseSchemaEntity> get allSchemaEntities => const [];
+}
 
 const _dbName = 'iamina_d1_crypto_probe_20261113';
 const _fileName = '/d1_cipher_probe.db';
@@ -23,6 +36,7 @@ Future<void> main() async {
     'wrongKeyRejected': false,
     'cipherAvailable': false,
     'persistentAfterReopen': false,
+    'driftRead': false,
     'clinicalGo': false,
   };
   try {
@@ -63,6 +77,15 @@ Future<void> main() async {
       proof['persistentAfterReopen'] =
           reopened.select('SELECT value FROM readings').single['value'] ==
               _syntheticPatient;
+      final drift = _SyntheticEncryptedDriftDb(
+        WasmDatabase.opened(reopened, closeUnderlyingOnClose: false),
+      );
+      try {
+        final row = await drift.customSelect('SELECT value FROM readings').getSingle();
+        proof['driftRead'] = row.read<String>('value') == _syntheticPatient;
+      } finally {
+        await drift.close();
+      }
     } finally {
       reopened.dispose();
     }
@@ -70,7 +93,8 @@ Future<void> main() async {
     proof['ok'] = proof['cipherAvailable'] == true &&
         proof['correctKeyRead'] == true &&
         proof['wrongKeyRejected'] == true &&
-        proof['persistentAfterReopen'] == true;
+        proof['persistentAfterReopen'] == true &&
+        proof['driftRead'] == true;
   } catch (e, stack) {
     proof['ok'] = false;
     proof['error'] = '$e';
