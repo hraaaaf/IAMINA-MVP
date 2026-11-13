@@ -30,7 +30,8 @@ async function expectFixture(page, expected, timeout = 60000) {
     result:'NOT_RUN',clinicalGo:false,backupMadeOfEncryptedStoreOnly:false,
     codeExcludedFromBundle:false,plainMarkerAbsentFromBundle:false,
     freshTargetInitialStorageEmpty:false,wrongRecoveryRejected:false,
-    originalDataRecovered:false,ownerScoped:false,sourceAndTargetIndependent:false};
+    originalDataRecovered:false,ownerScoped:false,sourceAndTargetIndependent:false,
+    collisionRestoreRejected:false,ownerSwapRestoreRejected:false};
   const browser = await chromium.launch({headless:true});
   try {
     const source = await browser.newContext({locale:'en-US',serviceWorkers:'block'});
@@ -136,7 +137,8 @@ async function expectFixture(page, expected, timeout = 60000) {
     },{storeName,headerName});
     if(!proof.freshTargetInitialStorageEmpty)throw Error('target browser not fresh');
 
-    await dst.evaluate(async ({bundle,recovery,storeName,headerName})=>{
+    await dst.evaluate(async (args)=>{
+      const restore = async ({bundle,recovery,storeName,headerName})=>{
       if(bundle.storeName!==storeName || bundle.owner!=='amina_vault_v1_native_755' ||
         JSON.parse(bundle.header).owner!=='amina_vault_v1_native_755')
         throw Error('owner mismatch before restore');
@@ -187,7 +189,28 @@ async function expectFixture(page, expected, timeout = 60000) {
       localStorage.setItem(headerName,bundle.header);
       // Synthetic fixture handoff ONLY; no real key in IDB backup/metadata.
       sessionStorage.setItem('d1_fixture_recovery',recovery);
+      };
+      // Test fixture only: retain the real guarded import function for
+      // adversarial replay tests, never ship this path as patient UI.
+      Object.defineProperty(globalThis,'__d1SyntheticRestore',
+        {value:restore,configurable:false,writable:false});
+      await restore(args);
     },{bundle,recovery,storeName,headerName});
+    try {
+      await dst.evaluate(args=>globalThis.__d1SyntheticRestore(args),
+        {bundle,recovery,storeName,headerName});
+    } catch(e) {
+      proof.collisionRestoreRejected=String(e).includes('restore collision');
+    }
+    try {
+      await dst.evaluate(args=>globalThis.__d1SyntheticRestore(args),
+        {bundle:{...bundle,owner:'amina_vault_v1_native_756'},
+         recovery,storeName,headerName});
+    } catch(e) {
+      proof.ownerSwapRestoreRejected=String(e).includes('owner mismatch');
+    }
+    if(!proof.collisionRestoreRejected||!proof.ownerSwapRestoreRejected)
+      throw Error('synthetic recovery import accepted collision or owner swap');
     await dst.locator('#d1-fresh-profile-restore-trigger').evaluate(e=>e.click());
     const recovered=await expectFixture(dst,'PASS',45000);
     proof.wrongRecoveryRejected=recovered.wrongRecoveryRejected===true;
