@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/drift/web_patient_vault_cipher_candidate.dart';
+import '../data/drift/revocable_patient_query_guard.dart';
 import 'app_lock_service.dart';
 import 'auth_epoch.dart';
 import 'auth_service.dart';
@@ -33,9 +34,40 @@ WebVaultExplicitAdmission makeWebPatientAdmissionCandidate({
     ),
     resolveScope: auth.resolvePatientVaultScope,
     encryptedOpener: (scope, recoveryCode) async {
+      final admissionEpoch = AuthEpoch.value;
       final key = await cipher.unlock(scope, recoveryCode);
+      bool isStillAuthorized() {
+        if (AuthEpoch.value != admissionEpoch ||
+            !auth.isAuthenticated || auth.isAuditSession ||
+            !appLock.isInitialized || !appLock.isConfigured ||
+            !appLock.isRequired || !appLock.isUnlocked ||
+            appLock.recoveryRequired) {
+          return false;
+        }
+        final nativeId = scope.nativeDjangoUserId;
+        return nativeId == null
+            ? scope.databaseName.startsWith('amina_vault_v1_device_') &&
+                !auth.hasRemoteApiCredential
+            : auth.isRemoteCredentialVerified &&
+                auth.hasRemoteApiCredential &&
+                auth.boundNativeAccountId == nativeId;
+      }
       try {
-        return await cipher.openCandidateDatabase(scope, key);
+        if (!isStillAuthorized()) {
+          throw StateError('web_vault_admission_revoked');
+        }
+        final guard = RevocablePatientQueryGuard(
+          authorized: isStillAuthorized,
+          revocationSignals: Listenable.merge([auth, appLock]),
+        );
+        try {
+          return await cipher.openCandidateDatabase(
+            scope, key, admissionGuard: guard,
+          );
+        } catch (_) {
+          guard.revoke();
+          rethrow;
+        }
       } finally {
         // This key is never cached across logout, lock, or new admission.
         key.retire();
