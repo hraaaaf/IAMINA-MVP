@@ -2,11 +2,20 @@
 // Imports the actual AppDatabase/Drift schema through encrypted SQLite3MC.
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:amina/data/drift/database.dart';
+import 'package:amina/services/web_vault_explicit_admission.dart';
 
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/data/drift/web_patient_vault_cipher_candidate.dart';
 
 const _syntheticMarker = 'D1_SYNTHETIC_GLUCOSE_ONLY_735_XY';
+
+class _AdmissionSignals extends ChangeNotifier {
+  void changed() => notifyListeners();
+}
 
 Future<void> main() async {
   final a = PatientVaultScope.nativeDjango(735);
@@ -26,6 +35,10 @@ Future<void> main() async {
     'retiredKeyRejected': false,
     'actualDriftSchemaRoundTrip': false,
     'ownerIsolation': false,
+    'explicitAdmissionLockedRefused': false,
+    'explicitAdmissionOwnerSwapRefused': false,
+    'explicitAdmissionRecovered': false,
+    'explicitAdmissionEpochRaceDenied': false,
   };
   try {
     final enrolledA = await candidate.enrollEmptyScope(a);
@@ -133,6 +146,120 @@ Future<void> main() async {
     } finally {
       lostKey.retire();
     }
+    // D1 guarded admission must use the REAL encrypted SQLite3MC opener,
+    // never unencrypted AppDatabase.forPatientVault, and the code must come
+    // explicitly from the owner. No key/ciphertext/code goes into this proof.
+    final changes = _AdmissionSignals();
+    var currentNative = 735;
+    var unlocked = false;
+    var sessionEpoch = 0;
+    Future<AppDatabase> openForOwner(
+        PatientVaultScope scope, String explicitRecoveryCode) async {
+      final key = await candidate.unlock(scope, explicitRecoveryCode);
+      try {
+        return await candidate.openCandidateDatabase(scope, key);
+      } finally {
+        key.retire();
+      }
+    }
+    final gate = WebVaultExplicitAdmission(
+      sessionChanges: changes,
+      identity: () => (
+        authenticated: true,
+        appLockInitialized: true,
+        appLockConfigured: true,
+        appLockUnlocked: unlocked,
+        appLockRecoveryRequired: false,
+        remoteCredentialVerified: true,
+        hasRemoteCredential: true,
+        nativeAccountId: currentNative,
+      ),
+      resolveScope: () async => PatientVaultScope.nativeDjango(currentNative),
+      encryptedOpener: openForOwner,
+      authEpoch: () => sessionEpoch,
+    );
+    try {
+      try {
+        final unexpected = await gate.openWithExplicitRecovery(
+          scope: a, recoveryCode: enrolledA.recoveryCode,
+        );
+        await unexpected.close();
+      } on StateError {
+        proof['explicitAdmissionLockedRefused'] = true;
+      }
+      unlocked = true;
+      currentNative = 736;
+      changes.changed();
+      try {
+        final unexpected = await gate.openWithExplicitRecovery(
+          scope: a, recoveryCode: enrolledA.recoveryCode,
+        );
+        await unexpected.close();
+      } on StateError {
+        proof['explicitAdmissionOwnerSwapRefused'] = true;
+      }
+      currentNative = 735;
+      changes.changed();
+      final guardedA = await gate.openWithExplicitRecovery(
+        scope: a, recoveryCode: enrolledA.recoveryCode,
+      );
+      try {
+        final records = await guardedA.customSelect(
+          'SELECT client_uuid FROM log_entries',
+        ).get();
+        proof['explicitAdmissionRecovered'] = records.length == 1 &&
+            records.single.read<String>('client_uuid') == _syntheticMarker;
+      } finally {
+        await guardedA.close();
+      }
+
+      final started = Completer<void>();
+      final late = Completer<AppDatabase>();
+      final raceGate = WebVaultExplicitAdmission(
+        sessionChanges: changes,
+        identity: () => (
+          authenticated: true,
+          appLockInitialized: true,
+          appLockConfigured: true,
+          appLockUnlocked: unlocked,
+          appLockRecoveryRequired: false,
+          remoteCredentialVerified: true,
+          hasRemoteCredential: true,
+          nativeAccountId: currentNative,
+        ),
+        resolveScope: () async => a,
+        authEpoch: () => sessionEpoch,
+        encryptedOpener: (scope, code) {
+          started.complete();
+          return late.future;
+        },
+      );
+      try {
+        final attempt = raceGate.openWithExplicitRecovery(
+          scope: a, recoveryCode: enrolledA.recoveryCode,
+        );
+        await started.future;
+        final lateKey = await candidate.unlock(a, enrolledA.recoveryCode);
+        final stale = await candidate.openCandidateDatabase(a, lateKey);
+        lateKey.retire();
+        unlocked = false;
+        sessionEpoch++;
+        changes.changed();
+        late.complete(stale);
+        try {
+          final unexpected = await attempt;
+          await unexpected.close();
+        } on StateError {
+          proof['explicitAdmissionEpochRaceDenied'] = true;
+        }
+      } finally {
+        raceGate.dispose();
+      }
+    } finally {
+      gate.dispose();
+      changes.dispose();
+    }
+
     keyA.retire();
     try {
       keyA.cipherPassphraseFor(a);
@@ -148,6 +275,10 @@ Future<void> main() async {
       'wrongRecoveryRejected', 'ciphertextTamperRejected',
       'retiredKeyRejected', 'actualDriftSchemaRoundTrip', 'ownerIsolation',
       'recoveredAfterClose',
+      'explicitAdmissionLockedRefused',
+      'explicitAdmissionOwnerSwapRefused',
+      'explicitAdmissionRecovered',
+      'explicitAdmissionEpochRaceDenied',
     ].every((k) => proof[k] == true) && proof['cipherMode'] == 'chacha20';
   } catch (error, stack) {
     proof['ok'] = false;
