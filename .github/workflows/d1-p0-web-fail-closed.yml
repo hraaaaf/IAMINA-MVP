@@ -10,6 +10,8 @@ on:
       - 'frontend/lib/services/web_vault_explicit_admission.dart'
       - 'frontend/lib/services/web_vault_session_admission_candidate.dart'
       - 'frontend/lib/services/web_vault_recovery_session_candidate.dart'
+      - 'frontend/lib/data/drift/revocable_patient_query_guard.dart'
+      - 'frontend/test/services/revocable_patient_query_guard_test.dart'
       - 'frontend/test/services/web_vault_explicit_admission_test.dart'
       - 'frontend/lib/services/patient_vault_app_host.dart'
       - 'frontend/lib/services/web_patient_vault_safe_hold.dart'
@@ -59,6 +61,8 @@ jobs:
             lib/services/web_vault_explicit_admission.dart \
             lib/services/web_vault_session_admission_candidate.dart \
             lib/services/web_vault_recovery_session_candidate.dart \
+            lib/data/drift/revocable_patient_query_guard.dart \
+            test/services/revocable_patient_query_guard_test.dart \
             test/services/web_vault_explicit_admission_test.dart \
             lib/services/patient_vault_app_host.dart \
             lib/services/web_patient_vault_safe_hold.dart \
@@ -76,7 +80,8 @@ jobs:
             test/data/drift/patient_vault_scope_test.dart \
             test/features/d30_local_enrollment_cta_test.dart \
             test/services/patient_vault_session_controller_test.dart \
-            test/services/web_vault_explicit_admission_test.dart
+            test/services/web_vault_explicit_admission_test.dart \
+            test/services/revocable_patient_query_guard_test.dart
       - name: Verify Chrome is installed
         run: command -v google-chrome
       - name: Real Chrome deny unencrypted patient vault and app-lock opt-out
