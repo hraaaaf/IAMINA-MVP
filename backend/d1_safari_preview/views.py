@@ -9,10 +9,10 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, login
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.views.decorators.http import require_POST
-from django.db import transaction
 
 from core.models import BasePatientProfile
 
