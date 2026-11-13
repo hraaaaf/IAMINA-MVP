@@ -118,6 +118,14 @@ jobs:
             -t lib/ui_d19_real_auth_summary_pg_main.dart \
             --dart-define=API_BASE_URL=http://127.0.0.1:8000 \
             --dart-define-from-file="$RUNNER_TEMP/d19-credentials.json"
+      - name: Install pinned authenticated SQLite3MC WASM for isolated D19 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 \
+            'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' \
+            -o frontend/build/web/sqlite3mc.wasm
+          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
       - name: Install Playwright Chromium
         run: |
           npm install --no-save playwright@1.55.0
