@@ -165,8 +165,13 @@ final class WebPatientVaultCipherCandidate {
     if (html.window.localStorage.containsKey(_metadataKey(scope))) {
       throw StateError('web_vault_already_enrolled');
     }
-    final databases = await html.window.indexedDB!.databases();
-    final names = databases.map((db) => db.name ?? '').toSet();
+    final indexedDb = js.getProperty(html.window, 'indexedDB');
+    final databases = await js.promiseToFuture<Object>(
+      js.callMethod(indexedDb, 'databases', []),
+    );
+    final names = (js.dartify(databases) as List)
+        .map((db) => (db as Map)['name']?.toString() ?? '')
+        .toSet();
     if (names.contains('amina') || names.contains(owner) ||
         names.contains(_cipherStore(scope))) {
       throw StateError('web_vault_legacy_data_quarantined');
