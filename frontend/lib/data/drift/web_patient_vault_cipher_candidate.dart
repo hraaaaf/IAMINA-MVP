@@ -85,6 +85,11 @@ final class WebPatientVaultCipherCandidate {
     return List<int>.generate(length, (_) => source.nextInt(256));
   }
 
+  // A pending enrollment may be consumed only once by the SAME tab and
+  // exact freshly-created envelope. localStorage is attacker-editable and
+  // cannot authorize a replay of pending after crash, logout or reload.
+  // Fail closed rather than silently create an empty replacement vault.
+  static final Map<String, String> _freshPendingEnvelopes = {};
   static Future<void>? _scriptLoad;
 
   static Future<void> _ensureWebCrypto() =>
@@ -191,6 +196,7 @@ final class WebPatientVaultCipherCandidate {
         throw StateError('web_vault_concurrent_enrollment');
       }
       html.window.localStorage[_metadataKey(scope)] = envelope;
+      _freshPendingEnvelopes[owner] = envelope;
       return WebVaultEnrollment(base64UrlEncode(recovery).replaceAll('=', ''));
     } finally {
       key.fillRange(0, key.length, 0);
@@ -246,6 +252,12 @@ final class WebPatientVaultCipherCandidate {
     if (envelope['state'] == 'sealed' &&
         !names.contains(_cipherStore(scope))) {
       throw StateError('web_vault_ciphertext_missing_recovery_required');
+    }
+    if (envelope['state'] == 'pending') {
+      final freshHeader = _freshPendingEnvelopes.remove(owner);
+      if (freshHeader == null || freshHeader != rawHeader) {
+        throw StateError('web_vault_pending_enrollment_replay_blocked');
+      }
     }
 
     final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse(_wasmPath));
