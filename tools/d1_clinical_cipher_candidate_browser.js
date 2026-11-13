@@ -69,7 +69,7 @@ function hasBytes(bytes, text) {
           (s.includes('"ok":')||s.includes('"error":'));
       },null,{timeout:30000});
     }catch(err){
-      proof.diagnostics=await page.evaluate(()=>({
+      proof.diagnostics=await page.evaluate(async()=>({
         title:document.title,readyState:document.readyState,
         html:document.documentElement.outerHTML.slice(0,3000),
         bodyText:(document.body?.innerText||'').slice(0,2000),
