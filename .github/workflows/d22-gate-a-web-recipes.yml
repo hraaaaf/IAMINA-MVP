@@ -43,20 +43,10 @@ jobs:
           set -euo pipefail
           flutter pub get
           flutter build web --release --no-web-resources-cdn \
-            -t tool/d1_synthetic_encrypted_fue_main.dart \
-            --dart-define=IAMINA_D1_SYNTHETIC_FUE=true \
             --dart-define=IAMINA_OFFLINE_DEMO=false \
             --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
             --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
           test -s build/web/main.dart.js
-      - name: Checksum-pinned SQLite3MC for isolated encrypted D22 AFTER fixture
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsSL --retry 3 \
-            'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' \
-            -o frontend/build/web/sqlite3mc.wasm
-          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
       - name: Checkout exact D22-A BEFORE reference (no main/HEAD confusion)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
