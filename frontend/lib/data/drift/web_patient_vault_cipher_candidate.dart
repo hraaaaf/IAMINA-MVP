@@ -234,11 +234,17 @@ final class WebPatientVaultCipherCandidate {
       if (raw.select('PRAGMA cipher').isEmpty) {
         throw StateError('web_vault_encryption_unavailable');
       }
-      // SQLite3MC defaults may use a non-HMAC scheme. Pin SQLCipher v4
-      // with per-page integrity checks BEFORE the key or any table access.
-      raw.execute("PRAGMA cipher = 'sqlcipher';");
-      raw.execute('PRAGMA legacy = 4;');
-      raw.execute('PRAGMA hmac_use = 1;');
+      // Our pinned sqlite3mc.wasm includes sqleet ChaCha20-Poly1305,
+      // authenticated per SQLite page. SQLCipher is NOT included in this
+      // build (verified by CI). Explicitly require authenticated cipher,
+      // non-legacy format, before keying or reading any clinical page.
+      raw.execute("PRAGMA cipher = 'chacha20';");
+      raw.execute('PRAGMA legacy = 0;');
+      final selected = raw.select('PRAGMA cipher');
+      if (selected.isEmpty ||
+          selected.single.values.first.toString().toLowerCase() != 'chacha20') {
+        throw StateError('web_vault_authenticated_cipher_unavailable');
+      }
       // Only high-entropy randomly-generated owner key enters this pragma.
       // Escaping single quotes prevents SQL injection even in future changes.
       final literal = passphrase.replaceAll("'", "''");
