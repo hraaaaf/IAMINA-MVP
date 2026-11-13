@@ -21,11 +21,14 @@ const uri = 'http://127.0.0.1:7475/';
   try {
     const ctx = await browser.newContext({
       viewport: {width: 390, height: 844},
+      locale: 'en-US',
       serviceWorkers: 'block',
     });
     const page = await ctx.newPage();
     const errors = [];
-    page.on('pageerror', e => errors.push(String(e)));
+    const consoleMessages = [];
+    page.on('pageerror', e => errors.push(String(e.stack || e).slice(0, 1600)));
+    page.on('console', m => consoleMessages.push(m.type() + ': ' + m.text().slice(0, 250)));
     await page.goto(uri, {waitUntil: 'domcontentloaded', timeout: 60000});
     // The synthetic Dart entrypoint may publish an early error as JSON.
     // Observe that explicitly instead of waiting 60 seconds for a hidden UI.
