@@ -61,7 +61,7 @@ def lab_asset(request, asset=""):
     response = HttpResponse((_ASSETS / filename).read_bytes(), content_type=content_type)
     response["Content-Security-Policy"] = _CSP
     response["Cache-Control"] = "no-store"
-    response["Referrer-Policy"] = "no-referrer"
+    response["Referrer-Policy"] = "same-origin" if asset == "" else "no-referrer"
     response["X-Robots-Tag"] = "noindex, nofollow"
     response["X-Content-Type-Options"] = "nosniff"
     return response
