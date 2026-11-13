@@ -52,7 +52,8 @@ jobs:
         run: |
           flutter test --no-pub \
             test/services/app_lock_service_test.dart \
-            test/data/drift/patient_vault_scope_test.dart
+            test/data/drift/patient_vault_scope_test.dart \
+            test/features/d30_local_enrollment_cta_test.dart
       - name: Verify Chrome is installed
         run: command -v google-chrome
       - name: Real Chrome deny unencrypted patient vault and app-lock opt-out
