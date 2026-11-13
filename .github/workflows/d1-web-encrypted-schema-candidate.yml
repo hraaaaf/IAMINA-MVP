@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/d1-web-encrypted-schema-candidate.yml'
       - 'frontend/lib/data/drift/web_patient_vault_cipher_candidate.dart'
+      - 'frontend/lib/data/drift/revocable_patient_query_guard.dart'
+      - 'frontend/lib/services/web_vault_explicit_admission.dart'
+      - 'frontend/lib/services/web_vault_session_admission_candidate.dart'
       - 'frontend/tool/d1_clinical_cipher_candidate_probe.dart'
       - 'frontend/web/d1_vault_crypto_candidate.js'
       - 'tools/d1_clinical_cipher_candidate_browser.js'
@@ -38,7 +41,7 @@ jobs:
         run: flutter pub get
       - name: Flutter analyze candidate
         working-directory: frontend
-        run: flutter analyze --no-fatal-infos lib/data/drift/web_patient_vault_cipher_candidate.dart tool/d1_clinical_cipher_candidate_probe.dart
+        run: flutter analyze --no-fatal-infos lib/data/drift/web_patient_vault_cipher_candidate.dart lib/data/drift/revocable_patient_query_guard.dart lib/services/web_vault_explicit_admission.dart tool/d1_clinical_cipher_candidate_probe.dart
       - name: Compile actual AppDatabase synthetic Flutter Web entrypoint (NO DEPLOY)
         working-directory: frontend
         run: flutter build web --release --no-web-resources-cdn -t tool/d1_clinical_cipher_candidate_probe.dart
