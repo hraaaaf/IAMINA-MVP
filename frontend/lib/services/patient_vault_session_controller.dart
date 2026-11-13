@@ -26,6 +26,8 @@ class PatientVaultSessionController extends ChangeNotifier {
   int _generation = 0;
   bool _disposed = false;
   bool _loading = true;
+  // Reason only, never a bypass token: access remains denied.
+  bool _webEncryptionRequired = false;
 
   PatientVaultSessionController({
     required Listenable authChanges,
@@ -45,6 +47,7 @@ class PatientVaultSessionController extends ChangeNotifier {
       );
 
   bool get isResolving => _loading;
+  bool get requiresEncryptedWebVault => _webEncryptionRequired && !_loading;
   bool get hasVault => _currentDatabase != null && !_loading;
   AppDatabase? get activeDatabase => hasVault ? _currentDatabase : null;
   PatientVaultScope? get activeScope => hasVault ? _currentScope : null;
@@ -60,6 +63,7 @@ class PatientVaultSessionController extends ChangeNotifier {
     final retired = _currentDatabase;
     _currentDatabase = null;
     _currentScope = null;
+    _webEncryptionRequired = false;
     _loading = true;
     notifyListeners();
     if (retired != null) await retired.close();
@@ -96,10 +100,14 @@ class PatientVaultSessionController extends ChangeNotifier {
       _currentScope = scope;
       _loading = false;
       notifyListeners();
-    } catch (_) {
+    } catch (error) {
       if (opened != null) await opened.close();
       if (!_disposed && generation == _generation &&
           epoch == AuthEpoch.value) {
+        // D1: only this exact storage-admission refusal gets the explicit
+        // encrypted-vault safe-hold screen. Unknown errors remain generic.
+        _webEncryptionRequired = error is StateError &&
+            error.message == 'web_patient_vault_encryption_not_verified';
         _loading = false;
         notifyListeners();
       }
