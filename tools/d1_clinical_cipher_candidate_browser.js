@@ -90,6 +90,10 @@ function hasBytes(bytes, text) {
     proof.jsErrors=errors;
     proof.console=consoleLines.slice(-10);
     proof.candidate=Object.fromEntries(Object.entries(report).filter(([k])=>!['stack'].includes(k)));
+    if (!report.ok) {
+      throw Error('Encrypted clinical schema candidate failed: ' +
+        JSON.stringify(proof.candidate).slice(0,1900));
+    }
     proof.persistence=[];
     for(const name of names){
       const bytes=await rawStoreBytes(page,name);
