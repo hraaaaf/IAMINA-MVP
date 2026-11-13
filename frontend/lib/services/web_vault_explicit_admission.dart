@@ -63,7 +63,8 @@ final class WebVaultExplicitAdmission {
       throw StateError('web_vault_identity_or_app_lock_required');
     }
 
-    if (scope.nativeDjangoUserId case final nativeId?) {
+    final nativeId = scope.nativeDjangoUserId;
+    if (nativeId != null) {
       // An old bearer, a local marker or a server login for owner B may
       // NEVER authorize opening owner A's patient vault.
       if (!current.remoteCredentialVerified ||
