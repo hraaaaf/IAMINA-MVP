@@ -46,6 +46,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "d1_safari_preview.csrf_compat.SafariNullOriginCsrfGuard",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "d1_safari_preview.views.SyntheticAccountOnlyMiddleware",
