@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:math';
 
+import 'package:drift/drift.dart';
 import 'package:drift/wasm.dart';
 import 'package:sqlite3/wasm.dart';
 
@@ -242,7 +243,9 @@ final class WebPatientVaultCipherCandidate {
   /// Standalone candidate for integration tests of the REAL AppDatabase
   /// schema; never wired to unauthenticated or production patient UI.
   Future<AppDatabase> openCandidateDatabase(
-      PatientVaultScope scope, WebVaultKey key) async {
+      PatientVaultScope scope, WebVaultKey key, {
+      QueryInterceptor? admissionGuard,
+  }) async {
     final owner = _ownerName(scope);
     final passphrase = key.cipherPassphraseFor(scope);
     final headerKey = _metadataKey(scope);
@@ -297,7 +300,13 @@ final class WebPatientVaultCipherCandidate {
         raw.execute("PRAGMA key = '$literal';");
       },
     );
-    final database = AppDatabase.testPatientVault(executor, scope);
+    // Production-compatible guard hook for the future authenticated
+    // recovery path. The default fixture remains unchanged for isolated
+    // cryptographic feasibility probes; only the explicit-admission bridge
+    // installs the sticky, revocable SQL interceptor.
+    final guardedExecutor = admissionGuard == null
+        ? executor : executor.interceptWith(admissionGuard);
+    final database = AppDatabase.testPatientVault(guardedExecutor, scope);
     try {
       await database.customSelect('SELECT 1').getSingle();
       // Race or tampering of the owner envelope invalidates this attempt.
