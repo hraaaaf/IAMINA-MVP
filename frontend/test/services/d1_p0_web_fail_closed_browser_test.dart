@@ -30,12 +30,21 @@ void main() {
     }
   });
 
-  test('D1 P0 Web guest audit namespace remains constructible', () async {
-    if (!kIsWeb) return;
-    // No read/write query: guest audit is not a clinical patient namespace.
-    final guest = AppDatabase.forPatientVault(PatientVaultScope.auditOnly());
-    expect(guest.patientVaultScope?.databaseName, 'amina_vault_v1_audit');
-    await guest.close();
+  test('D1 P0 synthetic guest audit namespace is distinct from patients', () {
+    // Policy-only assertion: constructing/closing Drift would try to load
+    // sqlite3.wasm from the Flutter test runner, which does not serve it.
+    // The independent TD-014 browser FUE covers the real guest/login route.
+    final audit = PatientVaultScope.auditOnly().databaseName;
+    expect(audit, 'amina_vault_v1_audit');
+    expect(audit, isNot(PatientVaultScope.nativeDjango(734).databaseName));
+    expect(
+      audit,
+      isNot(
+        PatientVaultScope.deviceLocal(
+          'b32afafd-8d9d-4ad4-8513-7dcfb54299a6',
+        ).databaseName,
+      ),
+    );
   });
 
   test('D1 P0 Web denies both app-lock opt-out methods immediately', () async {
