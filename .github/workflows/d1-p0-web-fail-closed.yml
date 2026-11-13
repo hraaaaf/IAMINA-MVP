@@ -9,6 +9,7 @@ on:
       - 'frontend/lib/services/patient_vault_session_controller.dart'
       - 'frontend/lib/services/web_vault_explicit_admission.dart'
       - 'frontend/lib/services/web_vault_session_admission_candidate.dart'
+      - 'frontend/lib/services/web_vault_recovery_session_candidate.dart'
       - 'frontend/test/services/web_vault_explicit_admission_test.dart'
       - 'frontend/lib/services/patient_vault_app_host.dart'
       - 'frontend/lib/services/web_patient_vault_safe_hold.dart'
@@ -57,6 +58,7 @@ jobs:
             lib/services/patient_vault_session_controller.dart \
             lib/services/web_vault_explicit_admission.dart \
             lib/services/web_vault_session_admission_candidate.dart \
+            lib/services/web_vault_recovery_session_candidate.dart \
             test/services/web_vault_explicit_admission_test.dart \
             lib/services/patient_vault_app_host.dart \
             lib/services/web_patient_vault_safe_hold.dart \
