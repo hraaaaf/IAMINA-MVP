@@ -63,15 +63,28 @@ async function semantics(page) {
       const vaults = await page.evaluate(async () =>
         (await indexedDB.databases()).map(d => d.name || '')
       );
-      if (vaults.some(name => /^amina_vault_v1_(native_|device_)/.test(name))) {
-        throw Error('Clinical patient IndexedDB created: ' + vaults.join(','));
+      if (vaults.includes('amina') ||
+          vaults.some(name => /^amina_vault_v1_(native_|device_)/.test(name))) {
+        throw Error('Historical or clinical patient IndexedDB opened: ' +
+          vaults.join(','));
       }
       if (pageErrors.length) {
         throw Error('Uncaught browser errors: ' + pageErrors.join(';'));
       }
+      let signOut = page.getByRole('button',
+        {name: /Sign out|Se déconnecter|تسجيل الخروج/i}).first();
+      if (!(await signOut.count())) {
+        signOut = page.getByText(/Sign out|Se déconnecter|تسجيل الخروج/i).first();
+      }
+      await signOut.waitFor({state: 'visible', timeout: 10000});
+      await signOut.click();
+      let returnedToGuest = page.getByRole('button', {name: localeCta}).first();
+      if (!(await returnedToGuest.count())) {
+        returnedToGuest = page.getByText(localeCta).first();
+      }
+      await returnedToGuest.waitFor({state: 'visible', timeout: 12000});
       report.viewports.push({viewport: id, holdVisible: true,
-        clinicalVaultNames: vaults.filter(n =>
-          /^amina_vault_v1_(native_|device_)/.test(n)),
+        signedOutToGuest: true, existingPatientDatabaseUntouched: true,
         before: id + '-before.png', after: id + '-safe-hold.png',
         semanticsCount: prose.length});
       await context.close();
