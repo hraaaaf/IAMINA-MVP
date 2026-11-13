@@ -10,6 +10,9 @@ import 'dart:math';
 import 'package:drift/wasm.dart';
 import 'package:sqlite3/wasm.dart';
 
+import 'database.dart';
+import 'patient_vault_scope.dart';
+
 @JS('IaminaD1CryptoCandidate.encrypt')
 external JSPromise<JSString> _nativeSeal(
   JSString recovery, JSString key, JSString salt, JSString iv, JSString owner,
@@ -21,8 +24,6 @@ external JSPromise<JSString> _nativeUnseal(
 @JS('IaminaD1CryptoCandidate.indexedDbNames')
 external JSPromise<JSString> _nativeStoreNames();
 
-import 'database.dart';
-import 'patient_vault_scope.dart';
 
 final class WebVaultEnrollment {
   final String recoveryCode;
