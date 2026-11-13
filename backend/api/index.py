@@ -18,6 +18,6 @@ if (
     raise RuntimeError("D1_PREVIEW_DEPLOYMENT_NOT_AUTHORIZED")
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "d1_safari_preview.settings"
-from django.core.wsgi import get_wsgi_application  # noqa: E402
+from amina.wsgi import application  # noqa: E402
 
-app = get_wsgi_application()
+app = application
