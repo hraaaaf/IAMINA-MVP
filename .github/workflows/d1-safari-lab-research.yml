@@ -2,7 +2,7 @@ name: D1-6 Safari lab Django same-origin contract (NO DEPLOY)
 
 on:
   push:
-    branches: [research/d1-safari-django-lab-ui-20261112]
+    branches: [research/d1-safari-django-adapter-20261112]
   pull_request:
     branches: [research/d1-safari-django-adapter-20261112]
   workflow_dispatch:
