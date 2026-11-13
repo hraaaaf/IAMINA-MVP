@@ -92,6 +92,12 @@ class PatientVaultSessionController extends ChangeNotifier {
     AppDatabase? opened;
     try {
       opened = await _openDatabase(scope);
+      // Key unwrap/IndexedDB admission may outlive an auth epoch. Discard
+      // BEFORE even SELECT 1, since the first Drift query can run migrations.
+      if (_disposed || generation != _generation || epoch != AuthEpoch.value) {
+        await opened.close();
+        return;
+      }
       // Ensure opening/migrating the named vault completes before publication.
       await opened.customSelect('SELECT 1').getSingle();
       if (_disposed || generation != _generation || epoch != AuthEpoch.value) {
