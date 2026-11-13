@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const folder = 'd1-legacy-offline-quarantine-proof';
 const marker = 'D1_SYNTHETIC_OLD_PWA_PLAINTEXT_745';
+const legacyStore = 'amina_vault_v1_native_999'; // OTHER patient namespace
 const uri = 'http://127.0.0.1:7475/';
 
 (async () => {
@@ -46,8 +47,8 @@ const uri = 'http://127.0.0.1:7475/';
     // The new encrypted vault is already enrolled and closed. Simulate a
     // stale PWA that remains capable of writing an old unencrypted store.
     await ctx.setOffline(true);
-    proof.legacyPlaintextWriteWhileOffline = await page.evaluate(async marker => {
-      const request = indexedDB.open('amina', 1);
+    proof.legacyPlaintextWriteWhileOffline = await page.evaluate(async ({marker,legacyStore}) => {
+      const request = indexedDB.open(legacyStore, 1);
       const db = await new Promise((resolve, reject) => {
         request.onupgradeneeded = () => {
           if (!request.result.objectStoreNames.contains('legacy')) {
@@ -69,7 +70,11 @@ const uri = 'http://127.0.0.1:7475/';
       } finally {
         db.close();
       }
-    }, marker);
+    }, {marker,legacyStore});
+    proof.onlyForeignLegacyPresent = await page.evaluate(async legacyStore => {
+      const names=(await indexedDB.databases()).map(d=>d.name);
+      return names.includes(legacyStore) && !names.includes('amina');
+    },legacyStore);
 
     // Dispatch directly: the Flutter engine may visually cover this fixture
     // button. This is a synthetic coordination signal, not an end-user UI.
@@ -81,8 +86,8 @@ const uri = 'http://127.0.0.1:7475/';
     }, null, {timeout: 30000});
     const result = JSON.parse(await page.locator('body').innerText());
     proof.candidate = result;
-    proof.legacyRecordStillReadable = await page.evaluate(async () => {
-      const request = indexedDB.open('amina');
+    proof.legacyRecordStillReadable = await page.evaluate(async legacyStore => {
+      const request = indexedDB.open(legacyStore);
       const db = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -97,9 +102,10 @@ const uri = 'http://127.0.0.1:7475/';
       } finally {
         db.close();
       }
-    });
+    },legacyStore);
     proof.jsErrors = errors;
-    if (proof.legacyPlaintextWriteWhileOffline !== true ||
+    if (proof.onlyForeignLegacyPresent !== true ||
+        proof.legacyPlaintextWriteWhileOffline !== true ||
         proof.legacyRecordStillReadable !== marker ||
         result.result !== 'PASS' || errors.length) {
       throw Error('Late legacy quarantine regression: ' +
