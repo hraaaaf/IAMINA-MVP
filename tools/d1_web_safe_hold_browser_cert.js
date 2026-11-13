@@ -24,7 +24,7 @@ async function semantics(page) {
   const browser = await chromium.launch({headless: true});
   const report = {
     scope: 'real production Flutter main.dart localhost Web, synthetic empty browser',
-    head: process.env.GITHUB_SHA || 'unknown',
+    head: process.env.D1_CANDIDATE_SHA || process.env.GITHUB_SHA || 'unknown',
     result: 'NOT_RUN',
     clinicalFUE: 'NOT_RUN',
     noRealPatients: true,
