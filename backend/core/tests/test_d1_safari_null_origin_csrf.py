@@ -1,5 +1,6 @@
 """Mobile Safari's Origin:null path remains CSRF protected, Preview-only."""
 import pytest
+
 from django.test import Client, override_settings
 
 
