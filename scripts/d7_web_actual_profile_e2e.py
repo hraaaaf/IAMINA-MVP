@@ -340,7 +340,15 @@ def main():
 
                 step("explicit_no_treatment_then_physical_reload")
                 click_choice("No treatment to report")
+                # Real visible medical summary is the pre-save oracle: a click
+                # is not evidence that Flutter accepted the patient choice.
+                # Fail at this exact boundary rather than attributing a stale
+                # async UI state to SQLite persistence after a reload.
+                medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 save()
+                # The save snackbar is not sufficient evidence that the
+                # selected treatment survived any in-flight async rebuild.
+                medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 reload_and_unlock()
                 medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 capture_viewports("explicit_none", "Diagnosis not specified", "No treatment reported")
