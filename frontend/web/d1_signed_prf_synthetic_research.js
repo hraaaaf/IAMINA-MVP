@@ -121,9 +121,12 @@
       return scope;
     }
 
-    async function withVerifiedPrf({credentialId, prfInput, salt, callback, signal} = {}) {
-      if (typeof callback !== 'function') denied();
-      bytes(prfInput,32);bytes(salt,16);raw(credentialId);
+    // Prepare off the user-gesture critical path. A fresh server challenge
+    // and session fingerprint are fetched BEFORE the physical button tap.
+    // Prepared state is strictly single-use and held only in this JS realm.
+    const consumed = new WeakSet();
+    async function prepareVerification({credentialId,signal} = {}) {
+      raw(credentialId);
       const startScope = await context(credentialId,signal);
       const before = scopeKey(startScope);
       const start = await rpc(fetchImpl,csrfToken,'verify/start',
@@ -137,29 +140,59 @@
           options.userVerification !== 'required') denied();
       const challenge = raw(options.challenge);
       if (challenge.length !== 32) denied();
+      // Copy validated public options; never store PRF secret in prepared object.
+      return Object.freeze({credentialId,
+        ceremonyId:start.ceremony_id,
+        before,
+        options:Object.freeze({...options,
+          challenge:Uint8Array.from(challenge),
+          allowCredentials:Object.freeze([Object.freeze({
+            ...options.allowCredentials[0],id:raw(credentialId)
+          })])
+        })
+      });
+    }
+
+    async function finishPrepared({prepared,prfInput,salt,callback,signal} = {}) {
+      if (!prepared || typeof prepared !== 'object' ||
+          consumed.has(prepared) || typeof callback !== 'function') denied();
+      bytes(prfInput,32);bytes(salt,16);
+      if (typeof prepared.credentialId !== 'string' ||
+          typeof prepared.before !== 'string' ||
+          typeof prepared.ceremonyId !== 'string' ||
+          !prepared.options || prepared.options.rpId !== host ||
+          prepared.options.userVerification !== 'required' ||
+          !Array.isArray(prepared.options.allowCredentials) ||
+          prepared.options.allowCredentials.length !== 1) denied();
+      // No awaits before credentialsGet; preserves transient Safari activation.
+      // The caller MUST call finishPrepared directly in a trusted click event.
+      consumed.add(prepared);
+      assertLive(signal);
       const publicKey = {
-        ...options,challenge,
-        allowCredentials: [{...options.allowCredentials[0],id:raw(credentialId)}],
+        ...prepared.options,
+        challenge:Uint8Array.from(prepared.options.challenge),
+        allowCredentials:[{...prepared.options.allowCredentials[0],
+          id:Uint8Array.from(prepared.options.allowCredentials[0].id)}],
         userVerification:'required',
         extensions:{prf:{eval:{first:Uint8Array.from(prfInput)}}}
       };
-      const assertion = await credentialsGet({publicKey,signal});
+      const assertionPromise = credentialsGet({publicKey,signal});
+      const assertion = await assertionPromise;
       assertLive(signal);
-      // The exact same credential assertion is transported to Django. No
-      // extension results, PRF bytes, KEK or DEK are included on the wire.
-      const payload = responsePayload(assertion,challenge,credentialId,origin);
+      const payload = responsePayload(assertion,publicKey.challenge,
+        prepared.credentialId,origin);
       const results = assertion.getClientExtensionResults?.();
       const output = results?.prf?.results?.first;
       if (!(output instanceof ArrayBuffer) || output.byteLength !== 32) denied();
       const prf = new Uint8Array(output);
       try {
         const verified = await rpc(fetchImpl,csrfToken,'verify/finish',{
-          ceremony_id:start.ceremony_id,credential:payload
+          ceremony_id:prepared.ceremonyId,credential:payload
         },signal);
         if (verified.status !== 'ASSERTION_VERIFIED_RESEARCH_ONLY' ||
             verified.patient_ready !== false) denied();
-        const after = await context(credentialId,signal);
-        if (scopeKey(after) !== before) denied();
+        const after = await context(prepared.credentialId,signal);
+        if (scopeKey(after) !== prepared.before) denied();
         const seed = await cryptoImpl.subtle.importKey(
           'raw',prf,'HKDF',false,['deriveKey']);
         const kek = await cryptoImpl.subtle.deriveKey({
@@ -169,15 +202,23 @@
         if (kek.extractable) denied();
         assertLive(signal);
         await callback(Object.freeze({kek,scope:after}));
-        const finalScope = await context(credentialId,signal);
-        if (scopeKey(finalScope) !== before) denied();
+        const finalScope = await context(prepared.credentialId,signal);
+        if (scopeKey(finalScope) !== prepared.before) denied();
         assertLive(signal);
-        return Object.freeze({status:'D1_SIGNED_PRF_SYNTHETIC_COMPLETE',patientReady:false});
+        return Object.freeze({status:'D1_SIGNED_PRF_SYNTHETIC_COMPLETE',
+          patientReady:false});
       } finally {
-        prf.fill(0); // best-effort; browser/OS may hold other copies
+        prf.fill(0);
       }
     }
-    return Object.freeze({context,withVerifiedPrf});
+
+    async function withVerifiedPrf({credentialId,prfInput,salt,callback,signal} = {}) {
+      // Backward-compatible CI fixture. NOT suitable for a physical Safari
+      // button event: prepareVerification awaits Django and may lose activation.
+      const prepared = await prepareVerification({credentialId,signal});
+      return finishPrepared({prepared,prfInput,salt,callback,signal});
+    }
+    return Object.freeze({context,prepareVerification,finishPrepared,withVerifiedPrf});
   }
 
   async function sealSyntheticFixture({cryptoImpl,kek,scope,prfInput,salt} = {}) {

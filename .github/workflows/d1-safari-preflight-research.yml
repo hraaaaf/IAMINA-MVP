@@ -1,0 +1,83 @@
+name: D1-6 Safari preflight gesture + Django signed PRF tests (NO DEPLOY)
+
+on:
+  push:
+    branches: [research/d1-safari-django-adapter-20261112]
+  pull_request:
+    branches: [research/d1-live-django-http-interop-20261112]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  localhost-django-real-http:
+    name: Real Django HTTP + Node ES256 signed assertion, PRF fixture (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DJANGO_SETTINGS_MODULE: core.tests.d1_http_live_settings
+      PYTHONPATH: backend
+      SECRET_KEY: synthetic-d1-http-ci-never-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      DATABASE_URL: sqlite:////tmp/iamina-d1-live-http.sqlite3
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+      D1_KEYS_JSON: /tmp/iamina-d1-ephemeral-keys.json
+      D1_SESSIONS_JSON: /tmp/iamina-d1-ephemeral-sessions.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install Django / WebAuthn dependencies
+        run: pip install -r backend/requirements.txt ruff==0.15.17
+      - name: Check isolated source syntax and lint
+        run: |
+          ruff check backend/core/tests/d1_http_live_settings.py backend/core/tests/d1_http_live_bootstrap.py
+          python -m py_compile backend/core/tests/d1_http_live_settings.py backend/core/tests/d1_http_live_bootstrap.py
+          node --check frontend/test_node/d1_http_ephemeral_key.cjs
+          node --check frontend/test_node/d1_live_django_http.test.cjs
+      - name: Generated key and Django synthetic DB / active sessions (no secrets in logs)
+        run: |
+          set -euo pipefail
+          umask 077
+          node frontend/test_node/d1_http_ephemeral_key.cjs
+          python backend/manage.py migrate --noinput > /tmp/d1-live-migrations.log
+          python backend/core/tests/d1_http_live_bootstrap.py
+      - name: Run real Django localhost HTTP and execute Node ES256 interoperability tests
+        run: |
+          set -euo pipefail
+          umask 077
+          cd backend
+          python manage.py runserver 127.0.0.1:8765 --noreload > /tmp/d1-local-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true; rm -f "$D1_KEYS_JSON" "$D1_SESSIONS_JSON"' EXIT
+          cd ..
+          ready=0
+          for i in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:8765/csrf/ > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::Local Django server failed startup (logs intentionally withheld)"
+            exit 1
+          fi
+          node --test frontend/test_node/d1_live_django_http.test.cjs
+      - name: Safari gesture preflight + synthetic PRF/Wrapped DEK regression
+        run: |
+          node --check frontend/web/d1_signed_prf_synthetic_research.js
+          node --test frontend/test_node/d1_signed_prf_synthetic_research.test.js
+      - name: Assert no production code references local harness
+        run: |
+          set -euo pipefail
+          if grep -r -E 'd1_http_live_settings|d1_http_live_bootstrap|d1_live_django_http'             backend/amina/urls.py backend/diabetes/api/main.py frontend/web/index.html frontend/web/flutter_bootstrap.js; then
+            echo "::error::Synthetic HTTP test harness mounted in production"
+            exit 1
+          fi
