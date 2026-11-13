@@ -6,7 +6,7 @@ import re
 
 from amina.vercel_settings import *  # noqa: F403,F401
 
-_EXPECTED_PROJECT = "prj_tdWQOog3nBiicFGfa1hq2jua2viv"
+_EXPECTED_PROJECT = "prj_hnlWE6QdXtWvYVfwe2JVAqIKPUiP"
 _EXPECTED_BRANCH = "research/d1-6-safari-preview-20261113"
 _host = os.environ.get("VERCEL_URL", "").strip().lower()
 if (
