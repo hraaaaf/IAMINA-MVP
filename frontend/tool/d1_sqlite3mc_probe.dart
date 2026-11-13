@@ -35,7 +35,7 @@ Future<void> main() async {
       final cipher = db.select('PRAGMA cipher');
       proof['cipherAvailable'] = cipher.isNotEmpty;
       if (cipher.isEmpty) throw StateError('Encryption not available');
-      db.execute("PRAGMA key = '\\$_correctKey';");
+      db.execute("PRAGMA key = '$_correctKey';");
       db.execute('CREATE TABLE IF NOT EXISTS readings (value TEXT NOT NULL)');
       db.execute('DELETE FROM readings');
       db.execute('INSERT INTO readings(value) VALUES (?)', [_syntheticPatient]);
@@ -48,7 +48,7 @@ Future<void> main() async {
 
     final wrong = sqlite3.open(_fileName);
     try {
-      wrong.execute("PRAGMA key = '\\$_wrongKey';");
+      wrong.execute("PRAGMA key = '$_wrongKey';");
       try {
         wrong.select('SELECT value FROM readings');
       } on Exception {
@@ -59,7 +59,7 @@ Future<void> main() async {
     }
     final reopened = sqlite3.open(_fileName);
     try {
-      reopened.execute("PRAGMA key = '\\$_correctKey';");
+      reopened.execute("PRAGMA key = '$_correctKey';");
       proof['persistentAfterReopen'] =
           reopened.select('SELECT value FROM readings').single['value'] ==
               _syntheticPatient;
