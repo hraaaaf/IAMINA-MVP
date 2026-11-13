@@ -1,0 +1,104 @@
+name: D1 encrypted synthetic D7/D22 positive UI feasibility (NOT production certification)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d1-encrypted-positive-web-fue-candidate.yml'
+      - 'frontend/tool/d1_synthetic_encrypted_fue_main.dart'
+      - 'frontend/lib/data/drift/web_patient_vault_cipher_candidate.dart'
+      - 'scripts/d7_web_actual_profile_e2e.py'
+      - 'scripts/d22_gate_a_web_recipes.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-encrypted-positive-fue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  encrypted-widget-fixture:
+    name: Synthetic encrypted real Flutter widgets / ${{ matrix.suite }} / NO CLINICAL GO
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [d7, d22]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Analyze explicitly synthetic encrypted fixture (never main.dart)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos tool/d1_synthetic_encrypted_fue_main.dart
+      - name: Compile real Flutter widgets with CI-only encrypted vault factory
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter build web --release --no-web-resources-cdn \
+            -t tool/d1_synthetic_encrypted_fue_main.dart \
+            --dart-define=IAMINA_D1_SYNTHETIC_FUE=true \
+            --dart-define=IAMINA_OFFLINE_DEMO=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false
+          test -s build/web/main.dart.js
+      - name: Verify and add pinned authenticated SQLite3MC WASM in disposable test build
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 \
+            'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' \
+            -o frontend/build/web/sqlite3mc.wasm
+          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
+      - name: Install disposable Chromium and Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+      - name: Run original D7 or D22 Web gestures on ENCRYPTED SYNTHETIC fixture ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          if [ "${{ matrix.suite }}" = "d7" ]; then
+            python3 scripts/d7_web_actual_profile_e2e.py
+          else
+            for lang in en fr ar; do
+              D22_FUE_LOCALE="$lang" python3 scripts/d22_gate_a_web_recipes.py
+            done
+          fi
+      - name: Publish proof limitations WITHOUT user records or keys
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p d1-encrypted-positive-proof
+          cat > d1-encrypted-positive-proof/README.txt <<'EOF'
+          D1 non-clinical encrypted candidate only. Real Flutter UI widgets;
+          NOT the production main.dart entrypoint. Real production Web patient
+          admission stays fail-closed and D7/D22 production FUE remain red.
+          All browser identities and data are synthetic. No patient key, recovery
+          code or plaintext clinical data is part of this evidence bundle.
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-encrypted-positive-fue-${{ matrix.suite }}-synthetic-only
+          path: |
+            d1-encrypted-positive-proof/*
+            d7-web-real-profile-chrome-proof.json
+            d22-web-real-chrome*/proof.json
+          if-no-files-found: warn
+          retention-days: 7
