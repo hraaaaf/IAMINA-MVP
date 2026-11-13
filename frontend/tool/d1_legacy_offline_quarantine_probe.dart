@@ -17,6 +17,7 @@ Future<void> main() async {
     'scope': 'synthetic late legacy/offline writer quarantine',
     'clinicalGo': false,
     'encryptedBeforeOldWriter': false,
+    'tamperedPendingHeaderRejected': false,
     'lateLegacyRejected': false,
     'legacyStorePreserved': false,
     'ciphertextPreserved': false,
@@ -41,6 +42,24 @@ Future<void> main() async {
     proof['encryptedBeforeOldWriter'] = before.contains(
       WebPatientVaultCipherCandidate.diagnosticStoreName(scope),
     );
+    // The first open sealed the envelope. A localStorage attacker must not
+    // be able to flip the unauthenticated 'state' back to 'pending' to reuse
+    // the one-time database-creation grant (including after browser restart).
+    final headerKey =
+        WebPatientVaultCipherCandidate.diagnosticMetadataKey(scope);
+    final sealedHeader = html.window.localStorage[headerKey]!;
+    final replay = jsonDecode(sealedHeader) as Map<String, dynamic>;
+    replay['state'] = 'pending';
+    html.window.localStorage[headerKey] = jsonEncode(replay);
+    try {
+      final unintended = await candidate.openCandidateDatabase(scope, key);
+      await unintended.close();
+    } on StateError catch (error) {
+      proof['tamperedPendingHeaderRejected'] =
+          error.message == 'web_vault_pending_enrollment_replay_blocked';
+    } finally {
+      html.window.localStorage[headerKey] = sealedHeader;
+    }
 
     // Browser test writes an old 'amina' IndexedDB store OFFLINE after
     // encryption enrollment, then explicitly clicks to continue. Never
@@ -65,7 +84,8 @@ Future<void> main() async {
       WebPatientVaultCipherCandidate.diagnosticStoreName(scope),
     );
     proof['result'] = [
-      'encryptedBeforeOldWriter', 'lateLegacyRejected',
+      'encryptedBeforeOldWriter', 'tamperedPendingHeaderRejected',
+      'lateLegacyRejected',
       'legacyStorePreserved', 'ciphertextPreserved',
     ].every((field) => proof[field] == true) ? 'PASS' : 'FAIL';
   } catch (error) {
