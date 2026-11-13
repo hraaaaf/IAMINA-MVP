@@ -3,13 +3,23 @@
 // Do not use for patients until recovery/legacy/PWA/FUE/security audit GO.
 import 'dart:convert';
 import 'dart:html' as html;
-import 'dart:js_util' as js;
+import 'dart:async';
+import 'dart:js_interop';
 import 'dart:math';
-import 'dart:typed_data';
 
-import 'package:drift/drift.dart';
 import 'package:drift/wasm.dart';
 import 'package:sqlite3/wasm.dart';
+
+@JS('IaminaD1CryptoCandidate.encrypt')
+external JSPromise<JSString> _nativeSeal(
+  JSString recovery, JSString key, JSString salt, JSString iv, JSString owner,
+);
+@JS('IaminaD1CryptoCandidate.decrypt')
+external JSPromise<JSString> _nativeUnseal(
+  JSString recovery, JSString ciphertext, JSString salt, JSString iv, JSString owner,
+);
+@JS('IaminaD1CryptoCandidate.indexedDbNames')
+external JSPromise<JSString> _nativeStoreNames();
 
 import 'database.dart';
 import 'patient_vault_scope.dart';
@@ -74,63 +84,49 @@ final class WebPatientVaultCipherCandidate {
     return List<int>.generate(length, (_) => source.nextInt(256));
   }
 
-  static Object _subtle() => js.getProperty(
-      js.getProperty(html.window, 'crypto'), 'subtle');
+  static Future<void>? _scriptLoad;
 
-  static Future<Object> _wrappingKey(List<int> recovery, List<int> salt) async {
-    final subtle = _subtle();
-    final baseKey = await js.promiseToFuture<Object>(
-      js.callMethod(subtle, 'importKey', [
-        'raw', Uint8List.fromList(recovery), 'PBKDF2', false,
-        js.jsify(['deriveKey']),
-      ]),
-    );
-    return js.promiseToFuture<Object>(
-      js.callMethod(subtle, 'deriveKey', [
-        js.jsify({
-          'name': 'PBKDF2',
-          'salt': Uint8List.fromList(salt),
-          'iterations': _iterations,
-          'hash': 'SHA-256',
-        }),
-        baseKey,
-        js.jsify({'name': 'AES-GCM', 'length': 256}),
-        false,
-        js.jsify(['encrypt', 'decrypt']),
-      ]),
-    );
+  static Future<void> _ensureWebCrypto() =>
+      _scriptLoad ??= _loadWebCrypto();
+
+  static Future<void> _loadWebCrypto() async {
+    final script = html.ScriptElement()
+      ..src = 'd1_vault_crypto_candidate.js';
+    final completion = Completer<void>();
+    script.onLoad.first.then((_) {
+      if (!completion.isCompleted) completion.complete();
+    });
+    script.onError.first.then((_) {
+      if (!completion.isCompleted) {
+        completion.completeError(StateError('web_vault_crypto_script_unavailable'));
+      }
+    });
+    html.document.head!.append(script);
+    await completion.future;
   }
 
   static Future<List<int>> _encryptKey(
     List<int> key, List<int> recovery, List<int> salt, List<int> iv,
     String owner,
   ) async {
-    final wrappingKey = await _wrappingKey(recovery, salt);
-    final bytes = await js.promiseToFuture<ByteBuffer>(
-      js.callMethod(_subtle(), 'encrypt', [
-        js.jsify({'name': 'AES-GCM', 'iv': Uint8List.fromList(iv),
-          'additionalData': Uint8List.fromList(utf8.encode(_format + '/' + owner)),
-          'tagLength': 128}),
-        wrappingKey, Uint8List.fromList(key),
-      ]),
-    );
-    return Uint8List.view(bytes).toList();
+    await _ensureWebCrypto();
+    final result = await _nativeSeal(
+      base64UrlEncode(recovery).toJS, base64UrlEncode(key).toJS,
+      base64UrlEncode(salt).toJS, base64UrlEncode(iv).toJS, owner.toJS,
+    ).toDart;
+    return base64Url.decode(base64Url.normalize(result.toDart));
   }
 
   static Future<List<int>> _decryptKey(
     List<int> ciphertext, List<int> recovery, List<int> salt, List<int> iv,
     String owner,
   ) async {
-    final wrappingKey = await _wrappingKey(recovery, salt);
-    final bytes = await js.promiseToFuture<ByteBuffer>(
-      js.callMethod(_subtle(), 'decrypt', [
-        js.jsify({'name': 'AES-GCM', 'iv': Uint8List.fromList(iv),
-          'additionalData': Uint8List.fromList(utf8.encode(_format + '/' + owner)),
-          'tagLength': 128}),
-        wrappingKey, Uint8List.fromList(ciphertext),
-      ]),
-    );
-    return Uint8List.view(bytes).toList();
+    await _ensureWebCrypto();
+    final result = await _nativeUnseal(
+      base64UrlEncode(recovery).toJS, base64UrlEncode(ciphertext).toJS,
+      base64UrlEncode(salt).toJS, base64UrlEncode(iv).toJS, owner.toJS,
+    ).toDart;
+    return base64Url.decode(base64Url.normalize(result.toDart));
   }
 
   static List<int> _decodeRecovery(String recoveryCode) {
@@ -165,12 +161,10 @@ final class WebPatientVaultCipherCandidate {
     if (html.window.localStorage.containsKey(_metadataKey(scope))) {
       throw StateError('web_vault_already_enrolled');
     }
-    final indexedDb = js.getProperty(html.window, 'indexedDB');
-    final databases = await js.promiseToFuture<Object>(
-      js.callMethod(indexedDb, 'databases', []),
-    );
-    final names = (js.dartify(databases) as List)
-        .map((db) => (db as Map)['name']?.toString() ?? '')
+    await _ensureWebCrypto();
+    final serializedNames = await _nativeStoreNames().toDart;
+    final names = (jsonDecode(serializedNames.toDart) as List)
+        .map((value) => value.toString())
         .toSet();
     if (names.contains('amina') || names.contains(owner) ||
         names.contains(_cipherStore(scope))) {
