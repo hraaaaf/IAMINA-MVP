@@ -137,6 +137,8 @@ void main() {
     await tester.ensureVisible(none);
     await tester.tap(none);
     await tester.pumpAndSettle();
+    // A tapped chip must actually become the selected state BEFORE any save.
+    expect(tester.widget<ChoiceChip>(none).selected, isTrue);
     await tester.ensureVisible(save);
     await tester.tap(save);
     await tester.pumpAndSettle();
@@ -146,6 +148,21 @@ void main() {
     expect(declared.localGeneration, greaterThan(before.localGeneration));
     expect(declared.syncStatus, 'pending'); // No remote confirmation.
     expect((await db.getProfileForLocalUserId(812))!.diabetesType, 'type1');
+
+    // Persisted 'none_declared' must survive a real widget disposal and
+    // another asynchronous read of the same physical scoped database.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(harness());
+    await tester.pumpAndSettle();
+    await expandMedical();
+    expect(tester.widget<ChoiceChip>(
+      find.byKey(const Key('d7-none')),
+    ).selected, isTrue);
+    final reread = (await store.read())!;
+    expect(reread.state, 'none_declared');
+    expect(reread.codes, isEmpty);
+    expect(reread.ownerId, 734);
     expect(tester.takeException(), isNull);
   });
 }
