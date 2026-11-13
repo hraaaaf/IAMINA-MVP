@@ -3,14 +3,12 @@
 import 'dart:convert';
 import 'dart:html' as html;
 
-import 'package:flutter/widgets.dart';
 import 'package:amina/data/drift/patient_vault_scope.dart';
 import 'package:amina/data/drift/web_patient_vault_cipher_candidate.dart';
 
 const _syntheticMarker = 'D1_SYNTHETIC_GLUCOSE_ONLY_735_XY';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   final a = PatientVaultScope.nativeDjango(735);
   final b = PatientVaultScope.nativeDjango(736);
   final candidate = WebPatientVaultCipherCandidate();
