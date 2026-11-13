@@ -55,7 +55,7 @@ function hasBytes(bytes, text) {
     head:process.env.D1_CANDIDATE_SHA||'unknown',clinicalGo:false,result:'NOT_RUN'};
   const browser=await chromium.launch({headless:true});
   try{
-    const ctx=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});
+    const ctx=await browser.newContext({viewport:{width:1280,height:900},locale:'en-US',serviceWorkers:'block'});
     const page=await ctx.newPage();
     const errors=[];
     const consoleLines=[];
