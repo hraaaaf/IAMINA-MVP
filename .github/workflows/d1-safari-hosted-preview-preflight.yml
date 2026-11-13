@@ -44,7 +44,7 @@ jobs:
         env:
           VERCEL: "1"
           VERCEL_ENV: preview
-          VERCEL_PROJECT_ID: prj_tdWQOog3nBiicFGfa1hq2jua2viv
+          VERCEL_PROJECT_ID: prj_hnlWE6QdXtWvYVfwe2JVAqIKPUiP
           VERCEL_GIT_COMMIT_REF: research/d1-6-safari-preview-20261113
           VERCEL_URL: test-preview.vercel.app
           IAMINA_D1_SAFARI_LAB_ONLY: synthetic-preview-v1
