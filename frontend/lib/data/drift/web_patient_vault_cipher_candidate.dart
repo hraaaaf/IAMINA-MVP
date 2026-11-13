@@ -149,7 +149,8 @@ final class WebPatientVaultCipherCandidate {
         envelope['iterations'] != _iterations ||
         envelope['salt'] is! String ||
         envelope['iv'] is! String ||
-        envelope['ciphertext'] is! String) {
+        envelope['ciphertext'] is! String ||
+        (envelope['state'] != 'pending' && envelope['state'] != 'sealed')) {
       throw StateError('web_vault_envelope_untrusted');
     }
     return envelope;
@@ -181,6 +182,7 @@ final class WebPatientVaultCipherCandidate {
         'format': _format,
         'owner': owner,
         'iterations': _iterations,
+        'state': 'pending',
         'salt': base64UrlEncode(salt),
         'iv': base64UrlEncode(iv),
         'ciphertext': base64UrlEncode(ciphertext),
@@ -225,42 +227,68 @@ final class WebPatientVaultCipherCandidate {
   /// schema; never wired to unauthenticated or production patient UI.
   Future<AppDatabase> openCandidateDatabase(
       PatientVaultScope scope, WebVaultKey key) async {
+    final owner = _ownerName(scope);
     final passphrase = key.cipherPassphraseFor(scope);
+    final headerKey = _metadataKey(scope);
+    final rawHeader = html.window.localStorage[headerKey];
+    if (rawHeader == null) throw StateError('web_vault_not_enrolled');
+    final envelope = _parseEnvelope(rawHeader, owner);
+    await _ensureWebCrypto();
+    final serializedNames = await _nativeStoreNames().toDart;
+    final names = (jsonDecode(serializedNames.toDart) as List)
+        .map((value) => value.toString()).toSet();
+    // A sealed vault must NEVER be recreated as an empty database if its
+    // ciphertext is missing (browser eviction, corrupted profile, rollback).
+    // Historic plaintext stores also stay quarantined and untouched.
+    if (names.contains('amina') || names.contains(owner)) {
+      throw StateError('web_vault_legacy_data_quarantined');
+    }
+    if (envelope['state'] == 'sealed' &&
+        !names.contains(_cipherStore(scope))) {
+      throw StateError('web_vault_ciphertext_missing_recovery_required');
+    }
+
     final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse(_wasmPath));
     final fs = await IndexedDbFileSystem.open(dbName: _cipherStore(scope));
     sqlite.registerVirtualFileSystem(fs, makeDefault: true);
-    final raw = sqlite.open('/vault.db');
+    final literal = passphrase.replaceAll("'", "''");
+    // Unlike WasmDatabase.opened, providing fileSystem here ensures IndexedDB
+    // changes are durably flushed before async Drift query completion.
+    final executor = WasmDatabase(
+      sqlite3: sqlite,
+      path: '/vault.db',
+      fileSystem: fs,
+      setup: (raw) {
+        if (raw.select('PRAGMA cipher').isEmpty) {
+          throw StateError('web_vault_encryption_unavailable');
+        }
+        // Pinned sqlite3MC WASM includes sqleet ChaCha20-Poly1305 with
+        // authenticated per-page tags. No plaintext or weaker fallback.
+        raw.execute("PRAGMA cipher = 'chacha20';");
+        raw.execute('PRAGMA legacy = 0;');
+        final selected = raw.select('PRAGMA cipher');
+        if (selected.isEmpty ||
+            selected.single.values.first.toString().toLowerCase() !=
+                'chacha20') {
+          throw StateError('web_vault_authenticated_cipher_unavailable');
+        }
+        raw.execute("PRAGMA key = '$literal';");
+      },
+    );
+    final database = AppDatabase.testPatientVault(executor, scope);
     try {
-      if (raw.select('PRAGMA cipher').isEmpty) {
-        throw StateError('web_vault_encryption_unavailable');
+      await database.customSelect('SELECT 1').getSingle();
+      // Race or tampering of the owner envelope invalidates this attempt.
+      if (html.window.localStorage[headerKey] != rawHeader) {
+        throw StateError('web_vault_concurrent_metadata_change');
       }
-      // Our pinned sqlite3mc.wasm includes sqleet ChaCha20-Poly1305,
-      // authenticated per SQLite page. SQLCipher is NOT included in this
-      // build (verified by CI). Explicitly require authenticated cipher,
-      // non-legacy format, before keying or reading any clinical page.
-      raw.execute("PRAGMA cipher = 'chacha20';");
-      raw.execute('PRAGMA legacy = 0;');
-      final selected = raw.select('PRAGMA cipher');
-      if (selected.isEmpty ||
-          selected.single.values.first.toString().toLowerCase() != 'chacha20') {
-        throw StateError('web_vault_authenticated_cipher_unavailable');
+      if (envelope['state'] == 'pending') {
+        envelope['state'] = 'sealed';
+        html.window.localStorage[headerKey] = jsonEncode(envelope);
       }
-      // Only high-entropy randomly-generated owner key enters this pragma.
-      // Escaping single quotes prevents SQL injection even in future changes.
-      final literal = passphrase.replaceAll("'", "''");
-      raw.execute("PRAGMA key = '$literal';");
-      final database = AppDatabase.testPatientVault(
-        WasmDatabase.opened(raw), scope,
-      );
-      try {
-        await database.customSelect('SELECT 1').getSingle();
-        return database;
-      } catch (_) {
-        await database.close();
-        rethrow;
-      }
+      return database;
     } catch (_) {
-      raw.dispose();
+      await database.close();
       rethrow;
     }
   }
