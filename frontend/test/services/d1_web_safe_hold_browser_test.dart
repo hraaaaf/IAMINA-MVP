@@ -86,7 +86,6 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     await tester.pumpWidget(MaterialApp(
       home: WebPatientVaultSafeHold(
         locale: const Locale('en'),
@@ -103,6 +102,8 @@ void main() {
       findsWidgets,
     );
     expect(tester.takeException(), isNull);
+    // Flutter verifies active SemanticsHandles before addTearDown executes.
+    semantics.dispose();
   });
 
 }
