@@ -1,0 +1,60 @@
+name: D1 P0 Web clinical vault fail-closed (NO DEPLOY)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/lib/routes/app_router.dart'
+      - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/test/services/d1_p0_web_fail_closed_browser_test.dart'
+      - '.github/workflows/d1-p0-web-fail-closed.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-p0-web-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-patient-vault:
+    name: Dart VM regression and real Chrome negative tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Analyze source and tests
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/data/drift/database.dart \
+            lib/services/app_lock_service.dart \
+            lib/routes/app_router.dart \
+            lib/features/auth/app_lock_setup_screen.dart \
+            lib/features/profile/profile_screen.dart \
+            lib/features/profile/profile_screen_presentation.dart \
+            test/services/d1_p0_web_fail_closed_browser_test.dart
+      - name: Native VM app-lock and vault-scope regression
+        working-directory: frontend
+        run: |
+          flutter test --no-pub \
+            test/services/app_lock_service_test.dart \
+            test/data/drift/patient_vault_scope_test.dart
+      - name: Verify Chrome is installed
+        run: command -v google-chrome
+      - name: Real Chrome deny unencrypted patient vault and app-lock opt-out
+        working-directory: frontend
+        run: flutter test --no-pub --platform chrome test/services/d1_p0_web_fail_closed_browser_test.dart
