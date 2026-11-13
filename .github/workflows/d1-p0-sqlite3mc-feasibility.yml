@@ -1,0 +1,90 @@
+name: D1 P0 SQLite3MC Web feasibility (NO CLINICAL GO / NO DEPLOY)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d1-p0-sqlite3mc-feasibility.yml'
+      - 'frontend/tool/d1_sqlite3mc_probe.dart'
+      - 'tools/d1_sqlite3mc_browser_probe.js'
+      - 'frontend/pubspec.lock'
+      - 'docs/security/D1_WEB_PATIENT_VAULT_GO_GATE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-p0-cipher-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sqlite3mc-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    name: Synthetic real-Chromium encrypted file + wrong-key proof
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get pinned IAMINA Dart dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Download matching sqlite3MC WASM (synthetic only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p d1-web-probe
+          curl -fSL --retry 3 \
+            'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' \
+            -o d1-web-probe/sqlite3mc.wasm
+          test "$(wc -c < d1-web-probe/sqlite3mc.wasm)" -gt 100000
+          file d1-web-probe/sqlite3mc.wasm
+          sha256sum d1-web-probe/sqlite3mc.wasm | tee d1-web-probe/sqlite3mc.sha256
+      - name: Compile synthetic browser probe
+        working-directory: frontend
+        run: dart compile js tool/d1_sqlite3mc_probe.dart -O2 -o ../d1-web-probe/d1_probe.js
+      - name: Prepare isolated localhost page (no app and no patient)
+        shell: bash
+        run: |
+          cat > d1-web-probe/d1_probe.html <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"></head>
+          <body><script defer src="d1_probe.js"></script></body></html>
+          HTML
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Run actual SQLite3MC browser persistence / wrong-key proof
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          python3 -m http.server 7473 --bind 127.0.0.1 \
+            --directory d1-web-probe > /tmp/d1-sqlite3mc-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7473/d1_probe.html > /dev/null
+          node tools/d1_sqlite3mc_browser_probe.js
+      - name: Upload synthetic proof (never clinical keys)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-sqlite3mc-chromium-synthetic
+          path: |
+            d1-sqlite3mc-proof/*
+            d1-web-probe/sqlite3mc.sha256
+            /tmp/d1-sqlite3mc-http.log
+          if-no-files-found: warn
+          retention-days: 7
