@@ -35,7 +35,6 @@ jobs:
       - run: pip install -r backend/requirements.txt ruff==0.15.17
       - name: Lint and syntax branch-only lab
         run: |
-          ruff check --diff backend/d1_safari_preview/csrf_compat.py backend/core/tests/test_d1_safari_null_origin_csrf.py || true
           ruff check backend/d1_safari_preview backend/core/tests/test_d1_safari_hosted_preview.py backend/core/tests/test_d1_safari_null_origin_csrf.py backend/api/index.py
           python -m compileall -q backend/d1_safari_preview backend/api/index.py
           node --check backend/d1_safari_preview/assets/client.js
