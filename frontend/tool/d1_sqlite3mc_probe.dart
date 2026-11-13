@@ -42,7 +42,7 @@ Future<void> main() async {
       proof['correctKeyRead'] =
           db.select('SELECT value FROM readings').single['value'] == _syntheticPatient;
     } finally {
-      db.close();
+      db.dispose();
     }
     await fileSystem.flush();
 
@@ -55,7 +55,7 @@ Future<void> main() async {
         proof['wrongKeyRejected'] = true;
       }
     } finally {
-      wrong.close();
+      wrong.dispose();
     }
     final reopened = sqlite3.open(_fileName);
     try {
@@ -64,7 +64,7 @@ Future<void> main() async {
           reopened.select('SELECT value FROM readings').single['value'] ==
               _syntheticPatient;
     } finally {
-      reopened.close();
+      reopened.dispose();
     }
     await fileSystem.flush();
     proof['ok'] = proof['cipherAvailable'] == true &&
