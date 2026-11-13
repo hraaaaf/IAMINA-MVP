@@ -96,7 +96,7 @@
     await ensureCsrf();
     const response=await fetch('/d1-research/lab/start',{
       method:'POST',mode:'same-origin',credentials:'same-origin',
-      redirect:'error',cache:'no-store',
+      redirect:'error',cache:'no-store',referrerPolicy:'same-origin',
       headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:'{}'
     });
     if (!response.ok) throw Error('LAB_SESSION_REJECTED_'+response.status);
