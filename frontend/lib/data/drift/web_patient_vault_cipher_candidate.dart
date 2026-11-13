@@ -80,6 +80,16 @@ final class WebPatientVaultCipherCandidate {
   static String _cipherStore(PatientVaultScope scope) =>
       _databasePrefix + _ownerName(scope);
 
+  // Inventory ALL historical unencrypted patient namespaces in the same
+  // browser profile, not only the active owner. Another patient's stale PWA
+  // could still persist plaintext while the active owner uses encryption.
+  // The nonclinical audit-only namespace is deliberately excluded.
+  static bool _hasLegacyPatientStore(Set<String> names) => names.any(
+    (name) => name == 'amina' ||
+        name.startsWith('amina_vault_v1_native_') ||
+        name.startsWith('amina_vault_v1_device_'),
+  );
+
   static List<int> _randomBytes(int length) {
     final source = Random.secure();
     return List<int>.generate(length, (_) => source.nextInt(256));
@@ -173,7 +183,7 @@ final class WebPatientVaultCipherCandidate {
     final names = (jsonDecode(serializedNames.toDart) as List)
         .map((value) => value.toString())
         .toSet();
-    if (names.contains('amina') || names.contains(owner) ||
+    if (_hasLegacyPatientStore(names) ||
         names.contains(_cipherStore(scope))) {
       throw StateError('web_vault_legacy_data_quarantined');
     }
@@ -246,7 +256,7 @@ final class WebPatientVaultCipherCandidate {
     // A sealed vault must NEVER be recreated as an empty database if its
     // ciphertext is missing (browser eviction, corrupted profile, rollback).
     // Historic plaintext stores also stay quarantined and untouched.
-    if (names.contains('amina') || names.contains(owner)) {
+    if (_hasLegacyPatientStore(names)) {
       throw StateError('web_vault_legacy_data_quarantined');
     }
     if (envelope['state'] == 'sealed' &&
