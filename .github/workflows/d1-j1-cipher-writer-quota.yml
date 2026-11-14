@@ -8,6 +8,7 @@ on:
       - 'frontend/tool/d1_recovery_fresh_profile_probe.dart'
       - 'tools/d1_j1_physical_cipher_backup_failure_browser.js'
       - 'tools/d1_j1_cipher_writer_quota_browser.js'
+      - 'tools/d1_j1_real_chromium_quota_browser.js'
   workflow_dispatch:
 
 permissions:
@@ -52,6 +53,7 @@ jobs:
         run: |
           node --check tools/d1_j1_physical_cipher_backup_failure_browser.js
           node --check tools/d1_j1_cipher_writer_quota_browser.js
+          node --check tools/d1_j1_real_chromium_quota_browser.js
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
       - name: Run physical backup baseline and uncooperative-writer adversarial test
@@ -67,6 +69,7 @@ jobs:
           curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7476/ >/dev/null
           node tools/d1_j1_physical_cipher_backup_failure_browser.js
           node tools/d1_j1_cipher_writer_quota_browser.js
+          node tools/d1_j1_real_chromium_quota_browser.js
       - name: Preserve only synthetic metadata (never backup or code)
         if: always()
         uses: actions/upload-artifact@v4
@@ -75,6 +78,7 @@ jobs:
           path: |
             d1-j1-physical-cipher-crash-proof/proof.json
             d1-j1-physical-writer-quota-proof/proof.json
+            d1-j1-real-browser-quota-proof/proof.json
             /tmp/d1-j1-writer-quota-http.log
           retention-days: 7
           if-no-files-found: warn
