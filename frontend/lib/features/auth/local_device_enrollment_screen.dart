@@ -9,7 +9,10 @@ import '../../services/auth_service.dart';
 
 class LocalDeviceEnrollmentScreen extends StatefulWidget {
   final VoidCallback? onChooseAccount;
-  const LocalDeviceEnrollmentScreen({super.key, this.onChooseAccount});
+  final VoidCallback? onCreateAccount;
+  const LocalDeviceEnrollmentScreen({
+    super.key, this.onChooseAccount, this.onCreateAccount,
+  });
 
   @override
   State<LocalDeviceEnrollmentScreen> createState() =>
@@ -265,13 +268,19 @@ class _LocalDeviceEnrollmentScreenState
                                 onPressed: _isLoading ? null : widget.onChooseAccount,
                                 icon: const Icon(Icons.person_outline_rounded),
                                 label: Text(switch (Localizations.localeOf(context).languageCode) {
-                                  'fr' => kRemoteAccountEnrollmentEnabled
+                                  'fr' => widget.onCreateAccount != null
+                                       ? 'Se connecter'
+                                       : kRemoteAccountEnrollmentEnabled
                                        ? 'Se connecter ou créer un compte'
                                        : 'Se connecter avec un compte existant',
-                                  'ar' => kRemoteAccountEnrollmentEnabled
+                                  'ar' => widget.onCreateAccount != null
+                                       ? 'تسجيل الدخول'
+                                       : kRemoteAccountEnrollmentEnabled
                                        ? 'تسجيل الدخول أو إنشاء حساب'
                                        : 'تسجيل الدخول بحساب موجود',
-                                  _ => kRemoteAccountEnrollmentEnabled
+                                  _ => widget.onCreateAccount != null
+                                       ? 'Sign in'
+                                       : kRemoteAccountEnrollmentEnabled
                                        ? 'Sign in or create an account'
                                        : 'Sign in with an existing account',
                                 }),
@@ -282,6 +291,34 @@ class _LocalDeviceEnrollmentScreenState
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                 ),
+                              ),
+                            ],
+                            if (widget.onCreateAccount != null) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                key: const Key('d1-preview-create-account'),
+                                onPressed: _isLoading ? null : widget.onCreateAccount,
+                                icon: const Icon(Icons.person_add_alt_1_outlined),
+                                label: Text(switch (Localizations.localeOf(context).languageCode) {
+                                  'fr' => 'Créer un compte',
+                                  'ar' => 'إنشاء حساب',
+                                  _ => 'Create an account',
+                                }),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(52),
+                                  foregroundColor: AminaTheme.teal700,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                switch (Localizations.localeOf(context).languageCode) {
+                                  'fr' => 'Preview D1 — comptes de test uniquement. N’utilisez aucune donnée personnelle réelle.',
+                                  'ar' => 'معاينة D1 — حسابات تجريبية فقط، دون بيانات شخصية حقيقية.',
+                                  _ => 'D1 Preview — test accounts only. Never enter real personal information.',
+                                },
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 11.5,
+                                  color: AminaTheme.textSecondary(context)),
                               ),
                             ],
                           ],
