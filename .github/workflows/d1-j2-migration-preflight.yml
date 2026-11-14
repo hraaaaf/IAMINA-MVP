@@ -1,0 +1,60 @@
+name: D1 J2 read-only legacy migration preflight (NO PATIENTS)
+
+on:
+  pull_request:
+    branches: [fix/d1-p0-web-vault-fail-closed-20261113]
+    paths:
+      - '.github/workflows/d1-j2-migration-preflight.yml'
+      - 'tools/d1_j2_migration_preflight_candidate.js'
+      - 'tools/d1_j2_preflight_browser.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-j2-synthetic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight-readonly:
+    name: Chrome legacy inventory, identity, consent and SW negative gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Run read-only migration preflight fixture
+        shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          mkdir -p /tmp/iamina-d1-j2-fixture
+          cp tools/d1_j2_migration_preflight_candidate.js /tmp/iamina-d1-j2-fixture/
+          printf '<!doctype html><html lang="en"><meta charset="utf-8"><script src="/d1_j2_migration_preflight_candidate.js"></script></html>' > /tmp/iamina-d1-j2-fixture/index.html
+          printf 'self.addEventListener("install",()=>self.skipWaiting());' > /tmp/iamina-d1-j2-fixture/j2-legacy-sw.js
+          python3 -m http.server 7482 --bind 127.0.0.1 --directory /tmp/iamina-d1-j2-fixture >/tmp/d1-j2-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7482/ >/dev/null
+          node tools/d1_j2_preflight_browser.js
+      - name: Upload advisory-only proof (no clinical data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-j2-synthetic-preflight-proof
+          path: |
+            d1-j2-synthetic-preflight-proof/proof.json
+            /tmp/d1-j2-http.log
+          if-no-files-found: warn
+          retention-days: 7
