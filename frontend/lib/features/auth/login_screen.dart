@@ -15,8 +15,22 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+// The three ordinary entry choices are exposed ONLY on an isolated D1
+// Preview. Patient clinical vault access remains fail-closed in main.dart.
+const bool kD1PreviewAuthChoices = bool.fromEnvironment(
+  'IAMINA_D1_PREVIEW_AUTH_CHOICES', defaultValue: false,
+);
+
 class _LoginScreenState extends State<LoginScreen> {
   bool _accountMode = false;
+  bool _openSignupOnEntry = false;
+
+  void _chooseAccount({bool signup = false}) {
+    setState(() {
+      _openSignupOnEntry = signup;
+      _accountMode = true;
+    });
+  }
 
   Widget _w01ResultBanner(BuildContext context) {
     return ValueListenableBuilder<W01RevocationProbeResult?>(
@@ -107,7 +121,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_accountMode || !kRemoteAccountSignInEnabled) {
       final localScreen = local.LocalDeviceEnrollmentScreen(
         onChooseAccount: kRemoteAccountSignInEnabled
-            ? () => setState(() => _accountMode = true)
+            ? () => _chooseAccount()
+            : null,
+        onCreateAccount: kD1PreviewAuthChoices &&
+                kRemoteAccountEnrollmentEnabled
+            ? () => _chooseAccount(signup: true)
             : null,
       );
       if (!kW01RevocationProbeEnabled) return localScreen;
@@ -136,7 +154,10 @@ class _LoginScreenState extends State<LoginScreen> {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
                 key: const Key('d30-return-local'),
-                onPressed: () => setState(() => _accountMode = false),
+                onPressed: () => setState(() {
+                  _accountMode = false;
+                  _openSignupOnEntry = false;
+                }),
                 icon: const Icon(Icons.arrow_back_rounded),
                 label: Text(backText),
               ),
@@ -147,9 +168,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: locale == 'fr'
               ? certified_fr.LoginScreen(
                   syntheticLoginOnly: !kRemoteAccountEnrollmentEnabled,
+                  openSignupImmediately: _openSignupOnEntry,
                 )
               : mena.LoginScreen(
                   syntheticLoginOnly: !kRemoteAccountEnrollmentEnabled,
+                  openSignupImmediately: _openSignupOnEntry,
                 ),
         ),
       ],
