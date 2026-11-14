@@ -1,0 +1,54 @@
+name: D1 synthetic server receipt authority ledger (NO CLINICAL ISSUER)
+
+on:
+  pull_request:
+    branches: [fix/d1-p0-web-vault-fail-closed-20261113]
+    paths:
+      - '.github/workflows/d1-server-receipt-ledger-candidate.yml'
+      - 'backend/core/d1_receipt_authority_candidate.py'
+      - 'backend/core/tests/test_d1_receipt_authority_candidate.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-server-receipt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-issuer-ledger:
+    name: Two-instance atomic replay, rotation, revocation, rollback, audit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal pinned cryptography package (no Django / patient DB)
+        run: python -m pip install cryptography==44.0.3
+      - name: Verify exact HEAD and syntax
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          python -m py_compile backend/core/d1_receipt_authority_candidate.py backend/core/tests/test_d1_receipt_authority_candidate.py
+      - name: Run file-backed SQLite security regression suite
+        working-directory: backend
+        run: python -m unittest discover -s core/tests -p 'test_d1_receipt_authority_candidate.py' -v
+      - name: Verify no active production wiring in PR diff
+        env:
+          D1_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$D1_BASE_SHA"...HEAD)"
+          printf '%s\n' "$changed"
+          printf '%s\n' "$changed" | grep -Eq '^backend/core/d1_receipt_authority_candidate.py$'
+          if printf '%s\n' "$changed" | grep -Eq '^(backend/amina/urls.py|backend/amina/settings.py|backend/core/migrations/|frontend/lib/main.dart|backend/core/models.py)'; then
+            echo 'DENY: production wiring or DB migration in synthetic test PR'
+            exit 1
+          fi
