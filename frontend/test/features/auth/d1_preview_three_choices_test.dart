@@ -11,6 +11,16 @@ import 'package:provider/provider.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('D1 Preview refuses all real email domains before authentication transport', () {
+    expect(kD1PreviewAuthChoices, isTrue);
+    expect(d1PreviewEmailAllowed('synthetic-a@d1-preview.test'), isTrue);
+    expect(d1PreviewEmailAllowed('SYNTHETIC-B@D1-PREVIEW.TEST'), isTrue);
+    expect(d1PreviewEmailAllowed('person@gmail.com'), isFalse);
+    expect(d1PreviewEmailAllowed('person@iamina.com'), isFalse);
+    expect(d1PreviewEmailAllowed('patient@d1-preview.test.evil'), isFalse);
+    expect(d1PreviewEmailAllowed(''), isFalse);
+  }, skip: !kD1PreviewAuthChoices);
+
   for (final viewport in const [Size(390, 844), Size(768, 1024), Size(1280, 900)]) {
     testWidgets('D1 Preview: guest, native login and immediate signup at ${viewport.width}x${viewport.height}',
         (tester) async {
