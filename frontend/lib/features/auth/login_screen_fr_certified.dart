@@ -12,12 +12,26 @@ import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool syntheticLoginOnly;
-  const LoginScreen({super.key, this.syntheticLoginOnly = false});
+  final bool openSignupImmediately;
+  const LoginScreen({
+    super.key, this.syntheticLoginOnly = false,
+    this.openSignupImmediately = false,
+  });
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openSignupImmediately && !widget.syntheticLoginOnly) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handleSignup();
+      });
+    }
+  }
+
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
