@@ -1,7 +1,11 @@
 // D1 actual IAMINA schema/WebCrypto candidate only. Never a clinical GO.
-const {chromium} = require('playwright');
+const {chromium, webkit} = require('playwright');
+const webkitOnly = process.env.D1_BROWSER_ENGINE === 'webkit';
+const browserEngine = webkitOnly ? webkit : chromium;
 const fs = require('fs');
-const folder = 'd1-clinical-cipher-candidate-proof';
+const folder = webkitOnly
+  ? 'd1-webkit-encrypted-schema-proof'
+  : 'd1-clinical-cipher-candidate-proof';
 const sentinel = 'D1_SYNTHETIC_GLUCOSE_ONLY_735_XY';
 const names = [
   'iamina_d1_encrypted_vault_v1_amina_vault_v1_native_735',
@@ -52,8 +56,10 @@ function hasBytes(bytes, text) {
 (async()=>{
   fs.mkdirSync(folder,{recursive:true});
   const proof={scope:'real AppDatabase schema + synthetic owner-bound AES-GCM + SQLite3MC',
-    head:process.env.D1_CANDIDATE_SHA||'unknown',clinicalGo:false,result:'NOT_RUN'};
-  const browser=await chromium.launch({headless:true});
+    head:process.env.D1_CANDIDATE_SHA||'unknown',clinicalGo:false,
+    engine:webkitOnly ? 'Playwright WebKit' : 'Playwright Chromium',
+    result:'NOT_RUN'};
+  const browser=await browserEngine.launch({headless:true});
   try{
     const ctx=await browser.newContext({viewport:{width:1280,height:900},locale:'en-US',serviceWorkers:'block'});
     const page=await ctx.newPage();

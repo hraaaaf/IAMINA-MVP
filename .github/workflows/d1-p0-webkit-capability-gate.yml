@@ -7,6 +7,9 @@ on:
       - '.github/workflows/d1-p0-webkit-capability-gate.yml'
       - 'tools/d1_webkit_capability_gate_browser.js'
       - 'frontend/web/d1_vault_crypto_candidate.js'
+      - 'frontend/tool/d1_clinical_cipher_candidate_probe.dart'
+      - 'frontend/lib/data/drift/web_patient_vault_cipher_candidate.dart'
+      - 'tools/d1_clinical_cipher_candidate_browser.js'
   workflow_dispatch:
 
 permissions:
@@ -20,7 +23,7 @@ jobs:
   webkit-synthetic-safe-gate:
     name: Playwright WebKit native WebCrypto and same-origin locks
     runs-on: ubuntu-latest
-    timeout-minutes: 24
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,6 +50,36 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7476/ >/dev/null
           node tools/d1_webkit_capability_gate_browser.js
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Build actual encrypted AppDatabase schema in disposable WebKit fixture
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t tool/d1_clinical_cipher_candidate_probe.dart
+      - name: Vendor SHA-pinned authenticated SQLite3MC WASM
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' -o frontend/build/web/sqlite3mc.wasm
+          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
+      - name: Real WebKit encrypted schema, recovery, isolation, bytes and revocation
+        shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          D1_BROWSER_ENGINE: webkit
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          python3 -m http.server 7474 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d1-webkit-schema-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7474/ >/dev/null
+          node tools/d1_clinical_cipher_candidate_browser.js
       - name: Preserve synthetic WebKit evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,6 +87,8 @@ jobs:
           name: d1-webkit-safe-capability-no-clinical-go
           path: |
             d1-webkit-capability-proof/*
+            d1-webkit-encrypted-schema-proof/*
+            /tmp/d1-webkit-schema-http.log
             /tmp/d1-webkit-gate.log
           if-no-files-found: warn
           retention-days: 7
