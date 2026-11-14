@@ -8,11 +8,13 @@ import '../core/theme/app_theme.dart';
 class WebPatientVaultSafeHold extends StatelessWidget {
   final Locale locale;
   final VoidCallback onSignOut;
+  final bool guestPreviewSession;
 
   const WebPatientVaultSafeHold({
     super.key,
     required this.locale,
     required this.onSignOut,
+    this.guestPreviewSession = false,
   });
 
   @override
@@ -44,7 +46,11 @@ class WebPatientVaultSafeHold extends StatelessWidget {
       'ar' => 'لا تُعرض أي بيانات طبية هنا.',
       _ => 'No medical data is shown on this screen.',
     };
-    final action = switch (language) {
+    final action = guestPreviewSession ? switch (language) {
+      'fr' => 'Quitter le mode invité',
+      'ar' => 'مغادرة وضع الضيف',
+      _ => 'Leave guest mode',
+    } : switch (language) {
       'fr' => 'Se déconnecter',
       'ar' => 'تسجيل الخروج',
       _ => 'Sign out',
