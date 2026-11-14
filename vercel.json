@@ -1,1 +1,29 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","buildCommand":"cd frontend && bash vercel_build.sh","outputDirectory":"frontend/build/web","git":{"deploymentEnabled":false},"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && bash vercel_d1_unified_synthetic_preview.sh",
+  "outputDirectory": "frontend/build/web",
+  "git": {
+    "deploymentEnabled": false
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ]
+}
