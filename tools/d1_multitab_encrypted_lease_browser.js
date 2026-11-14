@@ -47,12 +47,33 @@ async function expectDenied(page, scope, reason) {
     }
   }, {id:scope, reason});
 }
-async function awaitProbe(page) {
-  await page.waitForFunction(() => {
-    const text = document.body?.textContent || '';
-    return text.includes('"scope":"synthetic AppDatabase schema + WebCrypto + sqlite3mc"') &&
-      (text.includes('"ok":') || text.includes('"error":'));
-  }, null, {timeout:60000});
+async function awaitProbe(page, stage) {
+  const pageErrors = [];
+  page.on('pageerror', e => pageErrors.push(String(e.stack || e).slice(0, 1800)));
+  try {
+    await page.waitForFunction(() => {
+      const text = document.body?.textContent || '';
+      return text.includes('"scope":"synthetic AppDatabase schema + WebCrypto + sqlite3mc"') &&
+        (text.includes('"ok":') || text.includes('"error":'));
+    }, null, {timeout:25000});
+  } catch (error) {
+    const diagnostics = await page.evaluate(async () => ({
+      url: location.href,
+      readyState: document.readyState,
+      bodyText: (document.body?.textContent || '').slice(0, 2500),
+      html: document.documentElement.outerHTML.slice(0, 1200),
+      scripts: [...document.scripts].map(s => s.src.slice(-100)),
+      cryptoLoaded: !!globalThis.IaminaD1CryptoCandidate,
+      flutterViews: document.querySelectorAll('flutter-view, flt-glass-pane').length,
+      dbNames: typeof indexedDB.databases === 'function'
+        ? (await indexedDB.databases()).map(d => d.name) : ['not-supported'],
+    })).catch(e => ({diagnosticFailure: String(e)}));
+    proof[stage+'Diagnostics'] = {...diagnostics, pageErrors};
+    await page.screenshot({path:folder+'/'+stage+'-timeout.png'}).catch(()=>{});
+    throw Error('D1 '+stage+' actual Flutter probe did not finish: '+
+      JSON.stringify(proof[stage+'Diagnostics']).slice(0, 2300)+
+      ' / '+String(error));
+  }
   const body = await page.locator('body').innerText();
   return JSON.parse(body.slice(body.indexOf('{"scope"')));
 }
@@ -98,7 +119,7 @@ async function awaitProbe(page) {
 
       const probePage = await ctx.newPage();
       await probePage.goto(origin+'/', {waitUntil:'domcontentloaded'});
-      const rejected = await awaitProbe(probePage);
+      const rejected = await awaitProbe(probePage, 'locked');
       proof.actualCipherEnrollmentRejectedWhileLocked =
           rejected.ok === false &&
           String(rejected.error).includes('D1_VAULT_TAB_BUSY');
@@ -116,7 +137,7 @@ async function awaitProbe(page) {
       await release(second, owner,reopened);
 
       await probePage.goto(origin+'/', {waitUntil:'domcontentloaded'});
-      const admitted = await awaitProbe(probePage);
+      const admitted = await awaitProbe(probePage, 'released');
       proof.actualCipherPassAfterRelease = admitted.ok === true;
       assure(proof.actualCipherPassAfterRelease,
           'real encrypted candidate must recover after release: '+JSON.stringify(admitted).slice(0,800));
