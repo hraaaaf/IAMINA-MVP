@@ -296,6 +296,11 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
         locale: widget.locale.locale,
         home: WebPatientVaultSafeHold(
           locale: widget.locale.locale,
+          // Only in synthetic Preview, local device enrollment is a guest
+          // session and must not be presented as a verified remote account.
+          guestPreviewSession: const bool.fromEnvironment(
+                'IAMINA_D1_PREVIEW_AUTH_CHOICES', defaultValue: false,
+              ) && !widget.auth.hasRemoteApiCredential,
           onSignOut: () => unawaited(widget.auth.signOut()),
         ),
       );
