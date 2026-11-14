@@ -1,0 +1,75 @@
+name: D1 PostgreSQL16 signed receipt and replay ledger (CI ONLY)
+
+on:
+  pull_request:
+    branches: [test/d1-server-receipt-ledger-synthetic-20261114]
+    paths:
+      - '.github/workflows/d1-pg-signed-receipt-rehearsal.yml'
+      - 'backend/core/contracts/d1_pg_receipt_rehearsal.sql'
+      - 'backend/core/d1_pg_signed_receipt_candidate.py'
+      - 'backend/core/tests/test_d1_pg_signed_receipt_candidate.py'
+      - 'backend/core/d1_receipt_authority_candidate.py'
+      - 'backend/core/tests/test_d1_receipt_authority_candidate.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-pg-receipt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgresql-receipt-security:
+    name: PG16 signature, anti-replay, revocation and audit atomicity (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: d1_ci
+          POSTGRES_PASSWORD: ci-only-ephemeral
+          POSTGRES_DB: iamina_d1_receipt_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U d1_ci -d iamina_d1_receipt_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: ci-only-ephemeral
+      D1_PG_TEST_DSN: "dbname=iamina_d1_receipt_ci host=127.0.0.1 port=5432 user=d1_ci password=ci-only-ephemeral"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact PR head and only non-routed test files
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          D1_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          git diff --name-only "$D1_BASE_SHA"...HEAD | tee /tmp/d1-pg-files.txt
+          if grep -vE '^(.github/workflows/d1-pg-signed-receipt-rehearsal.yml|backend/core/contracts/d1_pg_receipt_rehearsal.sql|backend/core/d1_pg_signed_receipt_candidate.py|backend/core/tests/test_d1_pg_signed_receipt_candidate.py)$' /tmp/d1-pg-files.txt; then
+            echo "DENY: code outside dormant PG rehearsal"; exit 1
+          fi
+          test "$(wc -l </tmp/d1-pg-files.txt)" = 4
+      - name: Install isolated test-only Python crypto and PostgreSQL driver
+        run: python -m pip install cryptography==44.0.3 psycopg2-binary==2.9.10
+      - name: Verify all test scripts compile
+        run: |
+          python -m py_compile backend/core/d1_receipt_authority_candidate.py backend/core/d1_pg_signed_receipt_candidate.py backend/core/tests/test_d1_pg_signed_receipt_candidate.py
+      - name: Apply NON-PRODUCTION SQL schema to disposable PostgreSQL service
+        run: |
+          psql -h 127.0.0.1 -U d1_ci -d iamina_d1_receipt_ci -v ON_ERROR_STOP=1 -f backend/core/contracts/d1_pg_receipt_rehearsal.sql
+      - name: Run isolated PostgreSQL16 cryptographic security proof
+        working-directory: backend
+        run: python -m unittest discover -s core/tests -p 'test_d1_pg_signed_receipt_candidate.py' -v
+      - name: Recheck original SQLite prototype without regression
+        working-directory: backend
+        run: python -m unittest discover -s core/tests -p 'test_d1_receipt_authority_candidate.py' -v
