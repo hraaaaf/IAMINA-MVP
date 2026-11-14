@@ -20,6 +20,7 @@ Future<void> main() async {
     'result': 'NOT_RUN',
   };
   WebVaultKey? activeKey;
+  String? ciRaceRecovery;
   try {
     if (phase == 'source') {
       final enrolled = await candidate.enrollEmptyScope(scope);
@@ -37,6 +38,9 @@ Future<void> main() async {
       }
       // Test-only handoff; never put real clinical keys into web storage.
       html.window.sessionStorage['d1_fixture_recovery'] = enrolled.recoveryCode;
+      if (Uri.base.queryParameters['race'] == '1') {
+        ciRaceRecovery = enrolled.recoveryCode;
+      }
       result['result'] = 'SOURCE_READY';
     } else if (phase == 'target') {
       final proceed = html.ButtonElement()
@@ -77,5 +81,41 @@ Future<void> main() async {
   } finally {
     activeKey?.retire();
     html.document.body?.text = jsonEncode(result);
+    // CI-only source mutation with the ACTUAL encrypted Drift/SQLite3MC
+    // opener. This is intentionally not part of any patient application.
+    final recovery = ciRaceRecovery;
+    if (phase == 'source' &&
+        Uri.base.queryParameters['race'] == '1' &&
+        result['result'] == 'SOURCE_READY' &&
+        recovery != null) {
+      final writerTrigger = html.ButtonElement()
+        ..id = 'd1-synthetic-encrypted-write-after-backup'
+        ..text = 'CI synthetic encrypted writer';
+      html.document.body?.append(writerTrigger);
+      writerTrigger.onClick.listen((_) async {
+        WebVaultKey? writerKey;
+        try {
+          html.window.localStorage['d1_synthetic_race_state'] = 'STARTED';
+          writerKey = await candidate.unlock(scope, recovery);
+          final writer = await candidate.openCandidateDatabase(scope, writerKey);
+          try {
+            await writer.customStatement(
+              'INSERT INTO log_entries (created_at, blood_sugar, client_uuid) '
+              'VALUES (?, ?, ?)',
+              [DateTime.utc(2026, 11, 14).millisecondsSinceEpoch ~/ 1000,
+                152.0, 'D1_SYNTHETIC_CONCURRENT_CIPHER_WRITER_755'],
+            );
+          } finally {
+            await writer.close();
+          }
+          html.window.localStorage['d1_synthetic_race_state'] = 'COMMITTED';
+        } catch (error) {
+          html.window.localStorage['d1_synthetic_race_state'] =
+              'FAILED:' + error.toString();
+        } finally {
+          writerKey?.retire();
+        }
+      });
+    }
   }
 }
