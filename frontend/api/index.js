@@ -66,6 +66,14 @@ async function proxy(req, res, options = {}) {
     fail(res, 400, 'Invalid API path');
     return;
   }
+  // Only synthetic identity endpoints are allowed on the D2 test branch;
+  // never proxy a profile, patient, sync, consent or AI endpoint.
+  if (env.VERCEL_GIT_COMMIT_REF === 'feat/d2-guest-bootstrap-no-db-20261114' &&
+      !new Set(['auth/login', 'auth/register', 'auth/logout']).has(relativePath)) {
+    fail(res, 404, 'D2 Preview identity-only endpoint');
+    return;
+  }
+
   // Never accept client-supplied destination URLs or follow redirects. The
   // only outbound host is the exact immutable synthetic Preview API.
   const target = new URL(`/api/v1/${relativePath}`, `${origin}/`);

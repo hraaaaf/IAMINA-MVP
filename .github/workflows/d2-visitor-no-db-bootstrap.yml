@@ -1,0 +1,85 @@
+name: D2 visitor no-DB bootstrap — synthetic, no deploy
+
+on:
+  pull_request:
+    branches: [preview/d1-unified-synthetic-safehold-20261114]
+    paths:
+      - .github/workflows/d2-visitor-no-db-bootstrap.yml
+      - frontend/lib/main.dart
+      - frontend/lib/services/d2_guest_runtime.dart
+      - frontend/lib/features/navigation/d2_guest_shell.dart
+      - frontend/test/services/d2_guest_runtime_test.dart
+      - frontend/vercel_build.sh
+      - frontend/vercel_d2_guest_no_db_preview.sh
+      - frontend/api/index.js
+      - frontend/test/d2_preview_bff_policy.test.js
+      - frontend/test/features/navigation/d2_guest_shell_test.dart
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d2-visitor-no-db-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guest-boundary:
+    name: D2 widget, bootstrap and negative boundary tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Exact HEAD
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+      - name: Scoped Dart analyze
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/main.dart lib/services/d2_guest_runtime.dart \
+            lib/features/navigation/d2_guest_shell.dart \
+            test/services/d2_guest_runtime_test.dart \
+            test/features/navigation/d2_guest_shell_test.dart
+      - name: D2 DB-free guest shell and auth gate
+        working-directory: frontend
+        run: |
+          flutter test --no-pub \
+            test/features/navigation/d2_guest_shell_test.dart \
+            test/services/d2_guest_runtime_test.dart
+      - name: Synthetic-only signup, logout and login with in-memory HTTP
+        working-directory: frontend
+        run: |
+          flutter test --no-pub \
+            --dart-define=IAMINA_D1_PREVIEW_AUTH_CHOICES=true \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true \
+            test/services/d2_guest_runtime_test.dart
+      - name: D2 dedicated build and identity-only BFF policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n frontend/vercel_build.sh
+          bash -n frontend/vercel_d2_guest_no_db_preview.sh
+          node --test frontend/test/d2_preview_bff_policy.test.js
+          grep -q 'IAMINA_D2_GUEST_NO_DB=true' frontend/vercel_d2_guest_no_db_preview.sh
+      - name: No new Vercel deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"deploymentEnabled":false' vercel.json
+          grep -q 'deploymentEnabled": false' frontend/vercel.json
+          ! grep -q 'IAMINA_D2_GUEST_NO_DB=true' frontend/vercel_build.sh
+          ! grep -q 'IAMINA_D2_GUEST_NO_DB=true' frontend/vercel_d1_unified_synthetic_preview.sh

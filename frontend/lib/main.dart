@@ -16,6 +16,7 @@ import 'services/app_lock_protected_state_policy.dart';
 import 'services/app_lock_service.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
+import 'services/d2_guest_runtime.dart';
 import 'services/firebase_migration_policy.dart';
 import 'services/medical_vault_protected_state.dart';
 import 'services/locale_preference_service.dart';
@@ -56,6 +57,29 @@ Future<void> main() async {
   final authService = AuthService();
   await authService.initialize();
   if (auditAllowed) authService.enterAuditSession();
+
+  // D2 Preview opt-in: mount the visitor shell BEFORE any legacy or patient
+  // AppDatabase constructor, locale profile request, API client or sync service.
+  // Requires synthetic-only D1 Preview credentials and disabled Firebase.
+  // Never enable by default; patient Web vault remains fail-closed.
+  if (kIsWeb && kD2GuestNoDatabasePreview) {
+    // A partially configured Preview MUST NOT fall through to the patient
+    // bootstrap. Always refuse before touching any clinical database.
+    if (!kD1PreviewOnlySyntheticAccounts ||
+        kFirebaseMigrationEnabled ||
+        auditAllowed) {
+      runApp(const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('D2 Preview unavailable: synthetic-only configuration required.'),
+          ),
+        ),
+      ));
+      return;
+    }
+    runApp(D2GuestRuntime(auth: authService));
+    return;
+  }
 
   // D1 P0: production Web MUST NOT open the historic unscoped 'amina'
   // store even as a presence probe. A Drift read can create or migrate SQL
