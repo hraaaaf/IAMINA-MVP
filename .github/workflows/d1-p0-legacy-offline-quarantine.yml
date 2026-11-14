@@ -9,6 +9,7 @@ on:
       - 'frontend/tool/d1_legacy_offline_quarantine_probe.dart'
       - 'frontend/web/d1_vault_crypto_candidate.js'
       - 'tools/d1_legacy_offline_quarantine_browser.js'
+      - 'tools/d1_installed_pwa_offline_writer_browser.js'
   workflow_dispatch:
 
 permissions:
@@ -69,6 +70,7 @@ jobs:
           curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
             http://127.0.0.1:7475/ >/dev/null
           node tools/d1_legacy_offline_quarantine_browser.js
+          node tools/d1_installed_pwa_offline_writer_browser.js
       - name: Preserve synthetic evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,5 +78,6 @@ jobs:
           name: d1-legacy-offline-quarantine-evidence
           path: |
             d1-legacy-offline-quarantine-proof/*
+            d1-installed-pwa-offline-proof/*
             /tmp/d1-legacy-offline-http.log
           retention-days: 7
