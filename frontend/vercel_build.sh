@@ -6,6 +6,10 @@ set -euo pipefail
 if [[ "${VERCEL_GIT_COMMIT_REF:-}" == "preview/d1-unified-synthetic-safehold-20261114" ]]; then
   exec bash vercel_d1_unified_synthetic_preview.sh
 fi
+# Dedicated D2 DB-free visitor Preview. No other branch receives this mode.
+if [[ "${VERCEL_GIT_COMMIT_REF:-}" == "feat/d2-guest-bootstrap-no-db-20261114" ]]; then
+  exec bash vercel_d2_guest_no_db_preview.sh
+fi
 
 FLUTTER_VERSION="3.41.0"
 FLUTTER_DIR="/tmp/flutter-$FLUTTER_VERSION"

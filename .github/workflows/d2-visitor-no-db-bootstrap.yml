@@ -9,6 +9,10 @@ on:
       - frontend/lib/services/d2_guest_runtime.dart
       - frontend/lib/features/navigation/d2_guest_shell.dart
       - frontend/test/services/d2_guest_runtime_test.dart
+      - frontend/vercel_build.sh
+      - frontend/vercel_d2_guest_no_db_preview.sh
+      - frontend/api/index.js
+      - frontend/test/d2_preview_bff_policy.test.js
       - frontend/test/features/navigation/d2_guest_shell_test.dart
   workflow_dispatch:
 
@@ -63,6 +67,14 @@ jobs:
             --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true \
             --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true \
             test/services/d2_guest_runtime_test.dart
+      - name: D2 dedicated build and identity-only BFF policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n frontend/vercel_build.sh
+          bash -n frontend/vercel_d2_guest_no_db_preview.sh
+          node --test frontend/test/d2_preview_bff_policy.test.js
+          grep -q 'IAMINA_D2_GUEST_NO_DB=true' frontend/vercel_d2_guest_no_db_preview.sh
       - name: No new Vercel deployment
         shell: bash
         run: |
