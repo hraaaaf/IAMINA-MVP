@@ -1,9 +1,21 @@
 """Strict branch-and-email allowlist for ephemeral D1 Preview signup."""
+import ast
 import os
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from core.api.v1.auth import _native_registration_allowed_in_environment as allowed
+# Compile the exact production predicate node with stdlib only. This avoids
+# importing Django routes or a clinical DB during an isolated CI policy test.
+source=Path(__file__).resolve().parents[1] / "api" / "v1" / "auth.py"
+tree=ast.parse(source.read_text(encoding="utf-8"))
+functions=[n for n in tree.body if isinstance(n,ast.FunctionDef) and
+           n.name=="_native_registration_allowed_in_environment"]
+assert len(functions)==1
+ns={"os":os}
+exec(compile(ast.Module(body=functions,type_ignores=[]),str(source),"exec"),ns)
+allowed=ns["_native_registration_allowed_in_environment"]
+assert "data.email" in source.read_text(encoding="utf-8")
 
 LAB="preview/d1-test-accounts-backend-20261114"
 class TestD1PreviewRegistration(TestCase):
