@@ -62,11 +62,21 @@ Future<void> main() async {
   // AppDatabase constructor, locale profile request, API client or sync service.
   // Requires synthetic-only D1 Preview credentials and disabled Firebase.
   // Never enable by default; patient Web vault remains fail-closed.
-  if (kIsWeb &&
-      kD2GuestNoDatabasePreview &&
-      kD1PreviewOnlySyntheticAccounts &&
-      !kFirebaseMigrationEnabled &&
-      !auditAllowed) {
+  if (kIsWeb && kD2GuestNoDatabasePreview) {
+    // A partially configured Preview MUST NOT fall through to the patient
+    // bootstrap. Always refuse before touching any clinical database.
+    if (!kD1PreviewOnlySyntheticAccounts ||
+        kFirebaseMigrationEnabled ||
+        auditAllowed) {
+      runApp(const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('D2 Preview unavailable: synthetic-only configuration required.'),
+          ),
+        ),
+      ));
+      return;
+    }
     runApp(D2GuestRuntime(auth: authService));
     return;
   }

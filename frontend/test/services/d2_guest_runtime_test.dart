@@ -24,9 +24,12 @@ void main() {
     expect(guest, lessThan(legacy));
     expect(guest, lessThan(controller));
     expect(guest, lessThan(locale));
-    expect(source.contains('kD2GuestNoDatabasePreview &&'), isTrue);
-    expect(source.contains('kD1PreviewOnlySyntheticAccounts &&'), isTrue);
-    expect(source.contains('!kFirebaseMigrationEnabled &&'), isTrue);
+    expect(source.contains('if (kIsWeb && kD2GuestNoDatabasePreview)'), isTrue);
+    expect(source.contains('!kD1PreviewOnlySyntheticAccounts ||'), isTrue);
+    expect(source.contains('kFirebaseMigrationEnabled ||'), isTrue);
+    final denied = source.indexOf('D2 Preview unavailable: synthetic-only');
+    expect(denied, greaterThan(0));
+    expect(denied, lessThan(legacy));
   });
 
   test('D2 guest runtime and shell have no clinical database imports', () {
