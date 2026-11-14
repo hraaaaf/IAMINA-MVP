@@ -17,6 +17,7 @@ import re
 import secrets
 import sqlite3
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -98,11 +99,15 @@ class SyntheticReceiptLedger:
         self._signers: dict[str, Ed25519PrivateKey] = {}
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
         conn = sqlite3.connect(self.db_path, timeout=10, isolation_level=None)
-        conn.execute("PRAGMA busy_timeout=10000")
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+        try:
+            conn.execute("PRAGMA busy_timeout=10000")
+            conn.execute("PRAGMA foreign_keys=ON")
+            yield conn
+        finally:
+            conn.close()
 
     def _initialize(self) -> None:
         with self._connect() as conn:
