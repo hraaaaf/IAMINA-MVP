@@ -15,7 +15,7 @@ function check(value,label){if(!value)throw Error('J1 ASSERT: '+label);}
 async function invoke(page,fun,arg){
   return page.evaluate(fun,arg);
 }
-async function inventoryAndBackup(page){
+async function inventoryAndBackup(page,selectedNames=names){
   return invoke(page,async names=>{
     function request(req){return new Promise((resolve,reject)=>{
       req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
@@ -96,10 +96,10 @@ async function inventoryAndBackup(page){
     const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(serial));
     const sha256=Array.from(new Uint8Array(hash)).map(x=>x.toString(16).padStart(2,'0')).join('');
     return {payload,sha256};
-  },names);
+  },selectedNames);
 }
-async function restore(page,archive){
-  return invoke(page,async archive=>{
+async function restore(page,archive,options={}){
+  return invoke(page,async ({archive,options})=>{
     const sha=async x=>{
       const buf=await crypto.subtle.digest('SHA-256',
         new TextEncoder().encode(JSON.stringify(x)));
@@ -177,9 +177,12 @@ async function restore(page,archive){
           });
         }
       }finally{db.close();}
+      if(options.simulateAbortAfterDatabase===databases.indexOf(saved)+1){
+        throw Error('J1_SIMULATED_POWER_LOSS_STAGED_PARTIAL');
+      }
     }
     return true;
-  },archive);
+  },{archive,options});
 }
 async function fixture(page){
   return invoke(page,async names=>{
@@ -215,6 +218,7 @@ async function fixture(page){
     return true;
   },names);
 }
+if(require.main===module){
 (async()=>{
  fs.mkdirSync(dir,{recursive:true});
  const browser=await chromium.launch({headless:true});
@@ -267,3 +271,5 @@ async function fixture(page){
   await browser.close();
  }
 })().catch(()=>{process.exitCode=1;});
+}
+module.exports={inventoryAndBackup,restore,fixture,names};
