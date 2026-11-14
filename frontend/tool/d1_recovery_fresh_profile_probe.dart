@@ -66,12 +66,25 @@ Future<void> main() async {
         ).get();
         result['restoredOriginalRecord'] = rows.length == 1 &&
             rows.single.read<String>('client_uuid') == marker;
+        if (Uri.base.queryParameters['race'] == '1') {
+          final concurrentRows = await db.customSelect(
+            'SELECT client_uuid FROM log_entries WHERE blood_sugar = 152.0',
+          ).get();
+          result['concurrentSqlWriteRecovered'] =
+              concurrentRows.length == 1 &&
+              concurrentRows.single.read<String>('client_uuid') ==
+                  'D1_SYNTHETIC_CONCURRENT_CIPHER_WRITER_755';
+        }
       } finally {
         await db.close();
       }
       result['wrongRecoveryRejected'] = wrongRejected;
       result['result'] = result['restoredOriginalRecord'] == true &&
-          wrongRejected ? 'PASS' : 'FAIL';
+          wrongRejected &&
+          (Uri.base.queryParameters['race'] != '1' ||
+              result['concurrentSqlWriteRecovered'] == true)
+          ? 'PASS'
+          : 'FAIL';
     } else {
       throw StateError('unknown_ci_fixture_phase');
     }
