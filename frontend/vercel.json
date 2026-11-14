@@ -1,17 +1,28 @@
 {
-  "buildCommand": "bash vercel_build.sh",
+  "buildCommand": "bash vercel_d1_unified_synthetic_preview.sh",
   "outputDirectory": "build/web",
   "git": {
     "deploymentEnabled": false
   },
   "rewrites": [
     {
-      "source": "/api/v1/:path*",
-      "destination": "/api/index.js?forward=:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
     }
   ]
 }
