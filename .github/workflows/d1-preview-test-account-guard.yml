@@ -1,0 +1,46 @@
+name: D1 Preview synthetic signup boundary — no patient or deploy
+
+on:
+  pull_request:
+    branches: [fix/d2-main-integrated-20261109]
+    paths:
+      - backend/core/api/v1/auth.py
+      - backend/core/tests/test_d1_preview_synthetic_registration.py
+      - .github/workflows/d1-preview-test-account-guard.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-preview-auth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview-only-registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check exact PR HEAD and restricted diff scope
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          git diff --name-only "$BASE_SHA"...HEAD > /tmp/d1-preview-auth-files
+          cat /tmp/d1-preview-auth-files
+          if grep -vE '^(backend/core/api/v1/auth.py|backend/core/tests/test_d1_preview_synthetic_registration.py|.github/workflows/d1-preview-test-account-guard.yml)$' /tmp/d1-preview-auth-files; then
+            echo "DENY unexpected clinical scope"; exit 1
+          fi
+      - name: Syntax and isolated registration allowlist tests
+        run: |
+          python -m py_compile backend/core/api/v1/auth.py backend/core/tests/test_d1_preview_synthetic_registration.py
+          python -m unittest discover -s backend/core/tests -p 'test_d1_preview_synthetic_registration.py' -v
