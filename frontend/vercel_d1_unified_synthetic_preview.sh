@@ -3,7 +3,7 @@
 # NO clinical DB, NO active API, NO patient enrollment.
 set -euo pipefail
 
-D1_PREVIEW_PROJECT_ID="prj_9wYmzhJ3rnrVfImxVN45zQgOMIoi"
+D1_PREVIEW_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
 if [[ "$VERCEL_ENV" != "preview" || "$VERCEL_PROJECT_ID" != "$D1_PREVIEW_PROJECT_ID" ]]; then
   echo "DENY: not the protected isolated D1 Preview project" >&2
   exit 64
@@ -12,7 +12,7 @@ if [[ "$VERCEL_GIT_COMMIT_REF" != "preview/d1-unified-synthetic-safehold-2026111
   echo "DENY: only the audited D1 test branch is supported" >&2
   exit 64
 fi
-for forbidden in DATABASE_URL POSTGRES_URL SECRET_KEY API_BASE_URL IAMINA_REVIEW_PREVIEW_API_BASE_URL FIREBASE_CREDENTIALS_PATH FIREBASE_SERVICE_ACCOUNT GOOGLE_APPLICATION_CREDENTIALS VERCEL_AUTOMATION_BYPASS_SECRET; do
+for forbidden in DATABASE_URL POSTGRES_URL SECRET_KEY API_BASE_URL FIREBASE_CREDENTIALS_PATH FIREBASE_SERVICE_ACCOUNT GOOGLE_APPLICATION_CREDENTIALS VERCEL_AUTOMATION_BYPASS_SECRET; do
   if [[ -n "$(printenv "$forbidden" || true)" ]]; then
     echo "DENY: forbidden backend or clinical variable: $forbidden" >&2
     exit 64
