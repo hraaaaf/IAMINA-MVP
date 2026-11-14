@@ -138,24 +138,36 @@ def _open_session(request, user: User, *, method: str) -> None:
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
 
 
-def _native_registration_allowed_in_environment() -> bool:
-    """Deny native account creation on hosted Preview unless explicitly opted in.
+def _native_registration_allowed_in_environment(email: str = "") -> bool:
+    """Never permit general public sign-ups on hosted Preview.
 
-    VERCEL_ENV is the hosting source of truth; IAMINA_ENV also protects
-    preview-like local/rehearsal runtimes. Production remains unchanged.
+    D1 exception is restricted to an immutable, explicitly configured
+    Preview branch AND synthetic-only RFC 2606 .test addresses. Production
+    retains the original registration policy, unchanged.
     """
     preview = (
         os.environ.get("VERCEL_ENV", "").strip().lower() == "preview"
         or os.environ.get("IAMINA_ENV", "").strip().lower() == "preview"
     )
-    return not preview or os.environ.get("IAMINA_PREVIEW_ALLOW_REGISTRATION") == "true"
+    if not preview:
+        return True
+    return (
+        os.environ.get("VERCEL_ENV") == "preview"
+        and os.environ.get("VERCEL_GIT_COMMIT_REF")
+            == "preview/d1-test-accounts-backend-20261114"
+        and os.environ.get("IAMINA_PREVIEW_ALLOW_REGISTRATION") == "true"
+        and isinstance(email, str)
+        and len(email) <= 254
+        and email.endswith("@d1-preview.test")
+        and len(email.partition("@")[0]) > 0
+    )
 
 
 @router.post("/auth/register", response=AuthResponse)
 @transaction.atomic
 def register_native(request, data: NativeRegisterRequest):
     """Create a sovereign Django identity without fabricating patient facts."""
-    if not _native_registration_allowed_in_environment():
+    if not _native_registration_allowed_in_environment(data.email):
         raise HttpError(403, "Registration disabled in synthetic Preview")
     if User.objects.filter(email__iexact=data.email).exists():
         raise HttpError(409, "Account already exists")
