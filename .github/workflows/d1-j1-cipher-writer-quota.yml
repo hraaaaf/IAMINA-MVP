@@ -1,0 +1,84 @@
+name: D1 J1 encrypted SQLite3MC source writer and quota-abort gate (SYNTHETIC)
+
+on:
+  pull_request:
+    branches: [test/d1-j1-physical-cipher-failure-proof-20261114]
+    paths:
+      - '.github/workflows/d1-j1-cipher-writer-quota.yml'
+      - 'frontend/tool/d1_recovery_fresh_profile_probe.dart'
+      - 'tools/d1_j1_physical_cipher_backup_failure_browser.js'
+      - 'tools/d1_j1_cipher_writer_quota_browser.js'
+      - 'tools/d1_j1_real_chromium_quota_browser.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-j1-writer-quota-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sqlite3mc-write-race:
+    name: Real Flutter SQL write during source snapshot, staged quota-like abort
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Install Flutter dependencies and analyze synthetic writer
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos tool/d1_recovery_fresh_profile_probe.dart
+      - name: Compile actual encrypted Flutter SQLite3MC synthetic source/target
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t tool/d1_recovery_fresh_profile_probe.dart
+      - name: Vendor checksum-pinned sqlite3mc into throwaway browser build
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' -o frontend/build/web/sqlite3mc.wasm
+          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify JS syntax and pinned Chromium
+        run: |
+          node --check tools/d1_j1_physical_cipher_backup_failure_browser.js
+          node --check tools/d1_j1_cipher_writer_quota_browser.js
+          node --check tools/d1_j1_real_chromium_quota_browser.js
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Run physical backup baseline and uncooperative-writer adversarial test
+        shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          python3 -m http.server 7476 --bind 127.0.0.1 --directory frontend/build/web >/tmp/d1-j1-writer-quota-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7476/ >/dev/null
+          node tools/d1_j1_physical_cipher_backup_failure_browser.js
+          node tools/d1_j1_cipher_writer_quota_browser.js
+          node tools/d1_j1_real_chromium_quota_browser.js
+      - name: Preserve only synthetic metadata (never backup or code)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-j1-encrypted-writer-quota-evidence
+          path: |
+            d1-j1-physical-cipher-crash-proof/proof.json
+            d1-j1-physical-writer-quota-proof/proof.json
+            d1-j1-real-browser-quota-proof/proof.json
+            /tmp/d1-j1-writer-quota-http.log
+          retention-days: 7
+          if-no-files-found: warn
