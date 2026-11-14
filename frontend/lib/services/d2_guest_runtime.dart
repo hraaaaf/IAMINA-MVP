@@ -73,6 +73,7 @@ class _D2GuestRuntimeState extends State<D2GuestRuntime> {
     _password.clear();
     setState(() {
       _showAuth = false;
+      _createAccount = false;
       _pendingRoute = null;
       _error = null;
     });
@@ -119,6 +120,7 @@ class _D2GuestRuntimeState extends State<D2GuestRuntime> {
       setState(() {
         _confirmedRemote = true;
         _showAuth = false;
+        _createAccount = false;
       });
     } on AuthCredentialsRejected {
       if (mounted) {
@@ -154,6 +156,7 @@ class _D2GuestRuntimeState extends State<D2GuestRuntime> {
         _password.clear();
         setState(() {
           _confirmedRemote = false;
+          _createAccount = false;
           _pendingRoute = null;
           _showAuth = false;
           _busy = false;

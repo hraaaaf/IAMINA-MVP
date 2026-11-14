@@ -55,6 +55,14 @@ jobs:
           flutter test --no-pub \
             test/features/navigation/d2_guest_shell_test.dart \
             test/services/d2_guest_runtime_test.dart
+      - name: Synthetic-only signup, logout and login with in-memory HTTP
+        working-directory: frontend
+        run: |
+          flutter test --no-pub \
+            --dart-define=IAMINA_D1_PREVIEW_AUTH_CHOICES=true \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true \
+            --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true \
+            test/services/d2_guest_runtime_test.dart
       - name: No new Vercel deployment
         shell: bash
         run: |
