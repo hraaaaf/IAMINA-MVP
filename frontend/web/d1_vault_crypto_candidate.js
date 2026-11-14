@@ -38,6 +38,68 @@
       params(iv, owner), wrapping, decode(ciphertext));
     return encode(new Uint8Array(out));
   }
+  // D1 candidate: no browser-local token can substitute for origin-wide
+  // mutual exclusion. Web Locks serializes tabs and workers on this origin.
+  // This does NOT stop an already installed offline legacy PWA (which does
+  // not participate in this protocol).
+  const activeLeases = new Map();
+  const ownerPattern = /^amina_vault_v1_(native_[1-9][0-9]*|device_[0-9a-f]{32})$/;
+
+  async function acquireExclusiveLease(owner) {
+    if (typeof owner !== 'string' || !ownerPattern.test(owner)) {
+      throw Error('D1_VAULT_LOCK_OWNER_INVALID');
+    }
+    if (!globalThis.isSecureContext || !navigator.locks?.request ||
+        !crypto.randomUUID) {
+      throw Error('D1_VAULT_WEB_LOCKS_UNSUPPORTED');
+    }
+    let grant, deny;
+    const acquired = new Promise((resolve, reject) => {
+      grant = resolve;
+      deny = reject;
+    });
+    // Deliberately ifAvailable: no queued lock request may wake later with
+    // an unexpectedly stale authentication or recovery state.
+    let task;
+    try {
+      task = navigator.locks.request('iamina-d1-exclusive-v1-' + owner,
+        {mode: 'exclusive', ifAvailable: true}, (lock) => {
+          if (!lock) {
+            deny(Error('D1_VAULT_TAB_BUSY'));
+            return;
+          }
+          let unlock;
+          const held = new Promise(resolve => { unlock = resolve; });
+          const token = crypto.randomUUID();
+          activeLeases.set(token, {owner, unlock, done: null});
+          grant(token);
+          // Hold for the complete SQLite connection lifetime, not only
+          // while a SELECT/INSERT is running.
+          return held;
+        });
+      task.catch(deny);
+    } catch (error) {
+      deny(error);
+    }
+    const token = await acquired;
+    const record = activeLeases.get(token);
+    if (!record || !task) throw Error('D1_VAULT_TAB_LEASE_LOST');
+    record.done = task;
+    return token;
+  }
+
+  async function releaseExclusiveLease(owner, token) {
+    const record = activeLeases.get(token);
+    if (!record || record.owner !== owner) {
+      throw Error('D1_VAULT_LEASE_TOKEN_INVALID');
+    }
+    activeLeases.delete(token);
+    record.unlock();
+    // Wait for Web Locks to finish releasing before allowing re-enrollment.
+    await record.done;
+    return 'released';
+  }
+
   async function indexedDbNames() {
     if (typeof indexedDB.databases !== 'function') {
       throw Error('D1_INDEXEDDB_INVENTORY_UNSUPPORTED');
@@ -45,7 +107,8 @@
     return JSON.stringify((await indexedDB.databases()).map(x => x.name || ''));
   }
   Object.defineProperty(globalThis, 'IaminaD1CryptoCandidate', {
-    value: Object.freeze({encrypt, decrypt, indexedDbNames}),
+    value: Object.freeze({encrypt, decrypt, indexedDbNames,
+      acquireExclusiveLease, releaseExclusiveLease}),
     configurable: false, writable: false,
   });
 })();

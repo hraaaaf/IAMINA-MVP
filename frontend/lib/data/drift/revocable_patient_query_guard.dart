@@ -13,13 +13,16 @@ import 'package:flutter/foundation.dart';
 final class RevocablePatientQueryGuard extends QueryInterceptor {
   final bool Function() _authorized;
   final Listenable _revocationSignals;
+  final Future<void> Function()? _onClosed;
   bool _retired = false;
 
   RevocablePatientQueryGuard({
     required bool Function() authorized,
     required Listenable revocationSignals,
+    Future<void> Function()? onClosed,
   }) : _authorized = authorized,
-       _revocationSignals = revocationSignals {
+       _revocationSignals = revocationSignals,
+       _onClosed = onClosed {
     _revocationSignals.addListener(revoke);
   }
 
@@ -119,6 +122,11 @@ final class RevocablePatientQueryGuard extends QueryInterceptor {
   Future<void> close(QueryExecutor inner) async {
     revoke();
     // Even when revoked, closing must release resources and rollback safely.
-    await super.close(inner);
+    try {
+      await super.close(inner);
+    } finally {
+      final onClosed = _onClosed;
+      if (onClosed != null) await onClosed();
+    }
   }
 }

@@ -12,6 +12,7 @@ on:
       - 'frontend/tool/d1_clinical_cipher_candidate_probe.dart'
       - 'frontend/web/d1_vault_crypto_candidate.js'
       - 'tools/d1_clinical_cipher_candidate_browser.js'
+      - 'tools/d1_multitab_encrypted_lease_browser.js'
       - 'frontend/lib/data/drift/database.dart'
   workflow_dispatch:
 
@@ -74,6 +75,8 @@ jobs:
           curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
             http://127.0.0.1:7474/ > /dev/null
           node tools/d1_clinical_cipher_candidate_browser.js
+          printf '<!doctype html><meta charset="utf-8"><script src="/d1_vault_crypto_candidate.js"></script>' > frontend/build/web/d1-lease-fixture.html
+          node tools/d1_multitab_encrypted_lease_browser.js
       - name: Upload synthetic proof
         if: always()
         uses: actions/upload-artifact@v4
@@ -81,6 +84,7 @@ jobs:
           name: d1-web-real-schema-encrypted-candidate
           path: |
             d1-clinical-cipher-candidate-proof/*
+            d1-multitab-encrypted-lease-proof/*
             /tmp/d1-clinical-candidate-http.log
           if-no-files-found: warn
           retention-days: 7

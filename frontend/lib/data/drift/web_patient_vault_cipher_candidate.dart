@@ -6,6 +6,9 @@ import 'dart:html' as html;
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+
+import 'revocable_patient_query_guard.dart';
 
 import 'package:drift/drift.dart';
 import 'package:drift/wasm.dart';
@@ -24,6 +27,50 @@ external JSPromise<JSString> _nativeUnseal(
 );
 @JS('IaminaD1CryptoCandidate.indexedDbNames')
 external JSPromise<JSString> _nativeStoreNames();
+@JS('IaminaD1CryptoCandidate.acquireExclusiveLease')
+external JSPromise<JSString> _nativeAcquireLease(JSString owner);
+@JS('IaminaD1CryptoCandidate.releaseExclusiveLease')
+external JSPromise<JSString> _nativeReleaseLease(JSString owner, JSString token);
+
+/// One tab/worker owns an encrypted database for its full open lifetime.
+/// The token stays in memory and is never a patient key or auth authority.
+final class _WebVaultTabLease extends ChangeNotifier {
+  final String owner;
+  final String _token;
+  bool _released = false;
+  Future<void>? _releaseInFlight;
+
+  _WebVaultTabLease(this.owner, this._token);
+
+  bool get isHeld => !_released;
+
+  static Future<_WebVaultTabLease> acquire(String owner) async {
+    try {
+      final token = (await _nativeAcquireLease(owner.toJS).toDart).toDart;
+      if (token.isEmpty) throw StateError('web_vault_tab_lease_invalid');
+      return _WebVaultTabLease(owner, token);
+    } catch (error) {
+      throw StateError('web_vault_exclusive_tab_lease_denied: $error');
+    }
+  }
+
+  Future<void> release() => _releaseInFlight ??= _releaseOnce();
+
+  Future<void> _releaseOnce() async {
+    if (_released) return;
+    _released = true;
+    notifyListeners();
+    try {
+      final released =
+          (await _nativeReleaseLease(owner.toJS, _token.toJS).toDart).toDart;
+      if (released != 'released') {
+        throw StateError('web_vault_tab_lease_release_unverified');
+      }
+    } finally {
+      dispose();
+    }
+  }
+}
 
 
 final class WebVaultEnrollment {
@@ -176,6 +223,12 @@ final class WebPatientVaultCipherCandidate {
   /// is deleted, overwritten or silently assigned to this owner.
   Future<WebVaultEnrollment> enrollEmptyScope(PatientVaultScope scope) async {
     final owner = _ownerName(scope);
+    await _ensureWebCrypto();
+    // Check and update enrollment metadata only while the owner-specific,
+    // same-origin Web Lock is held. An old PWA ignoring this lock remains a
+    // separate, explicitly unmitigated risk.
+    final tabLease = await _WebVaultTabLease.acquire(owner);
+    try {
     if (html.window.localStorage.containsKey(_metadataKey(scope))) {
       throw StateError('web_vault_already_enrolled');
     }
@@ -213,6 +266,9 @@ final class WebPatientVaultCipherCandidate {
       key.fillRange(0, key.length, 0);
       recovery.fillRange(0, recovery.length, 0);
     }
+    } finally {
+      await tabLease.release();
+    }
   }
 
   /// Only accepts the recovery material independently handed to the owner.
@@ -247,6 +303,9 @@ final class WebPatientVaultCipherCandidate {
       QueryInterceptor? admissionGuard,
   }) async {
     final owner = _ownerName(scope);
+    await _ensureWebCrypto();
+    final tabLease = await _WebVaultTabLease.acquire(owner);
+    try {
     final passphrase = key.cipherPassphraseFor(scope);
     final headerKey = _metadataKey(scope);
     final rawHeader = html.window.localStorage[headerKey];
@@ -304,8 +363,14 @@ final class WebPatientVaultCipherCandidate {
     // recovery path. The default fixture remains unchanged for isolated
     // cryptographic feasibility probes; only the explicit-admission bridge
     // installs the sticky, revocable SQL interceptor.
+    final leaseGuard = RevocablePatientQueryGuard(
+      authorized: () => tabLease.isHeld,
+      revocationSignals: tabLease,
+      onClosed: tabLease.release,
+    );
+    final leasedExecutor = executor.interceptWith(leaseGuard);
     final guardedExecutor = admissionGuard == null
-        ? executor : executor.interceptWith(admissionGuard);
+        ? leasedExecutor : leasedExecutor.interceptWith(admissionGuard);
     final database = AppDatabase.testPatientVault(guardedExecutor, scope);
     try {
       await database.customSelect('SELECT 1').getSingle();
@@ -320,6 +385,12 @@ final class WebPatientVaultCipherCandidate {
       return database;
     } catch (_) {
       await database.close();
+      rethrow;
+    }
+    } catch (_) {
+      // Metadata, migration, wrong key or IndexedDB failures must release
+      // any acquired cross-tab lock. Never lock out the owner indefinitely.
+      await tabLease.release();
       rethrow;
     }
   }
