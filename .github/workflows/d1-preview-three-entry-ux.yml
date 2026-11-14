@@ -1,0 +1,64 @@
+name: D1 Preview three-entry real Flutter UX — synthetic, no deploy
+
+on:
+  pull_request:
+    branches: [fix/d1-p0-web-vault-fail-closed-20261113]
+    paths:
+      - .github/workflows/d1-preview-three-entry-ux.yml
+      - frontend/lib/features/auth/login_screen.dart
+      - frontend/lib/features/auth/local_device_enrollment_screen.dart
+      - frontend/lib/features/auth/login_screen_fr_certified.dart
+      - frontend/lib/features/auth/login_screen_mena.dart
+      - frontend/lib/services/auth_service.dart
+      - frontend/lib/services/patient_vault_app_host.dart
+      - frontend/lib/services/web_patient_vault_safe_hold.dart
+      - frontend/vercel_build.sh
+      - frontend/vercel_d1_unified_synthetic_preview.sh
+      - frontend/test/features/auth/d1_preview_three_choices_test.dart
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-preview-three-entry-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  three-choices:
+    name: Real Flutter widget and fail-closed entry tests (FR responsive)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Code quality on changed UI and test
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/features/auth/login_screen.dart lib/features/auth/local_device_enrollment_screen.dart lib/features/auth/login_screen_fr_certified.dart lib/features/auth/login_screen_mena.dart lib/services/auth_service.dart lib/services/web_patient_vault_safe_hold.dart lib/services/patient_vault_app_host.dart test/features/auth/d1_preview_three_choices_test.dart
+      - name: Compile-time-isolated three-way entry and signup, no patient database
+        working-directory: frontend
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          flutter test --no-pub --dart-define=IAMINA_D1_PREVIEW_AUTH_CHOICES=true --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true test/features/auth/d1_preview_three_choices_test.dart
+      - name: Preview build, scope and runtime routing guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n frontend/vercel_build.sh
+          bash -n frontend/vercel_d1_unified_synthetic_preview.sh
+          grep -q "IAMINA_D1_PREVIEW_AUTH_CHOICES=true" frontend/vercel_d1_unified_synthetic_preview.sh
+          grep -q "ENABLE_FIREBASE_MIGRATION=false" frontend/vercel_d1_unified_synthetic_preview.sh
+          grep -q "d1-no-clinical-backend.invalid" frontend/vercel_d1_unified_synthetic_preview.sh
+          ! grep -q "IAMINA_D1_PREVIEW_AUTH_CHOICES=true" frontend/vercel_build.sh

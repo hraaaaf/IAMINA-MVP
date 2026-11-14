@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# D1 Preview integration stays explicitly isolated from all W01/production
+# builds. Only the project/branch-pinned script can alter auth UI for D1.
+if [[ "${VERCEL_GIT_COMMIT_REF:-}" == "preview/d1-unified-synthetic-safehold-20261114" ]]; then
+  exec bash vercel_d1_unified_synthetic_preview.sh
+fi
+
 FLUTTER_VERSION="3.41.0"
 FLUTTER_DIR="/tmp/flutter-$FLUTTER_VERSION"
 

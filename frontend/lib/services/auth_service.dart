@@ -22,6 +22,21 @@ const bool kOfflineDemo = bool.fromEnvironment(
   defaultValue: false,
 );
 
+// Never forward ordinary personal credentials from a D1 synthetic Preview.
+const bool kD1PreviewOnlySyntheticAccounts = bool.fromEnvironment(
+  'IAMINA_D1_PREVIEW_AUTH_CHOICES', defaultValue: false,
+);
+
+bool d1PreviewEmailAllowed(String email) {
+  if (!kD1PreviewOnlySyntheticAccounts) return true;
+  final normalized = email.trim().toLowerCase();
+  const suffix = '@d1-preview.test';
+  return normalized.endsWith(suffix) &&
+      normalized.length > suffix.length &&
+      normalized.split('@').length == 2 &&
+      !normalized.contains(' ');
+}
+
 const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   'IAMINA_REMOTE_ACCOUNT_ENROLLMENT',
   defaultValue: false,
@@ -362,6 +377,9 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signInWithEmail(String email, String password) async {
     final normalized = email.trim().toLowerCase();
+    if (!d1PreviewEmailAllowed(normalized)) {
+      throw StateError('D1_PREVIEW_TEST_EMAIL_REQUIRED');
+    }
     final nativeResponse = await _postJson(
       '/api/v1/auth/login',
       {'email': normalized, 'password': password},
@@ -398,6 +416,9 @@ class AuthService extends ChangeNotifier {
   Future<void> registerWithEmail(String email, String password) async {
     if (!kRemoteAccountEnrollmentEnabled) {
       throw StateError('Remote account enrollment is disabled');
+    }
+    if (!d1PreviewEmailAllowed(email)) {
+      throw StateError('D1_PREVIEW_TEST_EMAIL_REQUIRED');
     }
     final response = await _postJson(
       '/api/v1/auth/register',
@@ -463,6 +484,9 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
+    if (!d1PreviewEmailAllowed(email)) {
+      throw StateError('D1_PREVIEW_TEST_EMAIL_REQUIRED');
+    }
     final response = await _postJson(
       '/api/v1/auth/password/reset/request',
       {'email': email.trim().toLowerCase()},
