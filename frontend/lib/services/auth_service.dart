@@ -27,9 +27,15 @@ const bool kOfflineDemo = bool.fromEnvironment(
 const bool kD1PreviewOnlySyntheticAccounts = bool.fromEnvironment(
   'IAMINA_D1_PREVIEW_AUTH_CHOICES', defaultValue: false,
 );
-bool d1PreviewEmailAllowed(String email) =>
-    !kD1PreviewOnlySyntheticAccounts ||
-    RegExp(r'^[a-z0-9._%+\-]+@d1-preview\.test
+bool d1PreviewEmailAllowed(String email) {
+  if (!kD1PreviewOnlySyntheticAccounts) return true;
+  final normalized = email.trim().toLowerCase();
+  const syntheticSuffix = '@d1-preview.test';
+  return normalized.endsWith(syntheticSuffix) &&
+      normalized.length > syntheticSuffix.length &&
+      normalized.split('@').length == 2 &&
+      !normalized.contains(' ');
+}
 
 const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   'IAMINA_REMOTE_ACCOUNT_ENROLLMENT',
