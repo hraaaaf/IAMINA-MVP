@@ -81,7 +81,7 @@ async function awaitProbe(page, stage) {
   fs.mkdirSync(folder, {recursive:true});
   const browser = await chromium.launch({headless:true});
   try {
-    const ctx = await browser.newContext({serviceWorkers:'block'});
+    const ctx = await browser.newContext({locale:'en-US', serviceWorkers:'block'});
     const first = await ctx.newPage();
     const second = await ctx.newPage();
     await Promise.all([
