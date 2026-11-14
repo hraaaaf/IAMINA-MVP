@@ -22,12 +22,17 @@ function check(ok,label){if(!ok)throw Error('D1_REAL_QUOTA '+label);}
   contexts.push(ctx);
   const p=await ctx.newPage();
   await p.goto(root+'?phase='+phase,{waitUntil:'domcontentloaded'});
-  await p.waitForFunction(phase=>{
-    const s=document.body?.textContent||'';
-    return s.includes('"scope":"synthetic encrypted IndexedDB export/restore, separate browser profiles"') &&
-      (phase==='source' ? s.includes('"result":"SOURCE_READY"') :
-        !!document.querySelector('#d1-fresh-profile-restore-trigger'));
-  },phase,{timeout:60000});
+  if(phase==='source'){
+    await p.waitForFunction(()=>{
+      const s=document.body?.textContent||'';
+      return s.includes('"scope":"synthetic encrypted IndexedDB export/restore, separate browser profiles"') &&
+        s.includes('"result":"SOURCE_READY"');
+    },null,{timeout:60000});
+  }else{
+    // Target deliberately blocks on a user click and has no result JSON yet.
+    await p.waitForSelector('#d1-fresh-profile-restore-trigger',
+      {state:'attached',timeout:60000});
+  }
   return {ctx,p};
  }
  try{
