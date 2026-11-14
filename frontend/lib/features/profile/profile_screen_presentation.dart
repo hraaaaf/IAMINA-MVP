@@ -190,6 +190,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           onChanged: (value) => _setPresentationState(() {
             _declaredTreatments = value;
             _treatmentTouched = true;
+            ++_treatmentEditGeneration;
           }),
         ),
         if (_treatmentConflict && _canResolveRemoteTreatmentConflict)
@@ -498,7 +499,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required Key key,
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return Material(
       color: AminaVisualLanguage.controlSurface(context),
@@ -522,7 +523,8 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, size: 19),
+              if (onTap != null)
+                const Icon(Icons.chevron_right_rounded, size: 19),
             ],
           ),
         ),
@@ -581,12 +583,18 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                       fr: 'Verrouillage à récupérer',
                       en: 'Lock recovery required',
                       ar: 'يجب استعادة القفل')
-                  : _profileUiText(context,
+                  : (enabled && !lock.canOptOutOfAppLock)
+                      ? _profileUiText(context,
+                          fr: 'Désactivation indisponible sur Web',
+                          en: 'Disabling unavailable on Web',
+                          ar: 'إيقاف القفل غير متاح على الويب')
+                      : _profileUiText(context,
                       fr: enabled ? 'Désactiver le verrouillage' : 'Activer le verrouillage',
                       en: enabled ? 'Disable app lock' : 'Enable app lock',
                       ar: enabled ? 'إيقاف قفل التطبيق' : 'تفعيل قفل التطبيق'),
-              onTap: (lock.recoveryRequired || _savingLockPreference)
-                  ? () {}
+              onTap: (lock.recoveryRequired || _savingLockPreference ||
+                      (enabled && !lock.canOptOutOfAppLock))
+                  ? null
                   : _changeAppLockPreference,
             );
           },

@@ -294,7 +294,8 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            OutlinedButton.icon(
+                            if (context.read<AppLockService>().canOptOutOfAppLock)
+                              OutlinedButton.icon(
                               key: const Key('d30-skip-app-lock'),
                               onPressed: _busy ? null : _continueWithoutLock,
                               icon: const Icon(Icons.lock_open_outlined),
@@ -310,6 +311,15 @@ class _AppLockSetupScreenState extends State<AppLockSetupScreen> {
                                 ),
                               ),
                             ),
+                            if (!context.read<AppLockService>().canOptOutOfAppLock)
+                              _InfoRow(
+                                icon: Icons.shield_outlined,
+                                text: switch (Localizations.localeOf(context).languageCode) {
+                                  'fr' => 'Le mode sans verrouillage est indisponible sur Web avant certification du coffre chiffré.',
+                                  'ar' => 'لا يمكن المتابعة دون قفل على الويب حتى اعتماد تشفير التخزين الطبي.',
+                                  _ => 'Continue without app lock is unavailable on Web until encrypted medical storage is certified.',
+                                },
+                              ),
                           ],
                         ),
                       ),

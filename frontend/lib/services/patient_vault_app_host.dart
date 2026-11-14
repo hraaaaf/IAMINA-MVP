@@ -18,6 +18,7 @@ import 'modules_provider.dart';
 import 'offline_demo_audit_seed.dart';
 import 'patient_vault_session_controller.dart';
 import 'sync_service.dart';
+import 'web_patient_vault_safe_hold.dart';
 
 /// Each subtree holds ONLY ONE physical patient vault and its own consent,
 /// profile stream, sync queue and router. No legacy 'amina' database is
@@ -283,6 +284,20 @@ class _PatientVaultAppHostState extends State<PatientVaultAppHost> {
           ),
         ],
         child: AminaApp(router: _guestRouter.router, appLockService: widget.appLock),
+      );
+    }
+
+    // This is NOT an App Lock or authentication recovery path. The clinical
+    // Web SQLite store was refused before opening; never fall back to legacy
+    // or render any patient-facing provider, even during account switching.
+    if (widget.auth.isAuthenticated &&
+        widget.controller.requiresEncryptedWebVault) {
+      return MaterialApp(
+        locale: widget.locale.locale,
+        home: WebPatientVaultSafeHold(
+          locale: widget.locale.locale,
+          onSignOut: () => unawaited(widget.auth.signOut()),
+        ),
       );
     }
 

@@ -214,4 +214,128 @@ void main() {
     expect(recovered.single.syncStatus, 'pending');
   });
 
+  test('D1 async encrypted opener cannot publish stale A after auth switches B',
+      () async {
+    final auth = _AuthTestNotifier();
+    final waitingA = Completer<AppDatabase>();
+    final enteredA = Completer<void>();
+    var selected = 734;
+    final controller = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: () async => PatientVaultScope.nativeDjango(selected),
+      openDatabase: (scope) {
+        if (scope.nativeDjangoUserId == 734) {
+          if (!enteredA.isCompleted) enteredA.complete();
+          return waitingA.future;
+        }
+        return Future<AppDatabase>.value(AppDatabase.testPatientVault(
+          NativeDatabase.memory(), scope,
+        ));
+      },
+    );
+    addTearDown(controller.dispose);
+    addTearDown(auth.dispose);
+
+    // The first authenticated owner's encrypted key unwrap is still pending.
+    await enteredA.future;
+    expect(controller.activeDatabase, isNull);
+    selected = 812;
+    AuthEpoch.advance();
+    auth.changed();
+    await controller.reconcile();
+    final visibleB = controller.activeDatabase;
+    expect(visibleB, isNotNull);
+    expect(controller.activeScope?.nativeDjangoUserId, 812);
+
+    // A's late decrypt/IndexedDB opening is never allowed to publish A
+    // or replace B's provider, even after the future successfully resolves.
+    final staleA = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    waitingA.complete(staleA);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.activeDatabase, same(visibleB));
+    expect(controller.activeScope?.nativeDjangoUserId, 812);
+    expect(controller.hasVault, isTrue);
+  });
+
+
+  test('D1 candidate revokes published vault synchronously on AppLock lock',
+      () async {
+    final auth = _AuthTestNotifier();
+    final appLock = _AuthTestNotifier();
+    addTearDown(auth.dispose);
+    addTearDown(appLock.dispose);
+    var unlocked = true;
+    var opened = 0;
+    final controller = PatientVaultSessionController(
+      // The future authorized-session wiring MUST listen to both.
+      authChanges: Listenable.merge([auth, appLock]),
+      admissionValid: () => unlocked,
+      resolveScope: () async => PatientVaultScope.nativeDjango(734),
+      openDatabase: (scope) {
+        opened++;
+        return AppDatabase.testPatientVault(NativeDatabase.memory(), scope);
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.reconcile();
+    expect(controller.hasVault, isTrue);
+    expect(controller.activeDatabase, isNotNull);
+
+    // Hiding must be immediate: no stale patient provider even for one frame.
+    unlocked = false;
+    expect(controller.activeDatabase, isNull);
+    expect(controller.hasVault, isFalse);
+    appLock.changed();
+    await controller.reconcile();
+    expect(controller.activeDatabase, isNull);
+    final attemptedWhileLocked = opened;
+    await controller.reconcile();
+    expect(opened, attemptedWhileLocked);
+
+    unlocked = true;
+    appLock.changed();
+    await controller.reconcile();
+    expect(controller.activeDatabase, isNotNull);
+    expect(controller.activeScope?.nativeDjangoUserId, 734);
+  });
+
+  test('D1 candidate never publishes late encrypted opener after AppLock lock',
+      () async {
+    final auth = _AuthTestNotifier();
+    final appLock = _AuthTestNotifier();
+    addTearDown(auth.dispose);
+    addTearDown(appLock.dispose);
+    var unlocked = true;
+    final entered = Completer<void>();
+    final delayed = Completer<AppDatabase>();
+    final controller = PatientVaultSessionController(
+      authChanges: Listenable.merge([auth, appLock]),
+      admissionValid: () => unlocked,
+      resolveScope: () async => PatientVaultScope.nativeDjango(734),
+      openDatabase: (scope) {
+        if (!entered.isCompleted) entered.complete();
+        return delayed.future;
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await entered.future;
+    unlocked = false;
+    // The earlier future must not be exposed while AppLock is locked.
+    expect(controller.activeDatabase, isNull);
+    appLock.changed();
+    await controller.reconcile();
+    final late = AppDatabase.testPatientVault(
+      NativeDatabase.memory(), PatientVaultScope.nativeDjango(734),
+    );
+    delayed.complete(late);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.activeDatabase, isNull);
+    expect(controller.hasVault, isFalse);
+  });
+
 }

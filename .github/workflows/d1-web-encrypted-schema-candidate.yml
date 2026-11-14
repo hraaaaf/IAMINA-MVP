@@ -1,0 +1,90 @@
+name: D1 Web full-schema encrypted vault candidate (NO CLINICAL GO / NO DEPLOY)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d1-web-encrypted-schema-candidate.yml'
+      - 'frontend/lib/data/drift/web_patient_vault_cipher_candidate.dart'
+      - 'frontend/lib/data/drift/revocable_patient_query_guard.dart'
+      - 'frontend/lib/services/web_vault_explicit_admission.dart'
+      - 'frontend/lib/services/web_vault_session_admission_candidate.dart'
+      - 'frontend/tool/d1_clinical_cipher_candidate_probe.dart'
+      - 'frontend/web/d1_vault_crypto_candidate.js'
+      - 'tools/d1_clinical_cipher_candidate_browser.js'
+      - 'tools/d1_multitab_encrypted_lease_browser.js'
+      - 'frontend/lib/data/drift/database.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-web-schema-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  encrypted-schema:
+    name: IAMINA generated schema + two-owner encrypted Chromium regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Fetch packages
+        working-directory: frontend
+        run: flutter pub get
+      - name: Flutter analyze candidate
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos lib/data/drift/web_patient_vault_cipher_candidate.dart lib/data/drift/revocable_patient_query_guard.dart lib/services/web_vault_explicit_admission.dart tool/d1_clinical_cipher_candidate_probe.dart
+      - name: Compile actual AppDatabase synthetic Flutter Web entrypoint (NO DEPLOY)
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn -t tool/d1_clinical_cipher_candidate_probe.dart
+      - name: Vendor verified sqlite3mc WASM into isolated build only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 \
+            'https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3mc.wasm' \
+            -o frontend/build/web/sqlite3mc.wasm
+          echo '5a1cfe40252d05bbd174e66351d3c282f69784c6fd0c2d099bf7135c6e91b4ec  frontend/build/web/sqlite3mc.wasm' | sha256sum -c -
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Test owner A/B + recovery + tamper + physical bytes in real Chrome
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          python3 -m http.server 7474 --bind 127.0.0.1 \
+            --directory frontend/build/web > /tmp/d1-clinical-candidate-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7474/ > /dev/null
+          node tools/d1_clinical_cipher_candidate_browser.js
+          printf '<!doctype html><meta charset="utf-8"><script src="/d1_vault_crypto_candidate.js"></script>' > frontend/build/web/d1-lease-fixture.html
+          node tools/d1_multitab_encrypted_lease_browser.js
+      - name: Upload synthetic proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-web-real-schema-encrypted-candidate
+          path: |
+            d1-clinical-cipher-candidate-proof/*
+            d1-multitab-encrypted-lease-proof/*
+            /tmp/d1-clinical-candidate-http.log
+          if-no-files-found: warn
+          retention-days: 7

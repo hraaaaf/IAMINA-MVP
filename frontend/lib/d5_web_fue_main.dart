@@ -13,6 +13,7 @@ import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'data/drift/patient_vault_scope.dart';
+import 'data/drift/web_patient_vault_cipher_candidate.dart';
 import 'features/auth/onboarding_chat_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'l10n/app_localizations.dart';
@@ -91,7 +92,22 @@ Future<void> _runD5(void Function(String stage) mark) async {
 
   // Same isolation primitive as the app, not a shared synthetic demo DB.
   final scope = PatientVaultScope.nativeDjango(owner);
-  final db = AppDatabase.forPatientVault(scope);
+  // D1 test-harness only: never use the production plaintext worker or
+  // override AppDatabase.forPatientVault's fail-closed admission. This fixture
+  // exercises real Flutter widgets backed by the candidate's authenticated
+  // SQLite3MC database with synthetic owner IDs only.
+  final cipher = WebPatientVaultCipherCandidate();
+  final fixtureRecoverySlot = 'd5_synthetic_recovery_owner_$owner';
+  String? fixtureRecovery = html.window.sessionStorage[fixtureRecoverySlot];
+  if (fixtureRecovery == null) {
+    final enrolled = await cipher.enrollEmptyScope(scope);
+    fixtureRecovery = enrolled.recoveryCode;
+    // Restricted to this isolated synthetic browser fixture. Not an
+    // acceptable patient secret-store or production recovery implementation.
+    html.window.sessionStorage[fixtureRecoverySlot] = fixtureRecovery;
+  }
+  final vaultKey = await cipher.unlock(scope, fixtureRecovery);
+  final db = await cipher.openCandidateDatabase(scope, vaultKey);
   final api = ApiClient();
   final auth = AuthService();
   final lock = AppLockService();

@@ -206,16 +206,21 @@ def main():
                     raise AssertionError("D7 choice missing in real Chrome semantics")
 
                 def save():
+                    # A preceding save can leave an identical snackbar open.
+                    # Waiting on that old message would allow a physical
+                    # reload BEFORE the current asynchronous SQLite write.
+                    receipt = page.get_by_text(
+                        re.compile("Offline pilot.*saved on this device", re.I)
+                    ).last
+                    if receipt.count() and receipt.is_visible():
+                        receipt.wait_for(state="hidden", timeout=15000)
                     page.get_by_role("button", name="Save", exact=True).last.click(
                         timeout=18000
                     )
-                    # Flutter emits both an ARIA live announcement and a
-                    # visible snackbar with identical text. A strict generic
-                    # text locator is ambiguous. Assert the visible status;
-                    # do not treat the announcement as proof of persistence.
-                    page.get_by_text(
-                        re.compile("Offline pilot.*saved on this device", re.I)
-                    ).last.wait_for(state="visible", timeout=15000)
+                    # The newly visible receipt is emitted AFTER the scoped
+                    # DB write, but the independent reopen oracle remains
+                    # mandatory: a snackbar alone cannot certify durability.
+                    receipt.wait_for(state="visible", timeout=15000)
 
                 def capture_viewports(stage, *expected):
                     assert stage in ("type2", "unknown", "explicit_none")
@@ -314,7 +319,10 @@ def main():
                 )
                 extra.click(timeout=18000)
                 click_choice("Insulin")
+                # Distinguish a lost UI click from a lost SQLite write.
+                medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
                 save()
+                medical_summary_contains("Type 2 Diabetes", "Oral medicines", "Insulin")
 
                 step("physical_reload_type2_and_treatments_preserved")
                 reload_and_unlock()
@@ -340,7 +348,15 @@ def main():
 
                 step("explicit_no_treatment_then_physical_reload")
                 click_choice("No treatment to report")
+                # Real visible medical summary is the pre-save oracle: a click
+                # is not evidence that Flutter accepted the patient choice.
+                # Fail at this exact boundary rather than attributing a stale
+                # async UI state to SQLite persistence after a reload.
+                medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 save()
+                # The save snackbar is not sufficient evidence that the
+                # selected treatment survived any in-flight async rebuild.
+                medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 reload_and_unlock()
                 medical_summary_contains("Diagnosis not specified", "No treatment reported")
                 capture_viewports("explicit_none", "Diagnosis not specified", "No treatment reported")

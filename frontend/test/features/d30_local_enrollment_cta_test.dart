@@ -99,6 +99,8 @@ void main() {
   testWidgets('D30 no-lock choice needs confirmation and navigates to onboarding',
       (tester) async {
     final lock = _MockAppLockService();
+    // Native-only flow; Web is deliberately fail-closed before crypto.
+    when(() => lock.canOptOutOfAppLock).thenReturn(true);
     when(() => lock.capability())
         .thenAnswer((_) async => AppLockCapability.supported);
     when(() => lock.continueWithoutAppLock()).thenAnswer((_) async {});
@@ -147,4 +149,47 @@ void main() {
     verify(() => lock.continueWithoutAppLock()).called(1);
     expect(find.text('D30_ONBOARDING_AFTER_OPT_OUT'), findsOneWidget);
   });
+
+  testWidgets('D1 Web policy hides App Lock opt-out and explains why',
+      (tester) async {
+    final lock = _MockAppLockService();
+    when(() => lock.capability())
+        .thenAnswer((_) async => AppLockCapability.supported);
+    when(() => lock.canOptOutOfAppLock).thenReturn(false);
+
+    final router = GoRouter(initialLocation: '/app-lock/setup', routes: [
+      GoRoute(
+        path: '/app-lock/setup',
+        builder: (_, __) => const AppLockSetupScreen(),
+      ),
+    ]);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(ChangeNotifierProvider<AppLockService>.value(
+      value: lock,
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('fr'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('d30-skip-app-lock')), findsNothing);
+    expect(
+      find.text(
+        'Le mode sans verrouillage est indisponible sur Web avant '
+        'certification du coffre chiffré.',
+      ),
+      findsOneWidget,
+    );
+    verifyNever(() => lock.continueWithoutAppLock());
+  });
+
 }

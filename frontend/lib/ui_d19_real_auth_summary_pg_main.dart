@@ -5,6 +5,8 @@
 import 'dart:html' as html;
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/drift/patient_vault_scope.dart';
+import 'package:amina/data/drift/web_patient_vault_cipher_candidate.dart';
 import 'package:amina/features/journal/ai_summary_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
@@ -51,7 +53,32 @@ Future<void> main() async {
     requireTrue(auth.isRemoteCredentialVerified && auth.hasRemoteApiCredential,
         'not_native_authenticated');
     stage = 'vault_reconcile';
-    final vault = PatientVaultSessionController.forAuth(auth);
+    // D19 synthetic-only CI fixture. A native Django-authenticated owner is
+    // required for every encrypted vault factory call. Production main.dart
+    // still rejects unverified Web patient vaults unconditionally.
+    final cipher = WebPatientVaultCipherCandidate();
+    Future<AppDatabase> openSyntheticEncrypted(PatientVaultScope scope) async {
+      requireTrue(auth.isRemoteCredentialVerified &&
+          auth.hasRemoteApiCredential &&
+          auth.boundNativeAccountId == scope.nativeDjangoUserId,
+          'encrypted_fixture_owner_auth_required');
+      final slot = 'd19_ci_synthetic_recovery_${scope.databaseName}';
+      var code = html.window.sessionStorage[slot];
+      if (code == null) {
+        final enrollment = await cipher.enrollEmptyScope(scope);
+        code = enrollment.recoveryCode;
+        // This value is an ephemeral SYNTHETIC fixture key only, never a
+        // production storage/recovery policy or a real patient secret.
+        html.window.sessionStorage[slot] = code;
+      }
+      final key = await cipher.unlock(scope, code);
+      return cipher.openCandidateDatabase(scope, key);
+    }
+    final vault = PatientVaultSessionController(
+      authChanges: auth,
+      resolveScope: auth.resolvePatientVaultScope,
+      openDatabase: openSyntheticEncrypted,
+    );
     await vault.reconcile();
     requireTrue(vault.activeDatabase != null && vault.activeScope != null,
         'no_verified_patient_vault');

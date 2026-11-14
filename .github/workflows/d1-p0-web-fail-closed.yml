@@ -1,0 +1,127 @@
+name: D1 P0 Web clinical vault fail-closed (NO DEPLOY)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/data/drift/database.dart'
+      - 'frontend/lib/services/app_lock_service.dart'
+      - 'frontend/lib/services/patient_vault_session_controller.dart'
+      - 'frontend/lib/services/web_vault_explicit_admission.dart'
+      - 'frontend/lib/services/web_vault_session_admission_candidate.dart'
+      - 'frontend/lib/services/web_vault_recovery_session_candidate.dart'
+      - 'frontend/lib/data/drift/revocable_patient_query_guard.dart'
+      - 'frontend/test/services/revocable_patient_query_guard_test.dart'
+      - 'frontend/test/services/web_vault_explicit_admission_test.dart'
+      - 'frontend/lib/services/patient_vault_app_host.dart'
+      - 'frontend/lib/services/web_patient_vault_safe_hold.dart'
+      - 'frontend/lib/routes/app_router.dart'
+      - 'frontend/lib/features/auth/app_lock_setup_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/test/services/d1_p0_web_fail_closed_browser_test.dart'
+      - 'frontend/test/services/d1_web_safe_hold_browser_test.dart'
+      - 'tools/d1_web_safe_hold_browser_cert.js'
+      - 'frontend/lib/main.dart'
+      - '.github/workflows/d1-p0-web-fail-closed.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-p0-web-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-patient-vault:
+    name: Dart VM regression and real Chrome negative tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Do not certify GitHub's synthetic PR merge ref as the exact head.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Analyze source and tests
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/data/drift/database.dart \
+            lib/services/app_lock_service.dart \
+            lib/services/patient_vault_session_controller.dart \
+            lib/services/web_vault_explicit_admission.dart \
+            lib/services/web_vault_session_admission_candidate.dart \
+            lib/services/web_vault_recovery_session_candidate.dart \
+            lib/data/drift/revocable_patient_query_guard.dart \
+            test/services/revocable_patient_query_guard_test.dart \
+            test/services/web_vault_explicit_admission_test.dart \
+            lib/services/patient_vault_app_host.dart \
+            lib/services/web_patient_vault_safe_hold.dart \
+            lib/routes/app_router.dart \
+            lib/features/auth/app_lock_setup_screen.dart \
+            lib/features/profile/profile_screen.dart \
+            lib/features/profile/profile_screen_presentation.dart \
+            test/services/d1_p0_web_fail_closed_browser_test.dart \
+            test/services/d1_web_safe_hold_browser_test.dart
+      - name: Native VM app-lock and vault-scope regression
+        working-directory: frontend
+        run: |
+          flutter test --no-pub \
+            test/services/app_lock_service_test.dart \
+            test/data/drift/patient_vault_scope_test.dart \
+            test/features/d30_local_enrollment_cta_test.dart \
+            test/services/patient_vault_session_controller_test.dart \
+            test/services/web_vault_explicit_admission_test.dart \
+            test/services/revocable_patient_query_guard_test.dart
+      - name: Verify Chrome is installed
+        run: command -v google-chrome
+      - name: Real Chrome deny unencrypted patient vault and app-lock opt-out
+        working-directory: frontend
+        run: |
+          flutter test --no-pub --platform chrome \
+            test/services/d1_p0_web_fail_closed_browser_test.dart \
+            test/services/d1_web_safe_hold_browser_test.dart
+
+      - name: Build real product Flutter Web (LOCAL ONLY — NO DEPLOY)
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Real product bootstrap -> patient safe hold at 390/768/1280
+        shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          python3 -m http.server 7373 --bind 127.0.0.1 \
+            --directory frontend/build/web > /tmp/d1-safe-hold-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7373/ > /dev/null
+          node tools/d1_web_safe_hold_browser_cert.js
+      - name: Upload synthetic-safe visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-production-safe-hold-390-768-1280
+          path: |
+            d1-safe-hold-proof/*
+            /tmp/d1-safe-hold-web.log
+          if-no-files-found: warn
+          retention-days: 7

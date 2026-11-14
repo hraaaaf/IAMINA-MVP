@@ -17,8 +17,11 @@ fs.mkdirSync(directory,{recursive:true});
   for(const locale of [localeToTest]){
    for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1280,height:900}]){
    const context=await browser.newContext({viewport,locale:locale==='fr'?'fr-FR':'ar-MA',serviceWorkers:'block'});
+   // A -> B -> A uses ONE real tab: session-scoped synthetic key material
+   // survives navigation, while actual auth/owner bindings must rotate.
+   // Browser contexts remain isolated across viewports and locales.
+   const page=await context.newPage();
    for(const principal of ['a','b','a']){
-    const page=await context.newPage();
     const errors=[],external=[],requests=[],loginStatuses=[],loginTransportFailures=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,300)));
     page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,300));});
@@ -50,13 +53,13 @@ fs.mkdirSync(directory,{recursive:true});
     const file=locale+'-'+viewport.width+'-'+principal+'-'+report.tests.length+'.png';
     await page.screenshot({path:path.join(directory,file)});
     const observation={locale,viewport:viewport.width+'x'+viewport.height,principal,expectedTitle:target,
-      pass:title===target&&requests.length>=4&&errors.length===0&&external.length===0,
+      pass:title===target&&new Set(requests).size===2&&requests.some(u=>u.includes('/api/v1/ai/summary'))&&requests.some(u=>u.includes('/api/v1/kpis/'))&&errors.length===0&&external.length===0,
       backendRequestCount:requests.length,loginStatuses,loginTransportFailures:loginTransportFailures.length,consoleErrors:errors.length,
       blockedExternal:external.length,file};
     report.tests.push(observation);
     if(!observation.pass)report.failed.push({...observation,actualTitle:title});
-    await page.close();
    }
+   await page.close();
    await context.close();
    }
   }

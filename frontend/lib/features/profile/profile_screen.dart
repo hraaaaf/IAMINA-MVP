@@ -91,6 +91,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _treatment; // legacy clinical scalar stays unchanged
   D7TreatmentDeclaration _declaredTreatments = D7TreatmentDeclaration.later();
   bool _treatmentTouched = false;
+  // The initial asynchronous vault read must never overwrite a newer
+  // patient choice, including an edit made while the first read is pending.
+  // Keep an epoch instead of relying on _treatmentTouched, which resets
+  // after a successful save.
+  int _treatmentEditGeneration = 0;
   bool _treatmentConflict = false;
   bool _resolvingTreatmentConflict = false;
   String _unit = 'mg/dL';
@@ -118,6 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _loadProfile() async {
+    final treatmentGenerationAtRead = _treatmentEditGeneration;
     final db = context.read<AppDatabase>();
     final profile = await db.getProfileForLocalUserId(db.activeProfileRowId);
     if (profile != null) {
@@ -134,7 +140,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     if (db.patientVaultScope != null) {
       final record = await PatientTreatmentDeclarationStore(db).read();
-      if (!mounted || record == null) return;
+      if (!mounted || record == null ||
+          _treatmentEditGeneration != treatmentGenerationAtRead) return;
       final status = D7TreatmentStatus.values.firstWhere(
         (value) => d7StateCode(value) == record.state,
       );
@@ -236,7 +243,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_savingLockPreference) return;
     final lock = context.read<AppLockService>();
     final disabling = lock.isConfigured && !lock.isExplicitlySkipped;
-    if (lock.recoveryRequired) return;
+    if (lock.recoveryRequired ||
+        (disabling && !lock.canOptOutOfAppLock)) return;
     final question = disabling
         ? _profileUiText(context,
             fr: 'Désactiver le verrouillage pour ce profil ? Une nouvelle vérification sera exigée. Toute personne ayant accès à ce navigateur pourra consulter vos données de santé locales. La synchronisation clinique demeure suspendue sans verrouillage actif.',
@@ -765,6 +773,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _saveProfile() async {
     final diabetesType = _diabetesType;
     final treatment = _treatment;
+    // Snapshot the exact clicked declaration before the first asynchronous
+    // write. Never persist a later or stale UI state mid-save.
+    final treatmentDeclarationAtSave = _declaredTreatments;
+    final treatmentTouchedAtSave = _treatmentTouched;
+    final treatmentGenerationAtSave = _treatmentEditGeneration;
     final db = context.read<AppDatabase>();
     final userId = db.activeProfileRowId;
     final locale = Localizations.localeOf(context).languageCode;
@@ -795,12 +808,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     bool remoteMirrorConfirmed = context.read<ApiClient>().canSyncClinicalData;
-    if (_treatmentTouched && db.patientVaultScope != null) {
+    if (treatmentTouchedAtSave && db.patientVaultScope != null) {
       // Durable local-first write. Do not use legacy unconditioned PATCH:
       // only the vault-bound synchronizer may upload and ACK this generation.
       await PatientTreatmentDeclarationStore(db).write(
-        state: d7StateCode(_declaredTreatments.state),
-        codes: _declaredTreatments.codes,
+        state: d7StateCode(treatmentDeclarationAtSave.state),
+        codes: treatmentDeclarationAtSave.codes,
       );
       final auth = context.read<AuthService>();
       remoteMirrorConfirmed = false;
@@ -822,7 +835,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       setState(() {
         _hasPersistedProfile = true;
-        _treatmentTouched = false;
+        if (_treatmentEditGeneration == treatmentGenerationAtSave) {
+          _treatmentTouched = false;
+        }
         _treatmentConflict = latest?.syncStatus == 'conflict';
       });
       ScaffoldMessenger.of(context).showSnackBar(

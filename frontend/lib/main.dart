@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -56,16 +57,20 @@ Future<void> main() async {
   await authService.initialize();
   if (auditAllowed) authService.enterAuditSession();
 
-  // The historical mixed-owner DB is inspected solely to keep device-lock
-  // recovery fail-closed. Never pass it to any patient-facing Provider.
-  final legacy = AppDatabase.defaults();
+  // D1 P0: production Web MUST NOT open the historic unscoped 'amina'
+  // store even as a presence probe. A Drift read can create or migrate SQL
+  // tables. Treat its contents as potentially protected and stay locked.
+  // Native and loopback-only synthetic audit preserve the existing probe.
   bool legacyProtected = true;
-  try {
-    legacyProtected = await _hasProtectedLocalState(
-      db: legacy, authService: authService, auditAllowed: auditAllowed,
-    );
-  } finally {
-    await legacy.close();
+  if (!kIsWeb || auditAllowed) {
+    final legacy = AppDatabase.defaults();
+    try {
+      legacyProtected = await _hasProtectedLocalState(
+        db: legacy, authService: authService, auditAllowed: auditAllowed,
+      );
+    } finally {
+      await legacy.close();
+    }
   }
 
   // A missing app-lock credential must not be treated as a fresh install

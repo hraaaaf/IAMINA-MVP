@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uuid/uuid.dart';
 
 import 'patient_vault_scope.dart';
@@ -135,15 +136,27 @@ class AppDatabase extends _$AppDatabase {
   // A→logout→B certification before any real patient use.
   AppDatabase.forPatientVault(PatientVaultScope scope)
     : patientVaultScope = scope,
-      super(
-        driftDatabase(
-          name: scope.databaseName,
-          web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
-          ),
-        ),
-      );
+      super(_patientVaultExecutor(scope));
+
+  static QueryExecutor _patientVaultExecutor(PatientVaultScope scope) {
+    // D1 P0: the ordinary Drift Web worker has no verified encryption key.
+    // Refuse BEFORE creating/opening a clinical SQLite/IndexedDB vault.
+    // Never delete, migrate, attribute or overwrite legacy patient storage.
+    // The audit-only namespace remains reserved for guest/login visuals and
+    // must never be treated as an authenticated clinical patient vault.
+    if (kIsWeb &&
+        scope.databaseName != PatientVaultScope.auditOnly().databaseName) {
+      throw StateError('web_patient_vault_encryption_not_verified');
+    }
+    // Native behavior is deliberately unchanged by this Web-only policy.
+    return driftDatabase(
+      name: scope.databaseName,
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+      ),
+    );
+  }
 
   /// Local row key resolved only within the already-selected physical vault.
   /// Device-only sessions use row 1 inside their own UUID vault; native Django
