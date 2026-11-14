@@ -1,0 +1,67 @@
+name: D1 J2 signed J1 receipt directly verified (SYNTHETIC / NO GO)
+
+on:
+  pull_request:
+    branches: [test/d1-j1-j2-integrated-receipt-fence-20261114]
+    paths:
+      - '.github/workflows/d1-j2-direct-signed-receipt.yml'
+      - 'tools/d1_j1_synthetic_backup_restore_browser.js'
+      - 'tools/d1_j2_migration_preflight_candidate.js'
+      - 'tools/d1_j2_synthetic_source_digest.js'
+      - 'tools/d1_j2_direct_attestation_browser.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-j2-signed-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signed-browser-evidence:
+    name: Real Chromium J2 verify signature and J1 live source (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax safety checks and Playwright Chromium
+        run: |
+          node --check tools/d1_j1_synthetic_backup_restore_browser.js
+          node --check tools/d1_j2_migration_preflight_candidate.js
+          node --check tools/d1_j2_synthetic_source_digest.js
+          node --check tools/d1_j2_direct_attestation_browser.js
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Verify signed receipt in J2 using CI-only trust anchor
+        shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          mkdir -p /tmp/iamina-d1-j2-receipt-fixture
+          cp tools/d1_j2_synthetic_source_digest.js /tmp/iamina-d1-j2-receipt-fixture/
+          cp tools/d1_j2_migration_preflight_candidate.js /tmp/iamina-d1-j2-receipt-fixture/
+          printf '<!doctype html><meta charset="utf-8"><script src="/d1_j2_synthetic_source_digest.js"></script><script src="/d1_j2_migration_preflight_candidate.js"></script>' > /tmp/iamina-d1-j2-receipt-fixture/index.html
+          printf 'self.addEventListener("install",()=>self.skipWaiting());' > /tmp/iamina-d1-j2-receipt-fixture/j2-legacy-sw.js
+          python3 -m http.server 7481 --bind 127.0.0.1 --directory /tmp/iamina-d1-j2-receipt-fixture >/tmp/d1-j2-signed-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7481/ >/dev/null
+          node tools/d1_j2_direct_attestation_browser.js
+      - name: Preserve synthetic proof metadata only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-j2-signed-receipt-only-test-evidence
+          path: |
+            d1-j2-verified-receipt-proof/proof.json
+            /tmp/d1-j2-signed-http.log
+          retention-days: 7
+          if-no-files-found: warn
