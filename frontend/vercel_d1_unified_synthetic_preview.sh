@@ -33,9 +33,10 @@ flutter pub get
 flutter build web --release --no-web-resources-cdn \
   --dart-define=API_BASE_URL=https://d1-no-clinical-backend.invalid \
   --dart-define=ENABLE_FIREBASE_MIGRATION=false \
-  --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=false \
-  --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=false \
-  --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=false \
+  --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true \
+  --dart-define=IAMINA_REMOTE_ACCOUNT_SIGN_IN=true \
+  --dart-define=IAMINA_REMOTE_ACCOUNT_LOGIN_ENABLED=true \
   --dart-define=IAMINA_OFFLINE_DEMO=false \
-  --dart-define=IAMINA_AUDIT_ACCESS=false
+  --dart-define=IAMINA_AUDIT_ACCESS=false \
+  --dart-define=IAMINA_D1_PREVIEW_AUTH_CHOICES=true
 echo "D1_PREVIEW_REAL_MAIN_SAFE_HOLD_BUILD=PASS"
