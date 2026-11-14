@@ -1,0 +1,54 @@
+name: D1 native Django identity and migration-consent denial (SYNTHETIC)
+
+on:
+  pull_request:
+    branches: [test/d1-pg-receipt-verification-ledger-20261114]
+    paths:
+      - '.github/workflows/d1-native-identity-migration-gate.yml'
+      - 'backend/core/d1_native_migration_identity_candidate.py'
+      - 'backend/core/tests/d1_identity_test_settings.py'
+      - 'backend/core/tests/test_d1_native_migration_identity_candidate.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-native-identity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-owner-denials:
+    name: Actual Django native bearer and legacy ownership security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact HEAD and only dormant sources/tests/CI
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          D1_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          git diff --name-only "$D1_BASE_SHA"...HEAD | tee /tmp/d1-native-identity-changed.txt
+          if grep -vE '^(.github/workflows/d1-native-identity-migration-gate.yml|backend/core/d1_native_migration_identity_candidate.py|backend/core/tests/d1_identity_test_settings.py|backend/core/tests/test_d1_native_migration_identity_candidate.py)$' /tmp/d1-native-identity-changed.txt; then
+            echo "DENY active production wiring"; exit 1
+          fi
+          test "$(wc -l </tmp/d1-native-identity-changed.txt)" = 4
+      - name: Install minimal Django for isolated database test
+        run: python -m pip install Django==5.2.7
+      - name: Check code syntax
+        run: |
+          python -m py_compile backend/core/d1_native_migration_identity_candidate.py backend/core/tests/d1_identity_test_settings.py backend/core/tests/test_d1_native_migration_identity_candidate.py
+      - name: Run native Django real credential and SQLite in-memory tests
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: core.tests.d1_identity_test_settings
+        run: python -m django test core.tests.test_d1_native_migration_identity_candidate --verbosity 2 --noinput
