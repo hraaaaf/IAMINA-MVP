@@ -74,20 +74,16 @@ async function inventoryAndBackup(page){
             return {name:indexName,keyPath:i.keyPath,unique:i.unique,
               multiEntry:i.multiEntry};
           });
+          // Fetch keys/values in the same IndexedDB key order while the
+          // transaction is active. Perform async Blob serialization AFTER
+          // both requests finish (never await in a cursor callback).
+          const [keys,values]=await Promise.all([
+            request(store.getAllKeys()),request(store.getAll())
+          ]);
+          if(keys.length!==values.length)throw Error('J1_KEY_VALUE_COUNT_MISMATCH');
           const records=[];
-          const cur=store.openCursor();
-          await new Promise((resolve,reject)=>{
-            cur.onerror=()=>reject(cur.error);
-            cur.onsuccess=async()=>{
-              const c=cur.result;
-              if(!c){resolve();return;}
-              try{
-                const encodedKey=await encode(c.key);
-                const encodedValue=await encode(c.value);
-                records.push({key:encodedKey,value:encodedValue});
-                c.continue();
-              }catch(e){reject(e);}
-            };
+          for(let k=0;k<keys.length;k++)records.push({
+            key:await encode(keys[k]),value:await encode(values[k])
           });
           stores.push({name:storeName,keyPath:store.keyPath,
             autoIncrement:store.autoIncrement,indexes,records});
