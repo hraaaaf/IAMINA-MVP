@@ -33,6 +33,16 @@ class ResolvedLocalePreference {
   const ResolvedLocalePreference(this.locale, this.source);
 }
 
+/// UI language may consult a remote patient profile only for a verified
+/// account. A visitor, an audit session or an offline demo uses local/system
+/// languages only; it must not even attempt a patient-profile fetch.
+bool shouldFetchRemoteAccountLocale({
+  required bool hasVerifiedRemoteAccount,
+  required bool isAuditLocale,
+  required bool isOfflineDemo,
+}) =>
+    hasVerifiedRemoteAccount && !isAuditLocale && !isOfflineDemo;
+
 class LocalePreferenceService extends ChangeNotifier {
   static const _languageKey = 'iamina.ui_language';
   // No automatic migration from the legacy global key: owner is unknown.
@@ -43,6 +53,7 @@ class LocalePreferenceService extends ChangeNotifier {
   static const _supportedTones = {'neutral', 'friendly'};
 
   final ApiClient _apiClient;
+  final bool Function()? _canFetchRemoteAccountLocale;
   final Locale? _auditLocale;
   final FlutterSecureStorage _storage;
   final Locale _systemLocale;
@@ -84,9 +95,11 @@ class LocalePreferenceService extends ChangeNotifier {
   LocalePreferenceService(
     this._apiClient, {
     Locale? auditLocale,
+    bool Function()? canFetchRemoteAccountLocale,
     FlutterSecureStorage storage = const FlutterSecureStorage(),
     Locale? systemLocale,
   }) : _auditLocale = auditLocale,
+       _canFetchRemoteAccountLocale = canFetchRemoteAccountLocale,
        _storage = storage,
        _systemLocale = systemLocale ??
            WidgetsBinding.instance.platformDispatcher.locale;
@@ -153,21 +166,31 @@ class LocalePreferenceService extends ChangeNotifier {
     }
 
     Object? accountLanguage;
-    if (_auditLocale == null) {
-      if (!kOfflineDemo) {
-        try {
-          final response = await _apiClient.client.get(
-            Uri.parse('/api/v1/profile/locale'),
-          );
-          if (response.isSuccessful && response.body is Map<String, dynamic>) {
-            final resolved = (response.body as Map<String, dynamic>)['resolved'];
-            if (resolved is Map<String, dynamic>) {
-              accountLanguage = resolved['ui_language'];
-            }
+    // Only a currently verified remote patient may fetch account preferences.
+    // Checking after the async local preference reads prevents a stale
+    // startup snapshot from dispatching a guest/profile API request.
+    if (shouldFetchRemoteAccountLocale(
+      hasVerifiedRemoteAccount:
+          _canFetchRemoteAccountLocale?.call() ?? false,
+      isAuditLocale: _auditLocale != null,
+      isOfflineDemo: kOfflineDemo,
+    )) {
+      final epoch = AuthService.authEpoch;
+      try {
+        final response = await _apiClient.client.get(
+          Uri.parse('/api/v1/profile/locale'),
+        );
+        if (epoch == AuthService.authEpoch &&
+            (_canFetchRemoteAccountLocale?.call() ?? false) &&
+            response.isSuccessful &&
+            response.body is Map<String, dynamic>) {
+          final resolved = (response.body as Map<String, dynamic>)['resolved'];
+          if (resolved is Map<String, dynamic>) {
+            accountLanguage = resolved['ui_language'];
           }
-        } catch (_) {
-          // Resolution continues with local and system inputs.
         }
+      } catch (_) {
+        // Resolution continues with local and system inputs.
       }
     }
 

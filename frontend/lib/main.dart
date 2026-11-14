@@ -110,6 +110,11 @@ Future<void> main() async {
     auditLocale: auditAllowed
         ? AuditAccessPolicy.requestedLocale(Uri.base)
         : null,
+    canFetchRemoteAccountLocale: () =>
+        !authService.isAuditSession &&
+        authService.hasRemoteApiCredential &&
+        authService.isRemoteCredentialVerified &&
+        authService.boundNativeAccountId != null,
   )..refresh();
 
   final vaultController = PatientVaultSessionController.forAuth(authService);
