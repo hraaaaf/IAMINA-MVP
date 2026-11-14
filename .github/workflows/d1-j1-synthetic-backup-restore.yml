@@ -1,0 +1,57 @@
+name: D1 J1 synthetic IndexedDB backup restore proof (NO PATIENTS)
+
+on:
+  pull_request:
+    branches: [fix/d1-p0-web-vault-fail-closed-20261113]
+    paths:
+      - '.github/workflows/d1-j1-synthetic-backup-restore.yml'
+      - 'tools/d1_j1_synthetic_backup_restore_browser.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-j1-synthetic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  byte-equivalent-logical-snapshot:
+    name: Chromium two-context backup, restore and negative tamper tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Run isolated synthetic IndexedDB backup / restore
+        shell: bash
+        env:
+          D1_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D1_CANDIDATE_SHA"
+          mkdir -p /tmp/iamina-d1-j1-fixture
+          printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>D1 J1 synthetic IndexedDB</title></html>' > /tmp/iamina-d1-j1-fixture/index.html
+          python3 -m http.server 7481 --bind 127.0.0.1 --directory /tmp/iamina-d1-j1-fixture >/tmp/d1-j1-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:7481/ >/dev/null
+          node tools/d1_j1_synthetic_backup_restore_browser.js
+      - name: Upload non-patient proof (no archive payload)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-j1-synthetic-backup-proof
+          path: |
+            d1-j1-synthetic-backup-proof/proof.json
+            /tmp/d1-j1-http.log
+          if-no-files-found: warn
+          retention-days: 7
