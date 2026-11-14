@@ -164,6 +164,22 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+        if (kD1PreviewAuthChoices)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                switch (locale) {
+                  'fr' => 'Preview D1 · Uniquement les comptes de test @d1-preview.test. Ne saisissez jamais vos identifiants personnels.',
+                  'ar' => 'معاينة D1 · حسابات @d1-preview.test التجريبية فقط. لا تستخدم معلوماتك الشخصية.',
+                  _ => 'D1 Preview · Use only @d1-preview.test accounts. Never enter your personal credentials.',
+                },
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
         Expanded(
           child: locale == 'fr'
               ? certified_fr.LoginScreen(
