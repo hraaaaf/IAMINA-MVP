@@ -28,8 +28,12 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --enable-web
 flutter pub get
 
-# Real application; fail-closed vault. Offline demo, Firebase and remote
-# account enrollment disabled. Requests to .invalid cannot hit clinical API.
+# Real app, clinical vault fail-closed. The D1 Preview enables the account
+# login/signup interface ONLY. Browser auth resolves same-origin to the
+# separately trusted synthetic Django API through the OIDC-only BFF.
+# Any missing BFF/identity must be an explicit failed test, never fallback.
+# Offline demo and Firebase migration remain disabled. The configured
+# .invalid API value is only a non-network fallback and cannot hit production.
 flutter build web --release --no-web-resources-cdn \
   --dart-define=API_BASE_URL=https://d1-no-clinical-backend.invalid \
   --dart-define=ENABLE_FIREBASE_MIGRATION=false \
