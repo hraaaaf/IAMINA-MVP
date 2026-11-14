@@ -32,8 +32,8 @@ async function report(page,expected='SOURCE_READY'){
  return obj;
 }
 const meta={storeName,headerName,owner};
-async function exportArchive(page){
- return page.evaluate(async({storeName,headerName,owner})=>{
+async function exportArchive(page,pauseAfterReadMs=0){
+ return page.evaluate(async({storeName,headerName,owner,pauseAfterReadMs})=>{
   const header=localStorage.getItem(headerName);
   if(!header)throw Error('D1_CIPHER_ENVELOPE_MISSING');
   const parsed=JSON.parse(header);
@@ -93,14 +93,22 @@ async function exportArchive(page){
     stores.push({name,keyPath:os.keyPath,autoIncrement:os.autoIncrement,
       indexes,records});
    }
+   // Adversarial CI barrier: an OLD writer can modify source while a
+   // serialised backup is awaiting final validation. Do not treat the
+   // earlier snapshot as current after this asynchronous window.
+   if(pauseAfterReadMs>0){
+     globalThis.__d1SyntheticSnapshotCaptured=true;
+     await new Promise(resolve=>setTimeout(resolve,pauseAfterReadMs));
+   }
    return {format:'D1_SYNTHETIC_CIPHER_IDB_PHYSICAL_V2',owner,
      storeName,header,db:{version:db.version,stores}};
   }finally{db.close();}
- },meta);
+ },{...meta,pauseAfterReadMs});
 }
-async function importArchive(page,archive,manifestSha256,{abortAfterStore=false}={}){
+async function importArchive(page,archive,manifestSha256,
+ {abortAfterStore=false,simulateQuotaAbort=false}={}){
  return page.evaluate(async({archive,manifestSha256,abortAfterStore,
-  storeName,headerName,owner})=>{
+  simulateQuotaAbort,storeName,headerName,owner})=>{
   // In the CI-only importer, SHA verification is performed INSIDE the browser
   // before ANY storage modification; it is not a signer/authenticator.
   const digest=await crypto.subtle.digest('SHA-256',
@@ -152,6 +160,15 @@ async function importArchive(page,archive,manifestSha256,{abortAfterStore=false}
    for(const s of archive.db.stores){
     const tx=db.transaction(s.name,'readwrite');
     const os=tx.objectStore(s.name);
+    if(simulateQuotaAbort){
+      // Synthetic IDB quota-like transaction abort BEFORE records commit.
+      // This is not an actual browser QuotaExceededError/load test.
+      tx.abort();
+      await new Promise((resolve,reject)=>{
+        tx.onabort=resolve;tx.onerror=()=>reject(tx.error);
+      });
+      throw Error('D1_SYNTHETIC_QUOTA_TX_ABORTED');
+    }
     for(const r of s.records){
      if(s.keyPath!==null)os.put(unpack(r.value));
      else os.put(unpack(r.value),unpack(r.key));
@@ -169,8 +186,9 @@ async function importArchive(page,archive,manifestSha256,{abortAfterStore=false}
   }finally{db.close();}
   localStorage.setItem(headerName,archive.header);
   return {committed:true};
- },{archive,manifestSha256,abortAfterStore,...meta});
+ },{archive,manifestSha256,abortAfterStore,simulateQuotaAbort,...meta});
 }
+if(require.main===module){
 (async()=>{
  fs.mkdirSync(folder,{recursive:true});
  const browser=await chromium.launch({headless:true});
@@ -274,3 +292,5 @@ async function importArchive(page,archive,manifestSha256,{abortAfterStore=false}
   await browser.close();
  }
 })().catch(()=>{process.exitCode=1;});
+}
+module.exports={exportArchive,importArchive,meta,root,owner,marker};
